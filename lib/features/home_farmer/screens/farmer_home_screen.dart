@@ -81,8 +81,13 @@ class FarmerHomeScreen extends ConsumerWidget {
                   // Notification bell
                   InkWell(
                     onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('No new notifications')),
+                      final messenger = ScaffoldMessenger.of(context);
+                      messenger.clearSnackBars();
+                      messenger.showSnackBar(
+                        const SnackBar(
+                          content: Text('No new notifications'),
+                          duration: Duration(milliseconds: 1800),
+                        ),
                       );
                     },
                     borderRadius: BorderRadius.circular(16),
@@ -173,8 +178,13 @@ class FarmerHomeScreen extends ConsumerWidget {
                           Text('Learning Progress', style: Theme.of(context).textTheme.headlineSmall),
                           TextButton(
                             onPressed: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Full learning progress list coming soon!')),
+                              final messenger = ScaffoldMessenger.of(context);
+                              messenger.clearSnackBars();
+                              messenger.showSnackBar(
+                                const SnackBar(
+                                  content: Text('Full learning progress list coming soon!'),
+                                  duration: Duration(milliseconds: 1800),
+                                ),
                               );
                             },
                             child: Text(
@@ -583,8 +593,13 @@ class _TopInstructorsStoriesState extends State<_TopInstructorsStories> {
             Text('Top Instructors', style: Theme.of(context).textTheme.headlineSmall),
             TextButton(
               onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Full instructors list coming soon!')),
+                final messenger = ScaffoldMessenger.of(context);
+                messenger.clearSnackBars();
+                messenger.showSnackBar(
+                  const SnackBar(
+                    content: Text('Full instructors list coming soon!'),
+                    duration: Duration(milliseconds: 1800),
+                  ),
                 );
               },
               child: Text(

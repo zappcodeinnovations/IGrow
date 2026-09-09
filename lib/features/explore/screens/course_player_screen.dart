@@ -270,7 +270,14 @@ class _CourseQaTabState extends ConsumerState<_CourseQaTab> {
       ref.invalidate(courseQaProvider(widget.courseSlug));
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.clearSnackBars();
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            duration: const Duration(milliseconds: 1800),
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
@@ -382,7 +389,14 @@ class _CourseNotesTabState extends ConsumerState<_CourseNotesTab> {
       ref.invalidate(courseNotesProvider(widget.courseSlug));
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.clearSnackBars();
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            duration: const Duration(milliseconds: 1800),
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
@@ -431,7 +445,16 @@ class _CourseNotesTabState extends ConsumerState<_CourseNotesTab> {
                           await ref.read(studentRepositoryProvider).deleteNote(n['id'].toString());
                           ref.invalidate(courseNotesProvider(widget.courseSlug));
                         } catch (e) {
-                          if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                          if (context.mounted) {
+                            final messenger = ScaffoldMessenger.of(context);
+                            messenger.clearSnackBars();
+                            messenger.showSnackBar(
+                              SnackBar(
+                                content: Text('Error: $e'),
+                                duration: const Duration(milliseconds: 1800),
+                              ),
+                            );
+                          }
                         }
                       },
                     ),

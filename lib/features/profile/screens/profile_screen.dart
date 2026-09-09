@@ -358,7 +358,16 @@ class ProfileScreen extends ConsumerWidget {
                   _MenuItem(
                     icon: Icons.language_rounded, 
                     label: 'Language',
-                    onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Language settings coming soon!'))),
+                    onTap: () {
+                      final messenger = ScaffoldMessenger.of(context);
+                      messenger.clearSnackBars();
+                      messenger.showSnackBar(
+                        const SnackBar(
+                          content: Text('Language settings coming soon!'),
+                          duration: Duration(milliseconds: 1800),
+                        ),
+                      );
+                    },
                   ),
                   _MenuItem(
                     icon: Theme.of(context).brightness == Brightness.dark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
@@ -382,7 +391,16 @@ class ProfileScreen extends ConsumerWidget {
                   _MenuItem(
                     icon: Icons.notifications_outlined,
                     label: 'Notifications',
-                    onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Notifications settings coming soon!'))),
+                    onTap: () {
+                      final messenger = ScaffoldMessenger.of(context);
+                      messenger.clearSnackBars();
+                      messenger.showSnackBar(
+                        const SnackBar(
+                          content: Text('Notifications settings coming soon!'),
+                          duration: Duration(milliseconds: 1800),
+                        ),
+                      );
+                    },
                   ),
                   _MenuItem(
                     icon: Icons.privacy_tip_outlined, 
@@ -403,8 +421,12 @@ class ProfileScreen extends ConsumerWidget {
                 onTap: () async {
                   final messenger = ScaffoldMessenger.of(context);
                   await ref.read(authProvider.notifier).logout();
+                  messenger.clearSnackBars();
                   messenger.showSnackBar(
-                    const SnackBar(content: Text('Logged out successfully.')),
+                    const SnackBar(
+                      content: Text('Logged out successfully.'),
+                      duration: Duration(milliseconds: 1800),
+                    ),
                   );
                   if (context.mounted) {
                     context.go('/login');

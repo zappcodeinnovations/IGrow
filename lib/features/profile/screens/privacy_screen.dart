@@ -53,8 +53,13 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
               setState(() {
                 onChanged(val);
               });
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Privacy settings updated')),
+              final messenger = ScaffoldMessenger.of(context);
+              messenger.clearSnackBars();
+              messenger.showSnackBar(
+                const SnackBar(
+                  content: Text('Privacy settings updated'),
+                  duration: Duration(milliseconds: 1800),
+                ),
               );
             },
             activeColor: AppColors.primaryGreen,

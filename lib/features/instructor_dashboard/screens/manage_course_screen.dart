@@ -56,7 +56,16 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen> {
         });
         ref.invalidate(instructorCourseDetailProvider(widget.courseId));
       } catch (e) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        if (mounted) {
+          final messenger = ScaffoldMessenger.of(context);
+          messenger.clearSnackBars();
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text('Error: $e'),
+              duration: const Duration(milliseconds: 1800),
+            ),
+          );
+        }
       }
     }
   }
@@ -98,7 +107,16 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen> {
         });
         ref.invalidate(instructorCourseDetailProvider(widget.courseId));
       } catch (e) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        if (mounted) {
+          final messenger = ScaffoldMessenger.of(context);
+          messenger.clearSnackBars();
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text('Error: $e'),
+              duration: const Duration(milliseconds: 1800),
+            ),
+          );
+        }
       }
     }
   }
@@ -121,7 +139,16 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen> {
         await ref.read(instructorRepositoryProvider).deleteSection(widget.courseId, sectionId);
         ref.invalidate(instructorCourseDetailProvider(widget.courseId));
       } catch (e) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        if (mounted) {
+          final messenger = ScaffoldMessenger.of(context);
+          messenger.clearSnackBars();
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text('Error: $e'),
+              duration: const Duration(milliseconds: 1800),
+            ),
+          );
+        }
       }
     }
   }
@@ -178,7 +205,16 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen> {
 
     if (res == true && titleController.text.isNotEmpty) {
       try {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Creating lecture...')));
+        if (mounted) {
+          final messenger = ScaffoldMessenger.of(context);
+          messenger.clearSnackBars();
+          messenger.showSnackBar(
+            const SnackBar(
+              content: Text('Creating lecture...'),
+              duration: Duration(milliseconds: 1800),
+            ),
+          );
+        }
         
         final lectureData = await ref.read(instructorRepositoryProvider).createLecture(widget.courseId, sectionId, {
           'title': titleController.text,
@@ -191,14 +227,41 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen> {
         });
 
         if (pickedVideo != null && lectureData.containsKey('id')) {
-          if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Uploading video... Please wait.')));
+          if (mounted) {
+            final messenger = ScaffoldMessenger.of(context);
+            messenger.clearSnackBars();
+            messenger.showSnackBar(
+              const SnackBar(
+                content: Text('Uploading video... Please wait.'),
+                duration: Duration(milliseconds: 1800),
+              ),
+            );
+          }
           await ref.read(instructorRepositoryProvider).uploadVideo(lectureData['id'].toString(), pickedVideo!.path);
-          if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Video uploaded successfully!')));
+          if (mounted) {
+            final messenger = ScaffoldMessenger.of(context);
+            messenger.clearSnackBars();
+            messenger.showSnackBar(
+              const SnackBar(
+                content: Text('Video uploaded successfully!'),
+                duration: Duration(milliseconds: 1800),
+              ),
+            );
+          }
         }
         
         ref.invalidate(instructorCourseDetailProvider(widget.courseId));
       } catch (e) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        if (mounted) {
+          final messenger = ScaffoldMessenger.of(context);
+          messenger.clearSnackBars();
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text('Error: $e'),
+              duration: const Duration(milliseconds: 1800),
+            ),
+          );
+        }
       }
     }
   }
@@ -206,13 +269,34 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen> {
   Future<void> _uploadVideo(BuildContext context, String lectureId) async {
     final XFile? video = await _picker.pickVideo(source: ImageSource.gallery);
     if (video != null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Uploading video... Please wait.')));
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.clearSnackBars();
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Uploading video... Please wait.'),
+          duration: Duration(milliseconds: 1800),
+        ),
+      );
       try {
         await ref.read(instructorRepositoryProvider).uploadVideo(lectureId, video.path);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Video uploaded successfully!')));
+        messenger.clearSnackBars();
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('Video uploaded successfully!'),
+            duration: Duration(milliseconds: 1800),
+          ),
+        );
         ref.invalidate(instructorCourseDetailProvider(widget.courseId));
       } catch (e) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Upload failed: $e')));
+        if (mounted) {
+          messenger.clearSnackBars();
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text('Upload failed: $e'),
+              duration: const Duration(milliseconds: 1800),
+            ),
+          );
+        }
       }
     }
   }
@@ -235,7 +319,16 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen> {
         await ref.read(instructorRepositoryProvider).deleteLecture(widget.courseId, sectionId, lectureId);
         ref.invalidate(instructorCourseDetailProvider(widget.courseId));
       } catch (e) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        if (mounted) {
+          final messenger = ScaffoldMessenger.of(context);
+          messenger.clearSnackBars();
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text('Error: $e'),
+              duration: const Duration(milliseconds: 1800),
+            ),
+          );
+        }
       }
     }
   }

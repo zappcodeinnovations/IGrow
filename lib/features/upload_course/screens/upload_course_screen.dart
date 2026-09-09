@@ -39,8 +39,13 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
 
   Future<void> _submitCourse() async {
     if (_titleController.text.isEmpty || _descController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill all required fields')),
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.clearSnackBars();
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Please fill all required fields'),
+          duration: Duration(milliseconds: 1800),
+        ),
       );
       return;
     }
@@ -68,8 +73,13 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
       ref.invalidate(instructorStatsProvider);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Course Created! Redirecting...')),
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.clearSnackBars();
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('Course Created! Redirecting...'),
+            duration: Duration(milliseconds: 1800),
+          ),
         );
         context.pushReplacement('/instructor/manage-course/$courseId');
       }
@@ -84,7 +94,9 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
           }
         }
         
-        ScaffoldMessenger.of(context).showSnackBar(
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.clearSnackBars();
+        messenger.showSnackBar(
           SnackBar(
             content: Row(
               children: [
@@ -102,7 +114,7 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             margin: const EdgeInsets.all(20),
-            duration: const Duration(seconds: 4),
+            duration: const Duration(milliseconds: 1800),
           ),
         );
       }

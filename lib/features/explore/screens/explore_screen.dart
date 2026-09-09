@@ -431,14 +431,24 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                                                 try {
                                                   await ref.read(cartProvider.notifier).addToCart(course.id ?? '');
                                                   if (context.mounted) {
-                                                    ScaffoldMessenger.of(context).showSnackBar(
-                                                      SnackBar(content: Text('${course.title} added to cart')),
+                                                    final messenger = ScaffoldMessenger.of(context);
+                                                    messenger.clearSnackBars();
+                                                    messenger.showSnackBar(
+                                                      SnackBar(
+                                                        content: Text('${course.title} added to cart'),
+                                                        duration: const Duration(milliseconds: 1800),
+                                                      ),
                                                     );
                                                   }
                                                 } catch (e) {
                                                   if (context.mounted) {
-                                                    ScaffoldMessenger.of(context).showSnackBar(
-                                                      SnackBar(content: Text('Could not add to cart: $e')),
+                                                    final messenger = ScaffoldMessenger.of(context);
+                                                    messenger.clearSnackBars();
+                                                    messenger.showSnackBar(
+                                                      SnackBar(
+                                                        content: Text('Could not add to cart: $e'),
+                                                        duration: const Duration(milliseconds: 1800),
+                                                      ),
                                                     );
                                                   }
                                                 }

@@ -26,7 +26,14 @@ class _QuizPlayerScreenState extends ConsumerState<QuizPlayerScreen> {
       setState(() => _results = results);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.clearSnackBars();
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            duration: const Duration(milliseconds: 1800),
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _isSubmitting = false);

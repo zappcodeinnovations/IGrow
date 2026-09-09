@@ -184,10 +184,13 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
       if (!mounted) return;
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.clearSnackBars();
+      messenger.showSnackBar(
         const SnackBar(
           content: Text('Profile updated successfully!'),
           backgroundColor: AppColors.primaryGreen,
+          duration: Duration(milliseconds: 1800),
         ),
       );
 
@@ -200,10 +203,13 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.clearSnackBars();
+      messenger.showSnackBar(
         SnackBar(
           content: Text('Error updating profile: $e'),
           backgroundColor: AppColors.error,
+          duration: const Duration(milliseconds: 1800),
         ),
       );
     }
@@ -356,12 +362,21 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                 setState(() => _isLoading = true);
                                 try {
                                   await ref.read(authProvider.notifier).deleteAvatar();
+                                  messenger.clearSnackBars();
                                   messenger.showSnackBar(
-                                    const SnackBar(content: Text('Avatar removed.')),
+                                    const SnackBar(
+                                      content: Text('Avatar removed.'),
+                                      duration: Duration(milliseconds: 1800),
+                                    ),
                                   );
                                 } catch (e) {
+                                  messenger.clearSnackBars();
                                   messenger.showSnackBar(
-                                    SnackBar(content: Text('Error removing avatar: $e')),
+                                    SnackBar(
+                                      content: Text('Error removing avatar: $e'),
+                                      backgroundColor: AppColors.error,
+                                      duration: const Duration(milliseconds: 1800),
+                                    ),
                                   );
                                 } finally {
                                   if (mounted) setState(() => _isLoading = false);

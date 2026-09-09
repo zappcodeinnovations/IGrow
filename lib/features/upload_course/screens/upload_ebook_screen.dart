@@ -45,8 +45,13 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
   Future<void> _uploadEbook() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedFile == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a file to upload')),
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.clearSnackBars();
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Please select a file to upload'),
+          duration: Duration(milliseconds: 1800),
+        ),
       );
       return;
     }
@@ -73,15 +78,25 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
       await repo.submitEBook(ebookId);
       
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Ebook uploaded and submitted successfully!')),
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.clearSnackBars();
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('Ebook uploaded and submitted successfully!'),
+            duration: Duration(milliseconds: 1800),
+          ),
         );
         context.pop();
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error uploading Ebook: $e')),
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.clearSnackBars();
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text('Error uploading Ebook: $e'),
+            duration: const Duration(milliseconds: 1800),
+          ),
         );
       }
     } finally {

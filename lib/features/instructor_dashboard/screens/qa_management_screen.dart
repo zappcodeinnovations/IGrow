@@ -36,16 +36,26 @@ class _QaManagementScreenState extends ConsumerState<QaManagementScreen> {
       await repo.answerQuestion(questionId, controller.text.trim());
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Answer submitted successfully!')),
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.clearSnackBars();
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('Answer submitted successfully!'),
+            duration: Duration(milliseconds: 1800),
+          ),
         );
         controller.clear();
         ref.invalidate(instructorQaProvider);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to submit answer: $e')),
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.clearSnackBars();
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text('Failed to submit answer: $e'),
+            duration: const Duration(milliseconds: 1800),
+          ),
         );
       }
     } finally {

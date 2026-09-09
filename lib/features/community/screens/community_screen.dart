@@ -30,8 +30,13 @@ class CommunityScreen extends ConsumerWidget {
                   Text('Community', style: Theme.of(context).textTheme.displaySmall),
                   GestureDetector(
                     onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Post creation coming soon!')),
+                      final messenger = ScaffoldMessenger.of(context);
+                      messenger.clearSnackBars();
+                      messenger.showSnackBar(
+                        const SnackBar(
+                          content: Text('Post creation coming soon!'),
+                          duration: Duration(milliseconds: 1800),
+                        ),
                       );
                     },
                     child: Container(
@@ -68,8 +73,13 @@ class CommunityScreen extends ConsumerWidget {
                           onLike: () async {
                             final success = await ref.read(communityPostsProvider.notifier).toggleLike(post.id);
                             if (context.mounted && !success) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Failed to like post. Backend might be unavailable.')),
+                              final messenger = ScaffoldMessenger.of(context);
+                              messenger.clearSnackBars();
+                              messenger.showSnackBar(
+                                const SnackBar(
+                                  content: Text('Failed to like post. Backend might be unavailable.'),
+                                  duration: Duration(milliseconds: 1800),
+                                ),
                               );
                             }
                           },
@@ -242,8 +252,13 @@ class _PostCard extends StatelessWidget {
               const SizedBox(width: 20),
               GestureDetector(
                 onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Comments section coming soon!')),
+                  final messenger = ScaffoldMessenger.of(context);
+                  messenger.clearSnackBars();
+                  messenger.showSnackBar(
+                    const SnackBar(
+                      content: Text('Comments section coming soon!'),
+                      duration: Duration(milliseconds: 1800),
+                    ),
                   );
                 },
                 child: Row(
@@ -258,8 +273,13 @@ class _PostCard extends StatelessWidget {
               const Spacer(),
               GestureDetector(
                 onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Share feature coming soon!')),
+                  final messenger = ScaffoldMessenger.of(context);
+                  messenger.clearSnackBars();
+                  messenger.showSnackBar(
+                    const SnackBar(
+                      content: Text('Share feature coming soon!'),
+                      duration: Duration(milliseconds: 1800),
+                    ),
                   );
                 },
                 child: Icon(Icons.share_outlined, size: 18, color: AppColors.inkSoft),

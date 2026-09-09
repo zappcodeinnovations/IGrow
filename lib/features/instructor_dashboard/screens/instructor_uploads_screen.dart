@@ -177,7 +177,14 @@ class _CoursesTab extends ConsumerWidget {
                                 ref.invalidate(instructorCoursesProvider);
                               } catch (e) {
                                 if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                                  final messenger = ScaffoldMessenger.of(context);
+                                  messenger.clearSnackBars();
+                                  messenger.showSnackBar(
+                                    SnackBar(
+                                      content: Text('Error: $e'),
+                                      duration: const Duration(milliseconds: 1800),
+                                    ),
+                                  );
                                 }
                               }
                             }
@@ -287,7 +294,14 @@ class _EBooksTab extends ConsumerWidget {
                             ref.invalidate(instructorEbooksProvider);
                           } catch (e) {
                             if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                              final messenger = ScaffoldMessenger.of(context);
+                              messenger.clearSnackBars();
+                              messenger.showSnackBar(
+                                SnackBar(
+                                  content: Text('Error: $e'),
+                                  duration: const Duration(milliseconds: 1800),
+                                ),
+                              );
                             }
                           }
                         }

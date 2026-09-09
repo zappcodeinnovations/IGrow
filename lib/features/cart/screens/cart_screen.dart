@@ -161,15 +161,25 @@ class CartScreen extends ConsumerWidget {
                           try {
                             await ref.read(cartProvider.notifier).checkout();
                             if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Checkout successful!')),
+                              final messenger = ScaffoldMessenger.of(context);
+                              messenger.clearSnackBars();
+                              messenger.showSnackBar(
+                                const SnackBar(
+                                  content: Text('Checkout successful!'),
+                                  duration: Duration(milliseconds: 1800),
+                                ),
                               );
                               Navigator.of(context).pop();
                             }
                           } catch (e) {
                             if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Checkout failed: $e')),
+                              final messenger = ScaffoldMessenger.of(context);
+                              messenger.clearSnackBars();
+                              messenger.showSnackBar(
+                                SnackBar(
+                                  content: Text('Checkout failed: $e'),
+                                  duration: const Duration(milliseconds: 1800),
+                                ),
                               );
                             }
                           }

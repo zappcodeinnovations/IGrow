@@ -66,12 +66,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     ref.listen<AuthState>(authProvider, (previous, next) {
       if (next.status == AuthStatus.error && next.error != null) {
         ScaffoldMessenger.of(context)
-          ..hideCurrentSnackBar()
+          ..clearSnackBars()
           ..showSnackBar(
             SnackBar(
               content: Text(next.error!),
               backgroundColor: AppColors.error,
               behavior: SnackBarBehavior.floating,
+              duration: const Duration(milliseconds: 1800),
             ),
           );
         ref.read(authProvider.notifier).clearError();

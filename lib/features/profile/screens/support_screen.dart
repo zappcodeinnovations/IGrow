@@ -52,25 +52,41 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
       );
 
       if (mounted) {
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.clearSnackBars();
         if (response.statusCode >= 200 && response.statusCode < 300) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Support ticket submitted successfully!')),
+          messenger.showSnackBar(
+            const SnackBar(
+              content: Text('Support ticket submitted successfully!'),
+              duration: Duration(milliseconds: 1800),
+            ),
           );
           context.pop();
         } else if (response.statusCode == 404) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Support backend API not ready yet (404).')),
+          messenger.showSnackBar(
+            const SnackBar(
+              content: Text('Support backend API not ready yet (404).'),
+              duration: Duration(milliseconds: 1800),
+            ),
           );
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: ${response.statusCode}')),
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text('Error: ${response.statusCode}'),
+              duration: const Duration(milliseconds: 1800),
+            ),
           );
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to submit ticket: $e')),
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.clearSnackBars();
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text('Failed to submit ticket: $e'),
+            duration: const Duration(milliseconds: 1800),
+          ),
         );
       }
     } finally {

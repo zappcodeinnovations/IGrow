@@ -207,6 +207,14 @@ class AppTheme {
         thickness: 1,
         space: 1,
       ),
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        showCloseIcon: true,
+        dismissDirection: DismissDirection.horizontal,
+      ),
       extensions: const [AppThemeExtension.light],
     );
   }
@@ -333,6 +341,14 @@ class AppTheme {
         color: AppColors.lineDark,
         thickness: 1,
         space: 1,
+      ),
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        showCloseIcon: true,
+        dismissDirection: DismissDirection.horizontal,
       ),
       extensions: const [AppThemeExtension.dark],
     );

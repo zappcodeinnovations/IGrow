@@ -149,14 +149,24 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                     try {
                       await ref.read(cartProvider.notifier).addToCart(widget.courseId);
                       if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Added to cart')),
+                        final messenger = ScaffoldMessenger.of(context);
+                        messenger.clearSnackBars();
+                        messenger.showSnackBar(
+                          const SnackBar(
+                            content: Text('Added to cart'),
+                            duration: Duration(milliseconds: 1800),
+                          ),
                         );
                       }
                     } catch (e) {
                       if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Could not add to cart: $e')),
+                        final messenger = ScaffoldMessenger.of(context);
+                        messenger.clearSnackBars();
+                        messenger.showSnackBar(
+                          SnackBar(
+                            content: Text('Could not add to cart: $e'),
+                            duration: const Duration(milliseconds: 1800),
+                          ),
                         );
                       }
                     }

@@ -67,8 +67,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     if (mounted) {
       final authState = ref.read(authProvider);
       if (authState.status != AuthStatus.error) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Registration successful! Please login.')),
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.clearSnackBars();
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('Registration successful! Please login.'),
+            duration: Duration(milliseconds: 1800),
+          ),
         );
         context.go('${RouteNames.login}?role=${widget.selectedRole ?? 'farmer'}');
       }
@@ -80,12 +85,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     ref.listen<AuthState>(authProvider, (previous, next) {
       if (next.status == AuthStatus.error && next.error != null) {
         ScaffoldMessenger.of(context)
-          ..hideCurrentSnackBar()
+          ..clearSnackBars()
           ..showSnackBar(
             SnackBar(
               content: Text(next.error!),
               backgroundColor: AppColors.error,
               behavior: SnackBarBehavior.floating,
+              duration: const Duration(milliseconds: 1800),
             ),
           );
         ref.read(authProvider.notifier).clearError();
