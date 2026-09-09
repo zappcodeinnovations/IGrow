@@ -11,8 +11,33 @@ class CartRepository {
   /// Get the current cart.
   Future<ApiCart> getCart() async {
     final response = await appApi.apiV1CartGet();
+    if (!response.isSuccessful) {
+      if (response.statusCode == 404) {
+        return const ApiCart(id: '');
+      }
+      throw Exception('Failed to load cart: ${response.statusCode}');
+    }
+
     final dynamic data = response.body;
-    return ApiCart.fromJson(data?.toJson() as Map<String, dynamic>);
+    if (data == null) {
+      return const ApiCart(id: '');
+    }
+
+    if (data is Map<String, dynamic>) {
+      return ApiCart.fromJson(data);
+    } else if (data is Map) {
+      return ApiCart.fromJson(Map<String, dynamic>.from(data));
+    } else {
+      try {
+        final jsonMap = (data as dynamic).toJson();
+        if (jsonMap is Map<String, dynamic>) {
+          return ApiCart.fromJson(jsonMap);
+        } else if (jsonMap is Map) {
+          return ApiCart.fromJson(Map<String, dynamic>.from(jsonMap));
+        }
+      } catch (_) {}
+    }
+    return const ApiCart(id: '');
   }
 
   /// Add a course to cart.
@@ -21,9 +46,20 @@ class CartRepository {
       'POST',
       Uri.parse('https://iagrow.zappcode.in/api/v1/cart/add/'),
       Uri.parse('https://iagrow.zappcode.in'),
-      body: {'course': courseId},
+      body: {
+        'course_id': courseId,
+        'course': courseId,
+      },
+      headers: {
+        'Content-Type': 'application/json',
+      },
     );
-    await appApi.client.send<dynamic, dynamic>(request);
+    final response = await appApi.client.send<dynamic, dynamic>(request);
+    if (!response.isSuccessful) {
+      throw Exception(
+        'Failed to add to cart (${response.statusCode}): ${response.bodyString.isNotEmpty ? response.bodyString : response.error}',
+      );
+    }
   }
 
   /// Remove a course from cart.

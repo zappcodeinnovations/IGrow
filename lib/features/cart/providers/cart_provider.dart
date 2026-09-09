@@ -41,11 +41,9 @@ class CartNotifier extends AsyncNotifier<ApiCart> {
       await _repository.addToCart(courseId);
       final newCart = await _repository.getCart();
       state = AsyncData(newCart);
-    } catch (e, st) {
-      state = AsyncData(const ApiCart(id: '')); // Reset to empty if fail? No, if add to cart fails, we should just revert to old state or fetch again.
-      // Actually let's fetch again.
-      state = await AsyncValue.guard(() => _repository.getCart());
-      throw e;
+    } catch (e) {
+      state = await AsyncValue.guard(() => _fetchCart());
+      rethrow;
     }
   }
 

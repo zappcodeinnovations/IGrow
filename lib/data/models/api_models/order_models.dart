@@ -16,11 +16,13 @@ class ApiCartItem {
   final DateTime? addedAt;
 
   factory ApiCartItem.fromJson(Map<String, dynamic> json) => ApiCartItem(
-        id: json['id'] as String,
-        course: json['course'] as String,
-        courseDetail: json['course_detail'] as Map<String, dynamic>?,
+        id: json['id']?.toString() ?? '',
+        course: json['course']?.toString() ?? '',
+        courseDetail: json['course_detail'] is Map
+            ? Map<String, dynamic>.from(json['course_detail'] as Map)
+            : null,
         addedAt: json['added_at'] != null
-            ? DateTime.tryParse(json['added_at'] as String)
+            ? DateTime.tryParse(json['added_at'].toString())
             : null,
       );
 }
@@ -43,15 +45,16 @@ class ApiCart {
   final DateTime? updatedAt;
 
   factory ApiCart.fromJson(Map<String, dynamic> json) => ApiCart(
-        id: json['id'] as String,
+        id: json['id']?.toString() ?? '',
         items: (json['items'] as List?)
-                ?.map((e) => ApiCartItem.fromJson(e as Map<String, dynamic>))
+                ?.whereType<Map>()
+                .map((e) => ApiCartItem.fromJson(Map<String, dynamic>.from(e)))
                 .toList() ??
             [],
         total: json['total']?.toString(),
         itemCount: json['item_count']?.toString(),
         updatedAt: json['updated_at'] != null
-            ? DateTime.tryParse(json['updated_at'] as String)
+            ? DateTime.tryParse(json['updated_at'].toString())
             : null,
       );
 }

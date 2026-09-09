@@ -61,8 +61,11 @@ class CartScreen extends ConsumerWidget {
                   itemCount: cart.items.length,
                   itemBuilder: (context, index) {
                     final item = cart.items[index];
-                    final courseTitle = item.courseDetail?['title'] as String? ?? 'Course';
-                    final coursePrice = item.courseDetail?['price'] as String? ?? '0.00';
+                    final courseTitle = item.courseDetail?['title']?.toString() ??
+                        item.courseDetail?['name']?.toString() ??
+                        'Course';
+                    final coursePrice =
+                        item.courseDetail?['price']?.toString() ?? '0.00';
 
                     return Card(
                       margin: const EdgeInsets.only(bottom: 16),
@@ -139,7 +142,7 @@ class CartScreen extends ConsumerWidget {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            'Total (${cart.itemCount} items)',
+                            'Total (${cart.itemCount ?? cart.items.length} items)',
                             style: Theme.of(context).textTheme.titleMedium,
                           ),
                           Text(
