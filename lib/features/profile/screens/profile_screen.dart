@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/theme_provider.dart';
 
 import '../../../core/widgets/app_card.dart';
@@ -277,7 +276,15 @@ class ProfileScreen extends ConsumerWidget {
                     _MenuItem(
                       icon: Icons.agriculture_rounded,
                       label: 'Farming Experience',
-                      value: user?.farmingExperience != null ? '${user!.farmingExperience} years' : 'Not provided',
+                      value: user?.farmingExperience != null && user!.farmingExperience!.isNotEmpty
+                          ? (user.farmingExperience!.toUpperCase() == 'BEGINNER'
+                              ? 'Beginner'
+                              : user.farmingExperience!.toUpperCase() == 'INTERMEDIATE'
+                                  ? 'Intermediate'
+                                  : user.farmingExperience!.toUpperCase() == 'EXPERT'
+                                      ? 'Expert'
+                                      : '${user.farmingExperience} years')
+                          : 'Not provided',
                     ),
                     _MenuItem(
                       icon: Icons.interests_rounded,
@@ -362,7 +369,7 @@ class ProfileScreen extends ConsumerWidget {
                         final newTheme = isDark ? ThemeMode.dark : ThemeMode.light;
                         ref.read(themeProvider.notifier).setTheme(newTheme);
                       },
-                      activeColor: AppColors.primaryGreen,
+                      activeThumbColor: AppColors.primaryGreen,
                     ),
                     onTap: () {
                       final currentTheme = ref.read(themeProvider);

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/router/route_names.dart';
 
 import '../../../core/network/swagger_generated/app_api.swagger.dart';
 import '../../../core/theme/app_colors.dart';
@@ -49,7 +50,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     _phoneController = TextEditingController(text: user?.phone);
     _stateController = TextEditingController(text: user?.locationState);
     _districtController = TextEditingController(text: user?.locationDistrict);
-    _experienceController = TextEditingController(text: user?.farmingExperience);
+    _experienceController = TextEditingController(text: _formatExperience(user?.farmingExperience));
     _areasController = TextEditingController(
       text: user?.areasOfInterest?.join(', ') ?? '',
     );
@@ -61,6 +62,52 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     _cropsController = TextEditingController(text: user?.specialtyCrops);
     _socialController = TextEditingController(text: user?.socialLink);
     _occupationController = TextEditingController(text: user?.currentOccupation);
+  }
+
+  static const _experienceOptions = ['Beginner', 'Intermediate', 'Expert'];
+
+  static String _formatExperience(String? exp) {
+    if (exp == null || exp.trim().isEmpty) return '';
+    final upper = exp.trim().toUpperCase();
+    if (upper == 'BEGINNER') return 'Beginner';
+    if (upper == 'INTERMEDIATE') return 'Intermediate';
+    if (upper == 'EXPERT') return 'Expert';
+    return exp.trim();
+  }
+
+  static String? _toApiExperience(String? exp) {
+    if (exp == null || exp.trim().isEmpty) return null;
+    final upper = exp.trim().toUpperCase();
+    if (upper.contains('BEG') || upper == '0' || upper == '1' || upper == '2') return 'BEGINNER';
+    if (upper.contains('INT') || upper == '3' || upper == '4' || upper == '5') return 'INTERMEDIATE';
+    if (upper.contains('EXP') || (int.tryParse(upper) ?? 0) >= 6) return 'EXPERT';
+    return upper;
+  }
+
+  static String? _formatPhone(String input) {
+    String clean = input.trim().replaceAll(RegExp(r'[^\d]'), '');
+    if (clean.isEmpty) return null;
+    if (clean.startsWith('91') && clean.length == 12) {
+      clean = clean.substring(2);
+    } else if (clean.startsWith('0') && clean.length == 11) {
+      clean = clean.substring(1);
+    }
+    return clean;
+  }
+
+  void _navigateBack() {
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    } else if (context.canPop()) {
+      context.pop();
+    } else {
+      final role = ref.read(authProvider).user?.activeRole;
+      if (role == UserRole.instructor) {
+        context.go(RouteNames.instructorProfile);
+      } else {
+        context.go(RouteNames.farmerProfile);
+      }
+    }
   }
 
   @override
@@ -106,13 +153,19 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       }
 
       // Update Basic Profile
+      final areas = _areasController.text
+          .split(',')
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
+
       final basicRequest = PatchedUserProfileRequest(
-        fullName: _nameController.text,
-        phoneNumber: _phoneController.text,
-        locationState: _stateController.text,
-        locationDistrict: _districtController.text,
-        farmingExperience: int.tryParse(_experienceController.text) ?? 0,
-        areasOfInterest: _areasController.text.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList(),
+        fullName: _nameController.text.trim(),
+        phoneNumber: _formatPhone(_phoneController.text),
+        locationState: _stateController.text.trim().isNotEmpty ? _stateController.text.trim() : null,
+        locationDistrict: _districtController.text.trim().isNotEmpty ? _districtController.text.trim() : null,
+        farmingExperience: _toApiExperience(_experienceController.text),
+        areasOfInterest: areas.isNotEmpty ? areas : null,
       );
 
       await authNotifier.updateProfile(basicRequest);
@@ -129,29 +182,47 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         await authNotifier.updateInstructorProfile(instructorRequest);
       }
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile updated successfully!')),
-        );
-        context.pop();
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Profile updated successfully!'),
+          backgroundColor: AppColors.primaryGreen,
+        ),
+      );
+
+      final role = ref.read(authProvider).user?.activeRole;
+      if (role == UserRole.instructor) {
+        context.go(RouteNames.instructorProfile);
+      } else {
+        context.go(RouteNames.farmerProfile);
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error updating profile: $e')),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error updating profile: $e'),
+          backgroundColor: AppColors.error,
+        ),
+      );
     }
   }
 
-  Widget _buildTextField(String label, TextEditingController controller, {bool maxLines = false}) {
+  Widget _buildTextField(
+    String label, 
+    TextEditingController controller, {
+    bool maxLines = false,
+    TextInputType? keyboardType,
+    String? Function(String?)? validator,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: TextFormField(
         controller: controller,
         maxLines: maxLines ? 3 : 1,
+        keyboardType: keyboardType,
+        validator: validator,
         decoration: InputDecoration(
           labelText: label,
           border: OutlineInputBorder(
@@ -164,16 +235,23 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   }
 
   Widget _buildDropdownField(String label, TextEditingController controller, List<String> options) {
+    final hasMatch = options.contains(controller.text);
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: LayoutBuilder(
         builder: (context, constraints) {
           return DropdownMenu<String>(
             controller: controller,
+            initialSelection: hasMatch ? controller.text : null,
             width: constraints.maxWidth,
             label: Text(label),
             enableSearch: true,
             enableFilter: true,
+            onSelected: (val) {
+              if (val != null) {
+                controller.text = val;
+              }
+            },
             dropdownMenuEntries: options.map((e) => DropdownMenuEntry(value: e, label: e)).toList(),
             inputDecorationTheme: InputDecorationTheme(
               border: OutlineInputBorder(
@@ -212,10 +290,14 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Edit Profile'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: _navigateBack,
+        ),
       ),
-      body: _isLoading 
-        ? const Center(child: CircularProgressIndicator())
-        : SingleChildScrollView(
+      body: Stack(
+        children: [
+          SingleChildScrollView(
             padding: const EdgeInsets.all(20),
             child: Form(
               key: _formKey,
@@ -270,20 +352,17 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                   _selectedImage = null;
                                 });
                               } else if (user?.avatarUrl != null) {
+                                final messenger = ScaffoldMessenger.of(context);
                                 setState(() => _isLoading = true);
                                 try {
                                   await ref.read(authProvider.notifier).deleteAvatar();
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('Avatar removed.')),
-                                    );
-                                  }
+                                  messenger.showSnackBar(
+                                    const SnackBar(content: Text('Avatar removed.')),
+                                  );
                                 } catch (e) {
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(content: Text('Error removing avatar: $e')),
-                                    );
-                                  }
+                                  messenger.showSnackBar(
+                                    SnackBar(content: Text('Error removing avatar: $e')),
+                                  );
                                 } finally {
                                   if (mounted) setState(() => _isLoading = false);
                                 }
@@ -302,10 +381,23 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   Text('Basic Information', style: Theme.of(context).textTheme.titleLarge),
                   const SizedBox(height: 16),
                   _buildTextField('Full Name', _nameController),
-                  _buildTextField('Phone Number', _phoneController),
+                  _buildTextField(
+                    'Phone Number',
+                    _phoneController,
+                    keyboardType: TextInputType.phone,
+                    validator: (val) {
+                      if (val != null && val.trim().isNotEmpty) {
+                        final digits = val.trim().replaceAll(RegExp(r'[^\d]'), '');
+                        if (digits.length != 10 && !(digits.startsWith('91') && digits.length == 12)) {
+                          return 'Mobile number must be exactly 10 digits';
+                        }
+                      }
+                      return null;
+                    },
+                  ),
                   _buildDropdownField('State', _stateController, _states),
                   _buildDropdownField('District', _districtController, _districts),
-                  _buildTextField('Farming Experience (Years)', _experienceController),
+                  _buildDropdownField('Farming Experience', _experienceController, _experienceOptions),
                   _buildTextField('Areas of Interest (comma separated)', _areasController, maxLines: true),
 
                   if (isInstructor) ...[
@@ -325,7 +417,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: _saveProfile,
+                      onPressed: _isLoading ? null : _saveProfile,
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         backgroundColor: AppColors.primaryGreen,
@@ -334,7 +426,16 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child: const Text('Save Profile'),
+                      child: _isLoading
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text('Save Profile'),
                     ),
                   ),
                   const SizedBox(height: 40),
@@ -342,6 +443,17 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               ),
             ),
           ),
+          if (_isLoading)
+            Positioned.fill(
+              child: Container(
+                color: Colors.black.withValues(alpha: 0.2),
+                child: const Center(
+                  child: CircularProgressIndicator(color: AppColors.primaryGreen),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

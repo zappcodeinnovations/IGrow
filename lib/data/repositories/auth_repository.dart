@@ -311,13 +311,93 @@ class ApiAuthRepository implements AuthRepository {
 
   @override
   Future<UserModel> updateProfile(PatchedUserProfileRequest request) async {
-    final response = await appApi.apiV1AuthMePatch(body: request);
-    _handleError(response);
-    final profile = response.body;
-    if (profile == null) throw ApiException.server('Failed to update profile');
+    final token = await tokenStorage.getAccessToken();
+    if (token == null) throw ApiException.unauthorized();
+
+    final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/auth/me/');
     
-    _currentUser = UserModel.fromApiProfile(profile);
-    return _currentUser!;
+    // Only send non-null and provided fields in PATCH payload to avoid overwriting with nulls
+    final body = <String, dynamic>{};
+    if (request.fullName != null && request.fullName!.trim().isNotEmpty) {
+      body['full_name'] = request.fullName!.trim();
+    }
+    if (request.phoneNumber != null && request.phoneNumber!.trim().isNotEmpty) {
+      String phone = request.phoneNumber!.trim().replaceAll(RegExp(r'[^\d]'), '');
+      if (phone.startsWith('91') && phone.length == 12) {
+        phone = phone.substring(2);
+      } else if (phone.startsWith('0') && phone.length == 11) {
+        phone = phone.substring(1);
+      }
+      body['phone_number'] = phone;
+    }
+    if (request.locationState != null && request.locationState!.trim().isNotEmpty) {
+      body['location_state'] = request.locationState!.trim();
+    }
+    if (request.locationDistrict != null && request.locationDistrict!.trim().isNotEmpty) {
+      body['location_district'] = request.locationDistrict!.trim();
+    }
+    if (request.farmingExperience != null) {
+      body['farming_experience'] = request.farmingExperience;
+    }
+    if (request.areasOfInterest != null) {
+      body['areas_of_interest'] = request.areasOfInterest;
+    }
+
+    final response = await http.patch(
+      uri,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: jsonEncode(body),
+    );
+
+    if (response.statusCode >= 400) {
+      String errorMessage = 'Failed to update profile (${response.statusCode})';
+      try {
+        final errorData = jsonDecode(response.body);
+        if (errorData is Map) {
+          if (errorData.containsKey('detail')) {
+            errorMessage = errorData['detail'].toString();
+          } else if (errorData.containsKey('non_field_errors')) {
+            final nfe = errorData['non_field_errors'];
+            errorMessage = nfe is List ? nfe.first.toString() : nfe.toString();
+          } else if (errorData.isNotEmpty) {
+            final firstKey = errorData.keys.first;
+            final firstVal = errorData[firstKey];
+            errorMessage = '$firstKey: ${firstVal is List ? firstVal.first : firstVal}';
+          }
+        }
+      } catch (_) {}
+      throw ApiException(statusCode: response.statusCode, message: errorMessage);
+    }
+
+    // Refresh profile from server to guarantee fully populated, synchronized state
+    try {
+      final meResponse = await appApi.apiV1AuthMeGet();
+      final fullProfile = meResponse.body;
+      if (fullProfile != null) {
+        _currentUser = UserModel.fromApiProfile(fullProfile);
+        return _currentUser!;
+      }
+    } catch (_) {}
+
+    // Fallback: parse PATCH response body directly
+    try {
+      final data = jsonDecode(response.body);
+      if (data is Map<String, dynamic>) {
+        final profile = UserProfile.fromJson(data);
+        _currentUser = UserModel.fromApiProfile(profile);
+        return _currentUser!;
+      }
+    } catch (_) {}
+
+    if (_currentUser != null) {
+      return _currentUser!;
+    }
+
+    throw ApiException.server('Failed to fetch updated profile');
   }
 
   @override
