@@ -62,17 +62,66 @@ class InstructorRepository {
     String? search,
     String? ordering,
   }) async {
-    final response = await appApi.apiV1InstructorCoursesGet(
-      ordering: ordering,
-      page: page,
-      search: search,
-    );
-    final data = jsonDecode(response.bodyString) as Map<String, dynamic>;
+    // 1. Direct HTTP call to avoid Chopper generated serializer TypeErrors
+    try {
+      final token = await tokenStorage.getAccessToken();
+      final queryParams = <String, String>{};
+      if (page != null) queryParams['page'] = page.toString();
+      if (search != null && search.isNotEmpty) queryParams['search'] = search;
+      if (ordering != null && ordering.isNotEmpty) queryParams['ordering'] = ordering;
 
-    return PaginatedResponse.fromJson(
-      data,
-      ApiCourseList.fromJson,
-    );
+      final baseUri = Uri.parse('https://iagrow.zappcode.in/api/v1/instructor/courses/');
+      final uri = queryParams.isNotEmpty ? baseUri.replace(queryParameters: queryParams) : baseUri;
+
+      final rawResponse = await http.get(
+        uri,
+        headers: {
+          if (token != null) 'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (rawResponse.statusCode >= 200 && rawResponse.statusCode < 300) {
+        final dynamic decoded = jsonDecode(rawResponse.body);
+        if (decoded is Map<String, dynamic>) {
+          return PaginatedResponse.fromJson(
+            decoded,
+            ApiCourseList.fromJson,
+          );
+        } else if (decoded is List) {
+          return PaginatedResponse<ApiCourseList>(
+            count: decoded.length,
+            results: decoded
+                .whereType<Map<String, dynamic>>()
+                .map((e) => ApiCourseList.fromJson(e))
+                .toList(),
+          );
+        }
+      }
+      debugPrint('⚠️ [InstructorRepository] getCourses HTTP ${rawResponse.statusCode}: ${rawResponse.body}');
+    } catch (e) {
+      debugPrint('⚠️ [InstructorRepository] getCourses raw HTTP error: $e');
+    }
+
+    // 2. Fallback to appApi
+    try {
+      final response = await appApi.apiV1InstructorCoursesGet(
+        ordering: ordering,
+        page: page,
+        search: search,
+      );
+      if (response.isSuccessful && response.bodyString.isNotEmpty) {
+        final data = jsonDecode(response.bodyString) as Map<String, dynamic>;
+        return PaginatedResponse.fromJson(
+          data,
+          ApiCourseList.fromJson,
+        );
+      }
+    } catch (e) {
+      debugPrint('⚠️ [InstructorRepository] getCourses appApi fallback error: $e');
+    }
+
+    return const PaginatedResponse(count: 0, results: []);
   }
 
   /// Create a new course.

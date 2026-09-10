@@ -399,7 +399,26 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                   )),
                 ),
                 error: (err, _) {
-                  return const Center(child: Text('Failed to load courses'));
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text('Failed to load courses'),
+                          const SizedBox(height: 8),
+                          TextButton.icon(
+                            onPressed: () => ref.invalidate(instructorCoursesProvider),
+                            icon: const Icon(Icons.refresh, size: 16, color: AppColors.primaryGreen),
+                            label: const Text(
+                              'Retry',
+                              style: TextStyle(color: AppColors.primaryGreen),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
                 },
               ),
               const SizedBox(height: 28),

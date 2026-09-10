@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 /// Course-related models matching the IAgrow Swagger schema.
 
 // ── Enums ───────────────────────────────────────────────────────
@@ -93,11 +95,22 @@ class PaginatedResponse<T> {
     T Function(Map<String, dynamic>) fromJson,
   ) =>
       PaginatedResponse<T>(
-        count: json['count'] as int? ?? 0,
-        next: json['next'] as String?,
-        previous: json['previous'] as String?,
+        count: (json['count'] is num)
+            ? (json['count'] as num).toInt()
+            : (int.tryParse(json['count']?.toString() ?? '') ?? 0),
+        next: json['next']?.toString(),
+        previous: json['previous']?.toString(),
         results: (json['results'] as List?)
-                ?.map((e) => fromJson(e as Map<String, dynamic>))
+                ?.whereType<Map<String, dynamic>>()
+                .map((e) {
+                  try {
+                    return fromJson(e);
+                  } catch (err) {
+                    debugPrint('⚠️ [PaginatedResponse] Error parsing item: $err');
+                    return null;
+                  }
+                })
+                .whereType<T>()
                 .toList() ??
             [],
       );
@@ -149,24 +162,24 @@ class ApiCourseList {
   CourseStatus? get statusEnum => CourseStatus.fromValue(status);
 
   factory ApiCourseList.fromJson(Map<String, dynamic> json) => ApiCourseList(
-        id: json['id'].toString(),
-        slug: json['slug'] as String?,
-        title: json['title'] as String? ?? '',
-        shortDescription: json['short_description'] as String?,
-        thumbnail: json['thumbnail'] as String?,
+        id: json['id']?.toString() ?? '',
+        slug: json['slug']?.toString(),
+        title: json['title']?.toString() ?? '',
+        shortDescription: json['short_description']?.toString(),
+        thumbnail: json['thumbnail']?.toString(),
         category: json['category'] is Map ? (json['category']['id']?.toString() ?? json['category']['slug']?.toString()) : json['category']?.toString(),
-        categoryDisplay: json['category_display'] as String?,
-        level: json['level'] as String?,
-        levelDisplay: json['level_display'] as String?,
+        categoryDisplay: json['category_display']?.toString(),
+        level: json['level']?.toString(),
+        levelDisplay: json['level_display']?.toString(),
         price: json['price']?.toString(),
-        instructorName: json['instructor_name'] as String?,
-        instructorAvatar: json['instructor_avatar'] as String?,
+        instructorName: json['instructor_name']?.toString(),
+        instructorAvatar: json['instructor_avatar']?.toString(),
         enrollmentCount: json['enrollment_count']?.toString(),
         totalLectures: json['total_lectures']?.toString(),
         totalDuration: json['total_duration']?.toString(),
-        status: json['status'] as String?,
+        status: json['status']?.toString(),
         createdAt: json['created_at'] != null
-            ? DateTime.tryParse(json['created_at'] as String)
+            ? DateTime.tryParse(json['created_at'].toString())
             : null,
       );
 }
