@@ -20,6 +20,7 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
   final _titleController = TextEditingController();
   final _descController = TextEditingController();
   final _priceController = TextEditingController(text: '0.00');
+  final _priceFocusNode = FocusNode();
   String _selectedCategory = 'Organic Farming';
 
   final List<String> _categories = [
@@ -30,10 +31,27 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _priceFocusNode.addListener(() {
+      if (_priceFocusNode.hasFocus) {
+        if (_priceController.text == '0.00' || _priceController.text == '0') {
+          _priceController.clear();
+        }
+      } else {
+        if (_priceController.text.trim().isEmpty) {
+          _priceController.text = '0.00';
+        }
+      }
+    });
+  }
+
+  @override
   void dispose() {
     _titleController.dispose();
     _descController.dispose();
     _priceController.dispose();
+    _priceFocusNode.dispose();
     super.dispose();
   }
 
@@ -151,6 +169,7 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                   const SizedBox(height: 16),
                   AppTextField(
                     controller: _priceController,
+                    focusNode: _priceFocusNode,
                     label: 'Price (₹)',
                     hint: '0.00 for free',
                     keyboardType: TextInputType.number,
