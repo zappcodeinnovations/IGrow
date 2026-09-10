@@ -381,19 +381,46 @@ class _CourseNotesTabState extends ConsumerState<_CourseNotesTab> {
   bool _isSubmitting = false;
 
   Future<void> _submit() async {
-    if (_controller.text.trim().isEmpty) return;
+    final text = _controller.text.trim();
+    if (text.isEmpty) {
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.clearSnackBars();
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Please enter a note before submitting.'),
+          duration: Duration(milliseconds: 1800),
+        ),
+      );
+      return;
+    }
     setState(() => _isSubmitting = true);
     try {
-      await ref.read(studentRepositoryProvider).postCourseNote(widget.courseSlug, _controller.text.trim(), widget.currentPositionSeconds);
+      await ref.read(studentRepositoryProvider).postCourseNote(widget.courseSlug, text, widget.currentPositionSeconds);
       _controller.clear();
       ref.invalidate(courseNotesProvider(widget.courseSlug));
     } catch (e) {
       if (mounted) {
+        String errorMsg = 'Failed to post note. Please try again.';
+        final errStr = e.toString();
+        if (errStr.contains('"error":"')) {
+          final start = errStr.indexOf('"error":"') + 9;
+          final end = errStr.indexOf('"', start);
+          if (end != -1) {
+            errorMsg = errStr.substring(start, end);
+          }
+        } else if (errStr.contains('"detail":"')) {
+          final start = errStr.indexOf('"detail":"') + 10;
+          final end = errStr.indexOf('"', start);
+          if (end != -1) {
+            errorMsg = errStr.substring(start, end);
+          }
+        }
+
         final messenger = ScaffoldMessenger.of(context);
         messenger.clearSnackBars();
         messenger.showSnackBar(
           SnackBar(
-            content: Text('Error: $e'),
+            content: Text(errorMsg),
             duration: const Duration(milliseconds: 1800),
           ),
         );
@@ -482,6 +509,7 @@ class _CourseNotesTabState extends ConsumerState<_CourseNotesTab> {
                     border: const OutlineInputBorder(),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   ),
+                  onSubmitted: (_) => _submit(),
                 ),
               ),
               const SizedBox(width: 12),

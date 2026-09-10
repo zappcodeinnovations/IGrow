@@ -219,6 +219,7 @@ class StudentRepository {
         'Content-Type': 'application/json',
       },
       body: jsonEncode({
+        'content': text,
         'note_text': text,
         'timestamp': timestampSeconds,
       }),
