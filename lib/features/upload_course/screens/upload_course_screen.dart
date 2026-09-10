@@ -1,6 +1,8 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_text_field.dart';
@@ -16,6 +18,8 @@ class UploadCourseScreen extends ConsumerStatefulWidget {
 
 class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
   bool _isLoading = false;
+  File? _coverImage;
+  final ImagePicker _picker = ImagePicker();
 
   final _titleController = TextEditingController();
   final _descController = TextEditingController();
@@ -55,6 +59,40 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
     super.dispose();
   }
 
+  Future<void> _pickCoverImage() async {
+    try {
+      final pickedFile = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1920,
+        maxHeight: 1080,
+        imageQuality: 85,
+      );
+      if (pickedFile != null) {
+        setState(() {
+          _coverImage = File(pickedFile.path);
+        });
+      }
+    } catch (e) {
+      debugPrint('Error picking cover image: $e');
+      if (mounted) {
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.clearSnackBars();
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text('Failed to select image: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  void _removeCoverImage() {
+    setState(() {
+      _coverImage = null;
+    });
+  }
+
   Future<void> _submitCourse() async {
     if (_titleController.text.isEmpty || _descController.text.isEmpty) {
       final messenger = ScaffoldMessenger.of(context);
@@ -84,7 +122,7 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
         'what_you_learn': '',
         'requirements': '',
         'tags': '',
-      });
+      }, imagePath: _coverImage?.path);
       final courseId = courseResponse['id'] as String;
 
       ref.invalidate(instructorCoursesProvider);
@@ -143,6 +181,8 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
       appBar: AppBar(title: const Text('Create New Course')),
       body: _isLoading
@@ -154,6 +194,132 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                 children: [
                   Text('Course Details', style: Theme.of(context).textTheme.headlineSmall),
                   const SizedBox(height: 20),
+                  Text(
+                    'Cover Image (Thumbnail)',
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                  ),
+                  const SizedBox(height: 8),
+                  if (_coverImage == null)
+                    InkWell(
+                      onTap: _pickCoverImage,
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        width: double.infinity,
+                        height: 150,
+                        decoration: BoxDecoration(
+                          color: isDark ? AppColors.cardDark : AppColors.bgLight,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: isDark
+                                ? AppColors.lineDark
+                                : AppColors.primaryGreen.withValues(alpha: 0.35),
+                            width: 1.5,
+                          ),
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: AppColors.primaryGreen.withValues(alpha: 0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.add_photo_alternate_outlined,
+                                size: 30,
+                                color: AppColors.primaryGreen,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              'Upload Cover Image',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: isDark ? Colors.white : AppColors.inkDark,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'PNG, JPG up to 5MB (16:9 recommended)',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: isDark ? Colors.white54 : AppColors.inkSoft,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  else
+                    Stack(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: Image.file(
+                            _coverImage!,
+                            width: double.infinity,
+                            height: 180,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                        Positioned(
+                          top: 10,
+                          right: 10,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Material(
+                                color: Colors.black.withValues(alpha: 0.65),
+                                borderRadius: BorderRadius.circular(20),
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(20),
+                                  onTap: _pickCoverImage,
+                                  child: const Padding(
+                                    padding: EdgeInsets.symmetric(
+                                        horizontal: 10, vertical: 6),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.edit,
+                                            size: 14, color: Colors.white),
+                                        SizedBox(width: 4),
+                                        Text(
+                                          'Change',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Material(
+                                color: Colors.black.withValues(alpha: 0.65),
+                                shape: const CircleBorder(),
+                                child: InkWell(
+                                  customBorder: const CircleBorder(),
+                                  onTap: _removeCoverImage,
+                                  child: const Padding(
+                                    padding: EdgeInsets.all(6),
+                                    child: Icon(Icons.close,
+                                        size: 16, color: Colors.white),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  const SizedBox(height: 16),
                   AppTextField(
                     controller: _titleController,
                     label: 'Course Title',
@@ -176,7 +342,7 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                   ),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
-                    value: _selectedCategory,
+                    initialValue: _selectedCategory,
                     decoration: InputDecoration(
                       labelText: 'Category',
                       border: OutlineInputBorder(

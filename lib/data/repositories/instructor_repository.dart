@@ -126,17 +126,48 @@ class InstructorRepository {
 
   /// Create a new course.
   Future<Map<String, dynamic>> createCourse(
-      Map<String, dynamic> courseData) async {
-    debugPrint('📤 [InstructorRepository] createCourse: sending $courseData');
-    final response = await appApi.apiV1InstructorCoursesPost(
-      body: CourseCreateRequest.fromJson(courseData),
-    );
-    if (!response.isSuccessful) {
-      debugPrint('❌ [InstructorRepository] createCourse ERROR: ${response.error}');
-      throw Exception('Failed to create course: ${response.error}');
+      Map<String, dynamic> courseData, {String? imagePath}) async {
+    debugPrint('📤 [InstructorRepository] createCourse: sending $courseData, imagePath=$imagePath');
+    if (imagePath != null && imagePath.isNotEmpty) {
+      final token = await tokenStorage.getAccessToken();
+      final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/instructor/courses/');
+      final request = http.MultipartRequest('POST', uri);
+      if (token != null && token.isNotEmpty) {
+        request.headers['Authorization'] = 'Bearer $token';
+      }
+
+      courseData.forEach((key, value) {
+        if (value != null) {
+          if (value is String && value.isEmpty && (key == 'preview_video_url' || key == 'category_id')) {
+            return;
+          }
+          request.fields[key] = value.toString();
+        }
+      });
+
+      request.files.add(await http.MultipartFile.fromPath('thumbnail', imagePath));
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        debugPrint('✅ [InstructorRepository] createCourse MULTIPART SUCCESS: ${response.body}');
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        debugPrint('❌ [InstructorRepository] createCourse MULTIPART ERROR (${response.statusCode}): ${response.body}');
+        throw Exception('Failed to create course: ${response.body}');
+      }
+    } else {
+      final response = await appApi.apiV1InstructorCoursesPost(
+        body: CourseCreateRequest.fromJson(courseData),
+      );
+      if (!response.isSuccessful) {
+        debugPrint('❌ [InstructorRepository] createCourse ERROR: ${response.error}');
+        throw Exception('Failed to create course: ${response.error}');
+      }
+      debugPrint('✅ [InstructorRepository] createCourse SUCCESS: ${response.bodyString}');
+      return jsonDecode(response.bodyString) as Map<String, dynamic>;
     }
-    debugPrint('✅ [InstructorRepository] createCourse SUCCESS: ${response.bodyString}');
-    return jsonDecode(response.bodyString) as Map<String, dynamic>;
   }
 
   /// Get course detail.
