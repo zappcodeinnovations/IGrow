@@ -104,15 +104,30 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen> {
         await ref.read(instructorRepositoryProvider).updateSection(widget.courseId, section.id, {
           'title': titleController.text,
           'description': descController.text,
+          'sort_order': section.sortOrder ?? 0,
         });
         ref.invalidate(instructorCourseDetailProvider(widget.courseId));
       } catch (e) {
         if (mounted) {
+          String errorMsg = 'Failed to update section. Please try again.';
+          final errStr = e.toString();
+          if (errStr.contains('"error":"')) {
+            final start = errStr.indexOf('"error":"') + 9;
+            final end = errStr.indexOf('"', start);
+            if (end != -1) errorMsg = errStr.substring(start, end);
+          } else if (errStr.contains('"detail":"')) {
+            final start = errStr.indexOf('"detail":"') + 10;
+            final end = errStr.indexOf('"', start);
+            if (end != -1) errorMsg = errStr.substring(start, end);
+          } else {
+            errorMsg = errStr.replaceAll('Exception: Failed to update section:', '').trim();
+          }
+
           final messenger = ScaffoldMessenger.of(context);
           messenger.clearSnackBars();
           messenger.showSnackBar(
             SnackBar(
-              content: Text('Error: $e'),
+              content: Text(errorMsg),
               duration: const Duration(milliseconds: 1800),
             ),
           );

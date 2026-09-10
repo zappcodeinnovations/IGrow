@@ -236,10 +236,14 @@ class InstructorRepository {
   /// Update a section.
   Future<Map<String, dynamic>> updateSection(
       String coursePk, String sectionId, Map<String, dynamic> updates) async {
+    final body = Map<String, dynamic>.from(updates);
+    if (!body.containsKey('sort_order') || body['sort_order'] == null) {
+      body['sort_order'] = 0;
+    }
     final response = await appApi.apiV1InstructorCoursesCoursePkSectionsIdPatch(
       coursePk: coursePk,
       id: sectionId,
-      body: PatchedCourseSectionCreateRequest.fromJson(updates),
+      body: PatchedCourseSectionCreateRequest.fromJson(body),
     );
     if (!response.isSuccessful) {
       throw Exception('Failed to update section: ${response.error}');
