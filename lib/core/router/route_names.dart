@@ -43,6 +43,7 @@ class RouteNames {
   // Instructor sub-routes
   static const creatorDashboard = '/instructor/creator-dashboard';
   static const instructorUploads = '/instructor/uploads';
+  static const instructorKyc = '/instructor/kyc';
 
   // ─── Shared ──────────────────────────────────────────────────────
   static const wallet = '/wallet';

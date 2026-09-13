@@ -20,7 +20,7 @@ final studentCatalogProvider = FutureProvider.family<List<CourseList>, CatalogQu
     search: query.search.isNotEmpty ? query.search : null,
     category: query.category.isNotEmpty ? query.category : null,
   );
-  return response.results ?? [];
+  return response.results;
 });
 
 /// Provider for fetching the ebooks catalog.
@@ -70,8 +70,107 @@ final sectionQuizProvider = FutureProvider.family<Map<String, dynamic>?, String>
   return await repo.getSectionQuiz(sectionId);
 });
 
+/// Provider for fetching raw course progress map.
+final courseProgressProvider = FutureProvider.family<Map<String, dynamic>, String>((ref, slug) async {
+  final repo = ref.watch(studentRepositoryProvider);
+  return await repo.getCourseProgress(slug);
+});
+
+/// Helper to parse completed lecture IDs from various backend response shapes.
+Set<String> parseCompletedLectureIds(dynamic progressData) {
+  final completed = <String>{};
+  if (progressData == null) return completed;
+
+  if (progressData is Map) {
+    final pMap = progressData['progress'];
+    if (pMap is Map) {
+      pMap.forEach((key, val) {
+        if (val is Map && (val['is_completed'] == true || val['completed'] == true)) {
+          completed.add(key.toString());
+        } else if (val == true) {
+          completed.add(key.toString());
+        }
+      });
+    }
+
+    final cList = progressData['completed_lectures'] ?? progressData['lectures'];
+    if (cList is List) {
+      for (final item in cList) {
+        if (item is Map) {
+          final id = item['lecture_id'] ?? item['lecture'] ?? item['id'];
+          final isDone = item['is_completed'] == true || item['completed'] == true;
+          if (id != null && isDone) {
+            completed.add(id.toString());
+          }
+        } else if (item != null) {
+          completed.add(item.toString());
+        }
+      }
+    }
+  } else if (progressData is List) {
+    for (final item in progressData) {
+      if (item is Map) {
+        final id = item['lecture_id'] ?? item['lecture'] ?? item['id'];
+        final isDone = item['is_completed'] == true || item['completed'] == true;
+        if (id != null && isDone) {
+          completed.add(id.toString());
+        }
+      } else if (item != null) {
+        completed.add(item.toString());
+      }
+    }
+  }
+  return completed;
+}
+
+/// State notifier for tracking and optimistically updating course completed lecture IDs.
+class CourseProgressNotifier extends StateNotifier<AsyncValue<Set<String>>> {
+  CourseProgressNotifier(this.ref, this.slug) : super(const AsyncValue.loading()) {
+    loadProgress();
+  }
+
+  final Ref ref;
+  final String slug;
+
+  Future<void> loadProgress() async {
+    try {
+      final repo = ref.read(studentRepositoryProvider);
+      final data = await repo.getCourseProgress(slug);
+      final completedIds = parseCompletedLectureIds(data);
+      state = AsyncValue.data(completedIds);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
+  }
+
+  Future<void> markLectureCompletion(String lectureId, {required bool completed, int? watchedTime}) async {
+    final currentSet = state.value ?? <String>{};
+    final updatedSet = Set<String>.from(currentSet);
+    if (completed) {
+      updatedSet.add(lectureId);
+    } else {
+      updatedSet.remove(lectureId);
+    }
+    // Optimistic reactive update
+    state = AsyncValue.data(updatedSet);
+
+    try {
+      final repo = ref.read(studentRepositoryProvider);
+      await repo.updateLectureProgress(lectureId, completed: completed, watchedTime: watchedTime);
+    } catch (e) {
+      // Keep optimistic state or handle error gracefully
+    }
+  }
+}
+
+/// Family provider for student's reactive course lecture completion set.
+final courseProgressStateProvider = StateNotifierProvider.family<CourseProgressNotifier, AsyncValue<Set<String>>, String>((ref, slug) {
+  return CourseProgressNotifier(ref, slug);
+});
+
 /// Dummy Provider for fetching Top Instructors until backend API is ready.
 final topInstructorsProvider = FutureProvider<List<dynamic>>((ref) async {
   // Simulating an empty list from the backend
   return [];
 });
+

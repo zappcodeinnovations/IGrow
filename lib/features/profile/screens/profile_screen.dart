@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/theme_provider.dart';
 
@@ -338,6 +339,22 @@ class ProfileScreen extends ConsumerWidget {
                       icon: Icons.link_rounded,
                       label: 'Social Link',
                       value: user?.socialLink ?? 'Not provided',
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _MenuSection(
+                  title: 'Verification & Payouts',
+                  items: [
+                    _MenuItem(
+                      icon: Icons.verified_user_rounded,
+                      label: 'KYC & Bank Verification',
+                      value: user?.isKycVerified == true
+                          ? 'Verified'
+                          : (user?.isKycPending == true ? 'Under Review' : 'Incomplete'),
+                      onTap: () {
+                        context.push(RouteNames.instructorKyc);
+                      },
                     ),
                   ],
                 ),

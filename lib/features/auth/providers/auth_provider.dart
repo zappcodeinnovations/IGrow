@@ -1,10 +1,10 @@
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_client_legacy.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/network/token_storage.dart';
-import '../../../core/network/swagger_generated/app_api.swagger.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/models/user_role.dart';
 import '../../../data/repositories/auth_repository.dart';
@@ -81,6 +81,57 @@ class AuthNotifier extends StateNotifier<AuthState> {
   AuthNotifier(this._repo) : super(const AuthState());
 
   final AuthRepository _repo;
+  Timer? _profileSyncTimer;
+
+  void _startPeriodicSync() {
+    _profileSyncTimer?.cancel();
+    // Periodically sync profile from backend (15s if pending KYC/verification, 2m if already verified) to avoid flooding console and network
+    final isFullyVerified = state.user?.isKycVerified == true &&
+        state.user?.verificationStatus?.toUpperCase() == 'VERIFIED';
+    final interval = isFullyVerified ? const Duration(minutes: 2) : const Duration(seconds: 15);
+    _profileSyncTimer = Timer.periodic(interval, (_) {
+      refreshUserSilent();
+    });
+  }
+
+  void _stopPeriodicSync() {
+    _profileSyncTimer?.cancel();
+    _profileSyncTimer = null;
+  }
+
+  @override
+  void dispose() {
+    _stopPeriodicSync();
+    super.dispose();
+  }
+
+  /// Silently refresh the current user from backend without full-screen loading spinner.
+  /// If admin updates verification status or KYC, UI updates instantly.
+  Future<void> refreshUserSilent() async {
+    if (!state.isAuthenticated) return;
+    try {
+      final user = await _repo.getCurrentUser(forceRefresh: true);
+      if (user != null) {
+        final oldUser = state.user;
+        if (oldUser == null ||
+            oldUser.kycVerified != user.kycVerified ||
+            oldUser.verificationStatus != user.verificationStatus ||
+            oldUser.bankName != user.bankName ||
+            oldUser.bankAccountNumber != user.bankAccountNumber ||
+            oldUser.bankIfscCode != user.bankIfscCode ||
+            oldUser.kycDocumentNumber != user.kycDocumentNumber ||
+            oldUser.activeRole != user.activeRole ||
+            oldUser.fullName != user.fullName) {
+          print('🔔 [AUTH PROVIDER] Silent Sync: Status change detected!');
+          print('   Old: kycVerified=${oldUser?.kycVerified}, status=${oldUser?.verificationStatus}');
+          print('   New: kycVerified=${user.kycVerified}, status=${user.verificationStatus}');
+          state = state.copyWith(user: user);
+        }
+      }
+    } catch (e) {
+      print('⚠️ [AUTH PROVIDER] refreshUserSilent skipped: $e');
+    }
+  }
 
   /// Check for an existing session on app start.
   /// Reads JWT from secure storage and fetches /auth/me/.
@@ -92,9 +143,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
         state = const AuthState(status: AuthStatus.unauthenticated);
         return;
       }
-      final user = await _repo.getCurrentUser();
+      final user = await _repo.getCurrentUser(forceRefresh: true);
       if (user != null) {
         state = AuthState(status: AuthStatus.authenticated, user: user);
+        _startPeriodicSync();
       } else {
         state = const AuthState(status: AuthStatus.unauthenticated);
       }
@@ -115,6 +167,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         password: password,
       );
       state = AuthState(status: AuthStatus.authenticated, user: user);
+      _startPeriodicSync();
     } on ApiException catch (e) {
       state = AuthState(status: AuthStatus.error, error: e.message);
     } catch (e) {
@@ -230,6 +283,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   /// Logout.
   Future<void> logout() async {
+    _stopPeriodicSync();
     await _repo.logout();
     state = const AuthState(status: AuthStatus.unauthenticated);
   }
@@ -253,6 +307,37 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final user = await _repo.updateInstructorProfile(request);
       state = AuthState(status: AuthStatus.authenticated, user: user);
     } catch (e) {
+      state = state.copyWith(status: AuthStatus.authenticated, error: e.toString());
+      rethrow;
+    }
+  }
+
+  /// Submit KYC & Bank Profile for Instructor.
+  Future<void> submitKycProfile({
+    required String docType,
+    required String docNumber,
+    String? docImagePath,
+    required String bankName,
+    required String accountName,
+    required String accountNumber,
+    required String ifscCode,
+  }) async {
+    print('🚀 [AUTH PROVIDER] submitKycProfile requested: docType=$docType, docNumber=$docNumber');
+    state = state.copyWith(status: AuthStatus.loading);
+    try {
+      final user = await _repo.submitKycProfile(
+        docType: docType,
+        docNumber: docNumber,
+        docImagePath: docImagePath,
+        bankName: bankName,
+        accountName: accountName,
+        accountNumber: accountNumber,
+        ifscCode: ifscCode,
+      );
+      print('✅ [AUTH PROVIDER] submitKycProfile successful. Updated user: ${user.fullName}, verified: ${user.kycVerified}');
+      state = AuthState(status: AuthStatus.authenticated, user: user);
+    } catch (e) {
+      print('❌ [AUTH PROVIDER] submitKycProfile failed: $e');
       state = state.copyWith(status: AuthStatus.authenticated, error: e.toString());
       rethrow;
     }

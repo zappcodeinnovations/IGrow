@@ -85,6 +85,14 @@ class ApiInstructorProfile {
     this.totalStudents,
     this.totalRevenue,
     this.createdAt,
+    this.kycVerified,
+    this.bankName,
+    this.bankAccountName,
+    this.bankAccountNumber,
+    this.bankIfscCode,
+    this.kycDocumentType,
+    this.kycDocumentNumber,
+    this.kycDocumentImage,
   });
 
   final String? bio;
@@ -100,6 +108,14 @@ class ApiInstructorProfile {
   final int? totalStudents;
   final String? totalRevenue;
   final DateTime? createdAt;
+  final bool? kycVerified;
+  final String? bankName;
+  final String? bankAccountName;
+  final String? bankAccountNumber;
+  final String? bankIfscCode;
+  final String? kycDocumentType; // 'AADHAAR' | 'PAN'
+  final String? kycDocumentNumber;
+  final String? kycDocumentImage;
 
   factory ApiInstructorProfile.fromJson(Map<String, dynamic> json) =>
       ApiInstructorProfile(
@@ -118,6 +134,14 @@ class ApiInstructorProfile {
         createdAt: json['created_at'] != null
             ? DateTime.tryParse(json['created_at'] as String)
             : null,
+        kycVerified: json['kyc_verified'] as bool?,
+        bankName: json['bank_name'] as String?,
+        bankAccountName: json['bank_account_name'] as String?,
+        bankAccountNumber: json['bank_account_number'] as String?,
+        bankIfscCode: json['bank_ifsc_code'] as String?,
+        kycDocumentType: json['kyc_document_type'] as String?,
+        kycDocumentNumber: json['kyc_document_number'] as String?,
+        kycDocumentImage: json['kyc_document_image'] as String?,
       );
 
   Map<String, dynamic> toJson() => {
@@ -129,5 +153,12 @@ class ApiInstructorProfile {
         if (socialLink != null) 'social_link': socialLink,
         if (qualifications != null) 'qualifications': qualifications,
         if (currentOccupation != null) 'current_occupation': currentOccupation,
+        if (bankName != null) 'bank_name': bankName,
+        if (bankAccountName != null) 'bank_account_name': bankAccountName,
+        if (bankAccountNumber != null) 'bank_account_number': bankAccountNumber,
+        if (bankIfscCode != null) 'bank_ifsc_code': bankIfscCode,
+        if (kycDocumentType != null) 'kyc_document_type': kycDocumentType,
+        if (kycDocumentNumber != null) 'kyc_document_number': kycDocumentNumber,
+        if (kycDocumentImage != null) 'kyc_document_image': kycDocumentImage,
       };
 }

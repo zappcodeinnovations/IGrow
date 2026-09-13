@@ -55,3 +55,15 @@ final instructorCourseDetailProvider = FutureProvider.family<ApiCourseDetail, St
   final repo = ref.watch(instructorRepositoryProvider);
   return await repo.getCourseDetail(id);
 });
+
+/// Provider for fetching course certificates.
+final instructorCourseCertificatesProvider = FutureProvider.family<List<dynamic>, String>((ref, courseId) async {
+  final repo = ref.watch(instructorRepositoryProvider);
+  try {
+    final response = await repo.getCertificates(courseId);
+    return response.results;
+  } catch (e) {
+    return [];
+  }
+});
+

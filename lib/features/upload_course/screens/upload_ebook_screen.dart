@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:file_picker/file_picker.dart';
+import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../data/models/user_model.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../../home_instructor/providers/instructor_home_provider.dart';
 
 class UploadEbookScreen extends ConsumerStatefulWidget {
@@ -20,6 +23,80 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
   
   PlatformFile? _selectedFile;
   bool _isUploading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(authProvider.notifier).refreshUserSilent();
+    });
+  }
+
+  void _showKycRequiredDialog(UserModel? user) {
+    final bool isPending = user?.isKycPending == true;
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: (isPending ? AppColors.accentOrange : AppColors.error).withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  isPending ? Icons.hourglass_top_rounded : Icons.verified_user_outlined,
+                  color: isPending ? AppColors.accentOrange : AppColors.error,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  isPending ? 'Verification Under Review' : 'KYC Required',
+                  style: Theme.of(dialogContext).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+              ),
+            ],
+          ),
+          content: Text(
+            isPending
+                ? 'Your KYC documents have been submitted and are currently under review by our administration team.\n\nE-Book publishing will unlock automatically as soon as your profile is approved.'
+                : 'As an AgriLearn instructor, you must complete your KYC verification (Government ID & Bank Account Details) before uploading and publishing e-books.',
+            style: Theme.of(dialogContext).textTheme.bodyMedium?.copyWith(
+                  height: 1.5,
+                  color: AppColors.inkSoft,
+                ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryGreen,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              onPressed: () {
+                Navigator.pop(dialogContext);
+                context.push(RouteNames.instructorKyc);
+              },
+              child: Text(isPending ? 'View KYC Status' : 'Complete KYC Now'),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   void dispose() {
@@ -43,8 +120,18 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
   }
 
   Future<void> _uploadEbook() async {
-    if (!_formKey.currentState!.validate()) return;
+    print('═══════════════════════════════════════════════════════════');
+    print('📚 [UPLOAD EBOOK] Submit E-Book triggered');
+    print('   Title: "${_titleController.text.trim()}"');
+    print('   Author: "${_authorController.text.trim()}"');
+    print('   File: ${_selectedFile?.path ?? "None"}');
+
+    if (!_formKey.currentState!.validate()) {
+      print('⚠️ [UPLOAD EBOOK] Form validation failed.');
+      return;
+    }
     if (_selectedFile == null) {
+      print('⚠️ [UPLOAD EBOOK] No file selected.');
       final messenger = ScaffoldMessenger.of(context);
       messenger.clearSnackBars();
       messenger.showSnackBar(
@@ -56,12 +143,20 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
       return;
     }
 
+    final currentUser = ref.read(authProvider).user;
+    print('🔍 [UPLOAD EBOOK] Checking KYC status: verified=${currentUser?.isKycVerified}, pending=${currentUser?.isKycPending}');
+    if (currentUser != null && !currentUser.isKycVerified) {
+      print('⛔ [UPLOAD EBOOK] Blocked by KYC verification guard. Showing requirement dialog.');
+      _showKycRequiredDialog(currentUser);
+      return;
+    }
+
     setState(() => _isUploading = true);
 
     try {
       final repo = ref.read(instructorRepositoryProvider);
       
-      // 1. Create E-Book with file
+      print('🚀 [UPLOAD EBOOK] Sending createEBook request to backend...');
       final response = await repo.createEBook(
         {
           'title': _titleController.text,
@@ -73,9 +168,12 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
       );
       
       final ebookId = response['id'] as String;
+      print('✅ [UPLOAD EBOOK] E-Book created with ID: $ebookId. Submitting for review...');
       
       // 2. Submit E-Book for review
       await repo.submitEBook(ebookId);
+      print('✅ [UPLOAD EBOOK] E-Book submitted successfully for review!');
+      print('═══════════════════════════════════════════════════════════');
       
       if (mounted) {
         final messenger = ScaffoldMessenger.of(context);
@@ -89,6 +187,8 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
         context.pop();
       }
     } catch (e) {
+      print('❌ [UPLOAD EBOOK] Upload failed: $e');
+      print('═══════════════════════════════════════════════════════════');
       if (mounted) {
         final messenger = ScaffoldMessenger.of(context);
         messenger.clearSnackBars();
@@ -104,23 +204,122 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
     }
   }
 
+  Widget _buildKycLockedView(BuildContext context, UserModel? user, bool isDark) {
+    final bool isPending = user?.isKycPending == true;
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            const SizedBox(height: 20),
+            Container(
+              width: 96,
+              height: 96,
+              decoration: BoxDecoration(
+                color: (isPending ? AppColors.accentOrange : AppColors.error).withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: (isPending ? AppColors.accentOrange : AppColors.error).withValues(alpha: 0.3),
+                  width: 2,
+                ),
+              ),
+              child: Icon(
+                isPending ? Icons.hourglass_top_rounded : Icons.lock_outline_rounded,
+                size: 48,
+                color: isPending ? AppColors.accentOrange : AppColors.error,
+              ),
+            ),
+            const SizedBox(height: 28),
+            Text(
+              isPending ? 'KYC Under Review' : 'KYC Verification Required',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              isPending
+                  ? 'Your KYC documents and bank details are currently being reviewed by the administration team.\n\nOnce approved, e-book uploading and publishing will unlock here automatically.'
+                  : 'To enable book publishing and royalties settlement, all instructors must complete their KYC (Government ID & Bank Details) before uploading e-books.',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppColors.inkSoft,
+                    height: 1.55,
+                  ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 36),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: isPending ? AppColors.accentOrange : AppColors.primaryGreen,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  elevation: 2,
+                ),
+                icon: Icon(isPending ? Icons.visibility_outlined : Icons.verified_user_rounded),
+                label: Text(
+                  isPending ? 'View KYC Status' : 'Complete KYC Verification',
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                onPressed: () => context.push(RouteNames.instructorKyc),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.refresh_rounded, size: 16, color: AppColors.inkSoft),
+                const SizedBox(width: 6),
+                Text(
+                  'Pull down to check latest approval status',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppColors.inkSoft,
+                      ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 40),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final user = ref.watch(authProvider).user;
+    final isKycVerified = user?.isKycVerified == true;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Upload Ebook'),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Ebook Details', style: Theme.of(context).textTheme.titleLarge),
-              const SizedBox(height: 20),
+      body: RefreshIndicator(
+        onRefresh: () async {
+          await ref.read(authProvider.notifier).refreshUserSilent();
+        },
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: !isKycVerified
+              ? _buildKycLockedView(context, user, isDark)
+              : Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Ebook Details', style: Theme.of(context).textTheme.titleLarge),
+                const SizedBox(height: 20),
               TextFormField(
                 controller: _titleController,
                 decoration: InputDecoration(
@@ -206,6 +405,8 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  ),
+);
+}
 }

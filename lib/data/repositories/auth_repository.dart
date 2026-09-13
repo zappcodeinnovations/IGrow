@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:chopper/chopper.dart' as chopper;
 import '../../core/network/api_client.dart';
@@ -8,7 +9,7 @@ import '../models/user_model.dart';
 import '../models/user_role.dart';
 
 abstract class AuthRepository {
-  Future<UserModel?> getCurrentUser();
+  Future<UserModel?> getCurrentUser({bool forceRefresh = false});
   Future<UserModel> login({required String email, required String password});
   Future<void> register({
     required String fullName,
@@ -37,6 +38,15 @@ abstract class AuthRepository {
   
   Future<UserModel> updateProfile(PatchedUserProfileRequest request);
   Future<UserModel> updateInstructorProfile(PatchedInstructorProfileRequest request);
+  Future<UserModel> submitKycProfile({
+    required String docType,
+    required String docNumber,
+    String? docImagePath,
+    required String bankName,
+    required String accountName,
+    required String accountNumber,
+    required String ifscCode,
+  });
   Future<void> uploadAvatar(String imagePath);
   Future<void> deleteAvatar();
 }
@@ -94,25 +104,34 @@ class ApiAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<UserModel?> getCurrentUser() async {
-    if (_currentUser != null) return _currentUser;
+  Future<UserModel?> getCurrentUser({bool forceRefresh = false}) async {
+    if (!forceRefresh && _currentUser != null) return _currentUser;
     final hasToken = await tokenStorage.hasToken();
-    if (!hasToken) return null;
+    if (!hasToken) {
+      print('ℹ️ [AUTH REPO] getCurrentUser: No active token found in storage.');
+      return null;
+    }
 
     try {
       final response = await appApi.apiV1AuthMeGet();
       _handleError(response);
       final profile = response.body;
-      if (profile == null) return null;
+      if (profile == null) {
+        print('⚠️ [AUTH REPO] getCurrentUser: Empty profile body returned from /auth/me/');
+        return null;
+      }
       _currentUser = UserModel.fromApiProfile(profile);
+      print('👤 [AUTH REPO] getCurrentUser loaded: email=${_currentUser?.email}, role=${_currentUser?.activeRole.name}, verificationStatus=${_currentUser?.verificationStatus}, kycVerified=${_currentUser?.kycVerified}');
       return _currentUser;
     } on ApiException catch (e) {
+      print('❌ [AUTH REPO] getCurrentUser ApiException: ${e.message} (status: ${e.statusCode})');
       if (e.isUnauthorized) {
         await tokenStorage.clearTokens();
         return null;
       }
       rethrow;
     } catch (e) {
+      print('❌ [AUTH REPO] getCurrentUser unexpected error: $e');
       rethrow;
     }
   }
@@ -337,21 +356,28 @@ class ApiAuthRepository implements AuthRepository {
       body['location_district'] = request.locationDistrict!.trim();
     }
     if (request.farmingExperience != null) {
-      body['farming_experience'] = request.farmingExperience;
+      body['farming_experience'] = request.farmingExperience.toString().trim();
     }
     if (request.areasOfInterest != null) {
       body['areas_of_interest'] = request.areasOfInterest;
     }
 
-    final response = await http.patch(
-      uri,
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: jsonEncode(body),
-    );
+    final http.Response response;
+    try {
+      response = await http.patch(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode(body),
+      );
+    } on SocketException {
+      throw ApiException.network();
+    } on http.ClientException {
+      throw ApiException.network();
+    }
 
     if (response.statusCode >= 400) {
       String errorMessage = 'Failed to update profile (${response.statusCode})';
@@ -402,16 +428,53 @@ class ApiAuthRepository implements AuthRepository {
 
   @override
   Future<UserModel> updateInstructorProfile(PatchedInstructorProfileRequest request) async {
-    final response = await appApi.apiV1AuthInstructorProfilePatch(body: request);
-    _handleError(response);
-    
-    // We need to fetch the full profile again because updateInstructorProfile 
-    // only returns the InstructorProfile, not the full UserProfile.
+    final token = await tokenStorage.getAccessToken();
+    if (token == null) throw ApiException.unauthorized();
+
+    final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/auth/instructor-profile/');
+    final body = <String, dynamic>{};
+
+    final json = request.toJson();
+    json.forEach((key, value) {
+      if (value != null) {
+        body[key] = value;
+      }
+    });
+
+    final http.Response response;
+    try {
+      response = await http.patch(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode(body),
+      );
+    } on SocketException {
+      throw ApiException.network();
+    } on http.ClientException {
+      throw ApiException.network();
+    }
+
+    if (response.statusCode >= 400) {
+      Map<String, dynamic>? errorData;
+      try {
+        errorData = jsonDecode(response.body) as Map<String, dynamic>;
+      } catch (_) {}
+      if (errorData != null) {
+        throw ApiException.validation(errorData);
+      }
+      throw ApiException.server('Failed to update instructor profile (${response.statusCode})');
+    }
+
+    // Refresh profile
     final meResponse = await appApi.apiV1AuthMeGet();
     _handleError(meResponse);
     final fullProfile = meResponse.body;
     if (fullProfile == null) throw ApiException.server('Failed to fetch full profile');
-    
+
     _currentUser = UserModel.fromApiProfile(fullProfile);
     return _currentUser!;
   }
@@ -466,6 +529,80 @@ class ApiAuthRepository implements AuthRepository {
     if (fullProfile != null) {
       _currentUser = UserModel.fromApiProfile(fullProfile);
     }
+  }
+
+  @override
+  Future<UserModel> submitKycProfile({
+    required String docType,
+    required String docNumber,
+    String? docImagePath,
+    required String bankName,
+    required String accountName,
+    required String accountNumber,
+    required String ifscCode,
+  }) async {
+    final token = await tokenStorage.getAccessToken();
+    if (token == null) {
+      print('❌ [KYC REPO] submitKycProfile: Unauthorized - No JWT token found');
+      throw ApiException.unauthorized();
+    }
+
+    print('═══════════════════════════════════════════════════════════');
+    print('🚀 [KYC REPO] Submitting KYC profile to PATCH /api/v1/auth/instructor-profile/');
+    print('📋 Details: docType=$docType, docNumber=$docNumber, bank=$bankName, accountName=$accountName, accountNum=$accountNumber, ifsc=$ifscCode');
+    print('📷 Photo attached: ${docImagePath != null && docImagePath.isNotEmpty ? docImagePath : "None"}');
+
+    final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/auth/instructor-profile/');
+    final request = http.MultipartRequest('PATCH', uri)
+      ..headers['Authorization'] = 'Bearer $token'
+      ..fields['kyc_document_type'] = docType
+      ..fields['kyc_document_number'] = docNumber
+      ..fields['bank_name'] = bankName
+      ..fields['bank_account_name'] = accountName
+      ..fields['bank_account_number'] = accountNumber
+      ..fields['bank_ifsc_code'] = ifscCode;
+
+    if (docImagePath != null && docImagePath.isNotEmpty) {
+      request.files.add(await http.MultipartFile.fromPath('kyc_document_image', docImagePath));
+    }
+
+    final http.StreamedResponse streamedResponse;
+    try {
+      streamedResponse = await request.send();
+    } on SocketException {
+      print('❌ [KYC REPO] Network connection failed during KYC upload');
+      throw ApiException.network();
+    } on http.ClientException catch (e) {
+      print('❌ [KYC REPO] Client exception during KYC upload: $e');
+      throw ApiException.network();
+    }
+
+    final response = await http.Response.fromStream(streamedResponse);
+    print('📥 [KYC REPO] KYC Response Status: ${response.statusCode}');
+    print('📦 [KYC REPO] Response Body: ${response.body}');
+
+    if (response.statusCode >= 400) {
+      Map<String, dynamic>? errorData;
+      try {
+        errorData = jsonDecode(response.body) as Map<String, dynamic>;
+      } catch (_) {}
+      print('❌ [KYC REPO] KYC Submission rejected: $errorData');
+      if (errorData != null) {
+        throw ApiException.validation(errorData);
+      }
+      throw ApiException.server('Failed to submit KYC details (${response.statusCode})');
+    }
+
+    // Refresh profile
+    final meResponse = await appApi.apiV1AuthMeGet();
+    _handleError(meResponse);
+    final fullProfile = meResponse.body;
+    if (fullProfile == null) throw ApiException.server('Failed to fetch full profile');
+
+    _currentUser = UserModel.fromApiProfile(fullProfile);
+    print('✅ [KYC REPO] KYC Submission SUCCESS! Updated state -> verificationStatus: ${_currentUser?.verificationStatus}, kycVerified: ${_currentUser?.kycVerified}');
+    print('═══════════════════════════════════════════════════════════');
+    return _currentUser!;
   }
 }
 

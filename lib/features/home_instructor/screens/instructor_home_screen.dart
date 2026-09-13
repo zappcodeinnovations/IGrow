@@ -9,7 +9,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/router/route_names.dart';
-import '../../../core/router/route_names.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../../core/widgets/shimmer_placeholders.dart';
 
@@ -24,6 +23,14 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
   String _ordering = '';
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(authProvider.notifier).refreshUserSilent();
+    });
+  }
 
   @override
   void dispose() {
@@ -156,9 +163,20 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
         ],
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Column(
+        child: RefreshIndicator(
+          onRefresh: () async {
+            await Future.wait([
+              ref.read(authProvider.notifier).refreshUserSilent(),
+              Future.microtask(() => ref.invalidate(instructorStatsProvider)),
+              Future.microtask(() => ref.invalidate(instructorCoursesProvider)),
+              Future.microtask(() => ref.invalidate(instructorEbooksProvider)),
+              Future.microtask(() => ref.invalidate(instructorTransactionsProvider)),
+            ]);
+          },
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 16),
@@ -174,9 +192,21 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                           style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.inkSoft,),
                         ),
                         const SizedBox(height: 4),
-                        Text(
-                          userName,
-                          style: Theme.of(context).textTheme.displaySmall,
+                        Row(
+                          children: [
+                            Text(
+                              userName,
+                              style: Theme.of(context).textTheme.displaySmall,
+                            ),
+                            if (user?.isKycVerified == true) ...[
+                              const SizedBox(width: 6),
+                              const Icon(
+                                Icons.verified_rounded,
+                                color: AppColors.primaryGreen,
+                                size: 22,
+                              ),
+                            ],
+                          ],
                         ),
                       ],
                     ),
@@ -215,7 +245,16 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
+
+              // KYC Alert / Banner if not verified
+              if (user?.isKycVerified != true) ...[
+                _KycPromptBanner(
+                  isPending: user?.isKycPending == true,
+                  onTap: () => context.push(RouteNames.instructorKyc),
+                ),
+                const SizedBox(height: 16),
+              ],
 
               // Stats Row
               ref.watch(instructorStatsProvider).when(
@@ -387,6 +426,7 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                           rating: '4.5',
                           percent: 0.0,
                           isFree: course.price == '0.00',
+                          onTap: () => context.push('/instructor/manage-course/${course.id}'),
                         ),
                       );
                     }).toList(),
@@ -513,7 +553,8 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 }
 
@@ -566,6 +607,7 @@ class _CoursePerformanceCard extends StatelessWidget {
     required this.rating,
     required this.percent,
     this.isFree = false,
+    this.onTap,
   });
 
   final String title;
@@ -574,10 +616,12 @@ class _CoursePerformanceCard extends StatelessWidget {
   final String rating;
   final double percent;
   final bool isFree;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     return AppCard(
+      onTap: onTap,
       child: Row(
         children: [
           GrowthRingProgress(
@@ -617,6 +661,11 @@ class _CoursePerformanceCard extends StatelessWidget {
               ],
             ),
           ),
+          if (onTap != null)
+            const Padding(
+              padding: EdgeInsets.only(left: 8),
+              child: Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppColors.inkSoft),
+            ),
         ],
       ),
     );
@@ -679,64 +728,75 @@ class _ActivityItem extends StatelessWidget {
   }
 }
 
-class _QuickActionCard extends StatelessWidget {
-  const _QuickActionCard({
-    required this.icon,
-    required this.label,
-    required this.color,
+class _KycPromptBanner extends StatelessWidget {
+  const _KycPromptBanner({
+    required this.isPending,
     required this.onTap,
   });
 
-  final IconData icon;
-  final String label;
-  final Color color;
+  final bool isPending;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return AppCard(
       onTap: onTap,
-      child: Container(
-        width: 120,
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-        decoration: BoxDecoration(
-          color: Theme.of(context).brightness == Brightness.dark
-              ? AppColors.cardDark
-              : AppColors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: Theme.of(context).brightness == Brightness.dark
-                ? AppColors.lineDark
-                : AppColors.lineLight,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: (isPending ? AppColors.accentOrange : AppColors.primaryGreen)
+                  .withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              isPending ? Icons.hourglass_top_rounded : Icons.verified_user_outlined,
+              color: isPending ? AppColors.accentOrange : AppColors.primaryGreen,
+              size: 22,
+            ),
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isPending ? 'KYC Verification Under Review' : 'Complete KYC & Payout Profile',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  isPending
+                      ? 'Admin is reviewing your documents (24-48 hrs)'
+                      : 'Required to receive earnings & publish courses',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppColors.inkSoft,
+                      ),
+                ),
+              ],
             ),
-          ],
-        ),
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, color: color, size: 28),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: (isPending ? AppColors.accentOrange : AppColors.primaryGreen)
+                  .withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
             ),
-            const SizedBox(height: 12),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+            child: Text(
+              isPending ? 'Status' : 'Verify',
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: isPending ? AppColors.accentOrange : AppColors.primaryGreen,
                     fontWeight: FontWeight.bold,
                   ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

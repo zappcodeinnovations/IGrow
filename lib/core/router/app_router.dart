@@ -20,6 +20,7 @@ import '../../features/explore/screens/explore_screen.dart';
 import '../../features/instructor_dashboard/screens/instructor_uploads_screen.dart';
 import '../../features/instructor_dashboard/screens/qa_management_screen.dart';
 import '../../features/instructor_dashboard/screens/manage_course_screen.dart';
+import '../../features/instructor_dashboard/screens/instructor_kyc_screen.dart';
 import '../../features/home_farmer/screens/farmer_home_screen.dart';
 import '../../features/home_instructor/screens/instructor_home_screen.dart';
 import '../../features/profile/screens/privacy_screen.dart';
@@ -251,6 +252,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: RouteNames.instructorUploads,
             builder: (context, state) => const InstructorUploadsScreen(),
+          ),
+          GoRoute(
+            path: RouteNames.instructorKyc,
+            builder: (context, state) => const InstructorKycScreen(),
           ),
           GoRoute(
             path: '/instructor/qa',

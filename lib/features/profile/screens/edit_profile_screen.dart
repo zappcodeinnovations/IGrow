@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/router/route_names.dart';
 
+import '../../../core/network/api_exception.dart';
 import '../../../core/network/swagger_generated/app_api.swagger.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/models/user_role.dart';
@@ -77,11 +78,13 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
   static String? _toApiExperience(String? exp) {
     if (exp == null || exp.trim().isEmpty) return null;
-    final upper = exp.trim().toUpperCase();
-    if (upper.contains('BEG') || upper == '0' || upper == '1' || upper == '2') return 'BEGINNER';
-    if (upper.contains('INT') || upper == '3' || upper == '4' || upper == '5') return 'INTERMEDIATE';
-    if (upper.contains('EXP') || (int.tryParse(upper) ?? 0) >= 6) return 'EXPERT';
-    return upper;
+    final trimmed = exp.trim();
+    final upper = trimmed.toUpperCase();
+    if (upper == 'BEGINNER' || upper.contains('BEG')) return 'BEGINNER';
+    if (upper == 'INTERMEDIATE' || upper.contains('INT')) return 'INTERMEDIATE';
+    if (upper.contains('EXP') || upper == 'EXPERT') return 'EXPERT';
+    // If it's a number, convert to String as required by backend
+    return trimmed.toString();
   }
 
   static String? _formatPhone(String input) {
@@ -93,6 +96,135 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       clean = clean.substring(1);
     }
     return clean;
+  }
+
+  static String? _formatUrl(String? url) {
+    if (url == null || url.trim().isEmpty) return null;
+    String clean = url.trim();
+    if (!clean.startsWith('http://') && !clean.startsWith('https://')) {
+      clean = 'https://$clean';
+    }
+    return clean;
+  }
+
+  String _getFriendlyErrorMessage(dynamic e) {
+    final str = e.toString().toLowerCase();
+    if (str.contains('socket') ||
+        str.contains('failed host lookup') ||
+        str.contains('clientexception') ||
+        str.contains('network') ||
+        str.contains('no address associated with hostname') ||
+        str.contains('connection refused') ||
+        str.contains('connection reset') ||
+        str.contains('timed out') ||
+        str.contains('timeout')) {
+      return 'No internet connection. Please check your network and try again.';
+    }
+    if (e is ApiException) {
+      if (e.isNetwork) {
+        return 'No internet connection. Please check your network and try again.';
+      }
+      if (e.isServer) {
+        return 'Server error. Please try again later.';
+      }
+      if (e.fieldErrors != null && e.fieldErrors!.isNotEmpty) {
+        final messages = <String>[];
+        e.fieldErrors!.forEach((field, errors) {
+          final fieldName = _formatFieldName(field);
+          for (final err in errors) {
+            messages.add(_formatFieldError(fieldName, err));
+          }
+        });
+        if (messages.isNotEmpty) {
+          return messages.first;
+        }
+      }
+      return _cleanErrorMessage(e.message);
+    }
+    return _cleanErrorMessage(e.toString());
+  }
+
+  String _formatFieldName(String field) {
+    switch (field) {
+      case 'bio':
+        return 'Bio';
+      case 'expertise_tags':
+        return 'Expertise Tags';
+      case 'website':
+        return 'Website';
+      case 'years_of_experience':
+        return 'Years of Experience';
+      case 'specialty_crops':
+        return 'Specialty Crops';
+      case 'social_link':
+        return 'Social Link';
+      case 'current_occupation':
+        return 'Current Occupation';
+      case 'qualifications':
+        return 'Qualifications';
+      case 'farming_experience':
+        return 'Farming Experience';
+      case 'full_name':
+        return 'Full Name';
+      case 'phone_number':
+        return 'Phone Number';
+      case 'location_state':
+        return 'State';
+      case 'location_district':
+        return 'District';
+      case 'areas_of_interest':
+        return 'Areas of Interest';
+      default:
+        return field.replaceAll('_', ' ');
+    }
+  }
+
+  String _formatFieldError(String fieldName, String error) {
+    final lower = error.toLowerCase();
+    if (lower.contains('not be null') || lower.contains('required') || lower.contains('not be blank')) {
+      return 'Please fill in the $fieldName field.';
+    }
+    if (lower.contains('valid url') || lower.contains('valid uri')) {
+      return 'Please enter a valid link for $fieldName (e.g., https://instagram.com/yourname)';
+    }
+    if (lower.contains('valid choice')) {
+      return 'Please select a valid option for $fieldName.';
+    }
+    if (lower.contains('valid integer') || lower.contains('valid number')) {
+      return 'Please enter a valid number for $fieldName.';
+    }
+    return '$fieldName: ${error.replaceAll('[', '').replaceAll(']', '').replaceAll('"', '')}';
+  }
+
+  String _cleanErrorMessage(String raw) {
+    final lower = raw.toLowerCase();
+    if (lower.contains('socket') ||
+        lower.contains('failed host lookup') ||
+        lower.contains('clientexception') ||
+        lower.contains('no address associated with hostname')) {
+      return 'No internet connection. Please check your network and try again.';
+    }
+    if (lower.contains('timed out') || lower.contains('timeout')) {
+      return 'Connection timed out. Please try again.';
+    }
+    if (lower.contains('not be null') || lower.contains('required')) {
+      return 'Please fill in all required profile fields.';
+    }
+    String clean = raw
+        .replaceAll(RegExp(r'ApiException\(\d+\):\s*'), '')
+        .replaceAll('ClientException with SocketException:', '')
+        .replaceAll('ClientException:', '')
+        .replaceAll('SocketException:', '')
+        .replaceAll('Exception:', '')
+        .replaceAll(RegExp(r'\(OS Error:[^)]+\)'), '')
+        .replaceAll(RegExp(r'uri=https?://[^\s]+'), '')
+        .replaceAll('{', '')
+        .replaceAll('}', '')
+        .replaceAll('[', '')
+        .replaceAll(']', '')
+        .replaceAll('"', '')
+        .trim();
+    return clean.isNotEmpty ? clean : 'Unable to update profile. Please check your inputs.';
   }
 
   void _navigateBack() {
@@ -139,7 +271,32 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   }
 
   Future<void> _saveProfile() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) {
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.clearSnackBars();
+      messenger.showSnackBar(
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.info_outline, color: Colors.white),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Please fill in all required fields marked with *',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          margin: const EdgeInsets.all(20),
+          duration: const Duration(milliseconds: 2500),
+        ),
+      );
+      return;
+    }
 
     setState(() => _isLoading = true);
     
@@ -173,10 +330,13 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       // Update Instructor Profile if applicable
       if (user != null && user.grantedRoles.contains(UserRole.instructor)) {
         final instructorRequest = PatchedInstructorProfileRequest(
-          bio: _bioController.text,
-          expertiseTags: _expertiseController.text,
-        ).copyWith(
-          currentOccupation: _occupationController.text,
+          bio: _bioController.text.isNotEmpty ? _bioController.text : null,
+          expertiseTags: _expertiseController.text.isNotEmpty ? _expertiseController.text : null,
+          website: _formatUrl(_websiteController.text),
+          yearsOfExperience: int.tryParse(_yearsExpController.text.trim()),
+          specialtyCrops: _cropsController.text.isNotEmpty ? _cropsController.text : null,
+          socialLink: _formatUrl(_socialController.text),
+          currentOccupation: _occupationController.text.isNotEmpty ? _occupationController.text : null,
         );
         
         await authNotifier.updateInstructorProfile(instructorRequest);
@@ -203,13 +363,28 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLoading = false);
+      final friendlyError = _getFriendlyErrorMessage(e);
       final messenger = ScaffoldMessenger.of(context);
       messenger.clearSnackBars();
       messenger.showSnackBar(
         SnackBar(
-          content: Text('Error updating profile: $e'),
+          content: Row(
+            children: [
+              const Icon(Icons.error_outline, color: Colors.white),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  friendlyError,
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+                ),
+              ),
+            ],
+          ),
           backgroundColor: AppColors.error,
-          duration: const Duration(milliseconds: 1800),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          margin: const EdgeInsets.all(20),
+          duration: const Duration(milliseconds: 3000),
         ),
       );
     }
@@ -395,7 +570,16 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
                   Text('Basic Information', style: Theme.of(context).textTheme.titleLarge),
                   const SizedBox(height: 16),
-                  _buildTextField('Full Name', _nameController),
+                  _buildTextField(
+                    'Full Name *', 
+                    _nameController,
+                    validator: (val) {
+                      if (val == null || val.trim().isEmpty) {
+                        return 'Please enter your full name';
+                      }
+                      return null;
+                    },
+                  ),
                   _buildTextField(
                     'Phone Number',
                     _phoneController,
@@ -419,13 +603,61 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                     const SizedBox(height: 24),
                     Text('Instructor Details', style: Theme.of(context).textTheme.titleLarge),
                     const SizedBox(height: 16),
-                    _buildTextField('Bio', _bioController, maxLines: true),
+                    _buildTextField(
+                      'Bio *', 
+                      _bioController, 
+                      maxLines: true,
+                      validator: (val) {
+                        if (val == null || val.trim().isEmpty) {
+                          return 'Please enter a short bio about yourself';
+                        }
+                        return null;
+                      },
+                    ),
                     _buildTextField('Expertise Tags (comma separated)', _expertiseController),
                     _buildTextField('Current Occupation', _occupationController),
-                    _buildTextField('Website', _websiteController),
-                    _buildTextField('Years of Experience', _yearsExpController),
+                    _buildTextField(
+                      'Website', 
+                      _websiteController,
+                      keyboardType: TextInputType.url,
+                      validator: (val) {
+                        if (val != null && val.trim().isNotEmpty) {
+                          final text = val.trim();
+                          if (!text.contains('.') || text.length < 4) {
+                            return 'Please enter a valid website link (e.g. https://example.com)';
+                          }
+                        }
+                        return null;
+                      },
+                    ),
+                    _buildTextField(
+                      'Years of Experience', 
+                      _yearsExpController, 
+                      keyboardType: TextInputType.number,
+                      validator: (val) {
+                        if (val != null && val.trim().isNotEmpty) {
+                          if (int.tryParse(val.trim()) == null) {
+                            return 'Please enter a valid number of years';
+                          }
+                        }
+                        return null;
+                      },
+                    ),
                     _buildTextField('Specialty Crops', _cropsController),
-                    _buildTextField('Social Link', _socialController),
+                    _buildTextField(
+                      'Social Link', 
+                      _socialController,
+                      keyboardType: TextInputType.url,
+                      validator: (val) {
+                        if (val != null && val.trim().isNotEmpty) {
+                          final text = val.trim();
+                          if (!text.contains('.') || text.length < 4) {
+                            return 'Please enter a valid social link (e.g. https://instagram.com/yourname)';
+                          }
+                        }
+                        return null;
+                      },
+                    ),
                   ],
 
                   const SizedBox(height: 32),

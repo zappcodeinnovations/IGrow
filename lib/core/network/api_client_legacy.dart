@@ -23,8 +23,14 @@ class ApiClient {
     bool authenticated = true,
   }) async {
     final uri = _buildUri(path, queryParams);
+    print('🌐 [HTTP GET] $uri');
     final headers = await _headers(authenticated: authenticated);
-    return _sendWithRetry(() => _http.get(uri, headers: headers), authenticated);
+    return _sendWithRetry(
+      () => _http.get(uri, headers: headers),
+      authenticated,
+      method: 'GET',
+      url: uri.toString(),
+    );
   }
 
   Future<dynamic> post(
@@ -33,10 +39,14 @@ class ApiClient {
     bool authenticated = true,
   }) async {
     final uri = _buildUri(path);
+    print('🌐 [HTTP POST] $uri');
+    if (body != null) print('📦 [PAYLOAD] ${jsonEncode(body)}');
     final headers = await _headers(authenticated: authenticated);
     return _sendWithRetry(
       () => _http.post(uri, headers: headers, body: jsonEncode(body ?? {})),
       authenticated,
+      method: 'POST',
+      url: uri.toString(),
     );
   }
 
@@ -46,10 +56,14 @@ class ApiClient {
     bool authenticated = true,
   }) async {
     final uri = _buildUri(path);
+    print('🌐 [HTTP PATCH] $uri');
+    if (body != null) print('📦 [PAYLOAD] ${jsonEncode(body)}');
     final headers = await _headers(authenticated: authenticated);
     return _sendWithRetry(
       () => _http.patch(uri, headers: headers, body: jsonEncode(body ?? {})),
       authenticated,
+      method: 'PATCH',
+      url: uri.toString(),
     );
   }
 
@@ -59,10 +73,14 @@ class ApiClient {
     bool authenticated = true,
   }) async {
     final uri = _buildUri(path);
+    print('🌐 [HTTP PUT] $uri');
+    if (body != null) print('📦 [PAYLOAD] ${jsonEncode(body)}');
     final headers = await _headers(authenticated: authenticated);
     return _sendWithRetry(
       () => _http.put(uri, headers: headers, body: jsonEncode(body ?? {})),
       authenticated,
+      method: 'PUT',
+      url: uri.toString(),
     );
   }
 
@@ -71,9 +89,14 @@ class ApiClient {
     bool authenticated = true,
   }) async {
     final uri = _buildUri(path);
+    print('🌐 [HTTP DELETE] $uri');
     final headers = await _headers(authenticated: authenticated);
     return _sendWithRetry(
-        () => _http.delete(uri, headers: headers), authenticated);
+      () => _http.delete(uri, headers: headers),
+      authenticated,
+      method: 'DELETE',
+      url: uri.toString(),
+    );
   }
 
   Future<dynamic> multipart(
@@ -84,6 +107,10 @@ class ApiClient {
     bool authenticated = true,
   }) async {
     final uri = _buildUri(path);
+    print('🌐 [HTTP MULTIPART $method] $uri');
+    print('📋 [FIELDS] $fields');
+    if (files != null) print('📎 [FILES] $files');
+
     final request = http.MultipartRequest(method, uri);
 
     if (authenticated) {
@@ -108,10 +135,17 @@ class ApiClient {
             const Duration(seconds: 15),
           );
       final response = await http.Response.fromStream(streamed);
-      return _processResponse(response);
+      print('📥 [HTTP MULTIPART RESPONSE] Status: ${response.statusCode} for $uri');
+      if (response.body.isNotEmpty) {
+        final preview = response.body.length > 500 ? '${response.body.substring(0, 500)}... [truncated]' : response.body;
+        print('📦 [BODY] $preview');
+      }
+      return _processResponse(response, method: method, url: uri.toString());
     } on SocketException {
+      print('❌ [HTTP MULTIPART NETWORK ERROR] No internet connection for $uri');
       throw ApiException.network();
     } on TimeoutException {
+      print('❌ [HTTP MULTIPART TIMEOUT] Request timed out for $uri');
       throw ApiException.network('Request timed out');
     }
   }
@@ -143,39 +177,53 @@ class ApiClient {
 
   Future<dynamic> _sendWithRetry(
     Future<http.Response> Function() request,
-    bool authenticated,
-  ) async {
+    bool authenticated, {
+    String? method,
+    String? url,
+  }) async {
     try {
       final response = await request().timeout(
         const Duration(seconds: 15),
       );
 
       if (response.statusCode == 401 && authenticated) {
+        print('🔄 [AUTH] Received 401. Attempting token refresh...');
         final refreshed = await _tryRefreshToken();
         if (refreshed) {
+          print('✅ [AUTH] Token refreshed successfully. Retrying request $method $url');
           final retryResponse = await request().timeout(
             const Duration(seconds: 15),
           );
-          return _processResponse(retryResponse);
+          return _processResponse(retryResponse, method: method, url: url);
         } else {
+          print('❌ [AUTH] Token refresh failed. Logging out...');
           throw ApiException.unauthorized();
         }
       }
 
-      return _processResponse(response);
+      return _processResponse(response, method: method, url: url);
     } on ApiException {
       rethrow;
     } on SocketException {
+      print('❌ [HTTP NETWORK ERROR] Failed to connect: $method $url');
       throw ApiException.network();
     } on TimeoutException {
+      print('❌ [HTTP TIMEOUT] Request timed out: $method $url');
       throw ApiException.network('Request timed out');
     } catch (e) {
+      print('❌ [HTTP UNEXPECTED ERROR] $e for $method $url');
       throw ApiException.network(e.toString());
     }
   }
 
-  dynamic _processResponse(http.Response response) {
+  dynamic _processResponse(http.Response response, {String? method, String? url}) {
     final statusCode = response.statusCode;
+
+    print('📥 [HTTP RESPONSE] ${method ?? ""} ${url ?? ""} -> Status: $statusCode');
+    if (response.body.isNotEmpty) {
+      final preview = response.body.length > 500 ? '${response.body.substring(0, 500)}... [truncated]' : response.body;
+      print('📦 [BODY] $preview');
+    }
 
     if (statusCode == 204) return null;
 
@@ -191,6 +239,8 @@ class ApiClient {
     if (statusCode >= 200 && statusCode < 300) {
       return body;
     }
+
+    print('⚠️ [HTTP ERROR STATUS] $statusCode for ${method ?? ""} ${url ?? ""}');
 
     if (statusCode == 401) {
       throw ApiException.unauthorized(

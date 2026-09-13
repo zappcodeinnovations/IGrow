@@ -201,10 +201,10 @@ class ApiLectureResource {
 
   factory ApiLectureResource.fromJson(Map<String, dynamic> json) =>
       ApiLectureResource(
-        id: json['id'].toString(),
-        fileName: json['file_name'] as String? ?? '',
-        fileUrl: json['file_url'] as String? ?? '',
-        fileType: json['file_type'] as String?,
+        id: json['id']?.toString() ?? '',
+        fileName: json['file_name']?.toString() ?? '',
+        fileUrl: json['file_url']?.toString() ?? '',
+        fileType: json['file_type']?.toString(),
       );
 }
 
@@ -216,6 +216,8 @@ class ApiLecture {
     required this.title,
     this.description,
     this.videoUrl,
+    this.bunnyVideoId,
+    this.bunnyStatus,
     this.duration,
     this.durationFormatted,
     this.sortOrder,
@@ -227,6 +229,8 @@ class ApiLecture {
   final String title;
   final String? description;
   final String? videoUrl;
+  final String? bunnyVideoId;
+  final int? bunnyStatus;
   final int? duration;
   final String? durationFormatted;
   final int? sortOrder;
@@ -236,22 +240,31 @@ class ApiLecture {
   factory ApiLecture.fromJson(Map<String, dynamic> json) {
     try {
       return ApiLecture(
-        id: json['id'].toString(),
-        title: json['title'] as String? ?? '',
-        description: json['description'] as String?,
-        videoUrl: json['video_url'] as String?,
-        duration: json['duration'] as int?,
-        durationFormatted: json['duration_formatted'] as String?,
-        sortOrder: json['sort_order'] as int?,
-        isPreview: json['is_preview'] as bool? ?? false,
+        id: json['id']?.toString() ?? '',
+        title: json['title']?.toString() ?? '',
+        description: json['description']?.toString(),
+        videoUrl: json['video_url']?.toString(),
+        bunnyVideoId: json['bunny_video_id']?.toString(),
+        bunnyStatus: json['bunny_status'] is num
+            ? (json['bunny_status'] as num).toInt()
+            : int.tryParse(json['bunny_status']?.toString() ?? ''),
+        duration: json['duration'] is num
+            ? (json['duration'] as num).toInt()
+            : int.tryParse(json['duration']?.toString() ?? ''),
+        durationFormatted: json['duration_formatted']?.toString(),
+        sortOrder: json['sort_order'] is num
+            ? (json['sort_order'] as num).toInt()
+            : int.tryParse(json['sort_order']?.toString() ?? ''),
+        isPreview: json['is_preview'] == true ||
+            json['is_preview']?.toString().toLowerCase() == 'true',
         resources: (json['resources'] as List?)
-                ?.map(
-                    (e) => ApiLectureResource.fromJson(e as Map<String, dynamic>))
+                ?.whereType<Map<String, dynamic>>()
+                .map((e) => ApiLectureResource.fromJson(e))
                 .toList() ??
             [],
       );
     } catch (e) {
-      print('Error parsing ApiLecture: $e\nJSON: $json');
+      debugPrint('Error parsing ApiLecture: $e\nJSON: $json');
       rethrow;
     }
   }
@@ -279,18 +292,21 @@ class ApiCourseSection {
   factory ApiCourseSection.fromJson(Map<String, dynamic> json) {
     try {
       return ApiCourseSection(
-        id: json['id'].toString(),
-        title: json['title'] as String? ?? '',
-        description: json['description'] as String?,
-        sortOrder: json['sort_order'] as int?,
+        id: json['id']?.toString() ?? '',
+        title: json['title']?.toString() ?? '',
+        description: json['description']?.toString(),
+        sortOrder: json['sort_order'] is num
+            ? (json['sort_order'] as num).toInt()
+            : int.tryParse(json['sort_order']?.toString() ?? ''),
         lectures: (json['lectures'] as List?)
-                ?.map((e) => ApiLecture.fromJson(e as Map<String, dynamic>))
+                ?.whereType<Map<String, dynamic>>()
+                .map((e) => ApiLecture.fromJson(e))
                 .toList() ??
             [],
         lectureCount: json['lecture_count']?.toString(),
       );
     } catch (e) {
-      print('Error parsing ApiCourseSection: $e\nJSON: $json');
+      debugPrint('Error parsing ApiCourseSection: $e\nJSON: $json');
       rethrow;
     }
   }
@@ -357,44 +373,55 @@ class ApiCourseDetail {
 
   factory ApiCourseDetail.fromJson(Map<String, dynamic> json) {
     try {
+      String? parseStringOrList(dynamic val) {
+        if (val == null) return null;
+        if (val is List) return val.map((e) => e.toString()).join('\n');
+        return val.toString();
+      }
+
+      DateTime? parseDate(dynamic val) {
+        if (val == null) return null;
+        return DateTime.tryParse(val.toString());
+      }
+
       return ApiCourseDetail(
-        id: json['id'].toString(),
-        slug: json['slug'] as String?,
-        title: json['title'] as String? ?? '',
-        description: json['description'] as String?,
-        shortDescription: json['short_description'] as String?,
-        thumbnail: json['thumbnail'] as String?,
-        previewVideoUrl: json['preview_video_url'] as String?,
-        category: json['category'] is Map ? (json['category']['id']?.toString() ?? json['category']['slug']?.toString()) : json['category']?.toString(),
-        categoryDisplay: json['category_display'] as String?,
-        level: json['level'] as String?,
-        levelDisplay: json['level_display'] as String?,
+        id: json['id']?.toString() ?? '',
+        slug: json['slug']?.toString(),
+        title: json['title']?.toString() ?? '',
+        description: json['description']?.toString(),
+        shortDescription: json['short_description']?.toString(),
+        thumbnail: json['thumbnail']?.toString(),
+        previewVideoUrl: json['preview_video_url']?.toString(),
+        category: json['category'] is Map
+            ? (json['category']['id']?.toString() ??
+                json['category']['slug']?.toString() ??
+                json['category']['name']?.toString())
+            : json['category']?.toString(),
+        categoryDisplay: json['category_display']?.toString(),
+        level: json['level']?.toString(),
+        levelDisplay: json['level_display']?.toString(),
         price: json['price']?.toString(),
-        language: json['language'] as String?,
-        whatYouLearn: json['what_you_learn'] as String?,
-        requirements: json['requirements'] as String?,
-        tags: json['tags'] as String?,
-        instructorName: json['instructor_name'] as String?,
-        instructorAvatar: json['instructor_avatar'] as String?,
+        language: json['language']?.toString(),
+        whatYouLearn: parseStringOrList(json['what_you_learn']),
+        requirements: parseStringOrList(json['requirements']),
+        tags: parseStringOrList(json['tags']),
+        instructorName: json['instructor_name']?.toString(),
+        instructorAvatar: json['instructor_avatar']?.toString(),
         enrollmentCount: json['enrollment_count']?.toString(),
         totalLectures: json['total_lectures']?.toString(),
         totalDuration: json['total_duration']?.toString(),
-        status: json['status'] as String?,
+        status: json['status']?.toString(),
         sections: (json['sections'] as List?)
-                ?.map(
-                    (e) => ApiCourseSection.fromJson(e as Map<String, dynamic>))
+                ?.whereType<Map<String, dynamic>>()
+                .map((e) => ApiCourseSection.fromJson(e))
                 .toList() ??
             [],
-        createdAt: json['created_at'] != null
-            ? DateTime.tryParse(json['created_at'] as String)
-            : null,
-        publishedAt: json['published_at'] != null
-            ? DateTime.tryParse(json['published_at'] as String)
-            : null,
+        createdAt: parseDate(json['created_at']),
+        publishedAt: parseDate(json['published_at']),
         isEnrolled: json['is_enrolled'],
       );
     } catch (e) {
-      print('Error parsing ApiCourseDetail: $e\nJSON: $json');
+      debugPrint('Error parsing ApiCourseDetail: $e\nJSON: $json');
       rethrow;
     }
   }

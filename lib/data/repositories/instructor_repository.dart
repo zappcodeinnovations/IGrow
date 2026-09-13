@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../../core/network/api_client.dart';
@@ -172,27 +174,51 @@ class InstructorRepository {
 
   /// Get course detail.
   Future<ApiCourseDetail> getCourseDetail(String courseId) async {
-    final response = await appApi.apiV1InstructorCoursesIdGet(id: courseId);
-    final data = jsonDecode(response.bodyString) as Map<String, dynamic>;
-    return ApiCourseDetail.fromJson(data);
+    debugPrint('🔍 [InstructorRepository] getCourseDetail: courseId=$courseId');
+    try {
+      final token = await tokenStorage.getAccessToken();
+      final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/instructor/courses/$courseId/');
+      final rawResponse = await http.get(
+        uri,
+        headers: {
+          if (token != null) 'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+      if (rawResponse.statusCode >= 200 && rawResponse.statusCode < 300) {
+        final data = jsonDecode(rawResponse.body) as Map<String, dynamic>;
+        debugPrint('✅ [InstructorRepository] getCourseDetail SUCCESS: ${data['title']} (status=${data['status']}, sections=${(data['sections'] as List?)?.length ?? 0})');
+        return ApiCourseDetail.fromJson(data);
+      }
+      debugPrint('⚠️ [InstructorRepository] getCourseDetail raw HTTP (${rawResponse.statusCode}): ${rawResponse.body}');
+      throw Exception('Server returned ${rawResponse.statusCode}: ${rawResponse.body}');
+    } catch (e) {
+      debugPrint('❌ [InstructorRepository] getCourseDetail error: $e');
+      rethrow;
+    }
   }
 
   /// Update a course.
   Future<Map<String, dynamic>> updateCourse(
       String courseId, Map<String, dynamic> updates) async {
+    debugPrint('✏️ [InstructorRepository] updateCourse: courseId=$courseId, updates=$updates');
     final response = await appApi.apiV1InstructorCoursesIdPatch(
       id: courseId,
       body: PatchedCourseCreateRequest.fromJson(updates),
     );
     if (!response.isSuccessful) {
+      debugPrint('❌ [InstructorRepository] updateCourse ERROR (${response.statusCode}): ${response.error}');
       throw Exception('Failed to update course: ${response.error}');
     }
+    debugPrint('✅ [InstructorRepository] updateCourse SUCCESS: ${response.bodyString}');
     return jsonDecode(response.bodyString) as Map<String, dynamic>;
   }
 
   /// Delete a course.
   Future<void> deleteCourse(String courseId) async {
+    debugPrint('🗑️ [InstructorRepository] deleteCourse: courseId=$courseId');
     await appApi.apiV1InstructorCoursesIdDelete(id: courseId);
+    debugPrint('✅ [InstructorRepository] deleteCourse SUCCESS');
   }
 
   /// Publish a course (triggers AI moderation).
@@ -254,40 +280,66 @@ class InstructorRepository {
   /// Create a section in a course.
   Future<Map<String, dynamic>> createSection(
       String coursePk, Map<String, dynamic> sectionData) async {
-    final response = await appApi.apiV1InstructorCoursesCoursePkSectionsPost(
-      coursePk: coursePk,
-      body: CourseSectionCreateRequest.fromJson(sectionData),
+    debugPrint('➕ [InstructorRepository] createSection: coursePk=$coursePk, data=$sectionData');
+    final token = await tokenStorage.getAccessToken();
+    final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/instructor/courses/$coursePk/sections/');
+    final rawResponse = await http.post(
+      uri,
+      headers: {
+        if (token != null) 'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode(sectionData),
     );
-    if (!response.isSuccessful) {
-      throw Exception('Failed to create section: ${response.error}');
+    if (rawResponse.statusCode < 200 || rawResponse.statusCode >= 300) {
+      debugPrint('❌ [InstructorRepository] createSection ERROR (${rawResponse.statusCode}): ${rawResponse.body}');
+      throw Exception('Failed to create section (${rawResponse.statusCode}): ${rawResponse.body}');
     }
-    return jsonDecode(response.bodyString) as Map<String, dynamic>;
+    debugPrint('✅ [InstructorRepository] createSection SUCCESS: ${rawResponse.body}');
+    if (rawResponse.body.isEmpty) return {};
+    return jsonDecode(rawResponse.body) as Map<String, dynamic>;
   }
 
   /// Update a section.
   Future<Map<String, dynamic>> updateSection(
       String coursePk, String sectionId, Map<String, dynamic> updates) async {
-    final body = Map<String, dynamic>.from(updates);
-    if (!body.containsKey('sort_order') || body['sort_order'] == null) {
-      body['sort_order'] = 0;
-    }
-    final response = await appApi.apiV1InstructorCoursesCoursePkSectionsIdPatch(
-      coursePk: coursePk,
-      id: sectionId,
-      body: PatchedCourseSectionCreateRequest.fromJson(body),
+    debugPrint('✏️ [InstructorRepository] updateSection: coursePk=$coursePk, sectionId=$sectionId, updates=$updates');
+    final token = await tokenStorage.getAccessToken();
+    final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/instructor/courses/$coursePk/sections/$sectionId/');
+    final rawResponse = await http.patch(
+      uri,
+      headers: {
+        if (token != null) 'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode(updates),
     );
-    if (!response.isSuccessful) {
-      throw Exception('Failed to update section: ${response.error}');
+    if (rawResponse.statusCode < 200 || rawResponse.statusCode >= 300) {
+      debugPrint('❌ [InstructorRepository] updateSection ERROR (${rawResponse.statusCode}): ${rawResponse.body}');
+      throw Exception('Failed to update section (${rawResponse.statusCode}): ${rawResponse.body}');
     }
-    return jsonDecode(response.bodyString) as Map<String, dynamic>;
+    debugPrint('✅ [InstructorRepository] updateSection SUCCESS: ${rawResponse.body}');
+    if (rawResponse.body.isEmpty) return {};
+    return jsonDecode(rawResponse.body) as Map<String, dynamic>;
   }
 
   /// Delete a section.
   Future<void> deleteSection(String coursePk, String sectionId) async {
-    await appApi.apiV1InstructorCoursesCoursePkSectionsIdDelete(
-      coursePk: coursePk,
-      id: sectionId,
+    debugPrint('🗑️ [InstructorRepository] deleteSection: coursePk=$coursePk, sectionId=$sectionId');
+    final token = await tokenStorage.getAccessToken();
+    final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/instructor/courses/$coursePk/sections/$sectionId/');
+    final rawResponse = await http.delete(
+      uri,
+      headers: {
+        if (token != null) 'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
     );
+    if (rawResponse.statusCode < 200 || rawResponse.statusCode >= 300) {
+      debugPrint('❌ [InstructorRepository] deleteSection ERROR (${rawResponse.statusCode}): ${rawResponse.body}');
+      throw Exception('Failed to delete section (${rawResponse.statusCode}): ${rawResponse.body}');
+    }
+    debugPrint('✅ [InstructorRepository] deleteSection SUCCESS');
   }
 
   // ── Lectures ──────────────────────────────────────────────────
@@ -317,17 +369,23 @@ class InstructorRepository {
     Map<String, dynamic> lectureData,
   ) async {
     debugPrint('📤 [InstructorRepository] createLecture: sending $lectureData');
-    final response = await appApi.apiV1InstructorCoursesCoursePkSectionsSectionPkLecturesPost(
-      coursePk: coursePk,
-      sectionPk: sectionPk,
-      body: LectureCreateRequest.fromJson(lectureData),
+    final token = await tokenStorage.getAccessToken();
+    final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/instructor/courses/$coursePk/sections/$sectionPk/lectures/');
+    final rawResponse = await http.post(
+      uri,
+      headers: {
+        if (token != null) 'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode(lectureData),
     );
-    if (!response.isSuccessful) {
-      debugPrint('❌ [InstructorRepository] createLecture ERROR: ${response.error}');
-      throw Exception('Failed to create lecture: ${response.error}');
+    if (rawResponse.statusCode < 200 || rawResponse.statusCode >= 300) {
+      debugPrint('❌ [InstructorRepository] createLecture ERROR (${rawResponse.statusCode}): ${rawResponse.body}');
+      throw Exception('Failed to create lecture (${rawResponse.statusCode}): ${rawResponse.body}');
     }
-    debugPrint('✅ [InstructorRepository] createLecture SUCCESS: ${response.bodyString}');
-    return jsonDecode(response.bodyString) as Map<String, dynamic>;
+    debugPrint('✅ [InstructorRepository] createLecture SUCCESS: ${rawResponse.body}');
+    if (rawResponse.body.isEmpty) return {};
+    return jsonDecode(rawResponse.body) as Map<String, dynamic>;
   }
 
   /// Update a lecture.
@@ -337,26 +395,44 @@ class InstructorRepository {
     String lectureId,
     Map<String, dynamic> updates,
   ) async {
-    final response = await appApi.apiV1InstructorCoursesCoursePkSectionsSectionPkLecturesIdPatch(
-      coursePk: coursePk,
-      sectionPk: sectionPk,
-      id: lectureId,
-      body: PatchedLectureCreateRequest.fromJson(updates),
+    debugPrint('✏️ [InstructorRepository] updateLecture: lectureId=$lectureId, updates=$updates');
+    final token = await tokenStorage.getAccessToken();
+    final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/instructor/courses/$coursePk/sections/$sectionPk/lectures/$lectureId/');
+    final rawResponse = await http.patch(
+      uri,
+      headers: {
+        if (token != null) 'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode(updates),
     );
-    if (!response.isSuccessful) {
-      throw Exception('Failed to update lecture: ${response.error}');
+    if (rawResponse.statusCode < 200 || rawResponse.statusCode >= 300) {
+      debugPrint('❌ [InstructorRepository] updateLecture ERROR (${rawResponse.statusCode}): ${rawResponse.body}');
+      throw Exception('Failed to update lecture (${rawResponse.statusCode}): ${rawResponse.body}');
     }
-    return jsonDecode(response.bodyString) as Map<String, dynamic>;
+    debugPrint('✅ [InstructorRepository] updateLecture SUCCESS: ${rawResponse.body}');
+    if (rawResponse.body.isEmpty) return {};
+    return jsonDecode(rawResponse.body) as Map<String, dynamic>;
   }
 
   /// Delete a lecture.
   Future<void> deleteLecture(
       String coursePk, String sectionPk, String lectureId) async {
-    await appApi.apiV1InstructorCoursesCoursePkSectionsSectionPkLecturesIdDelete(
-      coursePk: coursePk,
-      sectionPk: sectionPk,
-      id: lectureId,
+    debugPrint('🗑️ [InstructorRepository] deleteLecture: lectureId=$lectureId');
+    final token = await tokenStorage.getAccessToken();
+    final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/instructor/courses/$coursePk/sections/$sectionPk/lectures/$lectureId/');
+    final rawResponse = await http.delete(
+      uri,
+      headers: {
+        if (token != null) 'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
     );
+    if (rawResponse.statusCode < 200 || rawResponse.statusCode >= 300) {
+      debugPrint('❌ [InstructorRepository] deleteLecture ERROR (${rawResponse.statusCode}): ${rawResponse.body}');
+      throw Exception('Failed to delete lecture (${rawResponse.statusCode}): ${rawResponse.body}');
+    }
+    debugPrint('✅ [InstructorRepository] deleteLecture SUCCESS');
   }
 
   // ── Certificates ────────────────────────────────────────────────
@@ -520,9 +596,13 @@ class InstructorRepository {
   }
 
   /// Upload video for a lecture.
-  Future<Map<String, dynamic>> uploadVideo(String lectureId, String filePath) async {
-    // We use standard http.MultipartRequest here because Chopper's multipart
-    // might require generating specific MultipartFile objects which can be tricky.
+  Future<Map<String, dynamic>> uploadVideo(
+    String lectureId,
+    String filePath, {
+    Duration timeout = const Duration(seconds: 45),
+    http.Client? client,
+  }) async {
+    debugPrint('📤 [InstructorRepository] uploadVideo START: lectureId=$lectureId, path=$filePath');
     final token = await tokenStorage.getAccessToken();
     final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/lectures/$lectureId/upload-video/');
     
@@ -530,16 +610,141 @@ class InstructorRepository {
     request.headers['Authorization'] = 'Bearer $token';
     request.files.add(await http.MultipartFile.fromPath('video', filePath));
     
+    final httpClient = client ?? http.Client();
+    try {
+      final streamedResponse = await httpClient.send(request).timeout(
+        timeout,
+        onTimeout: () {
+          throw TimeoutException('Video upload timed out (${timeout.inSeconds}s). Server or internet connection is too slow.');
+        },
+      );
+      final response = await http.Response.fromStream(streamedResponse).timeout(
+        const Duration(seconds: 20),
+        onTimeout: () {
+          throw TimeoutException('Server took too long to acknowledge video upload.');
+        },
+      );
+      
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        debugPrint('✅ [InstructorRepository] uploadVideo SUCCESS (${response.statusCode}): ${response.body}');
+        if (response.body.isNotEmpty) {
+          return jsonDecode(response.body) as Map<String, dynamic>;
+        }
+        return {};
+      } else {
+        debugPrint('❌ [InstructorRepository] uploadVideo ERROR (${response.statusCode}): ${response.body}');
+        if (response.body.contains('Bunny Stream API') || response.body.contains('Failed to initialize video')) {
+          throw Exception('Video server notice: Bunny Stream CDN is currently being activated or under maintenance.');
+        } else if (response.statusCode == 413) {
+          throw Exception('Video file size is too large for the server. Please compress the file.');
+        } else if (response.statusCode >= 500) {
+          throw Exception('Video server error (${response.statusCode}). Please retry in a few moments.');
+        }
+        throw Exception('Failed to upload video (${response.statusCode}): ${response.body}');
+      }
+    } on TimeoutException {
+      rethrow;
+    } on SocketException catch (sErr) {
+      debugPrint('❌ [InstructorRepository] uploadVideo network error: $sErr');
+      throw Exception('Network connection failed during video upload. Please check your internet.');
+    } catch (e) {
+      debugPrint('❌ [InstructorRepository] uploadVideo error: $e');
+      rethrow;
+    } finally {
+      if (client == null) {
+        httpClient.close();
+      }
+    }
+  }
+
+  /// Upload study material / resource (PDF, docx, xlsx, etc.) for a lecture.
+  Future<Map<String, dynamic>> uploadResource(
+    String lectureId,
+    String filePath, {
+    String? fileName,
+    Duration timeout = const Duration(seconds: 30),
+    http.Client? client,
+  }) async {
+    final name = fileName ?? filePath.split(RegExp(r'[/\\]')).last;
+    debugPrint('📄 [InstructorRepository] uploadResource START: lectureId=$lectureId, name=$name, path=$filePath');
+    final token = await tokenStorage.getAccessToken();
+    final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/lectures/$lectureId/upload-resource/');
+    
+    final request = http.MultipartRequest('POST', uri);
+    request.headers['Authorization'] = 'Bearer $token';
+    request.fields['file_name'] = name;
+    request.files.add(await http.MultipartFile.fromPath('file', filePath, filename: name));
+    
+    final httpClient = client ?? http.Client();
+    try {
+      final streamedResponse = await httpClient.send(request).timeout(
+        timeout,
+        onTimeout: () {
+          throw TimeoutException('Study material upload timed out (${timeout.inSeconds}s). Please check your internet connection.');
+        },
+      );
+      final response = await http.Response.fromStream(streamedResponse).timeout(
+        const Duration(seconds: 15),
+        onTimeout: () {
+          throw TimeoutException('Server took too long to acknowledge file upload.');
+        },
+      );
+      
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        debugPrint('✅ [InstructorRepository] uploadResource SUCCESS (${response.statusCode}): ${response.body}');
+        if (response.body.isNotEmpty) {
+          return jsonDecode(response.body) as Map<String, dynamic>;
+        }
+        return {};
+      } else {
+        debugPrint('❌ [InstructorRepository] uploadResource ERROR (${response.statusCode}): ${response.body}');
+        if (response.statusCode == 413) {
+          throw Exception('File size is too large for the server.');
+        }
+        throw Exception('Failed to upload resource (${response.statusCode}): ${response.body}');
+      }
+    } on TimeoutException {
+      rethrow;
+    } on SocketException catch (sErr) {
+      debugPrint('❌ [InstructorRepository] uploadResource network error: $sErr');
+      throw Exception('Network error while uploading study material. Please check your internet.');
+    } catch (e) {
+      debugPrint('❌ [InstructorRepository] uploadResource error: $e');
+      rethrow;
+    } finally {
+      if (client == null) {
+        httpClient.close();
+      }
+    }
+  }
+
+  /// Upload a certificate template (image or PDF) for a course.
+  Future<Map<String, dynamic>> uploadCertificateTemplate(
+    String coursePk,
+    String filePath, {
+    String title = 'Certificate of Completion',
+  }) async {
+    debugPrint('🎓 [InstructorRepository] uploadCertificateTemplate START: coursePk=$coursePk, path=$filePath');
+    final token = await tokenStorage.getAccessToken();
+    final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/instructor/courses/$coursePk/certificate/');
+    
+    final request = http.MultipartRequest('POST', uri);
+    request.headers['Authorization'] = 'Bearer $token';
+    request.fields['title'] = title;
+    request.files.add(await http.MultipartFile.fromPath('template_image', filePath));
+    
     final streamedResponse = await request.send();
     final response = await http.Response.fromStream(streamedResponse);
     
     if (response.statusCode >= 200 && response.statusCode < 300) {
+      debugPrint('✅ [InstructorRepository] uploadCertificateTemplate SUCCESS (${response.statusCode}): ${response.body}');
       if (response.body.isNotEmpty) {
         return jsonDecode(response.body) as Map<String, dynamic>;
       }
       return {};
     } else {
-      throw Exception('Failed to upload video (${response.statusCode}): ${response.body}');
+      debugPrint('❌ [InstructorRepository] uploadCertificateTemplate ERROR (${response.statusCode}): ${response.body}');
+      throw Exception('Failed to upload certificate (${response.statusCode}): ${response.body}');
     }
   }
 }

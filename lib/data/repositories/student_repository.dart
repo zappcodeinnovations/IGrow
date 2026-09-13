@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../../core/network/api_client.dart';
 import '../../core/network/token_storage.dart';
-import '../models/api_models/course_models.dart';
 
 /// Repository for student-specific operations.
 class StudentRepository {
@@ -132,18 +131,69 @@ class StudentRepository {
 
   // ── Progress ──────────────────────────────────────────────────
 
-  /// Get course progress.
+  /// Get course progress for all lectures in a course.
   Future<Map<String, dynamic>> getCourseProgress(String slug) async {
-    final response = await appApi.apiV1ProgressCourseCourseSlugGet(courseSlug: slug);
-    if (!response.isSuccessful) {
-      throw Exception('Failed to load course progress: ${response.error}');
-    }
-    final body = response.body;
-    if (body is Map<String, dynamic>) return body;
+    debugPrint('🔍 [StudentRepository] getCourseProgress: courseSlug=$slug');
     try {
-      return jsonDecode(response.bodyString) as Map<String, dynamic>;
-    } catch (_) {
+      final token = await tokenStorage.getAccessToken();
+      final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/progress/course/$slug/');
+      final response = await http.get(
+        uri,
+        headers: {
+          if (token != null) 'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        debugPrint('✅ [StudentRepository] getCourseProgress SUCCESS (${response.statusCode})');
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map<String, dynamic>) return decoded;
+        if (decoded is List) return {'lectures': decoded};
+        return {};
+      }
+      debugPrint('⚠️ [StudentRepository] getCourseProgress status (${response.statusCode}): ${response.body}');
       return {};
+    } catch (e) {
+      debugPrint('❌ [StudentRepository] getCourseProgress error: $e');
+      return {};
+    }
+  }
+
+  /// Update student's watched time and completion status for a lecture.
+  Future<Map<String, dynamic>> updateLectureProgress(
+    String lectureId, {
+    bool completed = true,
+    int? watchedTime,
+  }) async {
+    debugPrint('🎥 [StudentRepository] updateLectureProgress: lectureId=$lectureId, completed=$completed, watchedTime=$watchedTime');
+    final token = await tokenStorage.getAccessToken();
+    final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/progress/$lectureId/');
+
+    final payload = <String, dynamic>{
+      'completed': completed,
+      if (watchedTime != null) 'watched_time': watchedTime,
+    };
+
+    final response = await http.post(
+      uri,
+      headers: {
+        if (token != null) 'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode(payload),
+    );
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      debugPrint('✅ [StudentRepository] updateLectureProgress SUCCESS (${response.statusCode})');
+      if (response.body.isNotEmpty) {
+        try {
+          return jsonDecode(response.body) as Map<String, dynamic>;
+        } catch (_) {}
+      }
+      return {'completed': completed};
+    } else {
+      debugPrint('❌ [StudentRepository] updateLectureProgress ERROR (${response.statusCode}): ${response.body}');
+      throw Exception('Failed to update lecture progress (${response.statusCode}): ${response.body}');
     }
   }
 
