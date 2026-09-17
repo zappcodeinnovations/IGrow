@@ -6,8 +6,6 @@ import 'package:go_router/go_router.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../../core/theme/app_colors.dart';
-import '../../../core/widgets/app_card.dart';
-import '../../cart/providers/cart_provider.dart';
 import '../../cart/providers/cart_provider.dart';
 import '../providers/explore_provider.dart';
 import '../../../core/widgets/shimmer_placeholders.dart';
@@ -138,60 +136,103 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
           return Center(child: Text('Error: $err'));
         },
       ),
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () async {
-                    try {
-                      await ref.read(cartProvider.notifier).addToCart(widget.courseId);
-                      if (context.mounted) {
-                        final messenger = ScaffoldMessenger.of(context);
-                        messenger.clearSnackBars();
-                        messenger.showSnackBar(
-                          const SnackBar(
-                            content: Text('Added to cart'),
-                            duration: Duration(milliseconds: 1800),
+      bottomNavigationBar: courseAsync.maybeWhen(
+        data: (course) {
+          final isEnrolled = course.isEnrolled == true;
+          return SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: isEnrolled
+                  ? SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primaryGreen,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                        );
-                      }
-                    } catch (e) {
-                      if (context.mounted) {
-                        final messenger = ScaffoldMessenger.of(context);
-                        messenger.clearSnackBars();
-                        messenger.showSnackBar(
-                          SnackBar(
-                            content: Text('Could not add to cart: $e'),
-                            duration: const Duration(milliseconds: 1800),
+                        ),
+                        icon: const Icon(Icons.play_circle_filled),
+                        label: const Text(
+                          'Start Learning (Enrolled)',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 15),
+                        ),
+                        onPressed: () =>
+                            context.push('/player/${widget.courseId}'),
+                      ),
+                    )
+                  : Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            onPressed: () async {
+                              try {
+                                await ref
+                                    .read(cartProvider.notifier)
+                                    .addToCart(widget.courseId);
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Course added to cart! 🛒'),
+                                      duration: Duration(milliseconds: 1800),
+                                      backgroundColor: AppColors.primaryGreen,
+                                    ),
+                                  );
+                                }
+                              } catch (e) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(e
+                                          .toString()
+                                          .replaceAll("Exception: ", "")),
+                                      duration:
+                                          const Duration(milliseconds: 2000),
+                                    ),
+                                  );
+                                }
+                              }
+                            },
+                            icon: const Icon(Icons.add_shopping_cart),
+                            label: const Text('Add to Cart'),
                           ),
-                        );
-                      }
-                    }
-                  },
-                  icon: const Icon(Icons.add_shopping_cart),
-                  label: const Text('Add to Cart'),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () {
-                    // Navigate to checkout or player (assuming enrolled for dummy)
-                    context.push('/player/${widget.courseId}');
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryGreen,
-                    foregroundColor: AppColors.white,
-                  ),
-                  child: const Text('Enroll Now'),
-                ),
-              ),
-            ],
-          ),
-        ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () {
+                              context.push(
+                                  '/checkout?courseId=${widget.courseId}');
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primaryGreen,
+                              foregroundColor: AppColors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: const Text(
+                              'Buy Now',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+          );
+        },
+        orElse: () => const SizedBox.shrink(),
       ),
     );
   }
@@ -238,7 +279,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: AppColors.primaryGreen.withOpacity(0.1),
+                    color: AppColors.primaryGreen.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Text(

@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:timeago/timeago.dart' as timeago;
 
 import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/app_card.dart';
-
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../providers/community_provider.dart';
-import '../../../data/models/api_models/community_models.dart';
-import 'package:timeago/timeago.dart' as timeago;
 import '../../../core/widgets/shimmer_placeholders.dart';
+import '../../../data/models/api_models/community_models.dart';
+import '../providers/community_provider.dart';
+import 'create_post_screen.dart';
+
 /// Community screen — shared between farmer & instructor roles.
 class CommunityScreen extends ConsumerWidget {
   const CommunityScreen({super.key});
@@ -30,12 +31,10 @@ class CommunityScreen extends ConsumerWidget {
                   Text('Community', style: Theme.of(context).textTheme.displaySmall),
                   GestureDetector(
                     onTap: () {
-                      final messenger = ScaffoldMessenger.of(context);
-                      messenger.clearSnackBars();
-                      messenger.showSnackBar(
-                        const SnackBar(
-                          content: Text('Post creation coming soon!'),
-                          duration: Duration(milliseconds: 1800),
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const CreatePostScreen(),
                         ),
                       );
                     },
@@ -59,32 +58,78 @@ class CommunityScreen extends ConsumerWidget {
                 child: postsAsync.when(
                   data: (posts) {
                     if (posts.isEmpty) {
-                      return const Center(
-                        child: Text('No community posts yet.'),
+                      return RefreshIndicator(
+                        color: AppColors.primaryGreen,
+                        onRefresh: () async {
+                          await ref.read(communityPostsProvider.notifier).refreshPosts();
+                        },
+                        child: ListView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          children: [
+                            SizedBox(height: MediaQuery.of(context).size.height * 0.25),
+                            const Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.forum_outlined,
+                                    size: 56,
+                                    color: AppColors.inkSoft,
+                                  ),
+                                  SizedBox(height: 12),
+                                  Text(
+                                    'No community posts yet.',
+                                    style: TextStyle(
+                                      color: AppColors.inkSoft,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                  SizedBox(height: 6),
+                                  Text(
+                                    'Tap the + button to share the first post!',
+                                    style: TextStyle(
+                                      color: AppColors.inkSoft,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                       );
                     }
-                    return ListView.separated(
-                      itemCount: posts.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 14),
-                      itemBuilder: (context, index) {
-                        final post = posts[index];
-                        return _PostCard(
-                          post: post,
-                          onLike: () async {
-                            final success = await ref.read(communityPostsProvider.notifier).toggleLike(post.id);
-                            if (context.mounted && !success) {
-                              final messenger = ScaffoldMessenger.of(context);
-                              messenger.clearSnackBars();
-                              messenger.showSnackBar(
-                                const SnackBar(
-                                  content: Text('Failed to like post. Backend might be unavailable.'),
-                                  duration: Duration(milliseconds: 1800),
-                                ),
-                              );
-                            }
-                          },
-                        );
+                    return RefreshIndicator(
+                      color: AppColors.primaryGreen,
+                      onRefresh: () async {
+                        await ref.read(communityPostsProvider.notifier).refreshPosts();
                       },
+                      child: ListView.separated(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        itemCount: posts.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 14),
+                        itemBuilder: (context, index) {
+                          final post = posts[index];
+                          return _PostCard(
+                            post: post,
+                            onLike: () async {
+                              final success = await ref
+                                  .read(communityPostsProvider.notifier)
+                                  .toggleLike(post.id);
+                              if (context.mounted && !success) {
+                                final messenger = ScaffoldMessenger.of(context);
+                                messenger.clearSnackBars();
+                                messenger.showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Failed to like post. Please check connection.'),
+                                    duration: Duration(milliseconds: 1800),
+                                  ),
+                                );
+                              }
+                            },
+                          );
+                        },
+                      ),
                     );
                   },
                   loading: () => ListView.separated(
@@ -93,10 +138,23 @@ class CommunityScreen extends ConsumerWidget {
                     itemBuilder: (context, index) => const _ShimmerPostCard(),
                   ),
                   error: (err, st) => Center(
-                    child: Text(
-                      err.toString(),
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: AppColors.error),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          err.toString(),
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: AppColors.error),
+                        ),
+                        const SizedBox(height: 12),
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            ref.read(communityPostsProvider.notifier).refreshPosts();
+                          },
+                          icon: const Icon(Icons.refresh_rounded),
+                          label: const Text('Retry'),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -155,7 +213,6 @@ class _ShimmerPostCard extends StatelessWidget {
   }
 }
 
-
 class _PostCard extends StatelessWidget {
   const _PostCard({
     required this.post,
@@ -208,8 +265,10 @@ class _PostCard extends StatelessWidget {
                         ],
                       ],
                     ),
-                    Text(time,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.inkSoft)),
+                    Text(
+                      time,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.inkSoft),
+                    ),
                   ],
                 ),
               ),
@@ -222,16 +281,45 @@ class _PostCard extends StatelessWidget {
                   ),
                   child: Text(
                     post.tag,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(color: AppColors.primaryGreen,),
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: AppColors.primaryGreen,
+                        ),
                   ),
                 ),
             ],
           ),
           const SizedBox(height: 14),
+          if (post.title.isNotEmpty) ...[
+            Text(
+              post.title,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
+            const SizedBox(height: 6),
+          ],
           Text(
             post.content,
             style: Theme.of(context).textTheme.bodyMedium,
           ),
+          if (post.image != null && post.image!.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: CachedNetworkImage(
+                imageUrl: post.image!,
+                width: double.infinity,
+                height: 200,
+                fit: BoxFit.cover,
+                placeholder: (context, url) => const ShimmerContainer(
+                  width: double.infinity,
+                  height: 200,
+                  borderRadius: 12,
+                ),
+                errorWidget: (context, url, error) => const SizedBox.shrink(),
+              ),
+            ),
+          ],
           const SizedBox(height: 14),
           Row(
             children: [
@@ -282,7 +370,7 @@ class _PostCard extends StatelessWidget {
                     ),
                   );
                 },
-                child: Icon(Icons.share_outlined, size: 18, color: AppColors.inkSoft),
+                child: const Icon(Icons.share_outlined, size: 18, color: AppColors.inkSoft),
               ),
             ],
           ),
@@ -291,4 +379,3 @@ class _PostCard extends StatelessWidget {
     );
   }
 }
-

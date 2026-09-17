@@ -143,23 +143,64 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen> {
 
       if (resolvedUrl.startsWith('http')) {
         final token = await ref.read(tokenStorageProvider).getAccessToken();
+        final isBunny = resolvedUrl.contains('b-cdn.net') ||
+            resolvedUrl.contains('bunny') ||
+            resolvedUrl.contains('mediadelivery.net');
+
+        debugPrint('▶️ [CoursePlayer] Initializing video stream: $resolvedUrl (isBunny=$isBunny)');
+
+        Map<String, String> headers = {};
+        if (token != null && !isBunny) {
+          headers['Authorization'] = 'Bearer $token';
+        }
+        if (isBunny) {
+          headers['Referer'] = 'https://iagrow.zappcode.in/';
+          headers['User-Agent'] =
+              'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36';
+        }
+
         _videoPlayerController = VideoPlayerController.networkUrl(
           Uri.parse(resolvedUrl),
-          httpHeaders: {
-            if (token != null) 'Authorization': 'Bearer $token',
-          },
+          httpHeaders: headers,
         );
+
+        try {
+          await _videoPlayerController!.initialize().timeout(
+            const Duration(seconds: 12),
+            onTimeout: () {
+              throw Exception('Video load timed out. Please check your network.');
+            },
+          );
+        } catch (e) {
+          // If Bunny stream failed with 401/403, try alternative referer (iframe.mediadelivery.net)
+          if (isBunny && (e.toString().contains('401') || e.toString().contains('403'))) {
+            debugPrint('⚠️ [CoursePlayer] First referer failed, retrying with iframe.mediadelivery.net referer...');
+            await _videoPlayerController?.dispose();
+            headers['Referer'] = 'https://iframe.mediadelivery.net/';
+            _videoPlayerController = VideoPlayerController.networkUrl(
+              Uri.parse(resolvedUrl),
+              httpHeaders: headers,
+            );
+            await _videoPlayerController!.initialize().timeout(
+              const Duration(seconds: 12),
+              onTimeout: () {
+                throw Exception('Video load timed out on retry.');
+              },
+            );
+          } else {
+            rethrow;
+          }
+        }
       } else {
         _videoPlayerController =
             VideoPlayerController.file(File(resolvedUrl));
+        await _videoPlayerController!.initialize().timeout(
+          const Duration(seconds: 12),
+          onTimeout: () {
+            throw Exception('Video load timed out. Please check your network.');
+          },
+        );
       }
-
-      await _videoPlayerController!.initialize().timeout(
-        const Duration(seconds: 12),
-        onTimeout: () {
-          throw Exception('Video load timed out. Please check your network.');
-        },
-      );
 
       _videoPlayerController!.addListener(_onVideoPlayerTick);
 
@@ -304,33 +345,36 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen> {
                     else if (_videoErrorMessage != null)
                       Padding(
                         padding: const EdgeInsets.all(20),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(Icons.error_outline,
-                                color: AppColors.accentOrange, size: 40),
-                            const SizedBox(height: 8),
-                            Text(
-                              _videoErrorMessage!,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                  color: Colors.white, fontSize: 13),
-                            ),
-                            const SizedBox(height: 12),
-                            ElevatedButton.icon(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.primaryGreen,
-                                foregroundColor: Colors.white,
+                        child: SingleChildScrollView(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.error_outline,
+                                  color: AppColors.accentOrange, size: 40),
+                              const SizedBox(height: 8),
+                              Text(
+                                _videoErrorMessage!,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                    color: Colors.white, fontSize: 13),
                               ),
-                              icon: const Icon(Icons.refresh, size: 16),
-                              label: const Text('Retry'),
-                              onPressed: () {
-                                if (_currentLecture != null) {
-                                  _initializePlayer(_currentLecture!);
-                                }
-                              },
-                            ),
-                          ],
+                              const SizedBox(height: 12),
+                              ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primaryGreen,
+                                  foregroundColor: Colors.white,
+                                ),
+                                icon: const Icon(Icons.refresh, size: 16),
+                                label: const Text('Retry'),
+                                onPressed: () {
+                                  if (_currentLecture != null) {
+                                    _initializePlayer(_currentLecture!);
+                                  }
+                                },
+                              ),
+                            ],
+                          ),
                         ),
                       )
                     else

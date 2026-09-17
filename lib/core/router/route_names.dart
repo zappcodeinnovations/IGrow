@@ -53,6 +53,7 @@ class RouteNames {
   static const marketplace = '/marketplace';
   static const productDetails = '/marketplace/product/:id';
   static const settings = '/settings';
+  static const createPost = '/community/create-post';
 
   // ─── Admin ───────────────────────────────────────────────────────
   static const adminPanel = '/admin';

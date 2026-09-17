@@ -8,22 +8,62 @@ final communityRepositoryProvider = Provider<CommunityRepository>((ref) {
   return CommunityRepository(tokenStorage: tokenStorage);
 });
 
+final communityTopicsProvider = FutureProvider<List<CommunityTopic>>((ref) async {
+  final repo = ref.watch(communityRepositoryProvider);
+  return repo.getTopics();
+});
+
+final selectedTopicIdProvider = StateProvider<String?>((ref) => null);
+
 final communityPostsProvider = StateNotifierProvider<CommunityPostsNotifier, AsyncValue<List<CommunityPost>>>((ref) {
   final repo = ref.watch(communityRepositoryProvider);
-  return CommunityPostsNotifier(repo);
+  final selectedTopic = ref.watch(selectedTopicIdProvider);
+  return CommunityPostsNotifier(repo, topicId: selectedTopic);
 });
 
 class CommunityPostsNotifier extends StateNotifier<AsyncValue<List<CommunityPost>>> {
-  CommunityPostsNotifier(this._repo) : super(const AsyncValue.loading()) {
+  CommunityPostsNotifier(this._repo, {this.topicId}) : super(const AsyncValue.loading()) {
     fetchPosts();
   }
 
   final CommunityRepository _repo;
+  final String? topicId;
 
-  Future<void> fetchPosts() async {
+  Future<void> fetchPosts({String? search}) async {
     state = const AsyncValue.loading();
     try {
-      final posts = await _repo.getPosts();
+      final posts = await _repo.getPosts(topicId: topicId, search: search);
+      state = AsyncValue.data(posts);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
+  }
+
+  Future<CommunityPost> createPost({
+    required String title,
+    required String content,
+    String? topicId,
+    String? imagePath,
+  }) async {
+    final newPost = await _repo.createPost(
+      title: title,
+      content: content,
+      topicId: topicId,
+      imagePath: imagePath,
+    );
+
+    if (state.hasValue && state.value != null) {
+      state = AsyncValue.data([newPost, ...state.value!]);
+    } else {
+      state = AsyncValue.data([newPost]);
+    }
+
+    return newPost;
+  }
+
+  Future<void> refreshPosts() async {
+    try {
+      final posts = await _repo.getPosts(topicId: topicId);
       state = AsyncValue.data(posts);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
@@ -40,7 +80,7 @@ class CommunityPostsNotifier extends StateNotifier<AsyncValue<List<CommunityPost
 
     final post = oldPosts[index];
     final isLikedNow = !post.isLikedByMe;
-    final newLikesCount = isLikedNow ? post.likesCount + 1 : post.likesCount - 1;
+    final newLikesCount = isLikedNow ? post.likesCount + 1 : (post.likesCount > 0 ? post.likesCount - 1 : 0);
 
     final newPost = post.copyWith(
       isLikedByMe: isLikedNow,
@@ -54,10 +94,9 @@ class CommunityPostsNotifier extends StateNotifier<AsyncValue<List<CommunityPost
     // Call API
     try {
       final response = await _repo.likePost(postId);
-      // Optional: sync with real server values if needed
-      final serverLikesCount = response['likes_count'] as int?;
-      final serverIsLiked = response['is_liked_by_me'] as bool?;
-      
+      final serverLikesCount = (response['upvotes_count'] ?? response['likes_count']) as int?;
+      final serverIsLiked = (response['is_liked'] ?? response['is_liked_by_me']) as bool?;
+
       if (serverLikesCount != null && serverIsLiked != null) {
         final verifiedPost = newPost.copyWith(
           likesCount: serverLikesCount,

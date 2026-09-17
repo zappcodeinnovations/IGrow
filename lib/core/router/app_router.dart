@@ -15,6 +15,7 @@ import '../../features/auth/screens/otp_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
 import '../../features/auth/screens/splash_screen.dart';
 import '../../features/community/screens/community_screen.dart';
+import '../../features/community/screens/create_post_screen.dart';
 import '../../features/explore/screens/course_player_screen.dart';
 import '../../features/explore/screens/explore_screen.dart';
 import '../../features/instructor_dashboard/screens/instructor_uploads_screen.dart';
@@ -34,6 +35,8 @@ import '../../features/upload_course/screens/upload_course_screen.dart';
 import '../../features/upload_course/screens/upload_ebook_screen.dart';
 import '../../features/home_instructor/screens/instructor_chatbot_screen.dart';
 import '../../features/cart/screens/cart_screen.dart';
+import '../../features/cart/screens/checkout_screen.dart';
+import '../../features/cart/screens/orders_screen.dart';
 import '../widgets/shell_scaffold.dart';
 import 'route_names.dart';
 
@@ -179,10 +182,21 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         },
       ),
       
-      // ─── Cart ──────────────────────────────────────────────────────────
+      // ─── Cart & Orders ──────────────────────────────────────────────
       GoRoute(
         path: '/cart',
         builder: (context, state) => const CartScreen(),
+      ),
+      GoRoute(
+        path: '/checkout',
+        builder: (context, state) {
+          final courseId = state.uri.queryParameters['courseId'];
+          return CheckoutScreen(directCourseId: courseId);
+        },
+      ),
+      GoRoute(
+        path: '/orders',
+        builder: (context, state) => const OrdersScreen(),
       ),
 
       // ─── Modal Routes ────────────────────────────────────────────────
@@ -197,6 +211,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/privacy',
         builder: (context, state) => const PrivacyScreen(),
+      ),
+      GoRoute(
+        path: RouteNames.createPost,
+        builder: (context, state) => const CreatePostScreen(),
       ),
       
       // ─── Shell Router (Bottom Navigation) ────────────────────────────

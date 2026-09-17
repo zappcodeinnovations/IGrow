@@ -3,11 +3,35 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/models/api_models/order_models.dart';
 import '../../../data/repositories/cart_repository.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../home_farmer/providers/student_provider.dart';
 
 /// Provider for CartRepository.
 final cartRepositoryProvider = Provider<CartRepository>((ref) {
   final appApi = ref.watch(appApiProvider);
-  return CartRepository(appApi: appApi);
+  final tokenStorage = ref.watch(tokenStorageProvider);
+  return CartRepository(appApi: appApi, tokenStorage: tokenStorage);
+});
+
+/// Model representing an applied discount coupon.
+class AppliedCoupon {
+  const AppliedCoupon({
+    required this.code,
+    required this.discountPercent,
+    required this.description,
+  });
+
+  final String code;
+  final double discountPercent;
+  final String description;
+}
+
+/// State provider for tracking the currently applied coupon.
+final appliedCouponProvider = StateProvider<AppliedCoupon?>((ref) => null);
+
+/// Provider for fetching user's order history.
+final ordersProvider = FutureProvider<List<ApiOrder>>((ref) async {
+  final repo = ref.watch(cartRepositoryProvider);
+  return await repo.getOrders();
 });
 
 /// AsyncNotifier provider for managing the user's cart state.
@@ -29,7 +53,6 @@ class CartNotifier extends AsyncNotifier<ApiCart> {
       final cart = await _repository.getCart();
       return cart;
     } catch (e) {
-      // Return empty cart if not found or on error
       return const ApiCart(id: '');
     }
   }
@@ -65,16 +88,39 @@ class CartNotifier extends AsyncNotifier<ApiCart> {
     });
   }
 
-  /// Checkout the cart.
-  Future<void> checkout() async {
+  /// Checkout the cart or direct single course.
+  Future<Map<String, dynamic>> checkout({
+    String? paymentMethod,
+    String? courseId,
+    String? cardNumber,
+    String? cardExpiry,
+    String? cardCvv,
+    String? cardHolder,
+    String? couponCode,
+  }) async {
     state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
-      await _repository.checkout(
-        gatewayName: 'sandbox',
-        paymentMethod: 'card',
+    try {
+      final result = await _repository.checkout(
+        paymentMethod: paymentMethod,
+        courseId: courseId,
+        cardNumber: cardNumber,
+        cardExpiry: cardExpiry,
+        cardCvv: cardCvv,
+        cardHolder: cardHolder,
+        couponCode: couponCode,
       );
-      // After checkout, the cart is cleared by the backend.
-      return _fetchCart();
-    });
+
+      final newCart = await _fetchCart();
+      state = AsyncData(newCart);
+
+      // Invalidate enrollments & orders so newly purchased courses show immediately!
+      ref.invalidate(studentEnrollmentsProvider);
+      ref.invalidate(ordersProvider);
+
+      return result;
+    } catch (e) {
+      state = await AsyncValue.guard(() => _fetchCart());
+      rethrow;
+    }
   }
 }
