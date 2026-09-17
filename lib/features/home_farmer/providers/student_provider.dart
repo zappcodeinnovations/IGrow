@@ -32,6 +32,12 @@ final studentEbooksProvider = FutureProvider.family<List<EBook>, String>((ref, s
   return response.results;
 });
 
+/// Provider for fetching a single ebook detail by slug or ID.
+final ebookDetailProvider = FutureProvider.family<EBook, String>((ref, slugOrId) async {
+  final repo = ref.watch(studentRepositoryProvider);
+  return await repo.getEbookDetail(slugOrId);
+});
+
 /// Provider for fetching categories.
 final studentCategoriesProvider = FutureProvider<List<Category>>((ref) async {
   final repo = ref.watch(studentRepositoryProvider);

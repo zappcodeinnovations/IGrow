@@ -8,7 +8,9 @@ import '../../../core/network/api_client.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/swagger_generated/app_api.swagger.dart';
 import '../providers/student_provider.dart';
+import '../../../core/router/route_names.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../notifications/providers/notification_provider.dart';
 import '../../../core/widgets/shimmer_placeholders.dart';
 
 
@@ -80,16 +82,7 @@ class FarmerHomeScreen extends ConsumerWidget {
                   ),
                   // Notification bell
                   InkWell(
-                    onTap: () {
-                      final messenger = ScaffoldMessenger.of(context);
-                      messenger.clearSnackBars();
-                      messenger.showSnackBar(
-                        const SnackBar(
-                          content: Text('No new notifications'),
-                          duration: Duration(milliseconds: 1800),
-                        ),
-                      );
-                    },
+                    onTap: () => context.push(RouteNames.notifications),
                     borderRadius: BorderRadius.circular(16),
                     child: Container(
                       width: 48,
@@ -108,18 +101,19 @@ class FarmerHomeScreen extends ConsumerWidget {
                             Icons.notifications_outlined,
                             color: isDark ? AppColors.white : AppColors.inkDark,
                           ),
-                          Positioned(
-                            top: 12,
-                            right: 12,
-                            child: Container(
-                              width: 8,
-                              height: 8,
-                              decoration: const BoxDecoration(
-                                color: AppColors.error,
-                                shape: BoxShape.circle,
+                          if (ref.watch(unreadNotificationsCountProvider) > 0)
+                            Positioned(
+                              top: 10,
+                              right: 10,
+                              child: Container(
+                                width: 8,
+                                height: 8,
+                                decoration: const BoxDecoration(
+                                  color: AppColors.accentOrange,
+                                  shape: BoxShape.circle,
+                                ),
                               ),
                             ),
-                          ),
                         ],
                       ),
                     ),
@@ -315,7 +309,7 @@ class FarmerHomeScreen extends ConsumerWidget {
                   return Wrap(
                     spacing: 10,
                     runSpacing: 10,
-                    children: categories.map((cat) => _CategoryChip(icon: Icons.label, label: cat.name ?? 'Category')).toList(),
+                    children: categories.map((cat) => _CategoryChip(icon: Icons.label, label: cat.name)).toList(),
                   );
                 },
                 loading: () => Wrap(

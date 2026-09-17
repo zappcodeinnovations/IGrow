@@ -10,6 +10,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/router/route_names.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../notifications/providers/notification_provider.dart';
 import '../../../core/widgets/shimmer_placeholders.dart';
 
 class InstructorHomeScreen extends ConsumerStatefulWidget {
@@ -211,37 +212,47 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                       ],
                     ),
                   ),
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: isDark ? AppColors.cardDark : AppColors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: isDark ? AppColors.lineDark : AppColors.lineLight,
-                      ),
-                    ),
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        Icon(
-                          Icons.notifications_outlined,
-                          color: isDark ? AppColors.white : AppColors.inkDark,
-                        ),
-                        Positioned(
-                          top: 12,
-                          right: 12,
-                          child: Container(
-                            width: 8,
-                            height: 8,
-                            decoration: const BoxDecoration(
-                              color: AppColors.accentOrange,
-                              shape: BoxShape.circle,
+                  Builder(
+                    builder: (context) {
+                      final unreadCount = ref.watch(unreadNotificationsCountProvider);
+                      return InkWell(
+                        borderRadius: BorderRadius.circular(16),
+                        onTap: () => context.push(RouteNames.notifications),
+                        child: Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: isDark ? AppColors.cardDark : AppColors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: isDark ? AppColors.lineDark : AppColors.lineLight,
                             ),
                           ),
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              Icon(
+                                Icons.notifications_outlined,
+                                color: isDark ? AppColors.white : AppColors.inkDark,
+                              ),
+                              if (unreadCount > 0)
+                                Positioned(
+                                  top: 10,
+                                  right: 10,
+                                  child: Container(
+                                    width: 8,
+                                    height: 8,
+                                    decoration: const BoxDecoration(
+                                      color: AppColors.accentOrange,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
                         ),
-                      ],
-                    ),
+                      );
+                    },
                   ),
                 ],
               ),
@@ -259,35 +270,39 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
               // Stats Row
               ref.watch(instructorStatsProvider).when(
                 data: (stats) {
-                  return Row(
-                    children: [
-                      Expanded(
-                        child: _StatCard(
-                          icon: Icons.people_alt_rounded,
-                          label: 'Students',
-                          value: '${stats['total_students'] ?? 0}',
-                          color: AppColors.skyBlue,
+                  return InkWell(
+                    borderRadius: BorderRadius.circular(16),
+                    onTap: () => context.push(RouteNames.instructorAnalytics),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: _StatCard(
+                            icon: Icons.people_alt_rounded,
+                            label: 'Students',
+                            value: '${stats['total_students'] ?? 0}',
+                            color: AppColors.skyBlue,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _StatCard(
-                          icon: Icons.play_lesson_rounded,
-                          label: 'Courses',
-                          value: '${stats['total_courses'] ?? 0}',
-                          color: AppColors.primaryGreen,
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _StatCard(
+                            icon: Icons.play_lesson_rounded,
+                            label: 'Courses',
+                            value: '${stats['total_courses'] ?? 0}',
+                            color: AppColors.primaryGreen,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _StatCard(
-                          icon: Icons.star_rounded,
-                          label: 'Reviews',
-                          value: '${stats['total_reviews'] ?? 0}',
-                          color: AppColors.signalYellow,
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _StatCard(
+                            icon: Icons.star_rounded,
+                            label: 'Reviews',
+                            value: '${stats['total_reviews'] ?? 0}',
+                            color: AppColors.signalYellow,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   );
                 },
                 loading: () => Row(

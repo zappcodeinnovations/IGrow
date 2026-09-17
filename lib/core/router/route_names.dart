@@ -30,6 +30,7 @@ class RouteNames {
   static const videoPlayer = '/farmer/video/:id';
   static const certificates = '/farmer/certificates';
   static const liveClass = '/farmer/live-class';
+  static const wishlist = '/farmer/wishlist';
 
   // ─── Instructor Shell ────────────────────────────────────────────
   static const instructorHome = '/instructor/home';

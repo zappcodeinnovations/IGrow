@@ -1,11 +1,15 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/models/api_models/course_models.dart';
+import '../../../data/models/api_models/review_models.dart';
 import '../../../data/repositories/course_repository.dart';
 import '../../auth/providers/auth_provider.dart';
 
 final courseRepositoryProvider = Provider<CourseRepository>((ref) {
-  return CourseRepository(appApi: ref.watch(appApiProvider));
+  return CourseRepository(
+    appApi: ref.watch(appApiProvider),
+    tokenStorage: ref.watch(tokenStorageProvider),
+  );
 });
 
 typedef ExploreCoursesQuery = ({String search, String category, String level, String ordering});
@@ -29,4 +33,10 @@ final exploreCoursesProvider = FutureProvider.family<List<ApiCourseList>, Explor
 final courseDetailProvider = FutureProvider.family<ApiCourseDetail, String>((ref, id) async {
   final repo = ref.watch(courseRepositoryProvider);
   return repo.getCourseDetail(id);
+});
+
+/// Provider for fetching live student reviews for a course.
+final courseReviewsProvider = FutureProvider.family<List<ApiCourseReview>, String>((ref, slugOrId) async {
+  final repo = ref.watch(courseRepositoryProvider);
+  return repo.getCourseReviews(slugOrId);
 });

@@ -25,7 +25,12 @@ class EbooksTab extends ConsumerWidget {
             final ebook = ebooks[index];
             return GestureDetector(
               onTap: () {
-                context.push('/farmer/ebook/${ebook.id}');
+                final identifier = (ebook.slug != null && ebook.slug!.isNotEmpty)
+                    ? ebook.slug!
+                    : (ebook.id ?? '');
+                if (identifier.isNotEmpty) {
+                  context.push('/farmer/ebook/$identifier');
+                }
               },
               child: Container(
                 padding: const EdgeInsets.all(16),
@@ -63,7 +68,7 @@ class EbooksTab extends ConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            ebook.title ?? 'Untitled E-Book',
+                            ebook.title.isNotEmpty ? ebook.title : 'Untitled E-Book',
                             style: Theme.of(context).textTheme.titleMedium?.copyWith(
                                   fontWeight: FontWeight.w700,
                                 ),
@@ -72,7 +77,7 @@ class EbooksTab extends ConsumerWidget {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            ebook.authorName ?? 'Unknown Author',
+                            ebook.authorName.isNotEmpty ? ebook.authorName : 'Unknown Author',
                             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                   color: AppColors.primaryGreen,
                                   fontWeight: FontWeight.w600,
@@ -80,7 +85,7 @@ class EbooksTab extends ConsumerWidget {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            ebook.description ?? '',
+                            ebook.description,
                             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                   color: AppColors.inkSoft,
                                 ),

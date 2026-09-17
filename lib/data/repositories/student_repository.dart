@@ -45,6 +45,55 @@ class StudentRepository {
     return response.body!;
   }
 
+  /// Fetch specific ebook details (with live PDF stream URL).
+  Future<EBook> getEbookDetail(String slugOrId) async {
+    debugPrint('📖 [StudentRepository] getEbookDetail: slugOrId=$slugOrId');
+    try {
+      // 1. Try apiV1EbooksSlugReadGet which returns the read file URL directly
+      final readResponse = await appApi.apiV1EbooksSlugReadGet(slug: slugOrId);
+      if (readResponse.isSuccessful && readResponse.body != null) {
+        debugPrint('✅ [StudentRepository] getEbookDetail SUCCESS from read endpoint: ${readResponse.body?.title}');
+        return readResponse.body!;
+      }
+    } catch (e) {
+      debugPrint('⚠️ [StudentRepository] getEbookDetail read endpoint failed: $e, falling back to slug get');
+    }
+
+    try {
+      // 2. Fallback to apiV1EbooksSlugGet
+      final response = await appApi.apiV1EbooksSlugGet(slug: slugOrId);
+      if (response.isSuccessful && response.body != null) {
+        debugPrint('✅ [StudentRepository] getEbookDetail SUCCESS from slug endpoint: ${response.body?.title}');
+        return response.body!;
+      }
+    } catch (e) {
+      debugPrint('⚠️ [StudentRepository] getEbookDetail slug endpoint failed: $e, falling back to direct HTTP');
+    }
+
+    // 3. Fallback to direct HTTP call with token if available
+    try {
+      final token = await tokenStorage.getAccessToken();
+      final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/ebooks/$slugOrId/');
+      final rawResponse = await http.get(
+        uri,
+        headers: {
+          if (token != null) 'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      );
+      if (rawResponse.statusCode >= 200 && rawResponse.statusCode < 300) {
+        final data = jsonDecode(rawResponse.body) as Map<String, dynamic>;
+        debugPrint('✅ [StudentRepository] getEbookDetail direct HTTP SUCCESS: ${data['title']}');
+        return EBook.fromJson(data);
+      }
+    } catch (e) {
+      debugPrint('❌ [StudentRepository] getEbookDetail direct HTTP error: $e');
+    }
+
+    throw Exception('Failed to load E-Book. Please check your connection.');
+  }
+
   /// Fetch categories.
   Future<PaginatedCategoryList> getCategories({int? page}) async {
     final response = await appApi.apiV1CategoriesGet(page: page);

@@ -28,6 +28,9 @@ class ApiNotification {
     required this.title,
     required this.message,
     this.course,
+    this.courseTitle,
+    this.ebookId,
+    this.ebookTitle,
     this.isRead = false,
     this.createdAt,
   });
@@ -37,18 +40,37 @@ class ApiNotification {
   final String title;
   final String message;
   final String? course;
+  final String? courseTitle;
+  final String? ebookId;
+  final String? ebookTitle;
   final bool isRead;
   final DateTime? createdAt;
 
   NotificationType? get type => NotificationType.fromValue(notificationType);
 
+  ApiNotification copyWith({bool? isRead}) => ApiNotification(
+        id: id,
+        notificationType: notificationType,
+        title: title,
+        message: message,
+        course: course,
+        courseTitle: courseTitle,
+        ebookId: ebookId,
+        ebookTitle: ebookTitle,
+        isRead: isRead ?? this.isRead,
+        createdAt: createdAt,
+      );
+
   factory ApiNotification.fromJson(Map<String, dynamic> json) =>
       ApiNotification(
-        id: json['id'] as String,
+        id: json['id']?.toString() ?? '',
         notificationType: json['notification_type'] as String? ?? '',
         title: json['title'] as String? ?? '',
         message: json['message'] as String? ?? '',
         course: json['course'] as String?,
+        courseTitle: json['course_title'] as String?,
+        ebookId: json['ebook_id'] as String?,
+        ebookTitle: json['ebook_title'] as String?,
         isRead: json['is_read'] as bool? ?? false,
         createdAt: json['created_at'] != null
             ? DateTime.tryParse(json['created_at'] as String)

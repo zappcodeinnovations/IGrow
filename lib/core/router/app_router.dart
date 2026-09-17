@@ -19,6 +19,7 @@ import '../../features/community/screens/create_post_screen.dart';
 import '../../features/explore/screens/course_player_screen.dart';
 import '../../features/explore/screens/explore_screen.dart';
 import '../../features/instructor_dashboard/screens/instructor_uploads_screen.dart';
+import '../../features/instructor_dashboard/screens/instructor_analytics_screen.dart';
 import '../../features/instructor_dashboard/screens/qa_management_screen.dart';
 import '../../features/instructor_dashboard/screens/manage_course_screen.dart';
 import '../../features/instructor_dashboard/screens/instructor_kyc_screen.dart';
@@ -37,6 +38,9 @@ import '../../features/home_instructor/screens/instructor_chatbot_screen.dart';
 import '../../features/cart/screens/cart_screen.dart';
 import '../../features/cart/screens/checkout_screen.dart';
 import '../../features/cart/screens/orders_screen.dart';
+import '../../features/notifications/screens/notifications_screen.dart';
+import '../../features/wishlist/screens/wishlist_screen.dart';
+import '../../features/certificates/screens/certificates_screen.dart';
 import '../widgets/shell_scaffold.dart';
 import 'route_names.dart';
 
@@ -216,6 +220,26 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: RouteNames.createPost,
         builder: (context, state) => const CreatePostScreen(),
       ),
+      GoRoute(
+        path: RouteNames.notifications,
+        builder: (context, state) => const NotificationsScreen(),
+      ),
+      GoRoute(
+        path: RouteNames.wishlist,
+        builder: (context, state) => const WishlistScreen(),
+      ),
+      GoRoute(
+        path: '/wishlist',
+        builder: (context, state) => const WishlistScreen(),
+      ),
+      GoRoute(
+        path: RouteNames.certificates,
+        builder: (context, state) => const CertificatesScreen(),
+      ),
+      GoRoute(
+        path: '/certificates',
+        builder: (context, state) => const CertificatesScreen(),
+      ),
       
       // ─── Shell Router (Bottom Navigation) ────────────────────────────
       ShellRoute(
@@ -274,6 +298,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: RouteNames.instructorKyc,
             builder: (context, state) => const InstructorKycScreen(),
+          ),
+          GoRoute(
+            path: RouteNames.instructorAnalytics,
+            builder: (context, state) => const InstructorAnalyticsScreen(),
           ),
           GoRoute(
             path: '/instructor/qa',

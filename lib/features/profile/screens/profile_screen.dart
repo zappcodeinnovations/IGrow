@@ -294,6 +294,33 @@ class ProfileScreen extends ConsumerWidget {
                     ),
                   ],
                 ),
+                const SizedBox(height: 16),
+                _MenuSection(
+                  title: 'My Learning & Activity',
+                  items: [
+                    _MenuItem(
+                      icon: Icons.favorite_rounded,
+                      label: 'My Wishlist',
+                      onTap: () {
+                        context.push(RouteNames.wishlist);
+                      },
+                    ),
+                    _MenuItem(
+                      icon: Icons.receipt_long_rounded,
+                      label: 'Order History',
+                      onTap: () {
+                        context.push('/orders');
+                      },
+                    ),
+                    _MenuItem(
+                      icon: Icons.workspace_premium_rounded,
+                      label: 'My Certificates',
+                      onTap: () {
+                        context.push(RouteNames.certificates);
+                      },
+                    ),
+                  ],
+                ),
               ] else ...[
                 _MenuSection(
                   title: 'Basic Info',
