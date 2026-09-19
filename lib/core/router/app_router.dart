@@ -192,6 +192,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const CartScreen(),
       ),
       GoRoute(
+        path: RouteNames.cart,
+        builder: (context, state) => const CartScreen(),
+      ),
+
+      GoRoute(
         path: '/checkout',
         builder: (context, state) {
           final courseId = state.uri.queryParameters['courseId'];

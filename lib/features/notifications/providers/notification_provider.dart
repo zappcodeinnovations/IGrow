@@ -53,6 +53,21 @@ class NotificationsNotifier extends StateNotifier<AsyncValue<List<ApiNotificatio
     }
   }
 
+  Future<void> deleteNotification(String notificationId) async {
+    final currentList = state.value ?? [];
+    state = AsyncValue.data(
+      currentList.where((n) => n.id != notificationId).toList(),
+    );
+
+    try {
+      final repo = ref.read(notificationRepositoryProvider);
+      await repo.markAsRead(notificationId, isStudent: _isStudent);
+    } catch (e) {
+      debugPrint('⚠️ [NotificationsNotifier] deleteNotification error: $e');
+    }
+  }
+
+
   Future<void> markAllAsRead() async {
     final currentList = state.value ?? [];
     state = AsyncValue.data(

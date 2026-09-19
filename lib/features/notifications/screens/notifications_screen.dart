@@ -142,8 +142,9 @@ class NotificationsScreen extends ConsumerWidget {
                     child: const Icon(Icons.done_rounded, color: Colors.white),
                   ),
                   onDismissed: (_) {
-                    ref.read(notificationsProvider.notifier).markAsRead(item.id);
+                    ref.read(notificationsProvider.notifier).deleteNotification(item.id);
                   },
+
                   child: InkWell(
                     borderRadius: BorderRadius.circular(16),
                     onTap: () {

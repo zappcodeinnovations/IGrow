@@ -160,7 +160,189 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── Header Greeting & Top Action Icons ─────────────────────
+              // ── Top Brand App Bar (Agrilearn Web Header Actions) ──────────────
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // App Brand Logo
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryGreen,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(
+                          Icons.eco_rounded,
+                          color: Colors.white,
+                          size: 18,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'iGrow',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? AppColors.white : AppColors.primaryGreen,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  // Header Action Icons (Theme, Wishlist, Cart, Notifications, Profile)
+                  Row(
+                    children: [
+                      // Wishlist Heart Badge Button
+                      InkWell(
+                        onTap: () => context.push(RouteNames.wishlist),
+                        borderRadius: BorderRadius.circular(10),
+                        child: Padding(
+                          padding: const EdgeInsets.all(6),
+                          child: Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              Icon(
+                                Icons.favorite_border_rounded,
+                                size: 21,
+                                color: isDark ? AppColors.white : AppColors.inkDark,
+                              ),
+                              if (ref.watch(wishlistCountProvider) > 0)
+                                Positioned(
+                                  top: -4,
+                                  right: -5,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(2.5),
+                                    decoration: const BoxDecoration(
+                                      color: Colors.redAccent,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    constraints: const BoxConstraints(minWidth: 14, minHeight: 14),
+                                    child: Text(
+                                      '${ref.watch(wishlistCountProvider)}',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+
+                      // Shopping Cart Badge Button
+                      InkWell(
+                        onTap: () => context.push(RouteNames.cart),
+                        borderRadius: BorderRadius.circular(10),
+                        child: Padding(
+                          padding: const EdgeInsets.all(6),
+                          child: Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              Icon(
+                                Icons.shopping_cart_outlined,
+                                size: 21,
+                                color: isDark ? AppColors.white : AppColors.inkDark,
+                              ),
+                              if (cartItemCount > 0)
+                                Positioned(
+                                  top: -4,
+                                  right: -5,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(2.5),
+                                    decoration: const BoxDecoration(
+                                      color: AppColors.accentOrange,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    constraints: const BoxConstraints(minWidth: 14, minHeight: 14),
+                                    child: Text(
+                                      '$cartItemCount',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+
+                      // Notification Bell Badge Button
+                      InkWell(
+                        onTap: () => context.push(RouteNames.notifications),
+                        borderRadius: BorderRadius.circular(10),
+                        child: Padding(
+                          padding: const EdgeInsets.all(6),
+                          child: Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              Icon(
+                                Icons.notifications_outlined,
+                                size: 21,
+                                color: isDark ? AppColors.white : AppColors.inkDark,
+                              ),
+                              if (ref.watch(unreadNotificationsCountProvider) > 0)
+                                Positioned(
+                                  top: -2,
+                                  right: -2,
+                                  child: Container(
+                                    width: 8,
+                                    height: 8,
+                                    decoration: const BoxDecoration(
+                                      color: AppColors.accentOrange,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+
+                      // Profile Avatar Circle Button
+                      InkWell(
+                        onTap: () => context.push(RouteNames.farmerProfile),
+                        borderRadius: BorderRadius.circular(16),
+                        child: Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: AppColors.primaryGreen,
+                            border: Border.all(color: isDark ? AppColors.greenLight : AppColors.white, width: 1.5),
+                          ),
+                          child: Center(
+                            child: Text(
+                              firstName.isNotEmpty ? firstName[0].toUpperCase() : 'T',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+
+              // ── Header Greeting & Weather Row ───────────────────────────
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -196,7 +378,7 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                   ),
                   // Weather Chip
                   Container(
-                    margin: const EdgeInsets.only(right: 8),
+                    margin: const EdgeInsets.only(left: 6),
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
                       color: AppColors.skyBlue.withValues(alpha: 0.12),
@@ -228,48 +410,10 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                       ],
                     ),
                   ),
-                  // Notification bell
-                  InkWell(
-                    onTap: () => context.push(RouteNames.notifications),
-                    borderRadius: BorderRadius.circular(14),
-                    child: Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: isDark ? AppColors.cardDark : AppColors.white,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: isDark ? AppColors.lineDark : AppColors.lineLight,
-                        ),
-                      ),
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          Icon(
-                            Icons.notifications_outlined,
-                            color: isDark ? AppColors.white : AppColors.inkDark,
-                            size: 22,
-                          ),
-                          if (ref.watch(unreadNotificationsCountProvider) > 0)
-                            Positioned(
-                              top: 9,
-                              right: 9,
-                              child: Container(
-                                width: 8,
-                                height: 8,
-                                decoration: const BoxDecoration(
-                                  color: AppColors.accentOrange,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
                 ],
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 16),
+
 
               // ── Quick Navigation Action Buttons (Cart, Support, Browse Courses, Browse E-books) ──
               SingleChildScrollView(
