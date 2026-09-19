@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../../core/network/api_client.dart';
 import '../../core/network/token_storage.dart';
+import '../models/api_models/instructor_model.dart';
 
 /// Repository for student-specific operations.
 class StudentRepository {
@@ -376,5 +377,47 @@ class StudentRepository {
     } else {
       throw Exception('Failed to submit quiz: ${response.body}');
     }
+  }
+
+  // ── Instructors ─────────────────────────────────────────────────
+
+  /// Fetch Top Instructors for student home screen and verified faculty showcase.
+  Future<List<ApiTopInstructor>> getTopInstructors() async {
+    debugPrint('👨‍🏫 [StudentRepository] getTopInstructors: fetching top instructors');
+    try {
+      final token = await tokenStorage.getAccessToken();
+      final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/instructors/top/');
+      final response = await http.get(
+        uri,
+        headers: {
+          if (token != null) 'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      );
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final decoded = jsonDecode(response.body);
+        List list = [];
+        if (decoded is Map && decoded['results'] is List) {
+          list = decoded['results'] as List;
+        } else if (decoded is List) {
+          list = decoded;
+        }
+
+        if (list.isNotEmpty) {
+          final instructors = list
+              .whereType<Map>()
+              .map((item) => ApiTopInstructor.fromJson(Map<String, dynamic>.from(item)))
+              .toList();
+          debugPrint('✅ [StudentRepository] getTopInstructors SUCCESS: loaded ${instructors.length} instructors');
+          return instructors;
+        }
+      }
+      debugPrint('⚠️ [StudentRepository] getTopInstructors returned HTTP ${response.statusCode}, using verified faculty fallbacks');
+    } catch (e) {
+      debugPrint('❌ [StudentRepository] getTopInstructors error: $e, falling back to verified faculty');
+    }
+
+    return ApiTopInstructor.fallbacks;
   }
 }

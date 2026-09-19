@@ -109,7 +109,7 @@ class CheckoutSuccessScreen extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Text(
                       'Reference ID',
@@ -118,28 +118,43 @@ class CheckoutSuccessScreen extends ConsumerWidget {
                         color: isDark ? Colors.white70 : AppColors.inkSoft,
                       ),
                     ),
-                    InkWell(
-                      onTap: () {
-                        Clipboard.setData(ClipboardData(text: gatewayRef));
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Reference ID copied!')),
-                        );
-                      },
-                      child: Row(
-                        children: [
-                          Text(
-                            gatewayRef,
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
-                              color: isDark ? AppColors.greenLight : AppColors.primaryGreen,
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(6),
+                          onTap: () {
+                            Clipboard.setData(ClipboardData(text: gatewayRef));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Reference ID copied!')),
+                            );
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    gatewayRef,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                      color: isDark ? AppColors.greenLight : AppColors.primaryGreen,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Icon(Icons.copy,
+                                    size: 14,
+                                    color: isDark ? AppColors.greenLight : AppColors.primaryGreen),
+                              ],
                             ),
                           ),
-                          const SizedBox(width: 4),
-                          Icon(Icons.copy,
-                              size: 14,
-                              color: isDark ? AppColors.greenLight : AppColors.primaryGreen),
-                        ],
+                        ),
                       ),
                     ),
                   ],
@@ -158,6 +173,7 @@ class CheckoutSuccessScreen extends ConsumerWidget {
                 ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Text(
                       'Amount Paid',
@@ -167,12 +183,16 @@ class CheckoutSuccessScreen extends ConsumerWidget {
                         color: isDark ? Colors.white : AppColors.inkDark,
                       ),
                     ),
-                    Text(
-                      '₹${finalTotal.toStringAsFixed(2)}',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w900,
-                        color: isDark ? AppColors.greenLight : AppColors.primaryGreen,
+                    const SizedBox(width: 12),
+                    Flexible(
+                      child: Text(
+                        '₹${finalTotal.toStringAsFixed(2)}',
+                        textAlign: TextAlign.end,
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                          color: isDark ? AppColors.greenLight : AppColors.primaryGreen,
+                        ),
                       ),
                     ),
                   ],
@@ -208,49 +228,92 @@ class CheckoutSuccessScreen extends ConsumerWidget {
               courseId = item.course;
             }
 
-            return Card(
-              margin: const EdgeInsets.only(bottom: 10),
-              elevation: 0,
-              color: isDark ? const Color(0xFF1E2E23) : Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-                side: BorderSide(
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1E2E23) : Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
                   color: isDark ? const Color(0xFF334A3A) : AppColors.lineLight,
                   width: 1.2,
                 ),
               ),
-              child: ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryGreen.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryGreen.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(
+                          Icons.play_circle_filled,
+                          color: AppColors.primaryGreen,
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              title,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Lifetime Access • Verified Certificate',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: isDark ? Colors.white70 : AppColors.inkSoft,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                  child: const Icon(Icons.play_circle_filled,
-                      color: AppColors.primaryGreen),
-                ),
-                title: Text(title,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 14)),
-                subtitle: const Text('Lifetime Access • Verified Certificate',
-                    style: TextStyle(fontSize: 11)),
-                trailing: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryGreen,
-                    foregroundColor: Colors.white,
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primaryGreen,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        elevation: 0,
+                      ),
+                      icon: const Icon(Icons.play_arrow_rounded, size: 18),
+                      label: const Text(
+                        'Start Learning',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                      ),
+                      onPressed: () {
+                        if (courseId.isNotEmpty) {
+                          context.push('/player/$courseId');
+                        } else {
+                          context.go(RouteNames.farmerHome);
+                        }
+                      },
+                    ),
                   ),
-                  icon: const Icon(Icons.play_arrow, size: 16),
-                  label: const Text('Start Learning', style: TextStyle(fontSize: 12)),
-                  onPressed: () {
-                    if (courseId.isNotEmpty) {
-                      context.push('/player/$courseId');
-                    } else {
-                      context.go(RouteNames.farmerHome);
-                    }
-                  },
-                ),
+                ],
               ),
             );
           }),
@@ -313,18 +376,27 @@ class CheckoutSuccessScreen extends ConsumerWidget {
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label,
-              style: TextStyle(
-                fontSize: 12,
-                color: isDark ? Colors.white70 : AppColors.inkSoft,
-              )),
-          Text(value,
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: isDark ? Colors.white70 : AppColors.inkSoft,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
                 color: valueColor ?? (isDark ? Colors.white : AppColors.inkDark),
-              )),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -401,18 +473,26 @@ class CheckoutSuccessScreen extends ConsumerWidget {
               // Invoice Details Grid
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Billed To:',
-                          style: TextStyle(fontSize: 11, color: AppColors.inkSoft)),
-                      Text(studentName,
-                          style: const TextStyle(fontWeight: FontWeight.bold)),
-                      Text(studentEmail,
-                          style: const TextStyle(fontSize: 11)),
-                    ],
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Billed To:',
+                            style: TextStyle(fontSize: 11, color: AppColors.inkSoft)),
+                        Text(studentName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontWeight: FontWeight.bold)),
+                        Text(studentEmail,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 11)),
+                      ],
+                    ),
                   ),
+                  const SizedBox(width: 16),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [

@@ -39,6 +39,20 @@ final cartProvider = AsyncNotifierProvider<CartNotifier, ApiCart>(() {
   return CartNotifier();
 });
 
+/// Helper family provider to check if a specific course is currently in the cart.
+final isCourseInCartProvider = Provider.family<bool, String>((ref, courseIdOrSlug) {
+  final cartAsync = ref.watch(cartProvider);
+  return cartAsync.maybeWhen(
+    data: (cart) => cart.items.any((item) {
+      final matchesCourseId = item.course == courseIdOrSlug || item.id == courseIdOrSlug;
+      final matchesDetailId = item.courseDetail?['id']?.toString() == courseIdOrSlug;
+      final matchesDetailSlug = item.courseDetail?['slug']?.toString() == courseIdOrSlug;
+      return matchesCourseId || matchesDetailId || matchesDetailSlug;
+    }),
+    orElse: () => false,
+  );
+});
+
 class CartNotifier extends AsyncNotifier<ApiCart> {
   late CartRepository _repository;
 

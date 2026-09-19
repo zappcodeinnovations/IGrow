@@ -299,6 +299,13 @@ class ProfileScreen extends ConsumerWidget {
                   title: 'My Learning & Activity',
                   items: [
                     _MenuItem(
+                      icon: Icons.school_rounded,
+                      label: 'My Enrolled Courses',
+                      onTap: () {
+                        context.push(RouteNames.certificates);
+                      },
+                    ),
+                    _MenuItem(
                       icon: Icons.favorite_rounded,
                       label: 'My Wishlist',
                       onTap: () {

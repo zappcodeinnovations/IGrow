@@ -188,6 +188,15 @@ class InstructorRepository {
       if (rawResponse.statusCode >= 200 && rawResponse.statusCode < 300) {
         final data = jsonDecode(rawResponse.body) as Map<String, dynamic>;
         debugPrint('✅ [InstructorRepository] getCourseDetail SUCCESS: ${data['title']} (status=${data['status']}, sections=${(data['sections'] as List?)?.length ?? 0})');
+        // Log lecture video fields for debugging
+        final sections = data['sections'] as List? ?? [];
+        for (final section in sections) {
+          final lectures = (section as Map<String, dynamic>)['lectures'] as List? ?? [];
+          for (final lec in lectures) {
+            final l = lec as Map<String, dynamic>;
+            debugPrint('📹 [getCourseDetail] Lecture "${l['title']}": video_url=${l['video_url']}, bunny_video_id=${l['bunny_video_id']}, bunny_status=${l['bunny_status']}');
+          }
+        }
         return ApiCourseDetail.fromJson(data);
       }
       debugPrint('⚠️ [InstructorRepository] getCourseDetail raw HTTP (${rawResponse.statusCode}): ${rawResponse.body}');
@@ -202,16 +211,30 @@ class InstructorRepository {
   Future<Map<String, dynamic>> updateCourse(
       String courseId, Map<String, dynamic> updates) async {
     debugPrint('✏️ [InstructorRepository] updateCourse: courseId=$courseId, updates=$updates');
-    final response = await appApi.apiV1InstructorCoursesIdPatch(
-      id: courseId,
-      body: PatchedCourseCreateRequest.fromJson(updates),
-    );
-    if (!response.isSuccessful) {
-      debugPrint('❌ [InstructorRepository] updateCourse ERROR (${response.statusCode}): ${response.error}');
-      throw Exception('Failed to update course: ${response.error}');
+    final token = await tokenStorage.getAccessToken();
+    final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/instructor/courses/$courseId/');
+
+    final sanitized = Map<String, dynamic>.from(updates);
+    if (sanitized.containsKey('price') && sanitized['price'] != null) {
+      sanitized['price'] = sanitized['price'].toString();
     }
-    debugPrint('✅ [InstructorRepository] updateCourse SUCCESS: ${response.bodyString}');
-    return jsonDecode(response.bodyString) as Map<String, dynamic>;
+
+    final rawResponse = await http.patch(
+      uri,
+      headers: {
+        if (token != null) 'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode(sanitized),
+    );
+
+    if (rawResponse.statusCode < 200 || rawResponse.statusCode >= 300) {
+      debugPrint('❌ [InstructorRepository] updateCourse ERROR (${rawResponse.statusCode}): ${rawResponse.body}');
+      throw Exception('Failed to update course (${rawResponse.statusCode}): ${rawResponse.body}');
+    }
+    debugPrint('✅ [InstructorRepository] updateCourse SUCCESS: ${rawResponse.body}');
+    if (rawResponse.body.isEmpty) return {};
+    return jsonDecode(rawResponse.body) as Map<String, dynamic>;
   }
 
   /// Delete a course.

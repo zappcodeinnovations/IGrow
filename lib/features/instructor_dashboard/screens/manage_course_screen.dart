@@ -4,9 +4,12 @@ import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 
+import '../../../core/network/swagger_generated/app_api.swagger.dart'
+    show CertificateTemplate;
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/shimmer_placeholders.dart';
 import '../../../data/models/api_models/course_models.dart';
@@ -473,15 +476,19 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
       builder: (modalContext) {
         return StatefulBuilder(
           builder: (context, setModalState) {
-            return Padding(
-              padding: EdgeInsets.only(
-                left: 20,
-                right: 20,
-                top: 20,
-                bottom: MediaQuery.of(modalContext).viewInsets.bottom + 24,
-              ),
-              child: SingleChildScrollView(
-                child: Column(
+            return GestureDetector(
+              onTap: () => FocusScope.of(modalContext).unfocus(),
+              behavior: HitTestBehavior.translucent,
+              child: Padding(
+                padding: EdgeInsets.only(
+                  left: 20,
+                  right: 20,
+                  top: 20,
+                  bottom: MediaQuery.of(modalContext).viewInsets.bottom + 24,
+                ),
+                child: SingleChildScrollView(
+                  keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                  child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -593,6 +600,8 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                           ],
                           OutlinedButton.icon(
                             onPressed: () async {
+                              FocusScope.of(modalContext).unfocus();
+                              await Future.delayed(const Duration(milliseconds: 120));
                               final video = await _picker.pickVideo(source: ImageSource.gallery);
                               if (video != null) {
                                 final length = await video.length();
@@ -667,6 +676,8 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                           ],
                           OutlinedButton.icon(
                             onPressed: () async {
+                              FocusScope.of(modalContext).unfocus();
+                              await Future.delayed(const Duration(milliseconds: 120));
                               final result = await FilePicker.pickFiles(
                                 type: FileType.custom,
                                 allowedExtensions: ['pdf', 'docx', 'xlsx', 'doc', 'xls'],
@@ -743,11 +754,12 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                   ],
                 ),
               ),
-            );
-          },
-        );
-      },
-    );
+            ),
+          );
+        },
+      );
+    },
+  );
   }
 
   Future<void> _saveLectureWithMedia({
@@ -1026,6 +1038,8 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
   // ── Certificates Actions ────────────────────────────────────────────────────
 
   Future<void> _uploadCertificateTemplate() async {
+    FocusManager.instance.primaryFocus?.unfocus();
+    await Future.delayed(const Duration(milliseconds: 120));
     final result = await FilePicker.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
@@ -1112,12 +1126,14 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
     debugPrint('⚙️ [CURRICULUM BUILDER] Saving settings: title="$title", price=$price');
 
     try {
+      FocusScope.of(context).unfocus();
       await ref.read(instructorRepositoryProvider).updateCourse(course.id, {
         'title': title,
-        'price': price,
+        'price': priceStr,
       });
       _showFeedback('Course settings updated successfully!');
       ref.invalidate(instructorCourseDetailProvider(widget.courseId));
+      ref.invalidate(instructorCoursesProvider);
     } catch (e) {
       final errorMsg = _extractErrorMessage(e);
       debugPrint('❌ [CURRICULUM BUILDER] Save settings failed: $errorMsg');
@@ -1169,6 +1185,21 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
             ],
           ),
           actions: [
+            if (course.status == 'APPROVED' || course.status == 'ACTIVE')
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.primaryGreen,
+                    side: const BorderSide(color: AppColors.primaryGreen),
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    minimumSize: const Size(0, 36),
+                  ),
+                  onPressed: () => context.push('/farmer/course/${course.slug ?? course.id}'),
+                  icon: const Icon(Icons.visibility_outlined, size: 16),
+                  label: const Text('View Live', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                ),
+              ),
             if (!isLocked && (course.status == 'DRAFT' || course.status == 'REJECTED'))
               Padding(
                 padding: const EdgeInsets.only(right: 8),
@@ -1178,8 +1209,8 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                   ),
                   onPressed: () => _submitForReview(course),
-                  icon: const Icon(Icons.rocket_launch, size: 16),
-                  label: const Text('Publish', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                  icon: const Icon(Icons.auto_awesome_rounded, size: 16),
+                  label: const Text('Submit for AI Review', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
                 ),
               ),
           ],
@@ -1253,6 +1284,7 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
   // ── Curriculum Tab ──────────────────────────────────────────────────────────
 
   Widget _buildCurriculumTab(ApiCourseDetail course, bool isLocked) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return RefreshIndicator(
       color: AppColors.primaryGreen,
       onRefresh: () async {
@@ -1271,22 +1303,48 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: AppColors.warning.withValues(alpha: 0.1),
-                border: Border.all(color: AppColors.warning),
+                color: isDark ? AppColors.warning.withValues(alpha: 0.12) : const Color(0xFFFFF8E1),
+                border: Border.all(color: AppColors.warning.withValues(alpha: 0.5)),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Row(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.warning),
+                  Container(
+                    padding: const EdgeInsets.all(7),
+                    decoration: BoxDecoration(
+                      color: AppColors.warning.withValues(alpha: 0.2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.hourglass_top_rounded,
+                      color: AppColors.warning,
+                      size: 18,
+                    ),
                   ),
-                  SizedBox(width: 14),
+                  const SizedBox(width: 12),
                   Expanded(
-                    child: Text(
-                      'AI Moderation in Progress (Locked): Editing is disabled while our content safety engine reviews your course. This page will auto-refresh when review completes.',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF8A5B00)),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'AI Moderation in Progress (Locked)',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? const Color(0xFFFFB74D) : const Color(0xFF8A5B00),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Editing is disabled while our content safety engine reviews your course. This page automatically checks status and will refresh when the review completes.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            height: 1.35,
+                            color: isDark ? Colors.white70 : const Color(0xFF5D4037),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -1459,15 +1517,36 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
             ],
           ),
           const SizedBox(height: 8),
-          Row(
+          Wrap(
+            spacing: 12,
+            runSpacing: 6,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               _buildStatChip(Icons.folder_outlined, '${course.sections.length} Sections'),
-              const SizedBox(width: 12),
               _buildStatChip(Icons.play_lesson_outlined, '$totalLectures Lectures'),
-              if (course.price != null) ...[
-                const SizedBox(width: 12),
+              if (course.price != null)
                 _buildStatChip(Icons.currency_rupee, course.price == '0' || course.price == '0.00' ? 'Free' : '₹${course.price}'),
-              ],
+              if (course.status == 'APPROVED' || course.status == 'ACTIVE')
+                InkWell(
+                  onTap: () => context.push('/farmer/course/${course.slug ?? course.id}'),
+                  borderRadius: BorderRadius.circular(6),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryGreen.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: AppColors.primaryGreen.withValues(alpha: 0.4)),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.visibility_outlined, size: 13, color: AppColors.primaryGreen),
+                        SizedBox(width: 4),
+                        Text('View Live', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primaryGreen)),
+                      ],
+                    ),
+                  ),
+                ),
             ],
           ),
         ],
@@ -1476,25 +1555,35 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
   }
 
   Widget _buildStatChip(IconData icon, String text) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 14, color: Colors.grey.shade600),
+        Icon(icon, size: 14, color: isDark ? Colors.grey.shade400 : Colors.grey.shade600),
         const SizedBox(width: 4),
-        Text(text, style: TextStyle(fontSize: 12, color: Colors.grey.shade700, fontWeight: FontWeight.w500)),
+        Text(
+          text,
+          style: TextStyle(
+            fontSize: 12,
+            color: isDark ? Colors.grey.shade300 : Colors.grey.shade700,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
       ],
     );
   }
 
   Widget _buildSectionCard(ApiCourseSection section, int sectionIndex, bool isLocked) {
     final isExpanded = _sectionExpanded[section.id] ?? true;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 14),
       elevation: 0,
+      color: isDark ? AppColors.cardDark : Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
-        side: BorderSide(color: Colors.grey.shade200),
+        side: BorderSide(color: isDark ? AppColors.lineDark : Colors.grey.shade200),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1510,7 +1599,7 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
-                color: Colors.grey.shade50,
+                color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade50,
                 borderRadius: BorderRadius.vertical(top: const Radius.circular(14), bottom: Radius.circular(isExpanded ? 0 : 14)),
               ),
               child: Row(
@@ -1533,12 +1622,16 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                       children: [
                         Text(
                           section.title,
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            color: isDark ? Colors.white : Colors.black87,
+                          ),
                         ),
                         if (section.description != null && section.description!.isNotEmpty)
                           Text(
                             section.description!,
-                            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                            style: TextStyle(fontSize: 12, color: isDark ? Colors.grey.shade400 : Colors.grey.shade600),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -1547,11 +1640,11 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                   ),
                   Text(
                     '${section.lectures.length} lec',
-                    style: TextStyle(fontSize: 11, color: Colors.grey.shade500, fontWeight: FontWeight.w600),
+                    style: TextStyle(fontSize: 11, color: isDark ? Colors.grey.shade400 : Colors.grey.shade500, fontWeight: FontWeight.w600),
                   ),
                   if (!isLocked) ...[
                     PopupMenuButton<String>(
-                      icon: const Icon(Icons.more_vert, size: 20, color: Colors.grey),
+                      icon: Icon(Icons.more_vert, size: 20, color: isDark ? Colors.grey.shade400 : Colors.grey),
                       onSelected: (value) {
                         if (value == 'edit') _editSection(context, section);
                         if (value == 'delete') _deleteSection(context, section.id);
@@ -1566,7 +1659,7 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                   ],
                   Icon(
                     isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-                    color: Colors.grey.shade600,
+                    color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
                   ),
                 ],
               ),
@@ -1575,7 +1668,7 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
 
           // Section Content (Lectures)
           if (isExpanded) ...[
-            const Divider(height: 1),
+            Divider(height: 1, color: isDark ? AppColors.lineDark : Colors.grey.shade200),
             if (section.lectures.isEmpty)
               Padding(
                 padding: const EdgeInsets.all(16),
@@ -1604,14 +1697,14 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: section.lectures.length,
-                separatorBuilder: (_, __) => Divider(height: 1, color: Colors.grey.shade100),
+                separatorBuilder: (_, __) => Divider(height: 1, color: isDark ? AppColors.lineDark : Colors.grey.shade100),
                 itemBuilder: (context, lIdx) {
                   final lecture = section.lectures[lIdx];
                   return _buildLectureTile(section, lecture, lIdx + 1, isLocked);
                 },
               ),
               if (!isLocked) ...[
-                const Divider(height: 1),
+                Divider(height: 1, color: isDark ? AppColors.lineDark : Colors.grey.shade200),
                 InkWell(
                   onTap: () => _showLectureBottomSheet(context, sectionId: section.id),
                   child: const Padding(
@@ -1638,8 +1731,10 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
   }
 
   Widget _buildLectureTile(ApiCourseSection section, ApiLecture lecture, int lectureIndex, bool isLocked) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final hasVideo = (lecture.videoUrl != null && lecture.videoUrl!.isNotEmpty) ||
-        (lecture.bunnyVideoId != null && lecture.bunnyVideoId!.isNotEmpty);
+        (lecture.bunnyVideoId != null && lecture.bunnyVideoId!.isNotEmpty) ||
+        (lecture.bunnyStatus != null && lecture.bunnyStatus! >= 1);
     final hasResources = lecture.resources.isNotEmpty;
 
     return Padding(
@@ -1653,12 +1748,16 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
             height: 24,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: Colors.grey.shade100,
+              color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.grey.shade100,
               shape: BoxShape.circle,
             ),
             child: Text(
               '$lectureIndex',
-              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey.shade700),
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: isDark ? Colors.white70 : Colors.grey.shade700,
+              ),
             ),
           ),
           const SizedBox(width: 12),
@@ -1673,7 +1772,11 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                     Expanded(
                       child: Text(
                         lecture.title,
-                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                          color: isDark ? Colors.white : Colors.black87,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -1781,10 +1884,32 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
         certificatesAsync.when(
           data: (templates) {
             if (templates.isNotEmpty) {
-              final template = templates.first;
-              final certId = template['id']?.toString() ?? '';
-              final title = template['title']?.toString() ?? 'Certificate of Completion';
-              final createdAt = template['created_at']?.toString() ?? '';
+              final dynamic template = templates.first;
+              String certId = '';
+              String title = 'Certificate of Completion';
+              String createdAt = '';
+              String? imageUrl;
+
+              if (template is CertificateTemplate) {
+                certId = template.id ?? '';
+                title = (template.title != null && template.title!.isNotEmpty)
+                    ? template.title!
+                    : 'Certificate of Completion';
+                createdAt = template.createdAt?.toIso8601String() ?? '';
+                imageUrl = template.templateImage;
+              } else if (template is Map) {
+                certId = template['id']?.toString() ?? '';
+                title = template['title']?.toString() ?? 'Certificate of Completion';
+                createdAt = template['created_at']?.toString() ?? '';
+                imageUrl = template['template_image']?.toString();
+              } else {
+                try {
+                  certId = (template as dynamic).id?.toString() ?? '';
+                  title = (template as dynamic).title?.toString() ?? 'Certificate of Completion';
+                  createdAt = (template as dynamic).createdAt?.toString() ?? '';
+                  imageUrl = (template as dynamic).templateImage?.toString();
+                } catch (_) {}
+              }
 
               return Container(
                 padding: const EdgeInsets.all(16),
@@ -1795,15 +1920,37 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                 ),
                 child: Row(
                   children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryGreen.withValues(alpha: 0.15),
-                        shape: BoxShape.circle,
+                    if (imageUrl != null &&
+                        imageUrl.isNotEmpty &&
+                        !imageUrl.toLowerCase().endsWith('.pdf'))
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.network(
+                          imageUrl,
+                          width: 48,
+                          height: 48,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: AppColors.primaryGreen.withValues(alpha: 0.15),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.verified, color: AppColors.primaryGreen, size: 26),
+                          ),
+                        ),
+                      )
+                    else
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryGreen.withValues(alpha: 0.15),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.verified, color: AppColors.primaryGreen, size: 26),
                       ),
-                      child: const Icon(Icons.verified, color: AppColors.primaryGreen, size: 26),
-                    ),
                     const SizedBox(width: 14),
                     Expanded(
                       child: Column(
@@ -1813,7 +1960,7 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                           if (createdAt.isNotEmpty) ...[
                             const SizedBox(height: 4),
                             Text(
-                              'Uploaded: ${createdAt.substring(0, 10)}',
+                              'Uploaded: ${createdAt.length >= 10 ? createdAt.substring(0, 10) : createdAt}',
                               style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
                             ),
                           ],

@@ -255,7 +255,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: RouteNames.explore,
-            builder: (context, state) => const ExploreScreen(),
+            builder: (context, state) {
+              final search = state.uri.queryParameters['search'];
+              return ExploreScreen(initialSearch: search);
+            },
           ),
           GoRoute(
             path: RouteNames.farmerCommunity,

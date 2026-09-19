@@ -1,20 +1,32 @@
 import 'dart:io';
+
 import 'package:chewie/chewie.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:video_player/video_player.dart';
-
 import 'package:intl/intl.dart';
+import 'package:video_player/video_player.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/shimmer_placeholders.dart';
+import '../../../data/models/api_models/course_models.dart';
 import '../../../data/models/api_models/wishlist_model.dart';
+import '../../../data/models/user_role.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../../cart/providers/cart_provider.dart';
+import '../../home_farmer/providers/student_provider.dart';
 import '../../wishlist/providers/wishlist_provider.dart';
 import '../providers/explore_provider.dart';
 import '../widgets/course_review_modal.dart';
 
+/// Agrilearn Live Course View (Public Landing & Details Screen)
+/// Matches Agrilearn website layout:
+/// - Deep green canopy Hero Header with category, title, metrics, instructor
+/// - Responsive Floating / Sidebar Purchase Card with video preview overlay
+/// - "What you'll learn" card with checkmarks
+/// - "Course Content" accordion with section & lecture preview playback
+/// - "Description" & "Student Feedback"
+/// - Role-based guard: only students can purchase/enroll in courses
 class CourseDetailsScreen extends ConsumerStatefulWidget {
   const CourseDetailsScreen({super.key, required this.courseId});
 
@@ -27,53 +39,263 @@ class CourseDetailsScreen extends ConsumerStatefulWidget {
 class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
   VideoPlayerController? _videoPlayerController;
   ChewieController? _chewieController;
+  String? _activeVideoUrl;
+  bool _isPlayingVideo = false;
+  bool _isAddingToCart = false;
 
-  @override
-  void initState() {
-    super.initState();
-  }
-
-  void _initializePlayer(String videoUrl) async {
-    if (_videoPlayerController != null) return; // Already initializing or initialized
-    
-    if (videoUrl.startsWith('http')) {
-      _videoPlayerController = VideoPlayerController.networkUrl(Uri.parse(videoUrl));
-    } else {
-      _videoPlayerController = VideoPlayerController.file(File(videoUrl));
-    }
-    await _videoPlayerController!.initialize();
-
-    _chewieController = ChewieController(
-      videoPlayerController: _videoPlayerController!,
-      autoPlay: false,
-      looping: true,
-      allowFullScreen: true,
-      showControls: true,
-      materialProgressColors: ChewieProgressColors(
-        playedColor: AppColors.primaryGreen,
-        handleColor: AppColors.primaryGreen,
-        backgroundColor: AppColors.lineLight,
-        bufferedColor: AppColors.canopyStart,
-      ),
-      placeholder: Container(
-        color: Colors.black,
-        child: const Center(
-          child: CircularProgressIndicator(color: AppColors.primaryGreen),
-        ),
-      ),
-    );
-
-    if (mounted) {
-      setState(() {});
-    }
-  }
+  // Track expanded state for sections
+  final Map<String, bool> _sectionExpanded = {};
 
   @override
   void dispose() {
-    _videoPlayerController?.dispose();
     _chewieController?.dispose();
+    _videoPlayerController?.dispose();
     super.dispose();
   }
+
+  Future<void> _initializePlayer(String videoUrl, {bool autoPlay = false}) async {
+    if (_activeVideoUrl == videoUrl && _videoPlayerController != null) {
+      if (autoPlay && !_videoPlayerController!.value.isPlaying) {
+        _videoPlayerController!.play();
+        setState(() => _isPlayingVideo = true);
+      }
+      return;
+    }
+
+    _activeVideoUrl = videoUrl;
+
+    final oldChewie = _chewieController;
+    final oldPlayer = _videoPlayerController;
+    _chewieController = null;
+    _videoPlayerController = null;
+    oldChewie?.dispose();
+    oldPlayer?.dispose();
+
+    try {
+      if (videoUrl.startsWith('http')) {
+        _videoPlayerController = VideoPlayerController.networkUrl(Uri.parse(videoUrl));
+      } else {
+        _videoPlayerController = VideoPlayerController.file(File(videoUrl));
+      }
+      await _videoPlayerController!.initialize();
+
+      if (!mounted) return;
+
+      _chewieController = ChewieController(
+        videoPlayerController: _videoPlayerController!,
+        autoPlay: autoPlay,
+        looping: false,
+        allowFullScreen: true,
+        showControls: true,
+        materialProgressColors: ChewieProgressColors(
+          playedColor: AppColors.primaryGreen,
+          handleColor: AppColors.primaryGreen,
+          backgroundColor: AppColors.lineLight,
+          bufferedColor: AppColors.canopyStart,
+        ),
+        placeholder: Container(
+          color: Colors.black,
+          child: const Center(
+            child: CircularProgressIndicator(color: AppColors.primaryGreen),
+          ),
+        ),
+      );
+
+      setState(() {
+        if (autoPlay) _isPlayingVideo = true;
+      });
+    } catch (e) {
+      debugPrint('❌ [COURSE DETAILS] Error initializing video player: $e');
+    }
+  }
+
+  // ── Role Guard: Student-Only Purchase ─────────────────────────────────────
+
+  void _showStudentOnlyDialog(BuildContext context) {
+    final user = ref.read(authProvider).user;
+    final canSwitchToFarmer = user != null && user.grantedRoles.contains(UserRole.farmer);
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        icon: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: AppColors.warning.withValues(alpha: 0.15),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(Icons.school_outlined, color: AppColors.warning, size: 32),
+        ),
+        title: const Text(
+          'Student Only Action',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+          textAlign: TextAlign.center,
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Sirf student hi is course ko buy kar sakta hai.\n\nInstructors cannot purchase courses. Please switch to your Farmer / Student profile to enroll.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 13.5, height: 1.4),
+            ),
+            if (canSwitchToFarmer) ...[
+              const SizedBox(height: 14),
+              const Text(
+                'Aapke account me Student role available hai. Kya aap switch karna chahte hain?',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+            ],
+          ],
+        ),
+        actionsAlignment: MainAxisAlignment.center,
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx),
+            child: const Text('Cancel'),
+          ),
+          if (canSwitchToFarmer)
+            FilledButton.icon(
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primaryGreen,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              icon: const Icon(Icons.swap_horiz, size: 18),
+              label: const Text('Switch to Student'),
+              onPressed: () async {
+                Navigator.pop(dialogCtx);
+                try {
+                  await ref.read(authProvider.notifier).switchRole(UserRole.farmer);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Switched to Student / Farmer mode! Now you can enroll.'),
+                        backgroundColor: AppColors.primaryGreen,
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Failed to switch role: $e'), backgroundColor: AppColors.error),
+                    );
+                  }
+                }
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _handleAddToCart(BuildContext context, ApiCourseDetail course) async {
+    final user = ref.read(authProvider).user;
+    if (user != null && user.activeRole != UserRole.farmer) {
+      _showStudentOnlyDialog(context);
+      return;
+    }
+
+    setState(() => _isAddingToCart = true);
+    debugPrint('🛒 [CourseDetails] Adding course to cart: ${course.title} (ID: ${widget.courseId})');
+
+    try {
+      await ref.read(cartProvider.notifier).addToCart(widget.courseId);
+      debugPrint('✅ [CourseDetails] Added course to cart SUCCESS: ${course.title}');
+      if (context.mounted) {
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.clearSnackBars();
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('Added to cart! 🛒'),
+            duration: Duration(milliseconds: 2000),
+            backgroundColor: AppColors.primaryGreen,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('❌ [CourseDetails] Add to cart ERROR: $e');
+      final errMsg = e.toString().replaceAll('Exception: ', '');
+      if (context.mounted) {
+        if (errMsg.toLowerCase().contains('already enrolled') ||
+            errMsg.toLowerCase().contains('already purchased')) {
+          ref.invalidate(studentEnrollmentsProvider);
+          final messenger = ScaffoldMessenger.of(context);
+          messenger.clearSnackBars();
+          messenger.showSnackBar(
+            const SnackBar(
+              content: Text('You are already enrolled in this course! Tap Start Learning to begin. 🎓'),
+              backgroundColor: AppColors.primaryGreen,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        } else if (errMsg.toLowerCase().contains('only student') ||
+            (errMsg.toLowerCase().contains('student') && errMsg.toLowerCase().contains('buy'))) {
+          _showStudentOnlyDialog(context);
+        } else {
+          final messenger = ScaffoldMessenger.of(context);
+          messenger.clearSnackBars();
+          messenger.showSnackBar(
+            SnackBar(content: Text(errMsg), backgroundColor: AppColors.error),
+          );
+        }
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isAddingToCart = false);
+      }
+    }
+  }
+
+  void _handleBuyNow(BuildContext context, ApiCourseDetail course) {
+    final user = ref.read(authProvider).user;
+    if (user != null && user.activeRole != UserRole.farmer) {
+      _showStudentOnlyDialog(context);
+      return;
+    }
+
+    context.push('/checkout?courseId=${widget.courseId}');
+  }
+
+  Future<void> _toggleWishlist(ApiCourseDetail course) async {
+    try {
+      final preview = ApiWishlistItem(
+        id: '',
+        targetId: widget.courseId,
+        type: 'course',
+        title: course.title,
+        slug: course.slug ?? '',
+        thumbnail: course.thumbnail,
+        price: course.price ?? '0.00',
+        category: course.categoryDisplay ?? course.category ?? 'General',
+        rating: 4.8,
+      );
+      final inWishlist = await ref
+          .read(wishlistProvider.notifier)
+          .toggleCourse(widget.courseId, previewItem: preview);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(inWishlist ? 'Added to wishlist! ❤️' : 'Removed from wishlist'),
+            duration: const Duration(milliseconds: 1800),
+            backgroundColor: inWishlist ? AppColors.primaryGreen : AppColors.inkDark,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  // ── Build Screen ────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -81,69 +303,40 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
     final courseAsync = ref.watch(courseDetailProvider(widget.courseId));
 
     return Scaffold(
+      backgroundColor: isDark ? AppColors.bgDark : const Color(0xFFF9FBF8),
       appBar: AppBar(
-        title: const Text('Course Details'),
+        backgroundColor: isDark ? AppColors.bgDark : const Color(0xFF0F3D1F),
+        foregroundColor: Colors.white,
+        elevation: 0,
+        title: courseAsync.maybeWhen(
+          data: (course) => Text(
+            course.title,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: Colors.white),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          orElse: () => const Text('Course Details', style: TextStyle(color: Colors.white)),
+        ),
         actions: [
-          Consumer(
-            builder: (context, ref, _) {
+          courseAsync.maybeWhen(
+            data: (course) {
               final isSaved = ref.watch(isWishlistedProvider(widget.courseId));
               return IconButton(
                 icon: Icon(
                   isSaved ? Icons.favorite : Icons.favorite_border,
-                  color: isSaved ? Colors.redAccent : null,
+                  color: isSaved ? Colors.redAccent : Colors.white,
                 ),
                 tooltip: isSaved ? 'Remove from Wishlist' : 'Add to Wishlist',
-                onPressed: () async {
-                  try {
-                    final course = courseAsync.value;
-                    final preview = course != null
-                        ? ApiWishlistItem(
-                            id: '',
-                            targetId: widget.courseId,
-                            type: 'course',
-                            title: course.title,
-                            slug: course.slug ?? '',
-                            thumbnail: course.thumbnail,
-                            price: course.price ?? '0.00',
-                            category: course.categoryDisplay ?? course.category ?? 'General',
-                            rating: 4.8,
-                          )
-                        : null;
-                    final inWishlist = await ref
-                        .read(wishlistProvider.notifier)
-                        .toggleCourse(widget.courseId, previewItem: preview);
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(inWishlist
-                              ? 'Added to wishlist! ❤️'
-                              : 'Removed from wishlist'),
-                          duration: const Duration(milliseconds: 1800),
-                          backgroundColor: inWishlist
-                              ? AppColors.primaryGreen
-                              : AppColors.inkDark,
-                        ),
-                      );
-                    }
-                  } catch (e) {
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(e.toString().replaceAll('Exception: ', '')),
-                          backgroundColor: AppColors.error,
-                        ),
-                      );
-                    }
-                  }
-                },
+                onPressed: () => _toggleWishlist(course),
               );
             },
+            orElse: () => const SizedBox.shrink(),
           ),
         ],
       ),
       body: courseAsync.when(
         data: (course) {
-          // Find first available video URL
+          // Find first available preview video URL
           String? videoUrl = course.previewVideoUrl;
           if (videoUrl == null || videoUrl.isEmpty) {
             for (var section in course.sections) {
@@ -156,143 +349,242 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
               if (videoUrl != null && videoUrl.isNotEmpty) break;
             }
           }
-          
-          if (videoUrl != null && videoUrl.isNotEmpty) {
-            _initializePlayer(videoUrl);
-          }
 
-          return _buildContent(context, isDark, 
-            title: course.title,
-            slug: course.slug ?? widget.courseId,
-            description: course.shortDescription ?? course.description ?? 'No description available.',
-            price: course.price == '0.00' ? 'Free' : '₹${course.price}',
-            instructor: course.instructorName ?? 'Unknown Instructor',
-            hasVideo: videoUrl != null && videoUrl.isNotEmpty,
-            isEnrolled: course.isEnrolled == true,
+          final totalLectures = course.sections.fold<int>(0, (sum, s) => sum + s.lectures.length);
+          final isEnrolledInList = ref.watch(isCourseEnrolledProvider(widget.courseId)) ||
+              (course.slug != null && ref.watch(isCourseEnrolledProvider(course.slug!)));
+          final isEnrolled = (course.isEnrolled == true || course.isEnrolled == 1 || course.isEnrolled == 'true') || isEnrolledInList;
+
+          return LayoutBuilder(
+            builder: (context, constraints) {
+              final isWide = constraints.maxWidth >= 900;
+
+              if (isWide) {
+                // Desktop / Tablet 2-column layout matching Agrilearn website
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 3,
+                      child: SingleChildScrollView(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildHeroHeader(course, totalLectures),
+                            Padding(
+                              padding: const EdgeInsets.all(24),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _buildWhatYouLearnCard(course, isDark),
+                                  const SizedBox(height: 24),
+                                  _buildCourseContent(course, isDark, isEnrolled),
+                                  const SizedBox(height: 24),
+                                  _buildDescriptionSection(course, isDark),
+                                  const SizedBox(height: 24),
+                                  _buildFeedbackSection(context, course, isDark, isEnrolled),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 24),
+                    SizedBox(
+                      width: 380,
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.only(top: 24, right: 24, bottom: 40),
+                        child: _buildPurchaseCard(context, course, isDark, isEnrolled, previewVideoUrl: videoUrl),
+                      ),
+                    ),
+                  ],
+                );
+              }
+
+              // Mobile Layout
+              return ListView(
+                padding: EdgeInsets.zero,
+                children: [
+                  _buildHeroHeader(course, totalLectures),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 90),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildPurchaseCard(context, course, isDark, isEnrolled, previewVideoUrl: videoUrl),
+                        const SizedBox(height: 20),
+                        _buildWhatYouLearnCard(course, isDark),
+                        const SizedBox(height: 20),
+                        _buildCourseContent(course, isDark, isEnrolled),
+                        const SizedBox(height: 20),
+                        _buildDescriptionSection(course, isDark),
+                        const SizedBox(height: 20),
+                        _buildFeedbackSection(context, course, isDark, isEnrolled),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
           );
         },
-        loading: () => Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const ShimmerContainer(width: double.infinity, height: 250, borderRadius: 0),
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const ShimmerContainer(width: 100, height: 24),
-                  const SizedBox(height: 12),
-                  const ShimmerContainer(width: 250, height: 28),
-                  const SizedBox(height: 8),
-                  const ShimmerContainer(width: 150, height: 16),
-                  const SizedBox(height: 16),
-                  const ShimmerContainer(width: double.infinity, height: 40),
-                  const Divider(height: 40),
-                  const ShimmerContainer(width: 150, height: 24),
-                  const SizedBox(height: 12),
-                  const ShimmerContainer(width: double.infinity, height: 100),
-                ],
-              ),
-            ),
+        loading: () => ListView(
+          padding: const EdgeInsets.all(20),
+          children: const [
+            ShimmerContainer(width: double.infinity, height: 220, borderRadius: 16),
+            SizedBox(height: 16),
+            ShimmerContainer(width: 120, height: 24),
+            SizedBox(height: 12),
+            ShimmerContainer(width: 260, height: 28),
+            SizedBox(height: 8),
+            ShimmerContainer(width: double.infinity, height: 120, borderRadius: 12),
           ],
         ),
-        error: (err, _) {
-          return Center(child: Text('Error: $err'));
-        },
+        error: (err, _) => Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error_outline, size: 48, color: AppColors.error),
+                const SizedBox(height: 12),
+                Text('Failed to load course details: $err', textAlign: TextAlign.center),
+                const SizedBox(height: 16),
+                FilledButton(
+                  style: FilledButton.styleFrom(backgroundColor: AppColors.primaryGreen),
+                  onPressed: () => ref.invalidate(courseDetailProvider(widget.courseId)),
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
       bottomNavigationBar: courseAsync.maybeWhen(
         data: (course) {
-          final isEnrolled = course.isEnrolled == true;
-          return SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: isEnrolled
-                  ? SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primaryGreen,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        icon: const Icon(Icons.play_circle_filled),
-                        label: const Text(
-                          'Start Learning (Enrolled)',
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 15),
-                        ),
-                        onPressed: () =>
-                            context.push('/player/${widget.courseId}'),
+          final isEnrolledInList = ref.watch(isCourseEnrolledProvider(widget.courseId)) ||
+              (course.slug != null && ref.watch(isCourseEnrolledProvider(course.slug!)));
+          final isEnrolled = (course.isEnrolled == true || course.isEnrolled == 1 || course.isEnrolled == 'true') || isEnrolledInList;
+          if (isEnrolled) {
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primaryGreen,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  icon: const Icon(Icons.play_circle_filled),
+                  label: const Text(
+                    'Start Learning (Enrolled)',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                  ),
+                  onPressed: () => context.push('/player/${course.slug ?? widget.courseId}'),
+                ),
+              ),
+            );
+          }
+
+          final inCart = ref.watch(isCourseInCartProvider(widget.courseId)) ||
+                         (course.slug != null && ref.watch(isCourseInCartProvider(course.slug!)));
+          final priceText = course.price == null || course.price == '0' || course.price == '0.00' ? 'Free' : '₹${course.price}';
+
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.cardDark : Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 10,
+                  offset: const Offset(0, -3),
+                ),
+              ],
+              border: Border(top: BorderSide(color: isDark ? AppColors.lineDark : Colors.grey.shade200)),
+            ),
+            child: SafeArea(
+              child: Row(
+                children: [
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Total Price',
+                        style: TextStyle(fontSize: 11, color: isDark ? Colors.grey.shade400 : Colors.grey.shade600),
                       ),
-                    )
-                  : Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            onPressed: () async {
-                              try {
-                                await ref
-                                    .read(cartProvider.notifier)
-                                    .addToCart(widget.courseId);
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Course added to cart! 🛒'),
-                                      duration: Duration(milliseconds: 1800),
-                                      backgroundColor: AppColors.primaryGreen,
-                                    ),
-                                  );
-                                }
-                              } catch (e) {
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(e
-                                          .toString()
-                                          .replaceAll("Exception: ", "")),
-                                      duration:
-                                          const Duration(milliseconds: 2000),
-                                    ),
-                                  );
-                                }
-                              }
-                            },
-                            icon: const Icon(Icons.add_shopping_cart),
-                            label: const Text('Add to Cart'),
-                          ),
+                      Text(
+                        priceText,
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? Colors.white : AppColors.inkDark,
                         ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: () {
-                              context.push(
-                                  '/checkout?courseId=${widget.courseId}');
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primaryGreen,
-                              foregroundColor: AppColors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: inCart
+                        ? FilledButton.icon(
+                            style: FilledButton.styleFrom(
+                              backgroundColor: const Color(0xFFC88528), // Golden-orange matching Screenshot 5
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 13),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                            onPressed: () => context.push('/cart'),
+                            icon: const Icon(Icons.shopping_cart_outlined, size: 18),
+                            label: const Text(
+                              'Go to Cart',
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                            ),
+                          )
+                        : Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton(
+                                  style: OutlinedButton.styleFrom(
+                                    side: const BorderSide(color: Color(0xFF1B4D2E), width: 1.5),
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                  ),
+                                  onPressed: _isAddingToCart ? null : () => _handleAddToCart(context, course),
+                                  child: _isAddingToCart
+                                      ? const SizedBox(
+                                          width: 16,
+                                          height: 16,
+                                          child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF1B4D2E)),
+                                        )
+                                      : const Text(
+                                          'Add to Cart',
+                                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1B4D2E)),
+                                        ),
+                                ),
                               ),
-                            ),
-                            child: const Text(
-                              'Buy Now',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: FilledButton(
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: const Color(0xFF1B4D2E),
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                  ),
+                                  onPressed: () => _handleBuyNow(context, course),
+                                  child: const Text(
+                                    'Buy Now',
+                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                      ],
-                    ),
+                  ),
+                ],
+              ),
             ),
           );
         },
@@ -301,287 +593,401 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
     );
   }
 
-  Widget _buildContent(BuildContext context, bool isDark, {
-    required String title,
-    required String slug,
-    required String description,
-    required String price,
-    required String instructor,
-    required bool hasVideo,
-    required bool isEnrolled,
-  }) {
-    return SingleChildScrollView(
+  // ── Hero Header ─────────────────────────────────────────────────────────────
+
+  Widget _buildHeroHeader(ApiCourseDetail course, int totalLectures) {
+    final categoryText = course.categoryDisplay ?? course.category ?? 'AGRIBUSINESS';
+    final instructor = course.instructorName ?? 'Instructor';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+      decoration: const BoxDecoration(
+        color: Color(0xFF0F3D1F), // Deep forest green matching Agrilearn header
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Video Preview Area
-          if (hasVideo)
-            Container(
-              width: double.infinity,
-              height: 250,
-              color: Colors.black,
-              child: _chewieController != null &&
-                      _chewieController!.videoPlayerController.value.isInitialized
-                  ? Chewie(controller: _chewieController!)
-                  : const Center(
-                      child: CircularProgressIndicator(color: AppColors.primaryGreen),
-                    ),
-            )
-          else
-            Container(
-              width: double.infinity,
-              height: 250,
-              color: AppColors.lineLight,
-              child: const Center(
-                child: Text('No Preview Available', style: TextStyle(color: AppColors.inkSoft)),
+          // Category Pill
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: AppColors.primaryGreen.withValues(alpha: 0.25),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: AppColors.primaryGreen.withValues(alpha: 0.5)),
+            ),
+            child: Text(
+              categoryText.toUpperCase(),
+              style: const TextStyle(
+                color: Color(0xFF99E256),
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.8,
               ),
             ),
-          
+          ),
+          const SizedBox(height: 12),
+
+          // Course Title
+          Text(
+            course.title,
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+              height: 1.25,
+            ),
+          ),
+          const SizedBox(height: 8),
+
+          // Short Description / Subtitle
+          if (course.shortDescription != null && course.shortDescription!.isNotEmpty)
+            Text(
+              course.shortDescription!,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.white.withValues(alpha: 0.85),
+                height: 1.4,
+              ),
+            ),
+          const SizedBox(height: 16),
+
+          // Metrics / Stat Chips Row
+          Wrap(
+            spacing: 12,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              // Rating Badge
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.star_rounded, color: AppColors.signalYellow, size: 16),
+                    SizedBox(width: 4),
+                    Text(
+                      'New (0 reviews)',
+                      style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+              ),
+              // Lectures count
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.video_collection_outlined, color: Colors.white.withValues(alpha: 0.7), size: 15),
+                  const SizedBox(width: 4),
+                  Text(
+                    '$totalLectures Lectures',
+                    style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 12, fontWeight: FontWeight.w500),
+                  ),
+                ],
+              ),
+              // Duration
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.access_time_rounded, color: Colors.white.withValues(alpha: 0.7), size: 15),
+                  const SizedBox(width: 4),
+                  Text(
+                    course.totalDuration != null && course.totalDuration!.isNotEmpty
+                        ? course.totalDuration!
+                        : '0 Total Hours',
+                    style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 12, fontWeight: FontWeight.w500),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+
+          // Instructor Attribution
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 18,
+                backgroundColor: AppColors.primaryGreen,
+                backgroundImage: course.instructorAvatar != null && course.instructorAvatar!.isNotEmpty
+                    ? NetworkImage(course.instructorAvatar!)
+                    : null,
+                child: course.instructorAvatar == null || course.instructorAvatar!.isEmpty
+                    ? Text(
+                        instructor.isNotEmpty ? instructor[0].toUpperCase() : 'I',
+                        style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                      )
+                    : null,
+              ),
+              const SizedBox(width: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Created by',
+                    style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.6)),
+                  ),
+                  Text(
+                    instructor,
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Purchase Card ───────────────────────────────────────────────────────────
+
+  Widget _buildPurchaseCard(
+    BuildContext context,
+    ApiCourseDetail course,
+    bool isDark,
+    bool isEnrolled, {
+    String? previewVideoUrl,
+  }) {
+    final priceText = course.price == null || course.price == '0' || course.price == '0.00' ? 'Free' : '₹${course.price}';
+    final isSaved = ref.watch(isWishlistedProvider(widget.courseId));
+    final inCart = ref.watch(isCourseInCartProvider(widget.courseId)) ||
+                   (course.slug != null && ref.watch(isCourseInCartProvider(course.slug!)));
+
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.cardDark : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
+        ],
+        border: Border.all(color: isDark ? AppColors.lineDark : Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Media / Video Preview Header
+          ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+            child: AspectRatio(
+              aspectRatio: 16 / 9,
+              child: _isPlayingVideo &&
+                      _chewieController != null &&
+                      _chewieController!.videoPlayerController.value.isInitialized
+                  ? Chewie(controller: _chewieController!)
+                  : Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        // Thumbnail
+                        course.thumbnail != null && course.thumbnail!.isNotEmpty
+                            ? Image.network(
+                                course.thumbnail!,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Container(
+                                  color: const Color(0xFF1B2E21),
+                                  child: const Icon(Icons.school, size: 48, color: AppColors.primaryGreen),
+                                ),
+                              )
+                            : Container(
+                                color: const Color(0xFF1B2E21),
+                                child: const Icon(Icons.school, size: 48, color: AppColors.primaryGreen),
+                              ),
+                        // Dark Gradient Overlay
+                        Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.transparent,
+                                Colors.black.withValues(alpha: 0.65),
+                              ],
+                            ),
+                          ),
+                        ),
+                        // "Preview Course" Play Button Overlay
+                        Center(
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () {
+                                if (previewVideoUrl != null && previewVideoUrl.isNotEmpty) {
+                                  _initializePlayer(previewVideoUrl, autoPlay: true);
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('No preview video available for this course.')),
+                                  );
+                                }
+                              },
+                              borderRadius: BorderRadius.circular(30),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.6),
+                                  borderRadius: BorderRadius.circular(30),
+                                  border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.play_circle_fill, color: Colors.white, size: 22),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      'Preview Course',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+          ),
+
+          // Price & Actions
           Padding(
             padding: const EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryGreen.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Text(
-                    'Preview Available',
-                    style: TextStyle(
-                      color: AppColors.primaryGreen,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
+                // Price
                 Text(
-                  title,
-                  style: Theme.of(context).textTheme.headlineSmall,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Instructor: $instructor',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppColors.inkSoft,
+                  priceText,
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : Colors.black87,
                   ),
                 ),
                 const SizedBox(height: 16),
-                Row(
-                  children: [
-                    const Icon(Icons.star_rounded, color: AppColors.signalYellow, size: 20),
-                    const SizedBox(width: 4),
-                    const Text('4.8 (120 reviews)', style: TextStyle(fontWeight: FontWeight.bold)),
-                    const Spacer(),
-                    Text(
-                      price,
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: AppColors.primaryGreen,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                const Divider(height: 40),
-                Text(
-                  'About This Course',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  description,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    height: 1.5,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                
-                // Dummy Course Includes section
-                Text(
-                  'Course Includes',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                _buildIncludeItem(Icons.ondemand_video, '5 hours on-demand video'),
-                _buildIncludeItem(Icons.insert_drive_file_outlined, '12 downloadable resources'),
-                _buildIncludeItem(Icons.all_inclusive, 'Full lifetime access'),
-                _buildIncludeItem(Icons.smartphone, 'Access on mobile and web'),
-                _buildIncludeItem(Icons.emoji_events_outlined, 'Certificate of completion'),
-                const Divider(height: 40),
 
-                // Student Feedback Section
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Student Feedback',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
+                if (isEnrolled) ...[
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.primaryGreen,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
+                      onPressed: () => context.push('/player/${course.slug ?? widget.courseId}'),
+                      icon: const Icon(Icons.play_circle_fill),
+                      label: const Text('Start Learning (Enrolled)', style: TextStyle(fontWeight: FontWeight.bold)),
                     ),
-                    if (isEnrolled)
-                      TextButton.icon(
-                        style: TextButton.styleFrom(
-                          foregroundColor: AppColors.primaryGreen,
-                        ),
-                        onPressed: () => CourseReviewModal.show(
-                          context,
-                          courseId: widget.courseId,
-                          courseSlug: slug,
-                          courseTitle: title,
-                        ),
-                        icon: const Icon(Icons.rate_review_outlined, size: 18),
-                        label: const Text(
-                          'Write a Review',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
+                  ),
+                ] else if (inCart) ...[
+                  // "Go to Cart" button matching Screenshot 5!
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFFC88528), // Golden-orange matching Screenshot 5
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        elevation: 2,
                       ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Consumer(
-                  builder: (context, ref, _) {
-                    final reviewsAsync = ref.watch(courseReviewsProvider(slug));
-                    return reviewsAsync.when(
-                      loading: () => const Center(
-                        child: Padding(
-                          padding: EdgeInsets.all(16),
-                          child: CircularProgressIndicator(color: AppColors.primaryGreen),
-                        ),
-                      ),
-                      error: (_, __) => const SizedBox.shrink(),
-                      data: (reviews) {
-                        if (reviews.isEmpty) {
-                          return Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(20),
-                            decoration: BoxDecoration(
-                              color: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.grey.shade50,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: isDark ? Colors.white10 : AppColors.lineLight),
-                            ),
-                            child: Column(
-                              children: [
-                                const Icon(Icons.chat_bubble_outline_rounded, color: AppColors.inkSoft, size: 32),
-                                const SizedBox(height: 8),
-                                const Text(
-                                  'No reviews yet. Be the first to review after enrolling!',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(color: AppColors.inkSoft, fontSize: 13),
-                                ),
-                                if (isEnrolled) ...[
-                                  const SizedBox(height: 12),
-                                  ElevatedButton.icon(
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: AppColors.primaryGreen,
-                                      foregroundColor: Colors.white,
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                    ),
-                                    onPressed: () => CourseReviewModal.show(
-                                      context,
-                                      courseId: widget.courseId,
-                                      courseSlug: slug,
-                                      courseTitle: title,
-                                    ),
-                                    icon: const Icon(Icons.star_rounded, size: 18),
-                                    label: const Text('Leave a Review'),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          );
-                        }
-
-                        return Column(
-                          children: reviews.map((review) {
-                            return Container(
-                              margin: const EdgeInsets.only(bottom: 12),
-                              padding: const EdgeInsets.all(14),
-                              decoration: BoxDecoration(
-                                color: isDark ? const Color(0xFF1E231F) : Colors.grey.shade50,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: isDark ? Colors.white10 : AppColors.lineLight),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      CircleAvatar(
-                                        radius: 18,
-                                        backgroundColor: AppColors.primaryGreen.withValues(alpha: 0.15),
-                                        backgroundImage: review.studentAvatar != null && review.studentAvatar!.isNotEmpty
-                                            ? NetworkImage(review.studentAvatar!)
-                                            : null,
-                                        child: review.studentAvatar == null || review.studentAvatar!.isEmpty
-                                            ? Text(
-                                                review.studentName.isNotEmpty ? review.studentName[0].toUpperCase() : 'U',
-                                                style: const TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                  color: AppColors.primaryGreen,
-                                                ),
-                                              )
-                                            : null,
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              review.studentName,
-                                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                                            ),
-                                            Row(
-                                              children: [
-                                                ...List.generate(5, (sIdx) {
-                                                  return Icon(
-                                                    sIdx < review.rating ? Icons.star_rounded : Icons.star_outline_rounded,
-                                                    size: 14,
-                                                    color: sIdx < review.rating ? const Color(0xFFFFB800) : Colors.grey.shade400,
-                                                  );
-                                                }),
-                                                if (review.createdAt != null) ...[
-                                                  const SizedBox(width: 6),
-                                                  Text(
-                                                    DateFormat.yMMMd().format(review.createdAt!),
-                                                    style: const TextStyle(color: AppColors.inkSoft, fontSize: 11),
-                                                  ),
-                                                ],
-                                              ],
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  if (review.comment.isNotEmpty) ...[
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      review.comment,
-                                      style: TextStyle(
-                                        color: isDark ? Colors.white70 : AppColors.inkDark,
-                                        fontSize: 13,
-                                        height: 1.3,
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            );
-                          }).toList(),
-                        );
+                      onPressed: () {
+                        debugPrint('🛒 [CourseDetails] Navigating to cart from Go to Cart button');
+                        context.push('/cart');
                       },
-                    );
-                  },
-                ),
+                      icon: const Icon(Icons.shopping_cart_outlined, size: 18),
+                      label: const Text(
+                        'Go to Cart',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ] else ...[
+                  // Action Buttons Row: [Add to Cart] [Heart] matching Screenshot 4!
+                  Row(
+                    children: [
+                      Expanded(
+                        child: SizedBox(
+                          height: 48,
+                          child: FilledButton(
+                            style: FilledButton.styleFrom(
+                              backgroundColor: const Color(0xFF1B4D2E), // Deep forest green matching Screenshot 4
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              elevation: 2,
+                            ),
+                            onPressed: _isAddingToCart ? null : () => _handleAddToCart(context, course),
+                            child: _isAddingToCart
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                  )
+                                : const Text(
+                                    'Add to Cart',
+                                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
+                                  ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Container(
+                        height: 48,
+                        width: 48,
+                        decoration: BoxDecoration(
+                          color: isSaved ? Colors.red.withValues(alpha: 0.1) : Colors.transparent,
+                          border: Border.all(
+                            color: isSaved ? Colors.redAccent : (isDark ? AppColors.lineDark : Colors.grey.shade300),
+                          ),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: IconButton(
+                          icon: Icon(
+                            isSaved ? Icons.favorite : Icons.favorite_border,
+                            color: isSaved ? Colors.redAccent : (isDark ? Colors.white70 : Colors.grey.shade700),
+                          ),
+                          tooltip: isSaved ? 'Remove from Wishlist' : 'Add to Wishlist',
+                          onPressed: () => _toggleWishlist(course),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+
+                  // Buy Now Button
+                  SizedBox(
+                    width: double.infinity,
+                    height: 44,
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Color(0xFF1B4D2E), width: 1.5),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      onPressed: () => _handleBuyNow(context, course),
+                      child: const Text(
+                        'Buy Now',
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF1B4D2E)),
+                      ),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 18),
+
+                // Perks Checklist (exact from screenshot)
+                _buildPerkItem(Icons.all_inclusive_rounded, 'Full lifetime access', isDark),
+                _buildPerkItem(Icons.devices_rounded, 'Access on mobile and TV', isDark),
+                _buildPerkItem(Icons.workspace_premium_outlined, 'Certificate of completion', isDark),
               ],
             ),
           ),
@@ -589,17 +995,550 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
       ),
     );
   }
-  
-  Widget _buildIncludeItem(IconData icon, String text) {
+
+  Widget _buildPerkItem(IconData icon, String text, bool isDark) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         children: [
-          Icon(icon, size: 20, color: AppColors.inkSoft),
-          const SizedBox(width: 12),
-          Text(text, style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? AppColors.white : AppColors.inkDark)),
+          Icon(icon, size: 16, color: AppColors.primaryGreen),
+          const SizedBox(width: 10),
+          Text(
+            text,
+            style: TextStyle(
+              fontSize: 12.5,
+              color: isDark ? Colors.white70 : Colors.grey.shade700,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
         ],
       ),
+    );
+  }
+
+  // ── "What you'll learn" Card ────────────────────────────────────────────────
+
+  Widget _buildWhatYouLearnCard(ApiCourseDetail course, bool isDark) {
+    List<String> outcomes = [];
+    if (course.whatYouLearn != null && course.whatYouLearn!.trim().isNotEmpty) {
+      outcomes = course.whatYouLearn!
+          .split('\n')
+          .map((s) => s.trim().replaceAll(RegExp(r'^[-*•\d.]\s*'), ''))
+          .where((s) => s.isNotEmpty)
+          .toList();
+    }
+
+    if (outcomes.isEmpty) {
+      outcomes = [
+        'Understand the fundamentals of this agricultural topic.',
+        'Learn practical skills you can apply to your farm today.',
+        'Discover modern tools and techniques for better yields.',
+        'Gain a certificate upon completion of the course.',
+      ];
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.cardDark : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: isDark ? AppColors.lineDark : Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "What you'll learn",
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white : Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 14),
+          ...outcomes.map((item) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(
+                      Icons.check_circle_outline_rounded,
+                      color: AppColors.accentOrange, // Golden checkmark from screenshot
+                      size: 18,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        item,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: isDark ? Colors.white70 : Colors.black87,
+                          height: 1.35,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              )),
+        ],
+      ),
+    );
+  }
+
+  // ── Course Content Accordion ────────────────────────────────────────────────
+
+  Widget _buildCourseContent(ApiCourseDetail course, bool isDark, bool isEnrolled) {
+    final totalSections = course.sections.length;
+    final totalLectures = course.sections.fold<int>(0, (sum, s) => sum + s.lectures.length);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Course Content',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: isDark ? Colors.white : Colors.black87,
+              ),
+            ),
+            Text(
+              '$totalSections sections • $totalLectures lectures',
+              style: TextStyle(fontSize: 12, color: isDark ? Colors.grey.shade400 : Colors.grey.shade600),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+
+        if (course.sections.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.cardDark : Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: isDark ? AppColors.lineDark : Colors.grey.shade200),
+            ),
+            child: Text(
+              'No curriculum sections published yet.',
+              style: TextStyle(color: isDark ? Colors.white60 : Colors.grey.shade600, fontSize: 13),
+            ),
+          )
+        else
+          ...course.sections.asMap().entries.map((entry) {
+            final sIdx = entry.key;
+            final section = entry.value;
+            final isExpanded = _sectionExpanded[section.id] ?? (sIdx == 0);
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.cardDark : Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: isDark ? AppColors.lineDark : Colors.grey.shade200),
+              ),
+              child: Column(
+                children: [
+                  // Section Header Accordion
+                  InkWell(
+                    onTap: () {
+                      setState(() {
+                        _sectionExpanded[section.id] = !isExpanded;
+                      });
+                    },
+                    borderRadius: BorderRadius.vertical(
+                      top: const Radius.circular(12),
+                      bottom: Radius.circular(isExpanded ? 0 : 12),
+                    ),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.grey.shade50,
+                        borderRadius: BorderRadius.vertical(
+                          top: const Radius.circular(12),
+                          bottom: Radius.circular(isExpanded ? 0 : 12),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 22,
+                            height: 22,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: AppColors.primaryGreen.withValues(alpha: 0.15),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Text(
+                              '${sIdx + 1}',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primaryGreen,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              section.title,
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                                color: isDark ? Colors.white : Colors.black87,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            '${section.lectures.length} lectures',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Icon(
+                            isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                            size: 18,
+                            color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // Lectures List
+                  if (isExpanded) ...[
+                    Divider(height: 1, color: isDark ? AppColors.lineDark : Colors.grey.shade200),
+                    if (section.lectures.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.all(14),
+                        child: Text(
+                          'No lectures in this module.',
+                          style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                        ),
+                      )
+                    else
+                      ListView.separated(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: section.lectures.length,
+                        separatorBuilder: (_, __) => Divider(
+                          height: 1,
+                          color: isDark ? AppColors.lineDark : Colors.grey.shade100,
+                        ),
+                        itemBuilder: (context, lIdx) {
+                          final lecture = section.lectures[lIdx];
+                          return _buildLectureItem(lecture, isDark, isEnrolled);
+                        },
+                      ),
+                  ],
+                ],
+              ),
+            );
+          }),
+      ],
+    );
+  }
+
+  Widget _buildLectureItem(ApiLecture lecture, bool isDark, bool isEnrolled) {
+    final hasPreview = lecture.isPreview;
+    final canPlay = isEnrolled || hasPreview;
+
+    return InkWell(
+      onTap: () {
+        if (canPlay) {
+          if (isEnrolled) {
+            context.push('/player/${widget.courseId}');
+          } else if (lecture.videoUrl != null && lecture.videoUrl!.isNotEmpty) {
+            _initializePlayer(lecture.videoUrl!, autoPlay: true);
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Preview video stream is loading...')),
+            );
+          }
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('🔒 This lecture is locked. Enroll in course to unlock full access.'),
+              duration: Duration(milliseconds: 2000),
+            ),
+          );
+        }
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        child: Row(
+          children: [
+            Icon(
+              canPlay ? Icons.play_circle_outline : Icons.lock_outline_rounded,
+              size: 18,
+              color: canPlay ? AppColors.primaryGreen : Colors.grey.shade500,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                lecture.title,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: isDark ? Colors.white : Colors.black87,
+                ),
+              ),
+            ),
+            if (hasPreview && !isEnrolled) ...[
+              Container(
+                margin: const EdgeInsets.only(right: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.signalYellow.withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: AppColors.signalYellow.withValues(alpha: 0.4)),
+                ),
+                child: const Text(
+                  'Free Preview',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFFB28700),
+                  ),
+                ),
+              ),
+            ],
+            if (lecture.durationFormatted != null && lecture.durationFormatted!.isNotEmpty)
+              Text(
+                lecture.durationFormatted!,
+                style: TextStyle(fontSize: 11, color: isDark ? Colors.grey.shade400 : Colors.grey.shade600),
+              )
+            else if (lecture.duration != null && lecture.duration! > 0)
+              Text(
+                '${(lecture.duration! / 60).ceil()}m',
+                style: TextStyle(fontSize: 11, color: isDark ? Colors.grey.shade400 : Colors.grey.shade600),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Description Section ─────────────────────────────────────────────────────
+
+  Widget _buildDescriptionSection(ApiCourseDetail course, bool isDark) {
+    final desc = course.description ?? course.shortDescription ?? 'No description provided.';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.cardDark : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: isDark ? AppColors.lineDark : Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Description',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white : Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            desc,
+            style: TextStyle(
+              fontSize: 13.5,
+              height: 1.5,
+              color: isDark ? Colors.white70 : Colors.black87,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Student Feedback Section ────────────────────────────────────────────────
+
+  Widget _buildFeedbackSection(
+    BuildContext context,
+    ApiCourseDetail course,
+    bool isDark,
+    bool isEnrolled,
+  ) {
+    final slug = course.slug ?? widget.courseId;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Student Feedback',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: isDark ? Colors.white : Colors.black87,
+              ),
+            ),
+            if (isEnrolled)
+              TextButton.icon(
+                style: TextButton.styleFrom(foregroundColor: AppColors.primaryGreen),
+                onPressed: () => CourseReviewModal.show(
+                  context,
+                  courseId: widget.courseId,
+                  courseSlug: slug,
+                  courseTitle: course.title,
+                ),
+                icon: const Icon(Icons.rate_review_outlined, size: 18),
+                label: const Text('Write a Review', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Consumer(
+          builder: (context, ref, _) {
+            final reviewsAsync = ref.watch(courseReviewsProvider(slug));
+            return reviewsAsync.when(
+              loading: () => const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: CircularProgressIndicator(color: AppColors.primaryGreen),
+                ),
+              ),
+              error: (_, __) => const SizedBox.shrink(),
+              data: (reviews) {
+                if (reviews.isEmpty) {
+                  return Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: isDark ? Colors.white10 : AppColors.lineLight),
+                    ),
+                    child: Column(
+                      children: [
+                        const Icon(Icons.chat_bubble_outline_rounded, color: AppColors.inkSoft, size: 32),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'No reviews yet. Be the first to review after enrolling!',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: AppColors.inkSoft, fontSize: 13),
+                        ),
+                        if (isEnrolled) ...[
+                          const SizedBox(height: 12),
+                          ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primaryGreen,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                            onPressed: () => CourseReviewModal.show(
+                              context,
+                              courseId: widget.courseId,
+                              courseSlug: slug,
+                              courseTitle: course.title,
+                            ),
+                            icon: const Icon(Icons.star_rounded, size: 18),
+                            label: const Text('Leave a Review'),
+                          ),
+                        ],
+                      ],
+                    ),
+                  );
+                }
+
+                return Column(
+                  children: reviews.map((review) {
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF1E231F) : Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: isDark ? Colors.white10 : AppColors.lineLight),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 18,
+                                backgroundColor: AppColors.primaryGreen.withValues(alpha: 0.15),
+                                backgroundImage: review.studentAvatar != null && review.studentAvatar!.isNotEmpty
+                                    ? NetworkImage(review.studentAvatar!)
+                                    : null,
+                                child: review.studentAvatar == null || review.studentAvatar!.isEmpty
+                                    ? Text(
+                                        review.studentName.isNotEmpty ? review.studentName[0].toUpperCase() : 'U',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: AppColors.primaryGreen,
+                                        ),
+                                      )
+                                    : null,
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      review.studentName,
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                    ),
+                                    Row(
+                                      children: [
+                                        ...List.generate(5, (sIdx) {
+                                          return Icon(
+                                            sIdx < review.rating ? Icons.star_rounded : Icons.star_outline_rounded,
+                                            size: 14,
+                                            color: sIdx < review.rating ? const Color(0xFFFFB800) : Colors.grey.shade400,
+                                          );
+                                        }),
+                                        if (review.createdAt != null) ...[
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            DateFormat.yMMMd().format(review.createdAt!),
+                                            style: const TextStyle(color: AppColors.inkSoft, fontSize: 11),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (review.comment.isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            Text(
+                              review.comment,
+                              style: TextStyle(
+                                color: isDark ? Colors.white70 : AppColors.inkDark,
+                                fontSize: 13,
+                                height: 1.3,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                );
+              },
+            );
+          },
+        ),
+      ],
     );
   }
 }

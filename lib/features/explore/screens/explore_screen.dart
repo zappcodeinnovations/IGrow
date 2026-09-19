@@ -1,16 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:krushi_siksha/features/home_farmer/providers/student_provider.dart';
 
 import '../../../core/theme/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../cart/providers/cart_provider.dart';
-
+import '../../home_farmer/providers/student_provider.dart';
+import '../../wishlist/providers/wishlist_provider.dart';
+import '../../../data/models/api_models/wishlist_model.dart';
+import '../../../core/network/swagger_generated/app_api.swagger.dart';
 import 'ebooks_tab.dart';
 import '../../../core/widgets/shimmer_placeholders.dart';
+
 /// Explore screen for courses.
 class ExploreScreen extends ConsumerStatefulWidget {
-  const ExploreScreen({super.key});
+  const ExploreScreen({super.key, this.initialSearch});
+
+  final String? initialSearch;
 
   @override
   ConsumerState<ExploreScreen> createState() => _ExploreScreenState();
@@ -23,9 +28,14 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
   String _selectedOrdering = '';
   final _searchController = TextEditingController();
 
-  final List<Map<String, String>> _categories = [
-    {'label': 'All', 'value': 'all'},
-  ];
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialSearch != null && widget.initialSearch!.isNotEmpty) {
+      _searchQuery = widget.initialSearch!;
+      _searchController.text = widget.initialSearch!;
+    }
+  }
 
   @override
   void dispose() {
@@ -283,8 +293,24 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SizedBox(height: 16),
-                Text('Explore', style: Theme.of(context).textTheme.displaySmall),
-                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    const Icon(Icons.menu_book_rounded, color: AppColors.primaryGreen, size: 22),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Agricultural Course Catalog',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Discover expert-led courses to advance your farming skills.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.inkSoft),
+                ),
+                const SizedBox(height: 14),
                 const TabBar(
                   tabs: [
                     Tab(text: 'Courses'),
@@ -311,7 +337,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                                 final list = [{'label': 'All', 'value': 'all'}];
                                 for (var c in cats) {
                                   if (c.id != null) {
-                                    list.add({'label': c.name ?? 'Unknown', 'value': c.id!});
+                                    list.add({'label': c.name, 'value': c.id!});
                                   }
                                 }
                                 return Row(
@@ -362,102 +388,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                                   itemCount: courses.length,
                                   separatorBuilder: (_, __) => const SizedBox(height: 16),
                                   itemBuilder: (context, index) {
-                                    final course = courses[index];
-                                    return GestureDetector(
-                                      onTap: () {
-                                        context.push('/farmer/course/${course.id}');
-                                      },
-                                      child: Container(
-                                        padding: const EdgeInsets.all(16),
-                                        decoration: BoxDecoration(
-                                          color: isDark ? AppColors.cardDark : AppColors.white,
-                                          borderRadius: BorderRadius.circular(16),
-                                          boxShadow: AppColors.greenShadow(
-                                            blurRadius: 16,
-                                            offset: const Offset(0, 4),
-                                            opacity: isDark ? 0.06 : 0.1,
-                                          ),
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            Container(
-                                              width: 80,
-                                              height: 80,
-                                              decoration: BoxDecoration(
-                                                color: AppColors.primaryGreen.withValues(alpha: 0.15),
-                                                borderRadius: BorderRadius.circular(12),
-                                                image: course.thumbnail != null
-                                                    ? DecorationImage(
-                                                        image: NetworkImage(course.thumbnail!),
-                                                        fit: BoxFit.cover,
-                                                      )
-                                                    : null,
-                                              ),
-                                              child: course.thumbnail == null
-                                                  ? const Icon(Icons.menu_book, color: AppColors.primaryGreen)
-                                                  : null,
-                                            ),
-                                            const SizedBox(width: 16),
-                                            Expanded(
-                                              child: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                children: [
-                                                  Text(
-                                                    course.title,
-                                                    style: Theme.of(context).textTheme.titleSmall,
-                                                    maxLines: 2,
-                                                    overflow: TextOverflow.ellipsis,
-                                                  ),
-                                                  const SizedBox(height: 8),
-                                                  Row(
-                                                    children: [
-                                                      const Icon(Icons.star_rounded, size: 14, color: AppColors.signalYellow),
-                                                      const SizedBox(width: 4),
-                                                      Text('4.5', style: Theme.of(context).textTheme.labelSmall),
-                                                      const Spacer(),
-                                                      Text(
-                                                        course.price == '0.00' ? 'Free' : '₹${course.price}',
-                                                        style: Theme.of(context).textTheme.labelMedium?.copyWith(color: AppColors.primaryGreen),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                            IconButton(
-                                              icon: const Icon(Icons.add_shopping_cart, size: 20),
-                                              color: AppColors.primaryGreen,
-                                              onPressed: () async {
-                                                try {
-                                                  await ref.read(cartProvider.notifier).addToCart(course.id ?? '');
-                                                  if (context.mounted) {
-                                                    final messenger = ScaffoldMessenger.of(context);
-                                                    messenger.clearSnackBars();
-                                                    messenger.showSnackBar(
-                                                      SnackBar(
-                                                        content: Text('${course.title} added to cart'),
-                                                        duration: const Duration(milliseconds: 1800),
-                                                      ),
-                                                    );
-                                                  }
-                                                } catch (e) {
-                                                  if (context.mounted) {
-                                                    final messenger = ScaffoldMessenger.of(context);
-                                                    messenger.clearSnackBars();
-                                                    messenger.showSnackBar(
-                                                      SnackBar(
-                                                        content: Text('Could not add to cart: $e'),
-                                                        duration: const Duration(milliseconds: 1800),
-                                                      ),
-                                                    );
-                                                  }
-                                                }
-                                              },
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    );
+                                    return _CatalogCourseCard(course: courses[index]);
                                   },
                                 );
                               },
@@ -511,6 +442,302 @@ class _Tab extends StatelessWidget {
         child: Text(
           label,
           style: Theme.of(context).textTheme.labelSmall?.copyWith(color: isActive ? AppColors.white : AppColors.inkSoft,),
+        ),
+      ),
+    );
+  }
+}
+
+class _CatalogCourseCard extends ConsumerWidget {
+  const _CatalogCourseCard({required this.course});
+
+  final CourseList course;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isWishlisted = ref.watch(isWishlistedProvider(course.id ?? ''));
+    final isEnrolled = ref.watch(isCourseEnrolledProvider(course.id ?? '')) ||
+        (course.slug != null && ref.watch(isCourseEnrolledProvider(course.slug!)));
+
+    final priceText = course.price == null || course.price == '0' || course.price == '0.00'
+        ? '₹0'
+        : '₹${course.price}';
+
+    final categoryName = course.category?.name ?? 'Agriculture';
+    final instructorName = course.instructorName ?? 'Instructor';
+    final totalLectures = course.totalLectures ?? 1;
+
+    return GestureDetector(
+      onTap: () {
+        context.push('/farmer/course/${course.id}');
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.cardDark : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isDark ? AppColors.lineDark : Colors.grey.shade200,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Top Media with Category badge & Wishlist Heart
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              child: Stack(
+                children: [
+                  Container(
+                    height: 125,
+                    width: double.infinity,
+                    color: const Color(0xFF1B2E21),
+                    child: course.thumbnail != null && course.thumbnail!.isNotEmpty
+                        ? Image.network(
+                            course.thumbnail!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => const Center(
+                              child: Icon(Icons.school, size: 40, color: AppColors.primaryGreen),
+                            ),
+                          )
+                        : const Center(
+                            child: Icon(Icons.school, size: 40, color: AppColors.primaryGreen),
+                          ),
+                  ),
+                  // Category Tag & Enrolled badge top-left
+                  Positioned(
+                    top: 10,
+                    left: 10,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.65),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            categoryName,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        if (isEnrolled) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: AppColors.primaryGreen,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.check_circle, color: Colors.white, size: 11),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Enrolled',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  // Wishlist Heart top-right
+                  Positioned(
+                    top: 6,
+                    right: 6,
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () async {
+                          final preview = ApiWishlistItem(
+                            id: '',
+                            targetId: course.id ?? '',
+                            type: 'course',
+                            title: course.title,
+                            slug: course.slug ?? '',
+                            thumbnail: course.thumbnail,
+                            price: course.price ?? '0.00',
+                            category: categoryName,
+                            rating: 4.8,
+                          );
+                          final inWishlist = await ref
+                              .read(wishlistProvider.notifier)
+                              .toggleCourse(course.id ?? '', previewItem: preview);
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(inWishlist
+                                    ? 'Added to wishlist! ❤️'
+                                    : 'Removed from wishlist'),
+                                duration: const Duration(milliseconds: 1400),
+                                backgroundColor: inWishlist
+                                    ? AppColors.primaryGreen
+                                    : AppColors.inkDark,
+                              ),
+                            );
+                          }
+                        },
+                        borderRadius: BorderRadius.circular(20),
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.85),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            isWishlisted ? Icons.favorite : Icons.favorite_border,
+                            color: isWishlisted ? Colors.redAccent : Colors.grey.shade700,
+                            size: 16,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Card Body
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    course.title,
+                    style: const TextStyle(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    course.shortDescription != null && course.shortDescription!.isNotEmpty
+                        ? course.shortDescription!
+                        : course.title,
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 8),
+
+                  // Meta Row matching Screenshot 3: "1 Lectures  0 hrs  ⭐ 0"
+                  Row(
+                    children: [
+                      Icon(Icons.video_library_outlined, size: 12, color: Colors.grey.shade500),
+                      const SizedBox(width: 3),
+                      Text(
+                        '$totalLectures Lectures',
+                        style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                      ),
+                      const SizedBox(width: 8),
+                      Icon(Icons.access_time, size: 12, color: Colors.grey.shade500),
+                      const SizedBox(width: 3),
+                      Text(
+                        course.totalDuration != null ? '${course.totalDuration} hrs' : '0 hrs',
+                        style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                      ),
+                      const SizedBox(width: 8),
+                      const Icon(Icons.star_rounded, size: 13, color: Color(0xFFF59E0B)),
+                      const SizedBox(width: 2),
+                      Text(
+                        '0',
+                        style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+
+                  Divider(height: 1, color: isDark ? AppColors.lineDark : Colors.grey.shade200),
+                  const SizedBox(height: 8),
+
+                  // Instructor & Price Row
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CircleAvatar(
+                            radius: 10,
+                            backgroundColor: const Color(0xFF166534),
+                            child: Text(
+                              instructorName.isNotEmpty ? instructorName[0].toUpperCase() : 'I',
+                              style: const TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 110),
+                            child: Text(
+                              instructorName,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                                color: isDark ? Colors.grey.shade300 : Colors.grey.shade700,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (isEnrolled)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: AppColors.primaryGreen.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Text(
+                            'Enrolled',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.primaryGreen,
+                            ),
+                          ),
+                        )
+                      else
+                        Text(
+                          priceText,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primaryGreen,
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

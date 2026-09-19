@@ -3,6 +3,7 @@ import 'package:krushi_siksha/data/models/api_models/review_models.dart';
 import 'package:krushi_siksha/data/models/api_models/wishlist_model.dart';
 import 'package:krushi_siksha/data/models/api_models/notification_models.dart';
 import 'package:krushi_siksha/data/models/api_models/course_models.dart';
+import 'package:krushi_siksha/data/models/api_models/instructor_model.dart';
 
 void main() {
   group('Wishlist Models Test', () {
@@ -145,4 +146,30 @@ void main() {
       expect(enrollment.completionPercentage, 100.0);
     });
   });
+
+  group('Top Instructor Model Test', () {
+    test('ApiTopInstructor parses backend response with fallbacks', () {
+      final json = {
+        'id': 'inst-1',
+        'full_name': 'Dr. Ananya Sharma',
+        'avatar': 'https://example.com/avatar.jpg',
+        'bio': 'Expert in organic farming',
+        'specialty_crops': 'Wheat, Mustard',
+        'experience': '12+ Years',
+        'rating': 4.9,
+        'review_count': 142,
+        'total_students': 1250,
+        'total_courses': 4,
+      };
+
+      final instructor = ApiTopInstructor.fromJson(json);
+      expect(instructor.id, 'inst-1');
+      expect(instructor.fullName, 'Dr. Ananya Sharma');
+      expect(instructor.specialtyCrops, 'Wheat, Mustard');
+      expect(instructor.experience, '12+ Years');
+      expect(instructor.rating, 4.9);
+      expect(instructor.totalCourses, 4);
+    });
+  });
 }
+

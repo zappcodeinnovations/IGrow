@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/swagger_generated/app_api.swagger.dart';
+import '../../../data/models/api_models/instructor_model.dart';
 import '../../../data/repositories/student_repository.dart';
 import '../../auth/providers/auth_provider.dart';
 
@@ -50,6 +51,22 @@ final studentEnrollmentsProvider = FutureProvider<List<Enrollment>>((ref) async 
   final repo = ref.watch(studentRepositoryProvider);
   final response = await repo.getEnrollments();
   return response.results;
+});
+
+/// Provider for checking if a student is enrolled in a specific course by ID or slug.
+final isCourseEnrolledProvider = Provider.family<bool, String>((ref, courseIdOrSlug) {
+  if (courseIdOrSlug.isEmpty) return false;
+  final enrollmentsAsync = ref.watch(studentEnrollmentsProvider);
+  return enrollmentsAsync.maybeWhen(
+    data: (enrollments) {
+      return enrollments.any((enr) {
+        return enr.course == courseIdOrSlug ||
+            enr.courseSlug == courseIdOrSlug ||
+            enr.id == courseIdOrSlug;
+      });
+    },
+    orElse: () => false,
+  );
 });
 
 /// Provider for fetching the student's cart.
@@ -174,9 +191,9 @@ final courseProgressStateProvider = StateNotifierProvider.family<CourseProgressN
   return CourseProgressNotifier(ref, slug);
 });
 
-/// Dummy Provider for fetching Top Instructors until backend API is ready.
-final topInstructorsProvider = FutureProvider<List<dynamic>>((ref) async {
-  // Simulating an empty list from the backend
-  return [];
+/// Provider for fetching Top Instructors showcase on student dashboard.
+final topInstructorsProvider = FutureProvider<List<ApiTopInstructor>>((ref) async {
+  final repo = ref.watch(studentRepositoryProvider);
+  return await repo.getTopInstructors();
 });
 
