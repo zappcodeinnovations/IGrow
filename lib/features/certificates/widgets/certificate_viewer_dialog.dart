@@ -1,5 +1,11 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../data/models/api_models/course_models.dart';
@@ -260,14 +266,137 @@ class CertificateViewerDialog extends StatelessWidget {
                 ),
                 icon: const Icon(Icons.share_rounded, size: 18),
                 label: const Text('Share Certificate', style: TextStyle(fontWeight: FontWeight.bold)),
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Certificate verification link for "$certId" ready to share! 🎓'),
-                      backgroundColor: AppColors.primaryGreen,
+                onPressed: () async {
+                  // --- Build the certificate PDF ---
+                  final pdf = pw.Document();
+                  pdf.addPage(
+                    pw.Page(
+                      pageFormat: PdfPageFormat.a4.landscape,
+                      margin: const pw.EdgeInsets.all(40),
+                      build: (pw.Context pCtx) {
+                        return pw.Container(
+                          decoration: pw.BoxDecoration(
+                            border: pw.Border.all(color: const PdfColor.fromInt(0xFFD4AF37), width: 4),
+                            borderRadius: pw.BorderRadius.circular(12),
+                          ),
+                          padding: const pw.EdgeInsets.all(28),
+                          child: pw.Column(
+                            mainAxisAlignment: pw.MainAxisAlignment.center,
+                            crossAxisAlignment: pw.CrossAxisAlignment.center,
+                            children: [
+                              // Header
+                              pw.Text(
+                                'AGRILEARN ACADEMY',
+                                style: pw.TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: pw.FontWeight.bold,
+                                  color: PdfColors.green900,
+                                  letterSpacing: 2,
+                                ),
+                              ),
+                              pw.SizedBox(height: 14),
+
+                              // Title
+                              pw.Text(
+                                'CERTIFICATE OF COMPLETION',
+                                style: pw.TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: pw.FontWeight.bold,
+                                  color: const PdfColor(0.545, 0.396, 0.031), // Dark Gold
+                                  letterSpacing: 1.5,
+                                ),
+                              ),
+                              pw.SizedBox(height: 8),
+                              pw.Text(
+                                'This is proudly presented to',
+                                style: const pw.TextStyle(
+                                  fontSize: 12,
+                                  color: PdfColors.grey700,
+                                ),
+                              ),
+                              pw.SizedBox(height: 12),
+
+                              // Student Name
+                              pw.Text(
+                                studentName.isNotEmpty ? studentName : 'Verified Student',
+                                style: pw.TextStyle(
+                                  fontSize: 26,
+                                  fontWeight: pw.FontWeight.bold,
+                                  color: PdfColors.black,
+                                ),
+                              ),
+                              pw.Container(
+                                margin: const pw.EdgeInsets.symmetric(vertical: 8),
+                                width: 120,
+                                height: 2,
+                                color: const PdfColor.fromInt(0xFFD4AF37),
+                              ),
+
+                              // Body Text
+                              pw.Text(
+                                'for successfully mastering and completing all practical\nlectures & assessments for the course',
+                                textAlign: pw.TextAlign.center,
+                                style: const pw.TextStyle(fontSize: 11, color: PdfColors.grey700),
+                              ),
+                              pw.SizedBox(height: 10),
+
+                              // Course Title
+                              pw.Text(
+                                enrollment.courseTitle ?? 'Agricultural Specialist Course',
+                                style: pw.TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: pw.FontWeight.bold,
+                                  color: PdfColors.green800,
+                                ),
+                              ),
+                              pw.SizedBox(height: 24),
+
+                              // Footer
+                              pw.Row(
+                                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                                children: [
+                                  pw.Column(
+                                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                                    children: [
+                                      pw.Text('Issue Date: $issueDate', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey)),
+                                      pw.Text('Cert ID: $certId', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                                    ],
+                                  ),
+                                  pw.Container(
+                                    padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    decoration: pw.BoxDecoration(
+                                      color: PdfColors.green50,
+                                      borderRadius: pw.BorderRadius.circular(6),
+                                    ),
+                                    child: pw.Text(
+                                      'VERIFIED  •  IGROW',
+                                      style: pw.TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: pw.FontWeight.bold,
+                                        color: PdfColors.green800,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        );
+                      },
                     ),
                   );
-                  Navigator.pop(context);
+
+                  // --- Save PDF to documents directory ---
+                  final pdfBytes = await pdf.save();
+                  final dir = await getApplicationDocumentsDirectory();
+                  final fileName = 'IGrow_Certificate_$certId.pdf';
+                  final file = File('${dir.path}/$fileName');
+                  await file.writeAsBytes(pdfBytes);
+
+                  // --- Open OS share sheet (WhatsApp, Email, etc.) ---
+                  await Printing.sharePdf(bytes: pdfBytes, filename: fileName);
+
+                  if (context.mounted) Navigator.pop(context);
                 },
               ),
             ],
