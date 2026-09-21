@@ -8,6 +8,7 @@ import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import 'package:video_player/video_player.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import '../../../core/services/offline_download_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/models/api_models/course_models.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -126,6 +127,42 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen> {
     }
 
     try {
+      // 1. Check if lecture video is cached locally for offline playback
+      final offlineService = ref.read(offlineDownloadServiceProvider);
+      final localPath = await offlineService.getLocalPath(lecture.id);
+
+      if (localPath != null && File(localPath).existsSync()) {
+        debugPrint('⚡ [CoursePlayer] Playing lecture from local offline cache: $localPath');
+        _videoPlayerController = VideoPlayerController.file(File(localPath));
+        await _videoPlayerController!.initialize();
+
+        _chewieController = ChewieController(
+          videoPlayerController: _videoPlayerController!,
+          autoPlay: true,
+          looping: false,
+          aspectRatio: _videoPlayerController!.value.aspectRatio > 0
+              ? _videoPlayerController!.value.aspectRatio
+              : 16 / 9,
+          errorBuilder: (context, errorMessage) {
+            return Center(
+              child: Text(
+                'Offline playback error: $errorMessage',
+                style: const TextStyle(color: Colors.white),
+              ),
+            );
+          },
+        );
+
+        _videoPlayerController!.addListener(_onVideoPlayerTick);
+
+        if (mounted) {
+          setState(() {
+            _isLoadingVideo = false;
+          });
+        }
+        return;
+      }
+
       String resolvedUrl = '';
       if (videoUrl != null && videoUrl.isNotEmpty) {
         resolvedUrl = videoUrl;

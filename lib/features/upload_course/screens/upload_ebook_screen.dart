@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/kyc_restricted_view.dart';
 import '../../../data/models/user_model.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../home_instructor/providers/instructor_home_provider.dart';
@@ -204,95 +205,6 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
     }
   }
 
-  Widget _buildKycLockedView(BuildContext context, UserModel? user, bool isDark) {
-    final bool isPending = user?.isKycPending == true;
-
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            const SizedBox(height: 20),
-            Container(
-              width: 96,
-              height: 96,
-              decoration: BoxDecoration(
-                color: (isPending ? AppColors.accentOrange : AppColors.error).withValues(alpha: 0.12),
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: (isPending ? AppColors.accentOrange : AppColors.error).withValues(alpha: 0.3),
-                  width: 2,
-                ),
-              ),
-              child: Icon(
-                isPending ? Icons.hourglass_top_rounded : Icons.lock_outline_rounded,
-                size: 48,
-                color: isPending ? AppColors.accentOrange : AppColors.error,
-              ),
-            ),
-            const SizedBox(height: 28),
-            Text(
-              isPending ? 'KYC Under Review' : 'KYC Verification Required',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              isPending
-                  ? 'Your KYC documents and bank details are currently being reviewed by the administration team.\n\nOnce approved, e-book uploading and publishing will unlock here automatically.'
-                  : 'To enable book publishing and royalties settlement, all instructors must complete their KYC (Government ID & Bank Details) before uploading e-books.',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppColors.inkSoft,
-                    height: 1.55,
-                  ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 36),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isPending ? AppColors.accentOrange : AppColors.primaryGreen,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  elevation: 2,
-                ),
-                icon: Icon(isPending ? Icons.visibility_outlined : Icons.verified_user_rounded),
-                label: Text(
-                  isPending ? 'View KYC Status' : 'Complete KYC Verification',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                onPressed: () => context.push(RouteNames.instructorKyc),
-              ),
-            ),
-            const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.refresh_rounded, size: 16, color: AppColors.inkSoft),
-                const SizedBox(width: 6),
-                Text(
-                  'Pull down to check latest approval status',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.inkSoft,
-                      ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 40),
-          ],
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -310,7 +222,7 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           child: !isKycVerified
-              ? _buildKycLockedView(context, user, isDark)
+              ? const KycRestrictedView(featureName: 'E-Book Upload')
               : Padding(
                   padding: const EdgeInsets.all(20),
                   child: Form(
@@ -358,7 +270,7 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
                   decoration: BoxDecoration(
                     border: Border.all(
-                      color: AppColors.primaryGreen.withOpacity(0.5),
+                      color: AppColors.primaryGreen.withValues(alpha: 0.5),
                       style: BorderStyle.solid,
                     ),
                     borderRadius: BorderRadius.circular(12),

@@ -94,6 +94,7 @@ class ProfileScreen extends ConsumerWidget {
               // Wallet Card (Farmer Only)
               if (isFarmer) ...[
                 AppCard(
+                  onTap: () => context.push('/orders'),
                   padding: EdgeInsets.zero,
                   child: Container(
                     padding: const EdgeInsets.all(24),
@@ -123,9 +124,16 @@ class ProfileScreen extends ConsumerWidget {
                                 color: AppColors.white.withValues(alpha: 0.2),
                                 borderRadius: BorderRadius.circular(8),
                               ),
-                              child: Text(
-                                'Available',
-                                style: Theme.of(context).textTheme.labelSmall?.copyWith(color: AppColors.white),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    'Orders & History',
+                                    style: Theme.of(context).textTheme.labelSmall?.copyWith(color: AppColors.white),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  const Icon(Icons.arrow_forward_ios_rounded, size: 10, color: AppColors.white),
+                                ],
                               ),
                             ),
                           ],
@@ -151,6 +159,7 @@ class ProfileScreen extends ConsumerWidget {
                   data: (stats) {
                     final earnings = stats['total_earnings'] ?? '0';
                     return AppCard(
+                      onTap: () => context.push(RouteNames.instructorAnalytics),
                       padding: EdgeInsets.zero,
                       child: Container(
                         padding: const EdgeInsets.all(24),
@@ -180,9 +189,16 @@ class ProfileScreen extends ConsumerWidget {
                                     color: AppColors.white.withValues(alpha: 0.2),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
-                                  child: Text(
-                                    'Lifetime',
-                                    style: Theme.of(context).textTheme.labelSmall?.copyWith(color: AppColors.white),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        'View Analytics',
+                                        style: Theme.of(context).textTheme.labelSmall?.copyWith(color: AppColors.white),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      const Icon(Icons.arrow_forward_ios_rounded, size: 10, color: AppColors.white),
+                                    ],
                                   ),
                                 ),
                               ],
@@ -268,11 +284,13 @@ class ProfileScreen extends ConsumerWidget {
                       icon: Icons.phone_rounded,
                       label: 'Phone',
                       value: user?.phone.isNotEmpty == true ? user!.phone : 'Not provided',
+                      onTap: () => context.push('/edit-profile'),
                     ),
                     _MenuItem(
                       icon: Icons.location_on_rounded,
                       label: 'Location',
                       value: user?.location ?? 'Not provided',
+                      onTap: () => context.push('/edit-profile'),
                     ),
                     _MenuItem(
                       icon: Icons.agriculture_rounded,
@@ -286,11 +304,13 @@ class ProfileScreen extends ConsumerWidget {
                                       ? 'Expert'
                                       : '${user.farmingExperience} years')
                           : 'Not provided',
+                      onTap: () => context.push('/edit-profile'),
                     ),
                     _MenuItem(
                       icon: Icons.interests_rounded,
                       label: 'Areas of Interest',
                       value: user?.areasOfInterest?.join(', ') ?? 'Not provided',
+                      onTap: () => context.push('/edit-profile'),
                     ),
                   ],
                 ),
@@ -302,7 +322,7 @@ class ProfileScreen extends ConsumerWidget {
                       icon: Icons.school_rounded,
                       label: 'My Enrolled Courses',
                       onTap: () {
-                        context.push(RouteNames.certificates);
+                        context.push(RouteNames.farmerHome);
                       },
                     ),
                     _MenuItem(
@@ -336,11 +356,13 @@ class ProfileScreen extends ConsumerWidget {
                       icon: Icons.phone_rounded,
                       label: 'Phone',
                       value: user?.phone.isNotEmpty == true ? user!.phone : 'Not provided',
+                      onTap: () => context.push('/edit-profile'),
                     ),
                     _MenuItem(
                       icon: Icons.location_on_rounded,
                       label: 'Location',
                       value: user?.location ?? 'Not provided',
+                      onTap: () => context.push('/edit-profile'),
                     ),
                   ],
                 ),
@@ -353,26 +375,31 @@ class ProfileScreen extends ConsumerWidget {
                         icon: Icons.info_rounded,
                         label: 'Bio',
                         value: user.bio,
+                        onTap: () => context.push('/edit-profile'),
                       ),
                     _MenuItem(
                       icon: Icons.star_rounded,
                       label: 'Expertise Tags',
                       value: user?.expertiseTags ?? 'Not provided',
+                      onTap: () => context.push('/edit-profile'),
                     ),
                     _MenuItem(
                       icon: Icons.work_rounded,
                       label: 'Years of Experience',
                       value: user?.yearsOfExperience?.toString() ?? 'Not provided',
+                      onTap: () => context.push('/edit-profile'),
                     ),
                     _MenuItem(
                       icon: Icons.grass_rounded,
                       label: 'Specialty Crops',
                       value: user?.specialtyCrops ?? 'Not provided',
+                      onTap: () => context.push('/edit-profile'),
                     ),
                     _MenuItem(
                       icon: Icons.link_rounded,
                       label: 'Social Link',
                       value: user?.socialLink ?? 'Not provided',
+                      onTap: () => context.push('/edit-profile'),
                     ),
                   ],
                 ),
@@ -409,16 +436,7 @@ class ProfileScreen extends ConsumerWidget {
                   _MenuItem(
                     icon: Icons.language_rounded, 
                     label: 'Language',
-                    onTap: () {
-                      final messenger = ScaffoldMessenger.of(context);
-                      messenger.clearSnackBars();
-                      messenger.showSnackBar(
-                        const SnackBar(
-                          content: Text('Language settings coming soon!'),
-                          duration: Duration(milliseconds: 1800),
-                        ),
-                      );
-                    },
+                    onTap: () => _showLanguageBottomSheet(context, ref),
                   ),
                   _MenuItem(
                     icon: Theme.of(context).brightness == Brightness.dark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
@@ -442,16 +460,7 @@ class ProfileScreen extends ConsumerWidget {
                   _MenuItem(
                     icon: Icons.notifications_outlined,
                     label: 'Notifications',
-                    onTap: () {
-                      final messenger = ScaffoldMessenger.of(context);
-                      messenger.clearSnackBars();
-                      messenger.showSnackBar(
-                        const SnackBar(
-                          content: Text('Notifications settings coming soon!'),
-                          duration: Duration(milliseconds: 1800),
-                        ),
-                      );
-                    },
+                    onTap: () => context.push(RouteNames.notifications),
                   ),
                   _MenuItem(
                     icon: Icons.privacy_tip_outlined, 
@@ -625,4 +634,117 @@ class _MenuItem {
   final String? value;
   final VoidCallback? onTap;
   final Widget? trailingWidget;
+}
+
+void _showLanguageBottomSheet(BuildContext context, WidgetRef ref) {
+  final user = ref.read(authProvider).user;
+  final currentLang = user?.language ?? 'English';
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+
+  final languages = [
+    {'name': 'English', 'code': 'EN', 'native': 'English'},
+    {'name': 'Hindi', 'code': 'HI', 'native': 'हिंदी'},
+    {'name': 'Marathi', 'code': 'MR', 'native': 'मराठी'},
+  ];
+
+  showModalBottomSheet(
+    context: context,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    ),
+    backgroundColor: isDark ? AppColors.bgDark : Colors.white,
+    builder: (sheetContext) {
+      return SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Select App Language',
+                    style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(sheetContext),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              ...languages.map((lang) {
+                final isSelected = currentLang.toLowerCase() == lang['name']!.toLowerCase();
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? AppColors.primaryGreen.withValues(alpha: 0.1)
+                        : (isDark ? AppColors.cardDark : AppColors.bgLight),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: isSelected ? AppColors.primaryGreen : Colors.transparent,
+                      width: 1.5,
+                    ),
+                  ),
+                  child: ListTile(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    leading: CircleAvatar(
+                      backgroundColor: isSelected
+                          ? AppColors.primaryGreen
+                          : (isDark ? Colors.grey.shade800 : Colors.grey.shade300),
+                      foregroundColor: isSelected ? Colors.white : AppColors.inkDark,
+                      radius: 18,
+                      child: Text(
+                        lang['code']!,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                          color: isSelected ? Colors.white : (isDark ? Colors.white : AppColors.inkDark),
+                        ),
+                      ),
+                    ),
+                    title: Text(
+                      lang['name']!,
+                      style: TextStyle(
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      ),
+                    ),
+                    subtitle: Text(
+                      lang['native']!,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDark ? Colors.grey.shade400 : AppColors.inkSoft,
+                      ),
+                    ),
+                    trailing: isSelected
+                        ? const Icon(Icons.check_circle_rounded, color: AppColors.primaryGreen)
+                        : null,
+                    onTap: () {
+                      Navigator.pop(sheetContext);
+                      final messenger = ScaffoldMessenger.of(context);
+                      messenger.clearSnackBars();
+                      messenger.showSnackBar(
+                        SnackBar(
+                          content: Text('Language set to ${lang['name']} (${lang['native']})'),
+                          backgroundColor: AppColors.primaryGreen,
+                          duration: const Duration(seconds: 2),
+                        ),
+                      );
+                    },
+                  ),
+                );
+              }),
+            ],
+          ),
+        ),
+      );
+    },
+  );
 }

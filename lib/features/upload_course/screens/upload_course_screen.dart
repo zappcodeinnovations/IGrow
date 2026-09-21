@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/kyc_restricted_view.dart';
 import '../../../data/models/user_model.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../home_instructor/providers/instructor_home_provider.dart';
@@ -520,6 +521,24 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final user = ref.watch(authProvider).user;
+
+    // Check KYC restriction
+    if (user != null && !user.isKycVerified) {
+      return Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        appBar: AppBar(
+          elevation: 0,
+          title: const Text(
+            'Create a New Course',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          centerTitle: true,
+        ),
+        body: const KycRestrictedView(featureName: 'Course Creation'),
+      );
+    }
+
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return GestureDetector(

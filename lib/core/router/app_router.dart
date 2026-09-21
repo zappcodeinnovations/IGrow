@@ -41,6 +41,7 @@ import '../../features/cart/screens/orders_screen.dart';
 import '../../features/notifications/screens/notifications_screen.dart';
 import '../../features/wishlist/screens/wishlist_screen.dart';
 import '../../features/certificates/screens/certificates_screen.dart';
+import '../../features/explore/screens/downloads_screen.dart';
 import '../widgets/shell_scaffold.dart';
 import 'route_names.dart';
 
@@ -244,6 +245,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/certificates',
         builder: (context, state) => const CertificatesScreen(),
+      ),
+      GoRoute(
+        path: RouteNames.downloads,
+        builder: (context, state) => const DownloadsScreen(),
+      ),
+      GoRoute(
+        path: '/downloads',
+        builder: (context, state) => const DownloadsScreen(),
       ),
       
       // ─── Shell Router (Bottom Navigation) ────────────────────────────
