@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/api_client.dart';
@@ -106,30 +107,20 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   /// Silently refresh the current user from backend without full-screen loading spinner.
-  /// If admin updates verification status or KYC, UI updates instantly.
-  Future<void> refreshUserSilent() async {
-    if (!state.isAuthenticated) return;
+  /// Guarantees that all profile fields (name, phone, state, district, experience, bio, etc.)
+  /// are refreshed and state is updated. Returns the fresh UserModel if successful.
+  Future<UserModel?> refreshUserSilent() async {
+    if (!state.isAuthenticated) return null;
     try {
       final user = await _repo.getCurrentUser(forceRefresh: true);
       if (user != null) {
-        final oldUser = state.user;
-        if (oldUser == null ||
-            oldUser.kycVerified != user.kycVerified ||
-            oldUser.verificationStatus != user.verificationStatus ||
-            oldUser.bankName != user.bankName ||
-            oldUser.bankAccountNumber != user.bankAccountNumber ||
-            oldUser.bankIfscCode != user.bankIfscCode ||
-            oldUser.kycDocumentNumber != user.kycDocumentNumber ||
-            oldUser.activeRole != user.activeRole ||
-            oldUser.fullName != user.fullName) {
-          print('🔔 [AUTH PROVIDER] Silent Sync: Status change detected!');
-          print('   Old: kycVerified=${oldUser?.kycVerified}, status=${oldUser?.verificationStatus}');
-          print('   New: kycVerified=${user.kycVerified}, status=${user.verificationStatus}');
-          state = state.copyWith(user: user);
-        }
+        state = state.copyWith(user: user);
+        return user;
       }
+      return null;
     } catch (e) {
-      print('⚠️ [AUTH PROVIDER] refreshUserSilent skipped: $e');
+      debugPrint('⚠️ [AUTH PROVIDER] refreshUserSilent skipped: $e');
+      return null;
     }
   }
 

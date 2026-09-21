@@ -10,6 +10,7 @@ import '../../../core/network/api_exception.dart';
 import '../../../core/network/swagger_generated/app_api.swagger.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/models/user_role.dart';
+import '../../../data/models/user_model.dart';
 import '../../auth/providers/auth_provider.dart';
 
 class EditProfileScreen extends ConsumerStatefulWidget {
@@ -22,16 +23,20 @@ class EditProfileScreen extends ConsumerStatefulWidget {
 class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   
-  // Basic info controllers
+  // Basic & Account info controllers
   late TextEditingController _nameController;
+  late TextEditingController _emailController;
   late TextEditingController _phoneController;
   late TextEditingController _stateController;
   late TextEditingController _districtController;
+
+  // Student specific controllers
   late TextEditingController _experienceController;
   late TextEditingController _areasController;
 
-  // Instructor info controllers
+  // Instructor specific controllers
   late TextEditingController _bioController;
+  late TextEditingController _qualificationsController;
   late TextEditingController _expertiseController;
   late TextEditingController _websiteController;
   late TextEditingController _yearsExpController;
@@ -41,31 +46,106 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
   File? _selectedImage;
   bool _isLoading = false;
+  bool _isFetchingFresh = false;
 
   @override
   void initState() {
     super.initState();
     final user = ref.read(authProvider).user;
     
-    _nameController = TextEditingController(text: user?.fullName);
-    _phoneController = TextEditingController(text: user?.phone);
-    _stateController = TextEditingController(text: user?.locationState);
-    _districtController = TextEditingController(text: user?.locationDistrict);
+    _nameController = TextEditingController(text: user?.fullName ?? '');
+    _emailController = TextEditingController(text: user?.email ?? '');
+    _phoneController = TextEditingController(text: user?.phone ?? '');
+    _stateController = TextEditingController(text: user?.locationState ?? '');
+    _districtController = TextEditingController(text: user?.locationDistrict ?? '');
     _experienceController = TextEditingController(text: _formatExperience(user?.farmingExperience));
     _areasController = TextEditingController(
       text: user?.areasOfInterest?.join(', ') ?? '',
     );
 
-    _bioController = TextEditingController(text: user?.bio);
-    _expertiseController = TextEditingController(text: user?.expertiseTags);
-    _websiteController = TextEditingController(text: user?.website);
-    _yearsExpController = TextEditingController(text: user?.yearsOfExperience?.toString());
-    _cropsController = TextEditingController(text: user?.specialtyCrops);
-    _socialController = TextEditingController(text: user?.socialLink);
-    _occupationController = TextEditingController(text: user?.currentOccupation);
+    _bioController = TextEditingController(text: user?.bio ?? '');
+    _qualificationsController = TextEditingController(text: user?.qualifications ?? '');
+    _expertiseController = TextEditingController(text: user?.expertiseTags ?? '');
+    _websiteController = TextEditingController(text: user?.website ?? '');
+    _yearsExpController = TextEditingController(text: user?.yearsOfExperience?.toString() ?? '');
+    _cropsController = TextEditingController(text: user?.specialtyCrops ?? '');
+    _socialController = TextEditingController(text: user?.socialLink ?? '');
+    _occupationController = TextEditingController(text: user?.currentOccupation ?? '');
+
+    // Synchronize latest profile data from server on screen open
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadLatestProfile();
+    });
+  }
+
+  Future<void> _loadLatestProfile() async {
+    if (!mounted) return;
+    setState(() => _isFetchingFresh = true);
+    try {
+      final freshUser = await ref.read(authProvider.notifier).refreshUserSilent();
+      if (freshUser != null && mounted) {
+        setState(() {
+          _populateControllers(freshUser);
+        });
+      }
+    } catch (e) {
+      debugPrint('⚠️ [EditProfileScreen] Error refreshing profile: $e');
+    } finally {
+      if (mounted) setState(() => _isFetchingFresh = false);
+    }
+  }
+
+  void _populateControllers(UserModel user) {
+    if (_nameController.text.isEmpty || _nameController.text != user.fullName) {
+      _nameController.text = user.fullName;
+    }
+    _emailController.text = user.email;
+    _phoneController.text = user.phone;
+    _stateController.text = user.locationState ?? '';
+    _districtController.text = user.locationDistrict ?? '';
+    _experienceController.text = _formatExperience(user.farmingExperience);
+    _areasController.text = user.areasOfInterest?.join(', ') ?? '';
+
+    _bioController.text = user.bio ?? '';
+    _qualificationsController.text = user.qualifications ?? '';
+    _expertiseController.text = user.expertiseTags ?? '';
+    _websiteController.text = user.website ?? '';
+    _yearsExpController.text = user.yearsOfExperience?.toString() ?? '';
+    _cropsController.text = user.specialtyCrops ?? '';
+    _socialController.text = user.socialLink ?? '';
+    _occupationController.text = user.currentOccupation ?? '';
   }
 
   static const _experienceOptions = ['Beginner', 'Intermediate', 'Expert'];
+
+  static const _popularInterests = [
+    'Organic Farming',
+    'Dairy Farming',
+    'Agribusiness',
+    'Hydroponics & Aquaponics',
+    'Soil Management',
+    'Crop Protection',
+    'Horticulture',
+    'Livestock',
+    'Farm Equipment & Tech',
+  ];
+
+  static const _states = [
+    'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
+    'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka',
+    'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram',
+    'Nagaland', 'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu', 'Telangana',
+    'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal', 'Delhi'
+  ];
+
+  static const _districts = [
+    'Ahmednagar', 'Akola', 'Amravati', 'Aurangabad', 'Beed', 'Bhandara', 'Buldhana',
+    'Chandrapur', 'Dhule', 'Gadchiroli', 'Gondia', 'Hingoli', 'Jalgaon', 'Jalna',
+    'Kolhapur', 'Latur', 'Mumbai City', 'Mumbai Suburban', 'Nagpur', 'Nanded',
+    'Nandurbar', 'Nashik', 'Osmanabad', 'Palghar', 'Parbhani', 'Pune', 'Raigad',
+    'Ratnagiri', 'Sangli', 'Satara', 'Sindhudurg', 'Solapur', 'Thane', 'Wardha',
+    'Washim', 'Yavatmal'
+  ];
 
   static String _formatExperience(String? exp) {
     if (exp == null || exp.trim().isEmpty) return '';
@@ -83,8 +163,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     if (upper == 'BEGINNER' || upper.contains('BEG')) return 'BEGINNER';
     if (upper == 'INTERMEDIATE' || upper.contains('INT')) return 'INTERMEDIATE';
     if (upper.contains('EXP') || upper == 'EXPERT') return 'EXPERT';
-    // If it's a number, convert to String as required by backend
-    return trimmed.toString();
+    return trimmed;
   }
 
   static String? _formatPhone(String input) {
@@ -245,12 +324,14 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   @override
   void dispose() {
     _nameController.dispose();
+    _emailController.dispose();
     _phoneController.dispose();
     _stateController.dispose();
     _districtController.dispose();
     _experienceController.dispose();
     _areasController.dispose();
     _bioController.dispose();
+    _qualificationsController.dispose();
     _expertiseController.dispose();
     _websiteController.dispose();
     _yearsExpController.dispose();
@@ -336,6 +417,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           yearsOfExperience: int.tryParse(_yearsExpController.text.trim()),
           specialtyCrops: _cropsController.text.isNotEmpty ? _cropsController.text : null,
           socialLink: _formatUrl(_socialController.text),
+          qualifications: _qualificationsController.text.isNotEmpty ? _qualificationsController.text.trim() : null,
           currentOccupation: _occupationController.text.isNotEmpty ? _occupationController.text : null,
         );
         
@@ -395,6 +477,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     TextEditingController controller, {
     bool maxLines = false,
     TextInputType? keyboardType,
+    String? hintText,
     String? Function(String?)? validator,
   }) {
     return Padding(
@@ -406,6 +489,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         validator: validator,
         decoration: InputDecoration(
           labelText: label,
+          hintText: hintText,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
           ),
@@ -415,53 +499,241 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     );
   }
 
-  Widget _buildDropdownField(String label, TextEditingController controller, List<String> options) {
-    final hasMatch = options.contains(controller.text);
+  Widget _buildSelectableTextField(
+    String label,
+    TextEditingController controller,
+    List<String> suggestions, {
+    String? hintText,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          return DropdownMenu<String>(
-            controller: controller,
-            initialSelection: hasMatch ? controller.text : null,
-            width: constraints.maxWidth,
-            label: Text(label),
-            enableSearch: true,
-            enableFilter: true,
+      child: TextFormField(
+        controller: controller,
+        decoration: InputDecoration(
+          labelText: label,
+          hintText: hintText,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          filled: true,
+          suffixIcon: PopupMenuButton<String>(
+            icon: const Icon(Icons.arrow_drop_down, size: 28),
+            tooltip: 'Select $label',
             onSelected: (val) {
-              if (val != null) {
+              setState(() {
                 controller.text = val;
-              }
+              });
             },
-            dropdownMenuEntries: options.map((e) => DropdownMenuEntry(value: e, label: e)).toList(),
-            inputDecorationTheme: InputDecorationTheme(
+            itemBuilder: (context) => suggestions
+                .map(
+                  (s) => PopupMenuItem<String>(
+                    value: s,
+                    child: Text(s),
+                  ),
+                )
+                .toList(),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildReadOnlyEmailField(String email) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: TextFormField(
+        controller: _emailController,
+        readOnly: true,
+        decoration: InputDecoration(
+          labelText: 'Email Address (Registered Login ID)',
+          prefixIcon: const Icon(Icons.email_outlined),
+          suffixIcon: const Tooltip(
+            message: 'Email cannot be changed (primary login identifier)',
+            child: Icon(Icons.lock_outline, size: 20, color: Colors.grey),
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          filled: true,
+          fillColor: Colors.black.withValues(alpha: 0.04),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRoleBadge(UserModel? user) {
+    final role = user?.activeRole ?? UserRole.farmer;
+    final isInstructor = role == UserRole.instructor;
+    final status = user?.verificationStatus ?? 'PENDING';
+    final isVerified = user?.isKycVerified == true || status == 'VERIFIED';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 24),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: isInstructor
+            ? (isVerified ? AppColors.primaryGreen.withValues(alpha: 0.1) : Colors.amber.withValues(alpha: 0.1))
+            : AppColors.primaryGreen.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isInstructor
+              ? (isVerified ? AppColors.primaryGreen.withValues(alpha: 0.3) : Colors.amber.shade600)
+              : AppColors.primaryGreen.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            isInstructor ? Icons.school_rounded : Icons.agriculture_rounded,
+            color: isInstructor
+                ? (isVerified ? AppColors.primaryGreen : Colors.amber.shade800)
+                : AppColors.primaryGreen,
+            size: 24,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isInstructor ? 'Instructor Account' : 'Student / Farmer Account',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                ),
+                const SizedBox(height: 2),
+                if (isInstructor)
+                  Text(
+                    isVerified ? '✓ Verified Instructor' : '⏳ Verification Status: Pending Review',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: isVerified ? AppColors.primaryGreen : Colors.amber.shade900,
+                    ),
+                  )
+                else
+                  Text(
+                    user?.location != null && user!.location!.isNotEmpty
+                        ? '📍 ${user.location}'
+                        : '🌱 AgriLearn Farmer Community',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.inkSoft,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExperienceSelector() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Farming Experience Level',
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            children: _experienceOptions.map((exp) {
+              final isSelected = _experienceController.text.trim().toLowerCase() == exp.toLowerCase();
+              return ChoiceChip(
+                label: Text(exp),
+                selected: isSelected,
+                selectedColor: AppColors.primaryGreen,
+                labelStyle: TextStyle(
+                  color: isSelected ? Colors.white : AppColors.inkDark,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                ),
+                onSelected: (selected) {
+                  if (selected) {
+                    setState(() {
+                      _experienceController.text = exp;
+                    });
+                  }
+                },
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAreasOfInterestSelector() {
+    final currentList = _areasController.text
+        .split(',')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Areas of Interest',
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Tap tags to add/remove or type custom topics below:',
+            style: TextStyle(fontSize: 12, color: AppColors.inkSoft),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: _popularInterests.map((tag) {
+              final isSelected = currentList.any((e) => e.toLowerCase() == tag.toLowerCase());
+              return FilterChip(
+                label: Text(
+                  tag,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: isSelected ? Colors.white : AppColors.inkDark,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  ),
+                ),
+                selected: isSelected,
+                selectedColor: AppColors.primaryGreen,
+                checkmarkColor: Colors.white,
+                onSelected: (selected) {
+                  setState(() {
+                    if (selected) {
+                      if (!isSelected) currentList.add(tag);
+                    } else {
+                      currentList.removeWhere((e) => e.toLowerCase() == tag.toLowerCase());
+                    }
+                    _areasController.text = currentList.join(', ');
+                  });
+                },
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 10),
+          TextFormField(
+            controller: _areasController,
+            maxLines: 2,
+            decoration: InputDecoration(
+              labelText: 'Selected Interests (comma-separated)',
+              hintText: 'e.g. Organic Farming, Drip Irrigation, Crop Protection',
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
               filled: true,
             ),
-          );
-        }
+          ),
+        ],
       ),
     );
   }
-
-  static const _states = [
-    'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
-    'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka',
-    'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram',
-    'Nagaland', 'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu', 'Telangana',
-    'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal'
-  ];
-
-  static const _districts = [
-    'Ahmednagar', 'Akola', 'Amravati', 'Aurangabad', 'Beed', 'Bhandara', 'Buldhana',
-    'Chandrapur', 'Dhule', 'Gadchiroli', 'Gondia', 'Hingoli', 'Jalgaon', 'Jalna',
-    'Kolhapur', 'Latur', 'Mumbai City', 'Mumbai Suburban', 'Nagpur', 'Nanded',
-    'Nandurbar', 'Nashik', 'Osmanabad', 'Palghar', 'Parbhani', 'Pune', 'Raigad',
-    'Ratnagiri', 'Sangli', 'Satara', 'Sindhudurg', 'Solapur', 'Thane', 'Wardha',
-    'Washim', 'Yavatmal'
-  ];
 
   @override
   Widget build(BuildContext context) {
@@ -475,6 +747,19 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           icon: const Icon(Icons.arrow_back_rounded),
           onPressed: _navigateBack,
         ),
+        actions: [
+          if (_isFetchingFresh)
+            const Padding(
+              padding: EdgeInsets.only(right: 16),
+              child: Center(
+                child: SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
+            ),
+        ],
       ),
       body: Stack(
         children: [
@@ -514,12 +799,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                 bottom: 0,
                                 right: 0,
                                 child: Container(
-                                  padding: const EdgeInsets.all(4),
+                                  padding: const EdgeInsets.all(6),
                                   decoration: const BoxDecoration(
                                     color: AppColors.primaryGreen,
                                     shape: BoxShape.circle,
                                   ),
-                                  child: const Icon(Icons.camera_alt, size: 20, color: Colors.white),
+                                  child: const Icon(Icons.camera_alt, size: 18, color: Colors.white),
                                 ),
                               ),
                             ],
@@ -566,8 +851,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 20),
 
+                  // Role & Verification Info Badge
+                  _buildRoleBadge(user),
+
+                  // Section 1: Basic & Personal Info
                   Text('Basic Information', style: Theme.of(context).textTheme.titleLarge),
                   const SizedBox(height: 16),
                   _buildTextField(
@@ -580,10 +869,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                       return null;
                     },
                   ),
+                  _buildReadOnlyEmailField(_emailController.text),
                   _buildTextField(
                     'Phone Number',
                     _phoneController,
                     keyboardType: TextInputType.phone,
+                    hintText: 'e.g. 9876543210',
                     validator: (val) {
                       if (val != null && val.trim().isNotEmpty) {
                         final digits = val.trim().replaceAll(RegExp(r'[^\d]'), '');
@@ -594,19 +885,28 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                       return null;
                     },
                   ),
-                  _buildDropdownField('State', _stateController, _states),
-                  _buildDropdownField('District', _districtController, _districts),
-                  _buildDropdownField('Farming Experience', _experienceController, _experienceOptions),
-                  _buildTextField('Areas of Interest (comma separated)', _areasController, maxLines: true),
+                  _buildSelectableTextField('State / Region', _stateController, _states, hintText: 'Select or type state'),
+                  _buildSelectableTextField('District / City', _districtController, _districts, hintText: 'Select or type district'),
 
+                  // Section 2: Student Specific Fields
+                  if (!isInstructor) ...[
+                    const SizedBox(height: 16),
+                    Text('Farming Profile', style: Theme.of(context).textTheme.titleLarge),
+                    const SizedBox(height: 16),
+                    _buildExperienceSelector(),
+                    _buildAreasOfInterestSelector(),
+                  ],
+
+                  // Section 3: Instructor Specific Fields
                   if (isInstructor) ...[
-                    const SizedBox(height: 24),
-                    Text('Instructor Details', style: Theme.of(context).textTheme.titleLarge),
+                    const SizedBox(height: 20),
+                    Text('Instructor Professional Details', style: Theme.of(context).textTheme.titleLarge),
                     const SizedBox(height: 16),
                     _buildTextField(
-                      'Bio *', 
+                      'Bio / About Me *', 
                       _bioController, 
                       maxLines: true,
+                      hintText: 'Tell students about your practical background, passion, and teaching focus...',
                       validator: (val) {
                         if (val == null || val.trim().isEmpty) {
                           return 'Please enter a short bio about yourself';
@@ -614,12 +914,45 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                         return null;
                       },
                     ),
-                    _buildTextField('Expertise Tags (comma separated)', _expertiseController),
-                    _buildTextField('Current Occupation', _occupationController),
                     _buildTextField(
-                      'Website', 
+                      'Educational / Practical Qualifications', 
+                      _qualificationsController,
+                      hintText: 'e.g. M.Sc. Agronomy, Organic Certification, 15 yrs Farm Head',
+                    ),
+                    _buildTextField(
+                      'Expertise Tags (comma-separated)', 
+                      _expertiseController,
+                      hintText: 'e.g. Soil Science, Organic Farming, Pest Management',
+                    ),
+                    _buildTextField(
+                      'Years of Practical Experience', 
+                      _yearsExpController, 
+                      keyboardType: TextInputType.number,
+                      hintText: 'e.g. 5',
+                      validator: (val) {
+                        if (val != null && val.trim().isNotEmpty) {
+                          if (int.tryParse(val.trim()) == null) {
+                            return 'Please enter a valid number of years';
+                          }
+                        }
+                        return null;
+                      },
+                    ),
+                    _buildTextField(
+                      'Specialty Crops / Focus Areas', 
+                      _cropsController,
+                      hintText: 'e.g. Wheat, Sugarcane, Cotton, Drip Horticulture',
+                    ),
+                    _buildTextField(
+                      'Current Occupation / Role', 
+                      _occupationController,
+                      hintText: 'e.g. Agricultural Officer, Progressive Farmer, Crop Consultant',
+                    ),
+                    _buildTextField(
+                      'Website / Portfolio Link', 
                       _websiteController,
                       keyboardType: TextInputType.url,
+                      hintText: 'https://yourwebsite.com',
                       validator: (val) {
                         if (val != null && val.trim().isNotEmpty) {
                           final text = val.trim();
@@ -631,23 +964,10 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                       },
                     ),
                     _buildTextField(
-                      'Years of Experience', 
-                      _yearsExpController, 
-                      keyboardType: TextInputType.number,
-                      validator: (val) {
-                        if (val != null && val.trim().isNotEmpty) {
-                          if (int.tryParse(val.trim()) == null) {
-                            return 'Please enter a valid number of years';
-                          }
-                        }
-                        return null;
-                      },
-                    ),
-                    _buildTextField('Specialty Crops', _cropsController),
-                    _buildTextField(
-                      'Social Link', 
+                      'Social Media Link', 
                       _socialController,
                       keyboardType: TextInputType.url,
+                      hintText: 'https://youtube.com/@channel or https://linkedin.com/in/profile',
                       validator: (val) {
                         if (val != null && val.trim().isNotEmpty) {
                           final text = val.trim();
@@ -682,7 +1002,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                 color: Colors.white,
                               ),
                             )
-                          : const Text('Save Profile'),
+                          : const Text('Save Profile', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                     ),
                   ),
                   const SizedBox(height: 40),

@@ -21,6 +21,7 @@ class UserModel {
     this.yearsOfExperience,
     this.specialtyCrops,
     this.socialLink,
+    this.qualifications,
     this.currentOccupation,
     this.location,
     this.locationState,
@@ -55,6 +56,7 @@ class UserModel {
   final int? yearsOfExperience;
   final String? specialtyCrops;
   final String? socialLink;
+  final String? qualifications;
   final String? currentOccupation;
 
   // Instructor KYC & Bank fields
@@ -142,6 +144,7 @@ class UserModel {
       yearsOfExperience: instructorDetails?.yearsOfExperience,
       specialtyCrops: instructorDetails?.specialtyCrops,
       socialLink: instructorDetails?.socialLink,
+      qualifications: instructorDetails?.qualifications ?? (rawInstructorMap?['qualifications'] as String?),
       currentOccupation: instructorDetails?.currentOccupation,
       kycVerified: instructorDetails?.kycVerified ?? (rawInstructorMap?['kyc_verified'] as bool?),
       verificationStatus: verStatus,
@@ -175,6 +178,7 @@ class UserModel {
     int? yearsOfExperience,
     String? specialtyCrops,
     String? socialLink,
+    String? qualifications,
     String? currentOccupation,
     bool? kycVerified,
     String? verificationStatus,
@@ -207,6 +211,7 @@ class UserModel {
       yearsOfExperience: yearsOfExperience ?? this.yearsOfExperience,
       specialtyCrops: specialtyCrops ?? this.specialtyCrops,
       socialLink: socialLink ?? this.socialLink,
+      qualifications: qualifications ?? this.qualifications,
       currentOccupation: currentOccupation ?? this.currentOccupation,
       kycVerified: kycVerified ?? this.kycVerified,
       verificationStatus: verificationStatus ?? this.verificationStatus,
