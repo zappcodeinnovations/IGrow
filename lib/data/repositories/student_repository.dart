@@ -19,11 +19,19 @@ class StudentRepository {
     int? page,
     String? search,
     String? category,
+    String? level,
+    num? minPrice,
+    num? maxPrice,
+    String? ordering,
   }) async {
     final response = await appApi.apiV1CoursesCatalogGet(
       page: page,
       search: search,
       category: category,
+      level: level != null && level.isNotEmpty ? level.toLowerCase() : null,
+      minPrice: minPrice,
+      maxPrice: maxPrice,
+      ordering: ordering != null && ordering.isNotEmpty ? ordering : null,
     );
     if (!response.isSuccessful) {
       throw Exception('Failed to load courses catalog: ${response.error}');

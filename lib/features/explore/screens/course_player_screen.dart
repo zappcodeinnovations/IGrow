@@ -561,8 +561,41 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen> {
                           );
                         },
                       ),
+                      IconButton(
+                        tooltip: 'Quick Bookmark',
+                        icon: const Icon(Icons.bookmark_add_outlined, color: AppColors.accentOrange),
+                        onPressed: () async {
+                          final currentSec = _videoPlayerController?.value.position.inSeconds ?? 0;
+                          final m = currentSec ~/ 60;
+                          final s = currentSec % 60;
+                          final timeFormatted = '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+                          final text = '🔖 Bookmark at $timeFormatted in ${_currentLecture!.title}';
+                          try {
+                            await ref.read(studentRepositoryProvider).postCourseNote(
+                                  _activeSlug!,
+                                  text,
+                                  currentSec,
+                                );
+                            ref.invalidate(courseNotesProvider(_activeSlug!));
+                            if (!mounted || !context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Row(
+                                    children: [
+                                      const Icon(Icons.bookmark_added_rounded, color: Colors.white, size: 20),
+                                      const SizedBox(width: 8),
+                                      Text('Bookmarked at $timeFormatted!'),
+                                    ],
+                                  ),
+                                  backgroundColor: AppColors.accentOrange,
+                                  duration: const Duration(seconds: 2),
+                                ),
+                              );
+                          } catch (_) {}
+                        },
+                      ),
                       if (_hasNextLecture(course)) ...[
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 4),
                         IconButton(
                           tooltip: 'Next Lecture',
                           icon: const Icon(Icons.skip_next,
@@ -591,7 +624,7 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen> {
                         tabs: [
                           const Tab(text: 'Curriculum'),
                           const Tab(text: 'Q&A'),
-                          const Tab(text: 'Notes'),
+                          const Tab(text: 'Notes & Bookmarks'),
                           Tab(
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
@@ -686,7 +719,7 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen> {
 // TAB 1: CURRICULUM & STUDY MATERIALS COMPONENT
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _CurriculumTab extends StatelessWidget {
+class _CurriculumTab extends ConsumerWidget {
   const _CurriculumTab({
     required this.course,
     required this.currentLecture,
@@ -706,8 +739,9 @@ class _CurriculumTab extends StatelessWidget {
   final Function(ApiLecture, ApiCourseSection) onSelectLecture;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bookmarkedLectures = ref.watch(lectureBookmarksProvider(course.slug ?? course.id));
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -913,7 +947,7 @@ class _CurriculumTab extends StatelessWidget {
                           ),
                           const SizedBox(width: 8),
                         ],
-                        if (lecture.durationFormatted != null)
+                        if (lecture.durationFormatted != null) ...[
                           Text(
                             lecture.durationFormatted!,
                             style: TextStyle(
@@ -923,6 +957,39 @@ class _CurriculumTab extends StatelessWidget {
                                   : AppColors.inkSoft,
                             ),
                           ),
+                          const SizedBox(width: 4),
+                        ],
+                        IconButton(
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                          icon: Icon(
+                            bookmarkedLectures.contains(lecture.id)
+                                ? Icons.bookmark_rounded
+                                : Icons.bookmark_border_rounded,
+                            size: 19,
+                            color: bookmarkedLectures.contains(lecture.id)
+                                ? AppColors.accentOrange
+                                : AppColors.inkSoft,
+                          ),
+                          tooltip: bookmarkedLectures.contains(lecture.id)
+                              ? 'Remove Bookmark'
+                              : 'Bookmark Lecture',
+                          onPressed: () {
+                            ref
+                                .read(lectureBookmarksProvider(course.slug ?? course.id).notifier)
+                                .toggleBookmark(lecture.id);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  bookmarkedLectures.contains(lecture.id)
+                                      ? 'Removed from bookmarks'
+                                      : 'Lecture bookmarked! 🔖',
+                                ),
+                                duration: const Duration(seconds: 1),
+                              ),
+                            );
+                          },
+                        ),
                       ],
                     ),
                     onTap: () => onSelectLecture(lecture, section),
@@ -1369,11 +1436,49 @@ class _CourseNotesTab extends ConsumerStatefulWidget {
 class _CourseNotesTabState extends ConsumerState<_CourseNotesTab> {
   final _controller = TextEditingController();
   bool _isSubmitting = false;
+  String _activeFilter = 'all'; // 'all', 'notes', 'bookmarks'
 
   String _formatTime(int seconds) {
     final m = seconds ~/ 60;
     final s = seconds % 60;
     return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _quickBookmark() async {
+    final formatted = _formatTime(widget.currentPositionSeconds);
+    final text = '🔖 Bookmark at $formatted';
+    setState(() => _isSubmitting = true);
+    try {
+      await ref.read(studentRepositoryProvider).postCourseNote(
+            widget.courseSlug,
+            text,
+            widget.currentPositionSeconds,
+          );
+      ref.invalidate(courseNotesProvider(widget.courseSlug));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.bookmark_added_rounded, color: Colors.white, size: 18),
+                const SizedBox(width: 8),
+                Text('Bookmarked at $formatted!'),
+              ],
+            ),
+            backgroundColor: AppColors.accentOrange,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to save bookmark: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
   }
 
   Future<void> _submit() async {
@@ -1412,88 +1517,206 @@ class _CourseNotesTabState extends ConsumerState<_CourseNotesTab> {
 
     return Column(
       children: [
+        // ── Top Action & Filter Strip ─────────────────────────────
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.cardDark : Colors.grey.shade50,
+            border: Border(
+              bottom: BorderSide(
+                color: isDark ? AppColors.lineDark : AppColors.lineLight,
+              ),
+            ),
+          ),
+          child: Row(
+            children: [
+              // Filter Chips
+              Wrap(
+                spacing: 6,
+                children: [
+                  ChoiceChip(
+                    visualDensity: VisualDensity.compact,
+                    label: const Text('All'),
+                    selected: _activeFilter == 'all',
+                    selectedColor: AppColors.primaryGreen.withValues(alpha: 0.15),
+                    labelStyle: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: _activeFilter == 'all' ? FontWeight.bold : FontWeight.normal,
+                      color: _activeFilter == 'all' ? AppColors.primaryGreen : null,
+                    ),
+                    onSelected: (val) {
+                      if (val) setState(() => _activeFilter = 'all');
+                    },
+                  ),
+                  ChoiceChip(
+                    visualDensity: VisualDensity.compact,
+                    label: const Text('Notes 📝'),
+                    selected: _activeFilter == 'notes',
+                    selectedColor: AppColors.primaryGreen.withValues(alpha: 0.15),
+                    labelStyle: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: _activeFilter == 'notes' ? FontWeight.bold : FontWeight.normal,
+                      color: _activeFilter == 'notes' ? AppColors.primaryGreen : null,
+                    ),
+                    onSelected: (val) {
+                      if (val) setState(() => _activeFilter = 'notes');
+                    },
+                  ),
+                  ChoiceChip(
+                    visualDensity: VisualDensity.compact,
+                    label: const Text('Bookmarks 🔖'),
+                    selected: _activeFilter == 'bookmarks',
+                    selectedColor: AppColors.accentOrange.withValues(alpha: 0.15),
+                    labelStyle: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: _activeFilter == 'bookmarks' ? FontWeight.bold : FontWeight.normal,
+                      color: _activeFilter == 'bookmarks' ? AppColors.accentOrange : null,
+                    ),
+                    onSelected: (val) {
+                      if (val) setState(() => _activeFilter = 'bookmarks');
+                    },
+                  ),
+                ],
+              ),
+              const Spacer(),
+              // Quick Bookmark Button
+              InkWell(
+                onTap: _isSubmitting ? null : _quickBookmark,
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppColors.accentOrange.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.accentOrange.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.bookmark_add_rounded, size: 14, color: AppColors.accentOrange),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Bookmark ${_formatTime(widget.currentPositionSeconds)}',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.accentOrange,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // ── Notes & Bookmarks List ────────────────────────────────
         Expanded(
           child: notesAsync.when(
             data: (notes) {
-              if (notes.isEmpty) {
-                return const Center(
+              final filteredNotes = notes.where((n) {
+                final text = (n['note_text'] ?? n['content'] ?? '').toString().toLowerCase();
+                final isBookmark = text.contains('bookmark') || text.contains('🔖');
+                if (_activeFilter == 'bookmarks') return isBookmark;
+                if (_activeFilter == 'notes') return !isBookmark;
+                return true;
+              }).toList();
+
+              if (filteredNotes.isEmpty) {
+                return Center(
                   child: Padding(
-                    padding: EdgeInsets.all(24),
+                    padding: const EdgeInsets.all(24),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.edit_note,
-                            size: 48, color: AppColors.inkSoft),
-                        SizedBox(height: 12),
-                        Text(
-                          'No notes yet.',
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 16),
+                        Icon(
+                          _activeFilter == 'bookmarks'
+                              ? Icons.bookmark_border_rounded
+                              : Icons.edit_note,
+                          size: 48,
+                          color: AppColors.inkSoft.withValues(alpha: 0.5),
                         ),
-                        SizedBox(height: 4),
+                        const SizedBox(height: 12),
                         Text(
-                          'Write notes during the video. Tapping any note timestamp will jump directly to that point in the lecture!',
+                          _activeFilter == 'bookmarks'
+                              ? 'No bookmarks yet.'
+                              : 'No notes yet.',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _activeFilter == 'bookmarks'
+                              ? 'Tap "Quick Bookmark" anytime during playback to save important moments!'
+                              : 'Write notes during the video. Tapping any timestamp will jump directly to that point!',
                           textAlign: TextAlign.center,
-                          style:
-                              TextStyle(color: AppColors.inkSoft, fontSize: 13),
+                          style: const TextStyle(color: AppColors.inkSoft, fontSize: 13),
                         ),
                       ],
                     ),
                   ),
                 );
               }
+
               return ListView.builder(
                 padding: const EdgeInsets.all(16),
-                itemCount: notes.length,
+                itemCount: filteredNotes.length,
                 itemBuilder: (context, index) {
-                  final n = notes[index];
+                  final n = filteredNotes[index];
                   final timestamp = n['timestamp'] as int? ?? 0;
-                  final noteText = n['note_text'] ?? n['content'] ?? '';
+                  final noteText = (n['note_text'] ?? n['content'] ?? '').toString();
                   final noteId = n['id']?.toString();
+                  final isBookmark = noteText.toLowerCase().contains('bookmark') || noteText.contains('🔖');
 
                   return Card(
                     margin: const EdgeInsets.only(bottom: 10),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(12),
                       side: BorderSide(
-                        color:
-                            isDark ? AppColors.lineDark : AppColors.lineLight,
+                        color: isBookmark
+                            ? AppColors.accentOrange.withValues(alpha: 0.3)
+                            : (isDark ? AppColors.lineDark : AppColors.lineLight),
                       ),
                     ),
+                    color: isBookmark
+                        ? AppColors.accentOrange.withValues(alpha: isDark ? 0.08 : 0.04)
+                        : (isDark ? AppColors.cardDark : Colors.white),
                     child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 4),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
                       leading: ActionChip(
-                        avatar: const Icon(Icons.play_arrow,
-                            size: 14, color: AppColors.accentOrange),
+                        avatar: Icon(
+                          isBookmark ? Icons.bookmark_rounded : Icons.play_arrow_rounded,
+                          size: 14,
+                          color: isBookmark ? AppColors.accentOrange : AppColors.primaryGreen,
+                        ),
                         label: Text(
                           _formatTime(timestamp),
-                          style: const TextStyle(
-                            color: AppColors.accentOrange,
+                          style: TextStyle(
+                            color: isBookmark ? AppColors.accentOrange : AppColors.primaryGreen,
                             fontWeight: FontWeight.bold,
                             fontSize: 12,
                           ),
                         ),
-                        backgroundColor:
-                            AppColors.accentOrange.withValues(alpha: 0.12),
+                        backgroundColor: (isBookmark ? AppColors.accentOrange : AppColors.primaryGreen)
+                            .withValues(alpha: 0.12),
                         side: BorderSide.none,
                         onPressed: () => widget.onSeek(timestamp),
                       ),
                       title: Text(
                         noteText,
-                        style: const TextStyle(fontSize: 13),
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: isBookmark ? FontWeight.w600 : FontWeight.normal,
+                        ),
                       ),
                       trailing: noteId != null
                           ? IconButton(
-                              icon: const Icon(Icons.delete_outline,
-                                  size: 18, color: AppColors.error),
+                              icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.error),
+                              tooltip: 'Delete',
                               onPressed: () async {
                                 try {
-                                  await ref
-                                      .read(studentRepositoryProvider)
-                                      .deleteNote(noteId);
-                                  ref.invalidate(
-                                      courseNotesProvider(widget.courseSlug));
+                                  await ref.read(studentRepositoryProvider).deleteNote(noteId);
+                                  ref.invalidate(courseNotesProvider(widget.courseSlug));
                                 } catch (_) {}
                               },
                             )
@@ -1509,6 +1732,8 @@ class _CourseNotesTabState extends ConsumerState<_CourseNotesTab> {
             error: (err, _) => Center(child: Text('Error: $err')),
           ),
         ),
+
+        // ── Input Strip at Bottom ─────────────────────────────────
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           decoration: BoxDecoration(

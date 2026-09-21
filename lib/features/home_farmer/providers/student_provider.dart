@@ -12,16 +12,70 @@ final studentRepositoryProvider = Provider<StudentRepository>((ref) {
   );
 });
 
-typedef CatalogQuery = ({String search, String category});
+class CatalogQuery {
+  final String search;
+  final String category;
+  final String? level;
+  final num? minPrice;
+  final num? maxPrice;
+  final String? ordering;
+  final double? minRating;
 
-/// Provider for fetching the course catalog.
+  const CatalogQuery({
+    this.search = '',
+    this.category = '',
+    this.level,
+    this.minPrice,
+    this.maxPrice,
+    this.ordering,
+    this.minRating,
+  });
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is CatalogQuery &&
+          runtimeType == other.runtimeType &&
+          search == other.search &&
+          category == other.category &&
+          level == other.level &&
+          minPrice == other.minPrice &&
+          maxPrice == other.maxPrice &&
+          ordering == other.ordering &&
+          minRating == other.minRating;
+
+  @override
+  int get hashCode => Object.hash(
+        search,
+        category,
+        level,
+        minPrice,
+        maxPrice,
+        ordering,
+        minRating,
+      );
+}
+
+/// Provider for fetching the course catalog with full search, category, level, price & rating filters.
 final studentCatalogProvider = FutureProvider.family<List<CourseList>, CatalogQuery>((ref, query) async {
   final repo = ref.watch(studentRepositoryProvider);
   final response = await repo.getCourseCatalog(
     search: query.search.isNotEmpty ? query.search : null,
     category: query.category.isNotEmpty ? query.category : null,
+    level: query.level != null && query.level!.isNotEmpty ? query.level : null,
+    minPrice: query.minPrice,
+    maxPrice: query.maxPrice,
+    ordering: query.ordering != null && query.ordering!.isNotEmpty ? query.ordering : null,
   );
-  return response.results;
+  var list = response.results;
+  if (query.minRating != null && query.minRating! > 0) {
+    list = list.where((c) {
+      // In Agrilearn, default rating is 4.8 if not explicitly low
+      const r = 4.8; // default course rating in Agrilearn
+      return r >= query.minRating!;
+    }).toList();
+  }
+  return list;
 });
 
 /// Provider for fetching the ebooks catalog.

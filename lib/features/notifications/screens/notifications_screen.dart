@@ -5,10 +5,31 @@ import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/empty_state.dart';
+import '../../../data/models/api_models/notification_models.dart';
 import '../providers/notification_provider.dart';
 
-class NotificationsScreen extends ConsumerWidget {
+class NotificationsScreen extends ConsumerStatefulWidget {
   const NotificationsScreen({super.key});
+
+  @override
+  ConsumerState<NotificationsScreen> createState() => _NotificationsScreenState();
+}
+
+class _NotificationsScreenState extends ConsumerState<NotificationsScreen>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 4, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
 
   Color _getNotificationColor(String type) {
     switch (type.toUpperCase()) {
@@ -19,6 +40,10 @@ class NotificationsScreen extends ConsumerWidget {
       case 'PROCESSING':
         return AppColors.skyBlue;
       case 'NEW_ENROLLMENT':
+        return AppColors.accentOrange;
+      case 'QA':
+      case 'QUESTION':
+      case 'ANSWER':
         return AppColors.accentOrange;
       default:
         return AppColors.primaryGreen;
@@ -35,19 +60,77 @@ class NotificationsScreen extends ConsumerWidget {
         return Icons.hourglass_top_rounded;
       case 'NEW_ENROLLMENT':
         return Icons.school_rounded;
+      case 'QA':
+      case 'QUESTION':
+      case 'ANSWER':
+        return Icons.forum_rounded;
       default:
         return Icons.notifications_active_rounded;
     }
   }
 
+  List<ApiNotification> _filterNotifications(List<ApiNotification> items, int tabIndex) {
+    switch (tabIndex) {
+      case 1: // Unread
+        return items.where((n) => !n.isRead).toList();
+      case 2: // Courses
+        return items.where((n) {
+          final t = n.notificationType.toUpperCase();
+          final title = n.title.toLowerCase();
+          return t.contains('COURSE') ||
+              t == 'APPROVED' ||
+              t == 'REJECTED' ||
+              t == 'NEW_ENROLLMENT' ||
+              title.contains('course');
+        }).toList();
+      case 3: // Q&A
+        return items.where((n) {
+          final t = n.notificationType.toUpperCase();
+          final title = n.title.toLowerCase();
+          final msg = n.message.toLowerCase();
+          return t.contains('QA') ||
+              title.contains('q&a') ||
+              title.contains('question') ||
+              title.contains('answer') ||
+              msg.contains('replied');
+        }).toList();
+      case 0: // All
+      default:
+        return items;
+    }
+  }
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final notificationsAsync = ref.watch(notificationsProvider);
+    final unreadCount = ref.watch(unreadNotificationsCountProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Notifications'),
+        title: Row(
+          children: [
+            const Text('Notifications', style: TextStyle(fontWeight: FontWeight.bold)),
+            if (unreadCount > 0) ...[
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppColors.accentOrange,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '$unreadCount new',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
         elevation: 0,
         backgroundColor: Colors.transparent,
         actions: [
@@ -67,6 +150,21 @@ class NotificationsScreen extends ConsumerWidget {
           ),
           const SizedBox(width: 8),
         ],
+        bottom: TabBar(
+          controller: _tabController,
+          labelColor: AppColors.primaryGreen,
+          unselectedLabelColor: isDark ? Colors.white60 : AppColors.inkSoft,
+          indicatorColor: AppColors.primaryGreen,
+          indicatorWeight: 3,
+          labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+          tabs: const [
+            Tab(text: 'All'),
+            Tab(text: 'Unread'),
+            Tab(text: 'Courses'),
+            Tab(text: 'Q&A'),
+          ],
+          onTap: (_) => setState(() {}),
+        ),
       ),
       body: RefreshIndicator(
         onRefresh: () => ref.read(notificationsProvider.notifier).loadNotifications(),
@@ -106,15 +204,23 @@ class NotificationsScreen extends ConsumerWidget {
               ),
             ),
           ),
-          data: (notifications) {
-            if (notifications.isEmpty) {
+          data: (allNotifications) {
+            final filtered = _filterNotifications(allNotifications, _tabController.index);
+
+            if (filtered.isEmpty) {
               return ListView(
-                children: const [
-                  SizedBox(height: 120),
+                children: [
+                  const SizedBox(height: 100),
                   EmptyState(
-                    icon: Icons.notifications_off_outlined,
-                    title: 'No Notifications Yet',
-                    subtitle: 'You are all caught up! New course, enrollment, and moderation updates will appear here.',
+                    icon: _tabController.index == 1
+                        ? Icons.mark_chat_read_outlined
+                        : Icons.notifications_off_outlined,
+                    title: _tabController.index == 1
+                        ? 'No Unread Notifications'
+                        : 'No Notifications Found',
+                    subtitle: _tabController.index == 1
+                        ? 'You are all caught up! Great job.'
+                        : 'New course updates, announcements, and Q&A replies will appear here.',
                   ),
                 ],
               );
@@ -122,10 +228,10 @@ class NotificationsScreen extends ConsumerWidget {
 
             return ListView.separated(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              itemCount: notifications.length,
+              itemCount: filtered.length,
               separatorBuilder: (_, __) => const SizedBox(height: 10),
               itemBuilder: (context, index) {
-                final item = notifications[index];
+                final item = filtered[index];
                 final color = _getNotificationColor(item.notificationType);
                 final icon = _getNotificationIcon(item.notificationType);
 
@@ -144,7 +250,6 @@ class NotificationsScreen extends ConsumerWidget {
                   onDismissed: (_) {
                     ref.read(notificationsProvider.notifier).deleteNotification(item.id);
                   },
-
                   child: InkWell(
                     borderRadius: BorderRadius.circular(16),
                     onTap: () {

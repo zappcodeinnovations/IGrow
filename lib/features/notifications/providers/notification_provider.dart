@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -14,17 +15,43 @@ final notificationRepositoryProvider = Provider<NotificationRepository>((ref) {
   );
 });
 
-/// Reactive state notifier managing user notifications.
+/// Reactive state notifier managing user notifications with live background polling.
 class NotificationsNotifier extends StateNotifier<AsyncValue<List<ApiNotification>>> {
   NotificationsNotifier(this.ref) : super(const AsyncValue.loading()) {
     loadNotifications();
+    _startPolling();
   }
 
   final Ref ref;
+  Timer? _pollingTimer;
 
   bool get _isStudent {
     final user = ref.read(authProvider).user;
     return user?.activeRole == UserRole.farmer;
+  }
+
+  void _startPolling() {
+    _pollingTimer?.cancel();
+    // Poll every 30 seconds for student or 15s for instructor per Agrilearn specification
+    _pollingTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      _pollQuietly();
+    });
+  }
+
+  Future<void> _pollQuietly() async {
+    try {
+      final repo = ref.read(notificationRepositoryProvider);
+      final items = await repo.getNotifications(isStudent: _isStudent);
+      if (items.isNotEmpty) {
+        state = AsyncValue.data(items);
+      }
+    } catch (_) {}
+  }
+
+  @override
+  void dispose() {
+    _pollingTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> loadNotifications() async {

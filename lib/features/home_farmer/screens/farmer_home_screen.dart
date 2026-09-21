@@ -683,7 +683,7 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                 ],
               ),
               const SizedBox(height: 12),
-              ref.watch(studentCatalogProvider((search: '', category: ''))).when(
+              ref.watch(studentCatalogProvider(const CatalogQuery())).when(
                 data: (courses) {
                   if (courses.isEmpty) return const SizedBox.shrink();
                   return SizedBox(
