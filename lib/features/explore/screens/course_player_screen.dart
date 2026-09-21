@@ -164,18 +164,54 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen> {
       }
 
       String resolvedUrl = '';
-      if (videoUrl != null && videoUrl.isNotEmpty) {
-        resolvedUrl = videoUrl;
-      } else if (bunnyId != null && bunnyId.isNotEmpty) {
-        resolvedUrl = 'https://vz-716870.b-cdn.net/$bunnyId/playlist.m3u8';
+      String? effectiveBunnyId = bunnyId;
+
+      // Extract Bunny video GUID if present in URL and not already provided
+      if ((effectiveBunnyId == null || effectiveBunnyId.isEmpty) && videoUrl != null) {
+        final match = RegExp(r'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')
+            .firstMatch(videoUrl);
+        if (match != null) {
+          effectiveBunnyId = match.group(0);
+        }
       }
 
-      // If resolvedUrl is an iframe embed, convert to Bunny direct stream if video ID is known
+      // 1. Try to fetch authenticated signed HLS stream URL from backend
+      try {
+        final streamData = await ref.read(studentRepositoryProvider).getLectureStream(lecture.id);
+        final fetchedStreamUrl = streamData['stream_url']?.toString();
+        if (fetchedStreamUrl != null && fetchedStreamUrl.isNotEmpty) {
+          resolvedUrl = fetchedStreamUrl;
+          final backendBunnyId = streamData['bunny_video_id']?.toString();
+          if (backendBunnyId != null && backendBunnyId.isNotEmpty) {
+            effectiveBunnyId = backendBunnyId;
+          }
+        }
+      } catch (streamErr) {
+        debugPrint('⚠️ [CoursePlayer] Could not fetch signed stream URL: $streamErr');
+      }
+
+      // 2. Fallback to direct video URL or direct Bunny HLS playlist
+      if (resolvedUrl.isEmpty) {
+        if (videoUrl != null && videoUrl.isNotEmpty) {
+          resolvedUrl = videoUrl;
+        } else if (effectiveBunnyId != null && effectiveBunnyId.isNotEmpty) {
+          resolvedUrl = 'https://vz-716870.b-cdn.net/$effectiveBunnyId/playlist.m3u8';
+        }
+      }
+
+      // 3. If resolvedUrl is an iframe embed, convert to Bunny direct stream if video ID is known
       if (resolvedUrl.contains('iframe.mediadelivery.net') ||
           resolvedUrl.contains('/play/')) {
-        if (bunnyId != null && bunnyId.isNotEmpty) {
-          resolvedUrl = 'https://vz-716870.b-cdn.net/$bunnyId/playlist.m3u8';
+        if (effectiveBunnyId != null && effectiveBunnyId.isNotEmpty) {
+          resolvedUrl = 'https://vz-716870.b-cdn.net/$effectiveBunnyId/playlist.m3u8';
         }
+      }
+
+      // 4. Fallback for deprecated Google Cloud Storage sample link (blocked by GCS AccessDenied)
+      if (resolvedUrl.contains('commondatastorage.googleapis.com') &&
+          resolvedUrl.contains('BigBuckBunny.mp4')) {
+        debugPrint('ℹ️ [CoursePlayer] Replacing blocked GCS sample link with active working sample video');
+        resolvedUrl = 'https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/720/Big_Buck_Bunny_720_10s_1MB.mp4';
       }
 
       if (resolvedUrl.startsWith('http')) {
@@ -187,7 +223,14 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen> {
         debugPrint('▶️ [CoursePlayer] Initializing video stream: $resolvedUrl (isBunny=$isBunny)');
 
         Map<String, String> headers = {};
-        if (token != null && !isBunny) {
+        // Only attach Authorization header if the video is hosted on our own backend server.
+        // External CDNs/clouds (like Google Cloud Storage, AWS S3, etc.) return 401 Unauthorized
+        // when passed an unrecognized Bearer token.
+        final isBackendHost = resolvedUrl.contains('iagrow.zappcode.in') ||
+            resolvedUrl.contains('localhost') ||
+            resolvedUrl.contains('127.0.0.1') ||
+            resolvedUrl.contains('10.0.2.2');
+        if (token != null && isBackendHost) {
           headers['Authorization'] = 'Bearer $token';
         }
         if (isBunny) {
@@ -217,6 +260,19 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen> {
             _videoPlayerController = VideoPlayerController.networkUrl(
               Uri.parse(resolvedUrl),
               httpHeaders: headers,
+            );
+            await _videoPlayerController!.initialize().timeout(
+              const Duration(seconds: 12),
+              onTimeout: () {
+                throw Exception('Video load timed out on retry.');
+              },
+            );
+          } else if (headers.isNotEmpty && (e.toString().contains('401') || e.toString().contains('403'))) {
+            // If stream failed with 401/403 with headers, retry cleanly without headers
+            debugPrint('⚠️ [CoursePlayer] Video stream failed with headers ($e), retrying without headers...');
+            await _videoPlayerController?.dispose();
+            _videoPlayerController = VideoPlayerController.networkUrl(
+              Uri.parse(resolvedUrl),
             );
             await _videoPlayerController!.initialize().timeout(
               const Duration(seconds: 12),

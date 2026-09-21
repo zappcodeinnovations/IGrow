@@ -255,6 +255,35 @@ class StudentRepository {
     }
   }
 
+  /// Get authorized lecture stream details (signed HLS stream URL for Bunny Stream).
+  Future<Map<String, dynamic>> getLectureStream(String lectureId) async {
+    debugPrint('🎬 [StudentRepository] getLectureStream: lectureId=$lectureId');
+    try {
+      final token = await tokenStorage.getAccessToken();
+      final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/lectures/$lectureId/stream/');
+      final response = await http.get(
+        uri,
+        headers: {
+          if (token != null) 'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        debugPrint('✅ [StudentRepository] getLectureStream SUCCESS (${response.statusCode}): ${response.body}');
+        if (response.body.isNotEmpty) {
+          return jsonDecode(response.body) as Map<String, dynamic>;
+        }
+        return {};
+      }
+      debugPrint('⚠️ [StudentRepository] getLectureStream status (${response.statusCode}): ${response.body}');
+      return {};
+    } catch (e) {
+      debugPrint('❌ [StudentRepository] getLectureStream error: $e');
+      return {};
+    }
+  }
+
   // ── Q&A ─────────────────────────────────────────────────────────
 
   /// Get Q&A for a course.

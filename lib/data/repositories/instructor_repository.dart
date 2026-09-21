@@ -160,15 +160,38 @@ class InstructorRepository {
         throw Exception('Failed to create course: ${response.body}');
       }
     } else {
-      final response = await appApi.apiV1InstructorCoursesPost(
-        body: CourseCreateRequest.fromJson(courseData),
+      final token = await tokenStorage.getAccessToken();
+      final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/instructor/courses/');
+
+      // Sanitize fields to prevent null validation errors on non-nullable backend model fields
+      final cleanData = <String, dynamic>{};
+      courseData.forEach((key, value) {
+        if (value != null) {
+          cleanData[key] = value;
+        }
+      });
+      // Django models for course do not allow null for these text fields (blank=True but not null=True)
+      cleanData.putIfAbsent('preview_video_url', () => '');
+      cleanData.putIfAbsent('what_you_learn', () => '');
+      cleanData.putIfAbsent('requirements', () => '');
+      cleanData.putIfAbsent('tags', () => '');
+
+      final response = await http.post(
+        uri,
+        headers: {
+          if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(cleanData),
       );
-      if (!response.isSuccessful) {
-        debugPrint('❌ [InstructorRepository] createCourse ERROR: ${response.error}');
-        throw Exception('Failed to create course: ${response.error}');
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        debugPrint('✅ [InstructorRepository] createCourse SUCCESS: ${response.body}');
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        debugPrint('❌ [InstructorRepository] createCourse ERROR (${response.statusCode}): ${response.body}');
+        throw Exception('Failed to create course (${response.statusCode}): ${response.body}');
       }
-      debugPrint('✅ [InstructorRepository] createCourse SUCCESS: ${response.bodyString}');
-      return jsonDecode(response.bodyString) as Map<String, dynamic>;
     }
   }
 
@@ -622,7 +645,7 @@ class InstructorRepository {
   Future<Map<String, dynamic>> uploadVideo(
     String lectureId,
     String filePath, {
-    Duration timeout = const Duration(seconds: 45),
+    Duration timeout = const Duration(minutes: 5),
     http.Client? client,
   }) async {
     debugPrint('📤 [InstructorRepository] uploadVideo START: lectureId=$lectureId, path=$filePath');
@@ -642,7 +665,7 @@ class InstructorRepository {
         },
       );
       final response = await http.Response.fromStream(streamedResponse).timeout(
-        const Duration(seconds: 20),
+        const Duration(minutes: 2),
         onTimeout: () {
           throw TimeoutException('Server took too long to acknowledge video upload.');
         },

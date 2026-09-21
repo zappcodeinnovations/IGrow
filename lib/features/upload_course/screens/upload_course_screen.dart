@@ -328,6 +328,7 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
       }
       final totalMedia = totalVideos + totalPdfs;
       int mediaUploaded = 0;
+      final List<String> uploadWarnings = [];
 
       // 2. Create Sections & Lectures
       for (int sIdx = 0; sIdx < _curriculum.length; sIdx++) {
@@ -360,9 +361,14 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                     'Uploading Video $mediaUploaded/$totalMedia: ${lec.titleController.text.trim()}...';
               });
               try {
-                await repo.uploadVideo(lectureId, lec.videoFile!.path);
+                await repo.uploadVideo(
+                  lectureId,
+                  lec.videoFile!.path,
+                  timeout: const Duration(minutes: 5),
+                );
               } catch (vErr) {
                 debugPrint('⚠️ Video upload skipped/failed: $vErr');
+                uploadWarnings.add('"${lec.titleController.text.trim()}"');
               }
             }
 
@@ -416,21 +422,41 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
         setState(() => _isSubmitting = false);
         final messenger = ScaffoldMessenger.of(context);
         messenger.clearSnackBars();
-        messenger.showSnackBar(
-          const SnackBar(
-            content: Row(
-              children: [
-                Icon(Icons.check_circle, color: Colors.white),
-                SizedBox(width: 10),
-                Expanded(
-                  child: Text('Course Draft Created! Review it on your dashboard.'),
-                ),
-              ],
+        if (uploadWarnings.isNotEmpty) {
+          messenger.showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.warning_amber_rounded, color: Colors.white),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Course Draft Created, but ${uploadWarnings.length} video(s) failed to upload (${uploadWarnings.join(", ")}). You can re-upload them in Course Manager.',
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.orange.shade800,
+              duration: const Duration(seconds: 6),
             ),
-            backgroundColor: AppColors.primaryGreen,
-            duration: Duration(seconds: 3),
-          ),
-        );
+          );
+        } else {
+          messenger.showSnackBar(
+            const SnackBar(
+              content: Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.white),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text('Course Draft Created! Review it on your dashboard.'),
+                  ),
+                ],
+              ),
+              backgroundColor: AppColors.primaryGreen,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
         context.go(RouteNames.instructorHome);
       }
     } catch (e) {

@@ -834,7 +834,7 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
           await ref.read(instructorRepositoryProvider).uploadVideo(
             lectureId,
             pickedVideo.path,
-            timeout: const Duration(seconds: 45),
+            timeout: const Duration(minutes: 5),
             client: cancelableClient,
           );
           videoUploaded = true;
