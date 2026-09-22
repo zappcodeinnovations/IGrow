@@ -195,6 +195,317 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
     });
   }
 
+  void _showEditQuizBottomSheet(_WizardModule module) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final titleController = TextEditingController(text: module.quizTitle);
+        int passingPercent = module.quizPassingPercent;
+        final List<_WizardQuizQuestion> localQuestions = module.quizQuestions
+            .map((q) => _WizardQuizQuestion(
+                  question: q.question,
+                  options: List<String>.from(q.options),
+                  correctOptionIndex: q.correctOptionIndex,
+                ))
+            .toList();
+
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.88,
+              ),
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.cardDark : Colors.white,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: SafeArea(
+                child: Padding(
+                  padding: EdgeInsets.only(
+                    bottom: MediaQuery.of(context).viewInsets.bottom,
+                  ),
+                  child: Column(
+                    children: [
+                      // Header
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 16, 16, 12),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Icon(Icons.quiz_rounded, color: Color(0xFFD97706), size: 20),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'Edit Module Quiz',
+                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close),
+                              onPressed: () => Navigator.pop(context),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Divider(height: 1),
+
+                      // Body
+                      Expanded(
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.all(20),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Quiz Title Field
+                              Text(
+                                'Quiz Title',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: isDark ? Colors.grey.shade300 : AppColors.inkDark,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              TextField(
+                                controller: titleController,
+                                decoration: InputDecoration(
+                                  hintText: 'e.g. Chapter 1 Knowledge Check',
+                                  filled: true,
+                                  fillColor: isDark ? Colors.black26 : Colors.grey.shade50,
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide(color: isDark ? AppColors.lineDark : Colors.grey.shade300),
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                ),
+                              ),
+                              const SizedBox(height: 18),
+
+                              // Passing Criteria
+                              Text(
+                                'Passing Criteria',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: isDark ? Colors.grey.shade300 : AppColors.inkDark,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Wrap(
+                                spacing: 8,
+                                children: [50, 60, 70, 80, 90].map((score) {
+                                  final isSelected = passingPercent == score;
+                                  return ChoiceChip(
+                                    label: Text('$score% to pass'),
+                                    selected: isSelected,
+                                    selectedColor: const Color(0xFFF59E0B).withValues(alpha: 0.2),
+                                    labelStyle: TextStyle(
+                                      color: isSelected ? const Color(0xFFB45309) : null,
+                                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                      fontSize: 12,
+                                    ),
+                                    onSelected: (val) {
+                                      if (val) setModalState(() => passingPercent = score);
+                                    },
+                                  );
+                                }).toList(),
+                              ),
+                              const SizedBox(height: 22),
+
+                              // Questions List
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'Quiz Questions (${localQuestions.length})',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                      color: isDark ? Colors.grey.shade300 : AppColors.inkDark,
+                                    ),
+                                  ),
+                                  TextButton.icon(
+                                    onPressed: () {
+                                      setModalState(() {
+                                        localQuestions.add(
+                                          _WizardQuizQuestion(
+                                            question: 'New Question ${localQuestions.length + 1}',
+                                            options: ['Option A', 'Option B', 'Option C', 'Option D'],
+                                            correctOptionIndex: 0,
+                                          ),
+                                        );
+                                      });
+                                    },
+                                    icon: const Icon(Icons.add_rounded, size: 16),
+                                    label: const Text('Add Question', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+
+                              ...localQuestions.asMap().entries.map((entry) {
+                                final qIndex = entry.key;
+                                final question = entry.value;
+                                return Container(
+                                  margin: const EdgeInsets.only(bottom: 16),
+                                  padding: const EdgeInsets.all(14),
+                                  decoration: BoxDecoration(
+                                    color: isDark ? Colors.black26 : Colors.grey.shade50,
+                                    borderRadius: BorderRadius.circular(14),
+                                    border: Border.all(
+                                      color: isDark ? AppColors.lineDark : Colors.grey.shade300,
+                                    ),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          CircleAvatar(
+                                            radius: 11,
+                                            backgroundColor: const Color(0xFFF59E0B),
+                                            child: Text('${qIndex + 1}', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: TextFormField(
+                                              initialValue: question.question,
+                                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                                              decoration: const InputDecoration(
+                                                hintText: 'Enter question text...',
+                                                isDense: true,
+                                                contentPadding: EdgeInsets.symmetric(vertical: 4),
+                                                border: InputBorder.none,
+                                              ),
+                                              onChanged: (val) => question.question = val,
+                                            ),
+                                          ),
+                                          if (localQuestions.length > 1)
+                                            IconButton(
+                                              icon: const Icon(Icons.delete_outline, size: 18, color: Colors.redAccent),
+                                              onPressed: () {
+                                                setModalState(() {
+                                                  localQuestions.removeAt(qIndex);
+                                                });
+                                              },
+                                              padding: EdgeInsets.zero,
+                                              constraints: const BoxConstraints(),
+                                            ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 10),
+                                      const Text(
+                                        'Options (tap circle to mark correct answer):',
+                                        style: TextStyle(fontSize: 11, color: Colors.grey),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      ...question.options.asMap().entries.map((optEntry) {
+                                        final optIndex = optEntry.key;
+                                        final isCorrect = question.correctOptionIndex == optIndex;
+                                        return Padding(
+                                          padding: const EdgeInsets.only(bottom: 6),
+                                          child: Row(
+                                            children: [
+                                              GestureDetector(
+                                                onTap: () {
+                                                  setModalState(() {
+                                                    question.correctOptionIndex = optIndex;
+                                                  });
+                                                },
+                                                child: Icon(
+                                                  isCorrect ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+                                                  color: isCorrect ? AppColors.primaryGreen : Colors.grey,
+                                                  size: 18,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                child: TextFormField(
+                                                  initialValue: optEntry.value,
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: isCorrect ? FontWeight.w600 : FontWeight.normal,
+                                                  ),
+                                                  decoration: InputDecoration(
+                                                    isDense: true,
+                                                    filled: true,
+                                                    fillColor: isCorrect
+                                                        ? AppColors.primaryGreen.withValues(alpha: 0.08)
+                                                        : (isDark ? AppColors.cardDark : Colors.white),
+                                                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                                    border: OutlineInputBorder(
+                                                      borderRadius: BorderRadius.circular(8),
+                                                      borderSide: BorderSide(
+                                                        color: isCorrect ? AppColors.primaryGreen : (isDark ? AppColors.lineDark : Colors.grey.shade300),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  onChanged: (val) => question.options[optIndex] = val,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      }),
+                                    ],
+                                  ),
+                                );
+                              }),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      // Action Button
+                      Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primaryGreen,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                              elevation: 0,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                module.quizTitle = titleController.text.trim().isNotEmpty
+                                    ? titleController.text.trim()
+                                    : 'Module Quiz';
+                                module.quizPassingPercent = passingPercent;
+                                module.quizQuestions = localQuestions;
+                              });
+                              Navigator.pop(context);
+                            },
+                            child: const Text('Save Quiz Details', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   Future<void> _pickLectureVideo(_WizardLecture lecture) async {
     FocusManager.instance.primaryFocus?.unfocus();
     await Future.delayed(const Duration(milliseconds: 120));
@@ -1276,14 +1587,117 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                         ),
                       ),
 
-                      // Add Lecture Button
-                      Row(
+                      // Quiz Card (if module has quiz enabled)
+                      if (module.hasQuiz)
+                        Container(
+                          margin: const EdgeInsets.only(top: 4, bottom: 10),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? const Color(0xFF2E2413)
+                                : const Color(0xFFFEF3C7).withValues(alpha: 0.6),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isDark
+                                  ? const Color(0xFF78350F)
+                                  : const Color(0xFFFDE68A),
+                              width: 1.2,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(7),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF59E0B).withValues(alpha: 0.2),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Icon(
+                                  Icons.military_tech_rounded,
+                                  color: Color(0xFFD97706),
+                                  size: 18,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      module.quizTitle.isNotEmpty ? module.quizTitle : 'Module Quiz',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold,
+                                        color: isDark ? const Color(0xFFFDE68A) : const Color(0xFF92400E),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      '${module.quizQuestions.length} Questions • Passing: ${module.quizPassingPercent}%',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: isDark ? Colors.amber.shade200 : const Color(0xFFB45309),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              OutlinedButton(
+                                onPressed: () => _showEditQuizBottomSheet(module),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: const Color(0xFFB45309),
+                                  side: const BorderSide(color: Color(0xFFD97706)),
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  minimumSize: Size.zero,
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                ),
+                                child: const Text(
+                                  'Edit Quiz',
+                                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              IconButton(
+                                icon: const Icon(Icons.close, size: 16, color: Colors.redAccent),
+                                constraints: const BoxConstraints(),
+                                padding: const EdgeInsets.all(4),
+                                tooltip: 'Remove Quiz',
+                                onPressed: () {
+                                  setState(() {
+                                    module.hasQuiz = false;
+                                  });
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+
+                      // Action buttons: Add Lecture & Add Quiz (Responsive Wrap)
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
                         children: [
                           TextButton.icon(
                             onPressed: () => _addLecture(module.id),
                             icon: const Icon(Icons.add_circle_outline, size: 16, color: AppColors.primaryGreen),
                             label: const Text('Add Lecture', style: TextStyle(color: AppColors.primaryGreen, fontSize: 13, fontWeight: FontWeight.bold)),
                           ),
+                          if (!module.hasQuiz)
+                            TextButton.icon(
+                              onPressed: () {
+                                setState(() {
+                                  module.hasQuiz = true;
+                                });
+                                _showEditQuizBottomSheet(module);
+                              },
+                              icon: const Icon(Icons.quiz_outlined, size: 16, color: Color(0xFFD97706)),
+                              label: const Text('+ Add Quiz', style: TextStyle(color: Color(0xFFD97706), fontSize: 13, fontWeight: FontWeight.bold)),
+                            ),
                         ],
                       ),
                     ],
@@ -1605,13 +2019,49 @@ class _WizardModule {
     required this.id,
     required this.title,
     required this.lectures,
-    
-  });
+  }) : quizQuestions = [
+          _WizardQuizQuestion(
+            question: 'What is the primary concept explained in this module?',
+            options: [
+              'Core fundamentals and best practices',
+              'Advanced heavy machinery only',
+              'Marketing and exports exclusively',
+              'None of the above',
+            ],
+            correctOptionIndex: 0,
+          ),
+          _WizardQuizQuestion(
+            question: 'Which technique is recommended for higher crop yield?',
+            options: [
+              'Improper seed spacing',
+              'Soil testing and balanced nutrients',
+              'Excessive pesticide spraying',
+              'Overwatering without drainage',
+            ],
+            correctOptionIndex: 1,
+          ),
+        ];
 
   final int id;
   String title;
   final List<_WizardLecture> lectures;
   String? attachedEbookId;
+  bool hasQuiz = false;
+  String quizTitle = 'Module Quiz';
+  int quizPassingPercent = 70;
+  List<_WizardQuizQuestion> quizQuestions;
+}
+
+class _WizardQuizQuestion {
+  _WizardQuizQuestion({
+    required this.question,
+    required this.options,
+    this.correctOptionIndex = 0,
+  });
+
+  String question;
+  List<String> options;
+  int correctOptionIndex;
 }
 
 class _WizardLecture {

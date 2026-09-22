@@ -1,4 +1,4 @@
-package com.example.krushi_siksha
+package com.zappkode.igrow
 
 import io.flutter.embedding.android.FlutterActivity
 

@@ -671,12 +671,6 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                             scrollDirection: Axis.horizontal,
                             child: ref.watch(studentCategoriesProvider).when(
                               data: (cats) {
-                                if (cats.isEmpty) {
-                                  return const Padding(
-                                    padding: EdgeInsets.all(16.0),
-                                    child: Text('categories not found'),
-                                  );
-                                }
                                 final list = [{'label': 'All', 'value': 'all'}];
                                 for (var c in cats) {
                                   if (c.id != null) {
@@ -711,9 +705,20 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                                   ),
                                 ),
                               ),
-                              error: (err, st) => const Padding(
-                                padding: EdgeInsets.all(16.0),
-                                child: Text('categories not found'),
+                              error: (err, st) => Row(
+                                children: [
+                                  GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        _selectedCategory = 'all';
+                                      });
+                                    },
+                                    child: _Tab(
+                                      label: 'All Courses',
+                                      isActive: _selectedCategory == 'all',
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ),

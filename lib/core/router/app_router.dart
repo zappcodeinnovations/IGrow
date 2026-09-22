@@ -42,6 +42,7 @@ import '../../features/notifications/screens/notifications_screen.dart';
 import '../../features/wishlist/screens/wishlist_screen.dart';
 import '../../features/certificates/screens/certificates_screen.dart';
 import '../../features/explore/screens/downloads_screen.dart';
+import '../widgets/not_found_screen.dart';
 import '../widgets/shell_scaffold.dart';
 import 'route_names.dart';
 
@@ -53,6 +54,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     navigatorKey: rootNavigatorKey,
     initialLocation: RouteNames.splash,
     refreshListenable: GoRouterRefreshStream(ref.read(authProvider.notifier).stream),
+    errorBuilder: (context, state) => NotFoundScreen(
+      errorMessage: state.error?.message,
+    ),
     redirect: (context, state) {
       final authState = ref.read(authProvider);
       final isAuthRoute = state.matchedLocation.startsWith('/login') ||
@@ -166,11 +170,19 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(
+        path: '/farmer/courses/:id',
+        redirect: (context, state) => '/farmer/course/${state.pathParameters['id']}',
+      ),
+      GoRoute(
         path: '/farmer/ebook/:id',
         builder: (context, state) {
           final id = state.pathParameters['id']!;
           return EbookViewerScreen(ebookId: id);
         },
+      ),
+      GoRoute(
+        path: '/farmer/ebooks/:id',
+        redirect: (context, state) => '/farmer/ebook/${state.pathParameters['id']}',
       ),
       GoRoute(
         path: '/player/:id',
@@ -217,6 +229,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/support',
         builder: (context, state) => const SupportScreen(),
+      ),
+      GoRoute(
+        path: RouteNames.chat,
+        builder: (context, state) => const SupportScreen(),
+      ),
+      GoRoute(
+        path: RouteNames.settings,
+        builder: (context, state) => const PrivacyScreen(),
       ),
       GoRoute(
         path: '/privacy',

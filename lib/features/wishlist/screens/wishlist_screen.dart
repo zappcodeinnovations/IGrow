@@ -188,9 +188,9 @@ class _WishlistCard extends ConsumerWidget {
       child: InkWell(
         onTap: () {
           if (item.isCourse) {
-            context.push('/farmer/courses/${item.slug.isNotEmpty ? item.slug : item.targetId}');
+            context.push('/farmer/course/${item.slug.isNotEmpty ? item.slug : item.targetId}');
           } else {
-            context.push('/farmer/ebooks/${item.slug.isNotEmpty ? item.slug : item.targetId}');
+            context.push('/farmer/ebook/${item.slug.isNotEmpty ? item.slug : item.targetId}');
           }
         },
         child: Padding(

@@ -322,7 +322,7 @@ class ProfileScreen extends ConsumerWidget {
                       icon: Icons.school_rounded,
                       label: 'My Enrolled Courses',
                       onTap: () {
-                        context.push(RouteNames.farmerHome);
+                        context.go(RouteNames.farmerHome);
                       },
                     ),
                     _MenuItem(

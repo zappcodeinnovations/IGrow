@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -115,8 +116,16 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                 leading: const Icon(Icons.email_outlined, color: AppColors.skyBlue),
                 title: const Text('Email Support'),
                 subtitle: const Text('support@iagrow.zappcode.in'),
+                trailing: const Icon(Icons.copy_rounded, size: 18, color: AppColors.inkSoft),
                 onTap: () {
                   Navigator.pop(context);
+                  Clipboard.setData(const ClipboardData(text: 'support@iagrow.zappcode.in'));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Support email copied to clipboard: support@iagrow.zappcode.in'),
+                      duration: Duration(milliseconds: 2000),
+                    ),
+                  );
                 },
               ),
               const SizedBox(height: 16),
@@ -131,7 +140,7 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final user = ref.watch(authProvider).user;
-    final fullName = (user != null && user.fullName.isNotEmpty) ? user.fullName : 'Tushar';
+    final fullName = (user != null && user.fullName.isNotEmpty) ? user.fullName : 'Farmer';
     final firstName = fullName.split(' ').first;
 
     // Fetch async data providers
@@ -314,7 +323,7 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
 
                       // Profile Avatar Circle Button
                       InkWell(
-                        onTap: () => context.push(RouteNames.farmerProfile),
+                        onTap: () => context.go(RouteNames.farmerProfile),
                         borderRadius: BorderRadius.circular(16),
                         child: Container(
                           width: 32,

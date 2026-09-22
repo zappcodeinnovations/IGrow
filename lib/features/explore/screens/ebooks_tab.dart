@@ -15,7 +15,32 @@ class EbooksTab extends ConsumerWidget {
     return ref.watch(studentEbooksProvider('')).when(
       data: (ebooks) {
         if (ebooks.isEmpty) {
-          return const Center(child: Text('e-books not found'));
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.menu_book_rounded,
+                    size: 56,
+                    color: AppColors.inkSoft.withValues(alpha: 0.5),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'No E-Books Available',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Agricultural e-books and farming guides will appear here soon.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 13, color: AppColors.inkSoft),
+                  ),
+                ],
+              ),
+            ),
+          );
         }
         return ListView.separated(
           padding: const EdgeInsets.only(top: 16, bottom: 20),
@@ -108,7 +133,16 @@ class EbooksTab extends ConsumerWidget {
         separatorBuilder: (_, __) => const SizedBox(height: 16),
         itemBuilder: (context, index) => const ShimmerListTile(),
       ),
-      error: (err, _) => const Center(child: Text('e-books not found')),
+      error: (err, _) => const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Text(
+            'Unable to load e-books at this time. Please check your connection.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: AppColors.inkSoft),
+          ),
+        ),
+      ),
     );
   }
 }

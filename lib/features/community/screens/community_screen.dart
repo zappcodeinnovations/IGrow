@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:go_router/go_router.dart';
 import 'package:timeago/timeago.dart' as timeago;
+
+import '../../../core/router/route_names.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/shimmer_placeholders.dart';
 import '../../../data/models/api_models/community_models.dart';
 import '../providers/community_provider.dart';
-import 'create_post_screen.dart';
 
 /// Community screen — shared between farmer & instructor roles.
 class CommunityScreen extends ConsumerWidget {
@@ -31,12 +33,7 @@ class CommunityScreen extends ConsumerWidget {
                   Text('Community', style: Theme.of(context).textTheme.displaySmall),
                   GestureDetector(
                     onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const CreatePostScreen(),
-                        ),
-                      );
+                      context.push(RouteNames.createPost);
                     },
                     child: Container(
                       width: 44,
