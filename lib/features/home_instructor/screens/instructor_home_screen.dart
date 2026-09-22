@@ -108,6 +108,302 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
     );
   }
 
+  void _showStudentsBottomSheet(BuildContext context, Map<String, dynamic> stats) {
+    final transactionsAsync = ref.read(instructorTransactionsProvider);
+    final totalStudents = stats['total_students'] ?? 0;
+    final totalEnrollments = stats['total_enrollments'] ?? totalStudents;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) {
+        final isDark = Theme.of(sheetContext).brightness == Brightness.dark;
+        return DraggableScrollableSheet(
+          initialChildSize: 0.65,
+          minChildSize: 0.4,
+          maxChildSize: 0.9,
+          expand: false,
+          builder: (_, scrollController) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              child: ListView(
+                controller: scrollController,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: AppColors.skyBlue.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(Icons.people_alt_rounded, color: AppColors.skyBlue, size: 22),
+                          ),
+                          const SizedBox(width: 12),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'My Students',
+                                style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                              ),
+                              Text(
+                                '$totalStudents total students • $totalEnrollments enrollments',
+                                style: const TextStyle(fontSize: 12, color: AppColors.inkSoft),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded),
+                        onPressed: () => Navigator.pop(sheetContext),
+                      ),
+                    ],
+                  ),
+                  const Divider(height: 24),
+                  Text(
+                    'Recent Student Enrollments',
+                    style: Theme.of(sheetContext).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 12),
+                  transactionsAsync.when(
+                    data: (txs) {
+                      if (txs.isEmpty) {
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 32),
+                          child: Center(
+                            child: Column(
+                              children: [
+                                Icon(Icons.school_outlined, size: 48, color: Colors.grey.shade400),
+                                const SizedBox(height: 10),
+                                const Text('No students enrolled yet', style: TextStyle(fontWeight: FontWeight.bold)),
+                                const SizedBox(height: 4),
+                                const Text(
+                                  'When students enroll in your courses, their names and course details will appear here.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(fontSize: 12, color: AppColors.inkSoft),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }
+                      return Column(
+                        children: txs.take(10).map((tx) {
+                          final buyer = tx['buyer']?.toString() ?? 'Student';
+                          final course = tx['course_title']?.toString() ?? 'Enrolled Course';
+                          final date = tx['date']?.toString() ?? 'Recent';
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 10),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: isDark ? AppColors.cardDark : AppColors.bgLight,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              children: [
+                                CircleAvatar(
+                                  backgroundColor: AppColors.skyBlue.withValues(alpha: 0.15),
+                                  foregroundColor: AppColors.skyBlue,
+                                  radius: 20,
+                                  child: Text(
+                                    buyer.isNotEmpty ? buyer[0].toUpperCase() : 'S',
+                                    style: const TextStyle(fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(buyer, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                                      const SizedBox(height: 2),
+                                      Text(course, style: const TextStyle(fontSize: 12, color: AppColors.inkSoft), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                    ],
+                                  ),
+                                ),
+                                Text(date, style: const TextStyle(fontSize: 11, color: AppColors.inkSoft)),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                      );
+                    },
+                    loading: () => const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator())),
+                    error: (_, __) => const Center(child: Text('Unable to load student enrollments')),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryGreen,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    icon: const Icon(Icons.receipt_long_rounded, size: 18),
+                    label: const Text('View Full Financial & Payout Ledger'),
+                    onPressed: () {
+                      Navigator.pop(sheetContext);
+                      context.push(RouteNames.instructorAnalytics);
+                    },
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showReviewsBottomSheet(BuildContext context, Map<String, dynamic> stats) {
+    final totalReviews = stats['total_reviews'] ?? 0;
+    final avgRating = (stats['average_rating'] as num?)?.toDouble() ?? 4.8;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) {
+        final isDark = Theme.of(sheetContext).brightness == Brightness.dark;
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppColors.signalYellow.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.star_rounded, color: AppColors.signalYellow, size: 24),
+                      ),
+                      const SizedBox(width: 12),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Student Reviews & Ratings',
+                            style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                          Text(
+                            '⭐ ${avgRating.toStringAsFixed(1)} average rating • $totalReviews student reviews',
+                            style: const TextStyle(fontSize: 12, color: AppColors.inkSoft),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded),
+                    onPressed: () => Navigator.pop(sheetContext),
+                  ),
+                ],
+              ),
+              const Divider(height: 24),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.cardDark : AppColors.bgLight,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Row(
+                  children: [
+                    Text(
+                      avgRating.toStringAsFixed(1),
+                      style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: AppColors.primaryGreen),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: List.generate(
+                              5,
+                              (i) => Icon(
+                                i < avgRating.floor() ? Icons.star_rounded : Icons.star_half_rounded,
+                                color: AppColors.signalYellow,
+                                size: 20,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Based on $totalReviews verified enrolled student ratings',
+                            style: const TextStyle(fontSize: 12, color: AppColors.inkSoft),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryGreen.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.question_answer_outlined, color: AppColors.primaryGreen, size: 20),
+                ),
+                title: const Text('Student Q&A & Inquiries', style: TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: const Text('Manage student discussions and doubts', style: TextStyle(fontSize: 12)),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  context.push('/instructor/qa');
+                },
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _confirmDeleteCourse(ApiCourseList course) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -364,39 +660,38 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
               // Stats Row
               ref.watch(instructorStatsProvider).when(
                 data: (stats) {
-                  return InkWell(
-                    borderRadius: BorderRadius.circular(16),
-                    onTap: () => context.push(RouteNames.instructorAnalytics),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: _StatCard(
-                            icon: Icons.people_alt_rounded,
-                            label: 'Students',
-                            value: '${stats['total_students'] ?? 0}',
-                            color: AppColors.skyBlue,
-                          ),
+                  return Row(
+                    children: [
+                      Expanded(
+                        child: _StatCard(
+                          icon: Icons.people_alt_rounded,
+                          label: 'Students',
+                          value: '${stats['total_students'] ?? 0}',
+                          color: AppColors.skyBlue,
+                          onTap: () => _showStudentsBottomSheet(context, stats),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _StatCard(
-                            icon: Icons.play_lesson_rounded,
-                            label: 'Courses',
-                            value: '${stats['total_courses'] ?? 0}',
-                            color: AppColors.primaryGreen,
-                          ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _StatCard(
+                          icon: Icons.play_lesson_rounded,
+                          label: 'Courses',
+                          value: '${stats['total_courses'] ?? 0}',
+                          color: AppColors.primaryGreen,
+                          onTap: () => context.push(RouteNames.instructorUploads),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _StatCard(
-                            icon: Icons.star_rounded,
-                            label: 'Reviews',
-                            value: '${stats['total_reviews'] ?? 0}',
-                            color: AppColors.signalYellow,
-                          ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _StatCard(
+                          icon: Icons.star_rounded,
+                          label: 'Reviews',
+                          value: '${stats['total_reviews'] ?? 0}',
+                          color: AppColors.signalYellow,
+                          onTap: () => _showReviewsBottomSheet(context, stats),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   );
                 },
                 loading: () => Row(
@@ -603,7 +898,12 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                           child: _AgriLearnCourseCard(
                             course: course,
                             onManage: () => context.push('/instructor/manage-course/${course.id}'),
-                            onViewLive: () => context.push('/farmer/course/${course.slug ?? course.id}'),
+                            onViewLive: () {
+                              final target = (course.slug != null && course.slug!.isNotEmpty) ? course.slug! : course.id;
+                              if (target.isNotEmpty) {
+                                context.push('/course/$target');
+                              }
+                            },
                             onDelete: () => _confirmDeleteCourse(course),
                           ),
                         );
@@ -729,16 +1029,19 @@ class _StatCard extends StatelessWidget {
     required this.label,
     required this.value,
     required this.color,
+    this.onTap,
   });
 
   final IconData icon;
   final String label;
   final String value;
   final Color color;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     return AppCard(
+      onTap: onTap,
       padding: const EdgeInsets.all(14),
       child: Column(
         children: [

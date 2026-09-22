@@ -13,9 +13,10 @@ import '../../../core/widgets/shimmer_placeholders.dart';
 
 /// Explore screen for courses.
 class ExploreScreen extends ConsumerStatefulWidget {
-  const ExploreScreen({super.key, this.initialSearch});
+  const ExploreScreen({super.key, this.initialSearch, this.initialTab = 0});
 
   final String? initialSearch;
+  final int initialTab;
 
   @override
   ConsumerState<ExploreScreen> createState() => _ExploreScreenState();
@@ -508,6 +509,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
 
     return DefaultTabController(
       length: 2,
+      initialIndex: widget.initialTab.clamp(0, 1),
       child: Scaffold(
         appBar: AppBar(
           elevation: 0,

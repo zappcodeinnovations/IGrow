@@ -23,12 +23,12 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   String _selectedUpiApp = 'Google Pay';
   String _selectedBank = 'HDFC Bank';
 
-  final _upiController = TextEditingController(text: 'farmer@okaxis');
+  final _upiController = TextEditingController();
   final _couponController = TextEditingController();
-  final _cardNumberController = TextEditingController(text: '4242 4242 4242 4242');
-  final _cardExpiryController = TextEditingController(text: '12/28');
-  final _cardCvvController = TextEditingController(text: '123');
-  final _cardHolderController = TextEditingController(text: 'Kisan Learner');
+  final _cardNumberController = TextEditingController();
+  final _cardExpiryController = TextEditingController();
+  final _cardCvvController = TextEditingController();
+  final _cardHolderController = TextEditingController();
 
   bool _isProcessing = false;
   String? _couponError;
@@ -91,13 +91,14 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
 
     try {
       final coupon = ref.read(appliedCouponProvider);
+      final rawCard = _cardNumberController.text.replaceAll(' ', '');
       final result = await ref.read(cartProvider.notifier).checkout(
             paymentMethod: 'DUMMY_CARD',
             courseId: widget.directCourseId,
-            cardNumber: _cardNumberController.text.replaceAll(' ', ''),
-            cardExpiry: _cardExpiryController.text,
-            cardCvv: _cardCvvController.text,
-            cardHolder: _cardHolderController.text,
+            cardNumber: rawCard.isNotEmpty ? rawCard : '4242424242424242',
+            cardExpiry: _cardExpiryController.text.isNotEmpty ? _cardExpiryController.text : '12/28',
+            cardCvv: _cardCvvController.text.isNotEmpty ? _cardCvvController.text : '123',
+            cardHolder: _cardHolderController.text.isNotEmpty ? _cardHolderController.text : 'Kisan Learner',
             couponCode: coupon?.code,
           );
 
@@ -578,6 +579,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                         style: TextStyle(color: isDark ? Colors.white : AppColors.inkDark),
                         decoration: InputDecoration(
                           labelText: 'Virtual Payment Address (VPA / UPI ID)',
+                          hintText: 'e.g. yourname@okaxis',
                           labelStyle: TextStyle(color: isDark ? Colors.white70 : AppColors.inkSoft),
                           filled: true,
                           fillColor: isDark ? const Color(0xFF14201A) : Colors.grey.shade50,
@@ -619,6 +621,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                         style: TextStyle(color: isDark ? Colors.white : AppColors.inkDark),
                         decoration: InputDecoration(
                           labelText: 'Card Number',
+                          hintText: '4242 4242 4242 4242',
                           labelStyle: TextStyle(color: isDark ? Colors.white70 : AppColors.inkSoft),
                           filled: true,
                           fillColor: isDark ? const Color(0xFF14201A) : Colors.grey.shade50,
@@ -645,6 +648,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                               style: TextStyle(color: isDark ? Colors.white : AppColors.inkDark),
                               decoration: InputDecoration(
                                 labelText: 'Expiry (MM/YY)',
+                                hintText: '12/28',
                                 labelStyle: TextStyle(color: isDark ? Colors.white70 : AppColors.inkSoft),
                                 filled: true,
                                 fillColor: isDark ? const Color(0xFF14201A) : Colors.grey.shade50,
@@ -670,6 +674,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                               style: TextStyle(color: isDark ? Colors.white : AppColors.inkDark),
                               decoration: InputDecoration(
                                 labelText: 'CVV',
+                                hintText: '123',
                                 labelStyle: TextStyle(color: isDark ? Colors.white70 : AppColors.inkSoft),
                                 filled: true,
                                 fillColor: isDark ? const Color(0xFF14201A) : Colors.grey.shade50,

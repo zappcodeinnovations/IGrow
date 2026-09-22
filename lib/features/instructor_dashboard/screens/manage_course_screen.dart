@@ -12,6 +12,7 @@ import '../../../core/network/swagger_generated/app_api.swagger.dart'
     show CertificateTemplate;
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/shimmer_placeholders.dart';
+import '../../../core/services/quiz_service.dart';
 import '../../../data/models/api_models/course_models.dart';
 import '../../home_instructor/providers/instructor_home_provider.dart';
 
@@ -38,6 +39,39 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
 
   // Track expanded state for sections so UI doesn't collapse on every refresh
   final Map<String, bool> _sectionExpanded = {};
+
+  // Track quizzes configured per section
+  final Map<String, _ManageQuizData> _sectionQuizzes = {};
+  bool _quizzesChecked = false;
+
+  Future<void> _checkAndLoadSectionQuizzes(List<ApiCourseSection> sections) async {
+    if (_quizzesChecked) return;
+    _quizzesChecked = true;
+    for (final section in sections) {
+      if (!_sectionQuizzes.containsKey(section.id)) {
+        final saved = await QuizService.getSectionQuiz(section.id);
+        if (saved != null && mounted) {
+          final questionsRaw = saved['questions'] as List? ?? [];
+          final loadedQuestions = questionsRaw.map((q) {
+            final opts = (q['options'] as List? ?? []).map((e) => e.toString()).toList();
+            return _ManageQuizQuestion(
+              question: q['question_text']?.toString() ?? q['question']?.toString() ?? 'Question',
+              options: opts.isNotEmpty ? opts : ['Option 1', 'Option 2', 'Option 3', 'Option 4'],
+              correctOptionIndex: q['correct_option_index'] as int? ?? 0,
+            );
+          }).toList();
+
+          setState(() {
+            _sectionQuizzes[section.id] = _ManageQuizData(
+              quizTitle: saved['title']?.toString() ?? 'Module Quiz',
+              quizPassingPercent: saved['passing_percent'] as int? ?? 70,
+              questions: loadedQuestions,
+            );
+          });
+        }
+      }
+    }
+  }
 
   // Settings form
   final TextEditingController _settingsTitleController = TextEditingController();
@@ -1195,7 +1229,7 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                     padding: const EdgeInsets.symmetric(horizontal: 10),
                     minimumSize: const Size(0, 36),
                   ),
-                  onPressed: () => context.push('/farmer/course/${course.slug ?? course.id}'),
+                  onPressed: () => context.push('/course/${course.slug ?? course.id}'),
                   icon: const Icon(Icons.visibility_outlined, size: 16),
                   label: const Text('View Live', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                 ),
@@ -1397,6 +1431,14 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
           ),
           const SizedBox(height: 8),
 
+          // Restore saved quizzes from QuizService if any
+          Builder(
+            builder: (_) {
+              _checkAndLoadSectionQuizzes(course.sections);
+              return const SizedBox.shrink();
+            },
+          ),
+
           // Sections List
           if (course.sections.isEmpty) ...[
             Container(
@@ -1528,7 +1570,7 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                 _buildStatChip(Icons.currency_rupee, course.price == '0' || course.price == '0.00' ? 'Free' : '₹${course.price}'),
               if (course.status == 'APPROVED' || course.status == 'ACTIVE')
                 InkWell(
-                  onTap: () => context.push('/farmer/course/${course.slug ?? course.id}'),
+                  onTap: () => context.push('/course/${course.slug ?? course.id}'),
                   borderRadius: BorderRadius.circular(6),
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -1679,13 +1721,30 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                         'No lectures in this section yet.',
                         style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
                       ),
+                      if (_sectionQuizzes[section.id] != null) ...[
+                        const SizedBox(height: 12),
+                        _buildSectionQuizCard(section.id, _sectionQuizzes[section.id]!, isLocked),
+                      ],
                       if (!isLocked) ...[
                         const SizedBox(height: 8),
-                        TextButton.icon(
-                          onPressed: () => _showLectureBottomSheet(context, sectionId: section.id),
-                          icon: const Icon(Icons.add_circle_outline, size: 16),
-                          label: const Text('Add Lecture', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                          style: TextButton.styleFrom(foregroundColor: AppColors.primaryGreen),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            TextButton.icon(
+                              onPressed: () => _showLectureBottomSheet(context, sectionId: section.id),
+                              icon: const Icon(Icons.add_circle_outline, size: 16),
+                              label: const Text('Add Lecture', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                              style: TextButton.styleFrom(foregroundColor: AppColors.primaryGreen),
+                            ),
+                            if (_sectionQuizzes[section.id] == null) ...[
+                              const SizedBox(width: 12),
+                              TextButton.icon(
+                                onPressed: () => _showQuizBottomSheet(context, section.id),
+                                icon: const Icon(Icons.quiz_outlined, size: 16, color: Color(0xFFD97706)),
+                                label: const Text('+ Add Quiz', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFFD97706))),
+                              ),
+                            ],
+                          ],
                         ),
                       ],
                     ],
@@ -1703,23 +1762,54 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                   return _buildLectureTile(section, lecture, lIdx + 1, isLocked);
                 },
               ),
+              if (_sectionQuizzes[section.id] != null) ...[
+                _buildSectionQuizCard(section.id, _sectionQuizzes[section.id]!, isLocked),
+              ],
               if (!isLocked) ...[
                 Divider(height: 1, color: isDark ? AppColors.lineDark : Colors.grey.shade200),
-                InkWell(
-                  onTap: () => _showLectureBottomSheet(context, sectionId: section.id),
-                  child: const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 10, horizontal: 16),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.add, size: 16, color: AppColors.primaryGreen),
-                        SizedBox(width: 6),
-                        Text(
-                          'Add Another Lecture',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primaryGreen),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      InkWell(
+                        onTap: () => _showLectureBottomSheet(context, sectionId: section.id),
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+                          child: Row(
+                            children: [
+                              Icon(Icons.add, size: 16, color: AppColors.primaryGreen),
+                              SizedBox(width: 4),
+                              Text(
+                                'Add Another Lecture',
+                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primaryGreen),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      if (_sectionQuizzes[section.id] == null) ...[
+                        const SizedBox(width: 16),
+                        Container(width: 1, height: 16, color: isDark ? AppColors.lineDark : Colors.grey.shade300),
+                        const SizedBox(width: 16),
+                        InkWell(
+                          onTap: () => _showQuizBottomSheet(context, section.id),
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+                            child: Row(
+                              children: [
+                                Icon(Icons.quiz_outlined, size: 16, color: Color(0xFFD97706)),
+                                SizedBox(width: 4),
+                                Text(
+                                  '+ Add Quiz',
+                                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFD97706)),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       ],
-                    ),
+                    ],
                   ),
                 ),
               ],
@@ -2084,4 +2174,433 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
       ],
     );
   }
+
+  // ── Section Quiz Helpers & Bottom Sheet ──────────────────────────────────
+
+  Widget _buildSectionQuizCard(String sectionId, _ManageQuizData quiz, bool isLocked) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isDark
+            ? const Color(0xFF2E2413)
+            : const Color(0xFFFEF3C7).withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isDark ? const Color(0xFF78350F) : const Color(0xFFFDE68A),
+          width: 1.2,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF59E0B).withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(Icons.military_tech_rounded, color: Color(0xFFD97706), size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  quiz.quizTitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? const Color(0xFFFDE68A) : const Color(0xFF92400E),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${quiz.questions.length} Questions • Passing: ${quiz.quizPassingPercent}%',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: isDark ? Colors.amber.shade200 : const Color(0xFFB45309),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (!isLocked) ...[
+            TextButton(
+              onPressed: () => _showQuizBottomSheet(context, sectionId),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: const Text('Edit', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFD97706))),
+            ),
+            IconButton(
+              icon: const Icon(Icons.close, size: 16, color: Colors.grey),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+              tooltip: 'Remove Quiz',
+              onPressed: () async {
+                setState(() {
+                  _sectionQuizzes.remove(sectionId);
+                });
+                await QuizService.deleteSectionQuiz(sectionId);
+                _showFeedback('Quiz removed from section.');
+              },
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  void _showQuizBottomSheet(BuildContext parentContext, String sectionId) {
+    final existing = _sectionQuizzes[sectionId];
+    final titleController = TextEditingController(text: existing?.quizTitle ?? 'Module Quiz');
+    int passingPercent = existing?.quizPassingPercent ?? 70;
+    final List<_ManageQuizQuestion> localQuestions = existing != null
+        ? existing.questions
+            .map((q) => _ManageQuizQuestion(
+                  question: q.question,
+                  options: List<String>.from(q.options),
+                  correctOptionIndex: q.correctOptionIndex,
+                ))
+            .toList()
+        : [
+            _ManageQuizQuestion(
+              question: 'Sample Question 1',
+              options: ['Option A', 'Option B', 'Option C', 'Option D'],
+              correctOptionIndex: 0,
+            ),
+          ];
+
+    showModalBottomSheet(
+      context: parentContext,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (modalCtx) {
+        final isDark = Theme.of(modalCtx).brightness == Brightness.dark;
+
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.88,
+              ),
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.cardDark : Colors.white,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: SafeArea(
+                child: Padding(
+                  padding: EdgeInsets.only(
+                    bottom: MediaQuery.of(context).viewInsets.bottom,
+                  ),
+                  child: Column(
+                    children: [
+                      // Header
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 16, 16, 12),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Icon(Icons.quiz_rounded, color: Color(0xFFD97706), size: 20),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                existing != null ? 'Edit Section Quiz' : 'Add Section Quiz',
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close),
+                              onPressed: () => Navigator.pop(modalCtx),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Divider(height: 1),
+
+                      // Body
+                      Expanded(
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.all(20),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Quiz Title', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                              const SizedBox(height: 8),
+                              TextField(
+                                controller: titleController,
+                                decoration: const InputDecoration(
+                                  hintText: 'e.g., Chapter 1 Knowledge Assessment',
+                                  border: OutlineInputBorder(),
+                                  isDense: true,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+
+                              // Passing Score
+                              Row(
+                                children: [
+                                  const Expanded(
+                                    child: Text(
+                                      'Minimum Passing Score (%)',
+                                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primaryGreen.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      '$passingPercent%',
+                                      style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primaryGreen),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Slider(
+                                value: passingPercent.toDouble(),
+                                min: 40,
+                                max: 100,
+                                divisions: 12,
+                                activeColor: AppColors.primaryGreen,
+                                label: '$passingPercent%',
+                                onChanged: (val) => setModalState(() => passingPercent = val.toInt()),
+                              ),
+                              const SizedBox(height: 20),
+
+                              // Questions List
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'Quiz Questions (${localQuestions.length})',
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                  ),
+                                  TextButton.icon(
+                                    onPressed: () {
+                                      setModalState(() {
+                                        localQuestions.add(
+                                          _ManageQuizQuestion(
+                                            question: 'Question ${localQuestions.length + 1}',
+                                            options: ['Option 1', 'Option 2', 'Option 3', 'Option 4'],
+                                            correctOptionIndex: 0,
+                                          ),
+                                        );
+                                      });
+                                    },
+                                    icon: const Icon(Icons.add, size: 16),
+                                    label: const Text('Add Question', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                                    style: TextButton.styleFrom(foregroundColor: AppColors.primaryGreen),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+
+                              ...localQuestions.asMap().entries.map((entry) {
+                                final qIndex = entry.key;
+                                final q = entry.value;
+
+                                return Container(
+                                  margin: const EdgeInsets.only(bottom: 16),
+                                  padding: const EdgeInsets.all(14),
+                                  decoration: BoxDecoration(
+                                    color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.grey.shade50,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: isDark ? AppColors.lineDark : Colors.grey.shade300),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          CircleAvatar(
+                                            radius: 12,
+                                            backgroundColor: const Color(0xFFD97706).withValues(alpha: 0.2),
+                                            child: Text(
+                                              '${qIndex + 1}',
+                                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFD97706)),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: TextFormField(
+                                              initialValue: q.question,
+                                              decoration: const InputDecoration(
+                                                hintText: 'Enter question text...',
+                                                isDense: true,
+                                                border: InputBorder.none,
+                                              ),
+                                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                              onChanged: (val) => q.question = val,
+                                            ),
+                                          ),
+                                          if (localQuestions.length > 1)
+                                            IconButton(
+                                              icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.error),
+                                              onPressed: () => setModalState(() => localQuestions.removeAt(qIndex)),
+                                            ),
+                                        ],
+                                      ),
+                                      const Divider(),
+                                      const SizedBox(height: 6),
+                                      const Text(
+                                        'Answer Choices (Select the correct option):',
+                                        style: TextStyle(fontSize: 11, color: Colors.grey),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      ...q.options.asMap().entries.map((optEntry) {
+                                        final optIndex = optEntry.key;
+                                        final isCorrect = q.correctOptionIndex == optIndex;
+
+                                        return Padding(
+                                          padding: const EdgeInsets.only(bottom: 6),
+                                          child: Row(
+                                            children: [
+                                              InkWell(
+                                                onTap: () => setModalState(() => q.correctOptionIndex = optIndex),
+                                                child: Padding(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+                                                  child: Icon(
+                                                    isCorrect ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+                                                    color: isCorrect ? AppColors.primaryGreen : Colors.grey,
+                                                    size: 20,
+                                                  ),
+                                                ),
+                                              ),
+                                              Expanded(
+                                                child: TextFormField(
+                                                  initialValue: q.options[optIndex],
+                                                  decoration: InputDecoration(
+                                                    hintText: 'Option ${optIndex + 1}',
+                                                    isDense: true,
+                                                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                                    border: OutlineInputBorder(
+                                                      borderRadius: BorderRadius.circular(8),
+                                                      borderSide: BorderSide(
+                                                        color: isCorrect ? AppColors.primaryGreen : Colors.grey.shade300,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: isCorrect ? FontWeight.bold : FontWeight.normal,
+                                                  ),
+                                                  onChanged: (val) => q.options[optIndex] = val,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      }),
+                                    ],
+                                  ),
+                                );
+                              }),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      // Save Button
+                      Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primaryGreen,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                              elevation: 0,
+                            ),
+                            onPressed: () async {
+                              final quizData = _ManageQuizData(
+                                quizTitle: titleController.text.trim().isNotEmpty
+                                    ? titleController.text.trim()
+                                    : 'Module Quiz',
+                                quizPassingPercent: passingPercent,
+                                questions: localQuestions,
+                              );
+
+                              setState(() {
+                                _sectionQuizzes[sectionId] = quizData;
+                              });
+
+                              await QuizService.saveSectionQuiz(sectionId, {
+                                'id': 'quiz_$sectionId',
+                                'section_id': sectionId,
+                                'title': quizData.quizTitle,
+                                'passing_percent': quizData.quizPassingPercent,
+                                'questions': localQuestions.asMap().entries.map((e) => {
+                                  'id': 'q_${e.key + 1}',
+                                  'question_text': e.value.question,
+                                  'question': e.value.question,
+                                  'options': e.value.options,
+                                  'correct_option_index': e.value.correctOptionIndex,
+                                  'correct_answer': e.value.options.isNotEmpty && e.value.correctOptionIndex < e.value.options.length
+                                      ? e.value.options[e.value.correctOptionIndex]
+                                      : (e.value.options.isNotEmpty ? e.value.options.first : ''),
+                                }).toList(),
+                              });
+
+                              if (modalCtx.mounted) {
+                                Navigator.pop(modalCtx);
+                              }
+                              _showFeedback('Quiz saved successfully and visible to students!');
+                            },
+                            child: const Text('Save Quiz Details', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _ManageQuizData {
+  String quizTitle;
+  int quizPassingPercent;
+  List<_ManageQuizQuestion> questions;
+
+  _ManageQuizData({
+    this.quizTitle = 'Module Quiz',
+    this.quizPassingPercent = 70,
+    required this.questions,
+  });
+}
+
+class _ManageQuizQuestion {
+  String question;
+  List<String> options;
+  int correctOptionIndex;
+
+  _ManageQuizQuestion({
+    required this.question,
+    required this.options,
+    this.correctOptionIndex = 0,
+  });
 }

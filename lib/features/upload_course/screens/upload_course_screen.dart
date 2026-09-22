@@ -35,6 +35,7 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
   final _shortDescController = TextEditingController();
   final _descController = TextEditingController();
   final _priceController = TextEditingController(text: '0');
+  final _priceFocusNode = FocusNode();
   File? _coverImage;
 
   String _selectedCategory = 'Organic Farming';
@@ -90,6 +91,17 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
   @override
   void initState() {
     super.initState();
+    _priceFocusNode.addListener(() {
+      if (_priceFocusNode.hasFocus) {
+        if (_priceController.text.trim() == '0') {
+          _priceController.clear();
+        }
+      } else {
+        if (_priceController.text.trim().isEmpty) {
+          _priceController.text = '0';
+        }
+      }
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(authProvider.notifier).refreshUserSilent();
     });
@@ -101,6 +113,7 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
     _shortDescController.dispose();
     _descController.dispose();
     _priceController.dispose();
+    _priceFocusNode.dispose();
     for (final m in _curriculum) {
       for (final l in m.lectures) {
         l.dispose();
@@ -1226,12 +1239,23 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
           _buildFieldLabel('Price (₹)'),
           TextField(
             controller: _priceController,
+            focusNode: _priceFocusNode,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: const InputDecoration(
               hintText: 'e.g., 1499 (0 for Free)',
               prefixText: '₹ ',
               border: OutlineInputBorder(),
             ),
+            onChanged: (val) {
+              if (val.length > 1 && val.startsWith('0') && !val.startsWith('0.')) {
+                final cleaned = val.replaceFirst(RegExp(r'^0+'), '');
+                final target = cleaned.isEmpty ? '0' : cleaned;
+                _priceController.value = TextEditingValue(
+                  text: target,
+                  selection: TextSelection.collapsed(offset: target.length),
+                );
+              }
+            },
           ),
           const SizedBox(height: 18),
 

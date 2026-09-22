@@ -14,6 +14,7 @@ import '../../../data/models/api_models/wishlist_model.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../notifications/providers/notification_provider.dart';
 import '../../wishlist/providers/wishlist_provider.dart';
+import '../../../core/services/quiz_service.dart';
 import '../providers/student_provider.dart';
 
 /// Upgraded Student / Farmer Dashboard Screen matching the Agrilearn Web UI & UX.
@@ -27,19 +28,24 @@ class FarmerHomeScreen extends ConsumerStatefulWidget {
 class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
   int _selectedTabIndex = 0; // 0: My Courses, 1: My E-Books, 2: Quiz History, 3: Wishlist
 
-  // Sample/Fallback quiz history data matching Agrilearn web dashboard screenshot
-  final List<Map<String, dynamic>> _quizHistory = [
-    {
-      'topic': 'आधुनिक जैविक खेती (Modern Organic Farming)',
-      'date': '2026-06-15',
-      'score': '85%',
-    },
-    {
-      'topic': 'मृदा स्वास्थ्य एवं उर्वरता (Soil Health & Fertility)',
-      'date': '2026-05-20',
-      'score': '90%',
-    },
-  ];
+  // Quiz history initialized clean for the farmer account, dynamically loaded from QuizService
+  final List<Map<String, dynamic>> _quizHistory = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadQuizHistory();
+  }
+
+  Future<void> _loadQuizHistory() async {
+    final history = await QuizService.getQuizHistory();
+    if (mounted) {
+      setState(() {
+        _quizHistory.clear();
+        _quizHistory.addAll(history);
+      });
+    }
+  }
 
   String _getTimeBasedGreeting() {
     final hour = DateTime.now().hour;
@@ -411,7 +417,13 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                               style: Theme.of(context).textTheme.titleSmall?.copyWith(height: 1, fontSize: 12),
                             ),
                             Text(
-                              'Pune',
+                              (user?.locationDistrict != null && user!.locationDistrict!.trim().isNotEmpty)
+                                  ? user.locationDistrict!
+                                  : (user?.locationState != null && user!.locationState!.trim().isNotEmpty)
+                                      ? user.locationState!
+                                      : (user?.location != null && user!.location!.trim().isNotEmpty)
+                                          ? user.location!
+                                          : 'Pune',
                               style: Theme.of(context).textTheme.labelSmall?.copyWith(color: AppColors.inkSoft, fontSize: 9.5),
                             ),
                           ],
@@ -524,7 +536,7 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
 
                     // Browse E-books Button
                     OutlinedButton.icon(
-                      onPressed: () => context.push(RouteNames.explore),
+                      onPressed: () => context.push('/farmer/explore?tab=ebooks'),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: isDark ? const Color(0xFF86EFAC) : const Color(0xFF166534),
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -957,7 +969,10 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                             ),
                             icon: const Icon(Icons.visibility_rounded, size: 14, color: Color(0xFFD97706)),
                             label: const Text('Read E-Book', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFD97706))),
-                            onPressed: () => context.push('/farmer/explore'),
+                            onPressed: () {
+                              final target = (ebook.slug != null && ebook.slug!.isNotEmpty) ? ebook.slug! : ebook.id;
+                              context.push('/farmer/ebook/$target');
+                            },
                           ),
                         ],
                       ),
@@ -977,6 +992,9 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
   // ── Tab 2 Content: Quiz History Table (Matching Agrilearn Web Screenshot) ──
   Widget _buildQuizHistoryTab(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // Refresh history if tab is viewed
+    _loadQuizHistory();
 
     return AppCard(
       padding: const EdgeInsets.all(16),
@@ -1029,10 +1047,18 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
 
           // Table Rows
           if (_quizHistory.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24),
               child: Center(
-                child: Text('No quiz history recorded yet.', style: TextStyle(color: AppColors.inkSoft, fontSize: 12)),
+                child: Column(
+                  children: [
+                    Icon(Icons.quiz_outlined, size: 36, color: AppColors.inkSoft.withValues(alpha: 0.5)),
+                    const SizedBox(height: 8),
+                    const Text('No quiz history recorded yet.', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    const SizedBox(height: 4),
+                    const Text('Complete course quizzes to track your scores here.', style: TextStyle(color: AppColors.inkSoft, fontSize: 11)),
+                  ],
+                ),
               ),
             )
           else
@@ -1130,46 +1156,57 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
               margin: const EdgeInsets.only(bottom: 12),
               child: AppCard(
                 padding: const EdgeInsets.all(14),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryGreen.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(10),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(10),
+                  onTap: () {
+                    final target = item.slug.isNotEmpty ? item.slug : item.targetId;
+                    if (item.isEbook) {
+                      context.push('/farmer/ebook/$target');
+                    } else {
+                      context.push('/farmer/course/$target');
+                    }
+                  },
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryGreen.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(
+                          item.isEbook ? Icons.menu_book_rounded : Icons.play_circle_fill_rounded,
+                          color: AppColors.primaryGreen,
+                        ),
                       ),
-                      child: Icon(
-                        item.isEbook ? Icons.menu_book_rounded : Icons.play_circle_fill_rounded,
-                        color: AppColors.primaryGreen,
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              item.title,
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              item.category,
+                              style: const TextStyle(fontSize: 11, color: AppColors.inkSoft),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            item.title,
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            item.category,
-                            style: const TextStyle(fontSize: 11, color: AppColors.inkSoft),
-                          ),
-                        ],
+                      IconButton(
+                        icon: const Icon(Icons.favorite_rounded, color: Colors.redAccent, size: 20),
+                        onPressed: () {
+                          ref.read(wishlistProvider.notifier).removeItem(item.id);
+                        },
                       ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.favorite_rounded, color: Colors.redAccent, size: 20),
-                      onPressed: () {
-                        ref.read(wishlistProvider.notifier).removeItem(item.id);
-                      },
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             );

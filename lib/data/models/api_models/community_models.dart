@@ -12,11 +12,16 @@ class CommunityAuthor {
   });
 
   factory CommunityAuthor.fromJson(Map<String, dynamic> json) {
+    final rawRole = (json['author_role'] ?? json['role'])?.toString();
+    final rawName = (json['full_name'] ?? json['author_name'] ?? json['user_name'] ?? json['name'] ?? json['username'])?.toString();
+    final rawId = (json['id'] ?? json['author_id'] ?? json['user_id'])?.toString() ?? '';
+    final rawAvatar = (json['avatar_url'] ?? json['author_avatar'] ?? json['avatar'])?.toString();
+
     return CommunityAuthor(
-      id: json['id'] as String? ?? json['author_id'] as String? ?? '',
-      fullName: json['full_name'] as String? ?? json['author_name'] as String? ?? 'Unknown',
-      isExpert: json['is_expert'] as bool? ?? (json['author_role'] == 'INSTRUCTOR' || json['author_role'] == 'ADMIN'),
-      avatarUrl: json['avatar_url'] as String? ?? json['author_avatar'] as String?,
+      id: rawId,
+      fullName: (rawName != null && rawName.isNotEmpty) ? rawName : 'User',
+      isExpert: json['is_expert'] as bool? ?? (rawRole == 'INSTRUCTOR' || rawRole == 'ADMIN'),
+      avatarUrl: rawAvatar,
     );
   }
 }
@@ -181,22 +186,29 @@ class CommunityComment {
   });
 
   factory CommunityComment.fromJson(Map<String, dynamic> json) {
-    final authorMap = json['author'] is Map<String, dynamic>
-        ? json['author'] as Map<String, dynamic>
-        : {
-            'id': json['author_id'],
-            'full_name': json['author_name'],
-            'author_role': json['author_role'],
-            'avatar_url': json['author_avatar'],
-          };
+    Map<String, dynamic> authorMap;
+    if (json['author'] is Map<String, dynamic>) {
+      authorMap = json['author'] as Map<String, dynamic>;
+    } else if (json['user'] is Map<String, dynamic>) {
+      authorMap = json['user'] as Map<String, dynamic>;
+    } else {
+      authorMap = {
+        'id': json['author_id'] ?? json['user_id'] ?? json['author'] ?? json['user'],
+        'full_name': json['author_name'] ?? json['user_name'] ?? json['username'] ?? json['name'],
+        'author_role': json['author_role'] ?? json['role'],
+        'avatar_url': json['author_avatar'] ?? json['user_avatar'] ?? json['avatar'],
+      };
+    }
+
+    final rawContent = json['content'] ?? json['comment'] ?? json['text'] ?? json['body'] ?? '';
 
     return CommunityComment(
-      id: json['id'] as String? ?? '',
+      id: json['id']?.toString() ?? '',
       author: CommunityAuthor.fromJson(authorMap),
-      parentId: json['parent'] as String?,
-      content: json['content'] as String? ?? '',
+      parentId: json['parent']?.toString() ?? json['parent_id']?.toString(),
+      content: rawContent.toString(),
       createdAt: json['created_at'] != null
-          ? DateTime.tryParse(json['created_at'] as String) ?? DateTime.now()
+          ? DateTime.tryParse(json['created_at'].toString()) ?? DateTime.now()
           : DateTime.now(),
     );
   }

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:chopper/chopper.dart' as chopper;
 import '../../core/network/api_client.dart';
@@ -61,6 +62,9 @@ class ApiAuthRepository implements AuthRepository {
   final TokenStorage tokenStorage;
 
   UserModel? _currentUser;
+
+  @visibleForTesting
+  void testSetCurrentUser(UserModel user) => _currentUser = user;
 
   void _handleError(chopper.Response response) {
     if (!response.isSuccessful) {
@@ -309,10 +313,14 @@ class ApiAuthRepository implements AuthRepository {
   @override
   Future<UserModel> switchRole(UserRole newRole) async {
     if (_currentUser == null) throw Exception('Not authenticated');
-    if (!_currentUser!.canSwitchTo(newRole)) {
-      throw Exception('User does not have the $newRole role');
+    final updatedGranted = List<UserRole>.from(_currentUser!.grantedRoles);
+    if (!updatedGranted.contains(newRole)) {
+      updatedGranted.add(newRole);
     }
-    _currentUser = _currentUser!.copyWith(activeRole: newRole);
+    _currentUser = _currentUser!.copyWith(
+      activeRole: newRole,
+      grantedRoles: updatedGranted,
+    );
     return _currentUser!;
   }
 

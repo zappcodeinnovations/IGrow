@@ -1062,7 +1062,7 @@ class _CurriculumTab extends ConsumerWidget {
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    icon: const Icon(Icons.assignment, size: 16),
+                    icon: const Icon(Icons.quiz_rounded, size: 16),
                     label: const Text('Take Section Quiz'),
                     onPressed: () => context.push('/quiz/${section.id}'),
                   ),

@@ -154,8 +154,9 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogCtx),
-            child: const Text('Cancel'),
+            child: const Text('OK'),
           ),
+          /*
           if (canSwitchToFarmer)
             FilledButton.icon(
               style: FilledButton.styleFrom(
@@ -185,6 +186,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                 }
               },
             ),
+          */
         ],
       ),
     );

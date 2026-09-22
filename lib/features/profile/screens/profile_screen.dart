@@ -222,8 +222,9 @@ class ProfileScreen extends ConsumerWidget {
                 const SizedBox(height: 20),
               ],
 
-              // Role switch
-              if (user != null && user.grantedRoles.length > 1)
+              // Role switch card (Temporarily hidden/commented out from UI as requested)
+              /*
+              if (user != null) ...[
                 AppCard(
                   onTap: () async {
                     final newRole = isFarmer
@@ -256,24 +257,28 @@ class ProfileScreen extends ConsumerWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Switch to ${isFarmer ? 'Instructor' : 'Farmer'} Mode',
+                              isFarmer ? 'Switch to Instructor Mode' : 'Switch to Farmer Mode',
                               style: Theme.of(context).textTheme.titleSmall,
                             ),
                             Text(
-                              'Change your active role',
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.inkSoft,),
+                              isFarmer
+                                  ? 'Teach, manage students & upload courses'
+                                  : 'Explore & learn agriculture courses',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.inkSoft),
                             ),
                           ],
                         ),
                       ),
-                      Icon(
+                      const Icon(
                         Icons.chevron_right_rounded,
                         color: AppColors.inkSoft,
                       ),
                     ],
                   ),
                 ),
-              const SizedBox(height: 20),
+                const SizedBox(height: 20),
+              ],
+              */
 
               // Role-specific sections
               if (isFarmer) ...[
@@ -284,13 +289,15 @@ class ProfileScreen extends ConsumerWidget {
                       icon: Icons.phone_rounded,
                       label: 'Phone',
                       value: user?.phone.isNotEmpty == true ? user!.phone : 'Not provided',
-                      onTap: () => context.push('/edit-profile'),
+                      showChevron: false,
+                      onTap: () => _showComingSoon(context),
                     ),
                     _MenuItem(
                       icon: Icons.location_on_rounded,
                       label: 'Location',
                       value: user?.location ?? 'Not provided',
-                      onTap: () => context.push('/edit-profile'),
+                      showChevron: false,
+                      onTap: () => _showComingSoon(context),
                     ),
                     _MenuItem(
                       icon: Icons.agriculture_rounded,
@@ -304,13 +311,15 @@ class ProfileScreen extends ConsumerWidget {
                                       ? 'Expert'
                                       : '${user.farmingExperience} years')
                           : 'Not provided',
-                      onTap: () => context.push('/edit-profile'),
+                      showChevron: false,
+                      onTap: () => _showComingSoon(context),
                     ),
                     _MenuItem(
                       icon: Icons.interests_rounded,
                       label: 'Areas of Interest',
                       value: user?.areasOfInterest?.join(', ') ?? 'Not provided',
-                      onTap: () => context.push('/edit-profile'),
+                      showChevron: false,
+                      onTap: () => _showComingSoon(context),
                     ),
                   ],
                 ),
@@ -356,13 +365,15 @@ class ProfileScreen extends ConsumerWidget {
                       icon: Icons.phone_rounded,
                       label: 'Phone',
                       value: user?.phone.isNotEmpty == true ? user!.phone : 'Not provided',
-                      onTap: () => context.push('/edit-profile'),
+                      showChevron: false,
+                      onTap: () => _showComingSoon(context),
                     ),
                     _MenuItem(
                       icon: Icons.location_on_rounded,
                       label: 'Location',
                       value: user?.location ?? 'Not provided',
-                      onTap: () => context.push('/edit-profile'),
+                      showChevron: false,
+                      onTap: () => _showComingSoon(context),
                     ),
                   ],
                 ),
@@ -375,31 +386,36 @@ class ProfileScreen extends ConsumerWidget {
                         icon: Icons.info_rounded,
                         label: 'Bio',
                         value: user.bio,
-                        onTap: () => context.push('/edit-profile'),
+                        showChevron: false,
+                        onTap: () => _showComingSoon(context),
                       ),
                     _MenuItem(
                       icon: Icons.star_rounded,
                       label: 'Expertise Tags',
                       value: user?.expertiseTags ?? 'Not provided',
-                      onTap: () => context.push('/edit-profile'),
+                      showChevron: false,
+                      onTap: () => _showComingSoon(context),
                     ),
                     _MenuItem(
                       icon: Icons.work_rounded,
                       label: 'Years of Experience',
-                      value: user?.yearsOfExperience?.toString() ?? 'Not provided',
-                      onTap: () => context.push('/edit-profile'),
+                      value: user?.yearsOfExperience != null ? '${user!.yearsOfExperience} years' : (user?.yearsOfExperience?.toString() ?? 'Not provided'),
+                      showChevron: false,
+                      onTap: () => _showComingSoon(context),
                     ),
                     _MenuItem(
                       icon: Icons.grass_rounded,
                       label: 'Specialty Crops',
                       value: user?.specialtyCrops ?? 'Not provided',
-                      onTap: () => context.push('/edit-profile'),
+                      showChevron: false,
+                      onTap: () => _showComingSoon(context),
                     ),
                     _MenuItem(
                       icon: Icons.link_rounded,
                       label: 'Social Link',
                       value: user?.socialLink ?? 'Not provided',
-                      onTap: () => context.push('/edit-profile'),
+                      showChevron: false,
+                      onTap: () => _showComingSoon(context),
                     ),
                   ],
                 ),
@@ -592,12 +608,14 @@ class _MenuSection extends StatelessWidget {
                           ],
                           if (item.trailingWidget != null)
                             item.trailingWidget!
-                          else
+                          else if (item.showChevron)
                             Icon(
                               Icons.chevron_right_rounded,
                               color: AppColors.inkSoft,
                               size: 20,
-                            ),
+                            )
+                          else
+                            const SizedBox.shrink(),
                         ],
                       ),
                     ),
@@ -627,6 +645,7 @@ class _MenuItem {
     this.value,
     this.onTap,
     this.trailingWidget,
+    this.showChevron = true,
   });
 
   final IconData icon;
@@ -634,6 +653,19 @@ class _MenuItem {
   final String? value;
   final VoidCallback? onTap;
   final Widget? trailingWidget;
+  final bool showChevron;
+}
+
+void _showComingSoon(BuildContext context) {
+  final messenger = ScaffoldMessenger.of(context);
+  messenger.clearSnackBars();
+  messenger.showSnackBar(
+    const SnackBar(
+      content: Text('Feature coming soon'),
+      duration: Duration(milliseconds: 1800),
+      behavior: SnackBarBehavior.floating,
+    ),
+  );
 }
 
 void _showLanguageBottomSheet(BuildContext context, WidgetRef ref) {

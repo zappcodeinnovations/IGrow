@@ -149,22 +149,23 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
   static String _formatExperience(String? exp) {
     if (exp == null || exp.trim().isEmpty) return '';
-    final upper = exp.trim().toUpperCase();
-    if (upper == 'BEGINNER') return 'Beginner';
-    if (upper == 'INTERMEDIATE') return 'Intermediate';
-    if (upper == 'EXPERT') return 'Expert';
-    return exp.trim();
-  }
-
-  static String? _toApiExperience(String? exp) {
-    if (exp == null || exp.trim().isEmpty) return null;
     final trimmed = exp.trim();
     final upper = trimmed.toUpperCase();
-    if (upper == 'BEGINNER' || upper.contains('BEG')) return 'BEGINNER';
-    if (upper == 'INTERMEDIATE' || upper.contains('INT')) return 'INTERMEDIATE';
-    if (upper.contains('EXP') || upper == 'EXPERT') return 'EXPERT';
-    return trimmed;
+    if (upper == 'BEGINNER' || upper.contains('BEG')) return 'Beginner';
+    if (upper == 'INTERMEDIATE' || upper.contains('INT')) return 'Intermediate';
+    if (upper == 'EXPERT' || upper.contains('EXP')) return 'Expert';
+
+    // If a number was entered or saved (e.g. "10", "10 years")
+    final numYears = int.tryParse(trimmed.replaceAll(RegExp(r'[^\d]'), ''));
+    if (numYears != null) {
+      if (numYears <= 2) return 'Beginner';
+      if (numYears <= 6) return 'Intermediate';
+      return 'Expert';
+    }
+    return 'Beginner';
   }
+
+  static String? _toApiExperience(String? exp) => formatFarmingExperienceForApi(exp);
 
   static String? _formatPhone(String input) {
     String clean = input.trim().replaceAll(RegExp(r'[^\d]'), '');
@@ -1023,4 +1024,26 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       ),
     );
   }
+}
+
+/// Helper function to normalize any farming experience input (e.g., '10', '10 years', 'Expert')
+/// into valid backend ChoiceField strings ('BEGINNER', 'INTERMEDIATE', 'EXPERT').
+String? formatFarmingExperienceForApi(String? exp) {
+  if (exp == null || exp.trim().isEmpty) return null;
+  final trimmed = exp.trim();
+  final upper = trimmed.toUpperCase();
+  if (upper == 'BEGINNER' || upper.contains('BEG')) return 'BEGINNER';
+  if (upper == 'INTERMEDIATE' || upper.contains('INT')) return 'INTERMEDIATE';
+  if (upper == 'EXPERT' || upper.contains('EXP')) return 'EXPERT';
+
+  // Convert numeric inputs (e.g. "10", "10 years", "5") to valid Django choice strings
+  final numYears = int.tryParse(trimmed.replaceAll(RegExp(r'[^\d]'), ''));
+  if (numYears != null) {
+    if (numYears <= 2) return 'BEGINNER';
+    if (numYears <= 6) return 'INTERMEDIATE';
+    return 'EXPERT';
+  }
+
+  // Always fallback to a valid backend choice enum string rather than an arbitrary value
+  return 'BEGINNER';
 }

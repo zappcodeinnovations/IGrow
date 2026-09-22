@@ -15,6 +15,59 @@ final communityTopicsProvider = FutureProvider<List<CommunityTopic>>((ref) async
 
 final selectedTopicIdProvider = StateProvider<String?>((ref) => null);
 
+final postCommentsProvider = StateNotifierProvider.family<PostCommentsNotifier, AsyncValue<List<CommunityComment>>, String>((ref, postId) {
+  final repo = ref.watch(communityRepositoryProvider);
+  return PostCommentsNotifier(repo, postId);
+});
+
+class PostCommentsNotifier extends StateNotifier<AsyncValue<List<CommunityComment>>> {
+  PostCommentsNotifier(this._repo, this.postId) : super(const AsyncValue.loading()) {
+    fetchComments();
+  }
+
+  final CommunityRepository _repo;
+  final String postId;
+
+  Future<void> fetchComments() async {
+    state = const AsyncValue.loading();
+    try {
+      final comments = await _repo.getComments(postId);
+      state = AsyncValue.data(comments);
+    } catch (_) {
+      state = AsyncValue.data(<CommunityComment>[]);
+    }
+  }
+
+  Future<void> addComment({
+    required String text,
+    required CommunityAuthor author,
+  }) async {
+    final localComment = CommunityComment(
+      id: 'local_${DateTime.now().millisecondsSinceEpoch}',
+      author: author,
+      content: text,
+      createdAt: DateTime.now(),
+    );
+
+    // Optimistically add to list immediately so user sees it right away
+    final currentList = state.value ?? [];
+    state = AsyncValue.data([...currentList, localComment]);
+
+    // Persist to backend
+    try {
+      final serverComment = await _repo.addComment(postId, text);
+      if (serverComment.id != localComment.id) {
+        final updatedList = (state.value ?? []).map((c) {
+          return c.id == localComment.id ? serverComment : c;
+        }).toList();
+        state = AsyncValue.data(updatedList);
+      }
+    } catch (_) {
+      // Retain optimistic comment in list
+    }
+  }
+}
+
 final communityPostsProvider = StateNotifierProvider<CommunityPostsNotifier, AsyncValue<List<CommunityPost>>>((ref) {
   final repo = ref.watch(communityRepositoryProvider);
   final selectedTopic = ref.watch(selectedTopicIdProvider);
@@ -61,6 +114,20 @@ class CommunityPostsNotifier extends StateNotifier<AsyncValue<List<CommunityPost
     return newPost;
   }
 
+  Future<bool> deletePost(String postId) async {
+    try {
+      await _repo.deletePost(postId);
+      if (state.hasValue && state.value != null) {
+        state = AsyncValue.data(
+          state.value!.where((p) => p.id != postId).toList(),
+        );
+      }
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
   Future<void> refreshPosts() async {
     try {
       final posts = await _repo.getPosts(topicId: topicId);
@@ -68,6 +135,18 @@ class CommunityPostsNotifier extends StateNotifier<AsyncValue<List<CommunityPost
     } catch (e, st) {
       state = AsyncValue.error(e, st);
     }
+  }
+
+  void incrementCommentsCount(String postId) {
+    if (state.value == null) return;
+    final oldPosts = state.value!;
+    final index = oldPosts.indexWhere((p) => p.id == postId);
+    if (index == -1) return;
+    final post = oldPosts[index];
+    final updatedPost = post.copyWith(commentsCount: post.commentsCount + 1);
+    final updatedList = List<CommunityPost>.from(oldPosts);
+    updatedList[index] = updatedPost;
+    state = AsyncValue.data(updatedList);
   }
 
   Future<bool> toggleLike(String postId) async {

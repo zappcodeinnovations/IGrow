@@ -148,38 +148,44 @@ class _InstructorChatbotScreenState extends State<InstructorChatbotScreen> {
     _loadLanguage(_currentLanguage);
   }
 
-  void _loadLanguage(String lang) {
+  void _loadLanguage(String lang, {bool isSwitch = false}) {
     setState(() {
       _currentLanguage = lang;
-      _messages.clear();
-      _messages.add({
-        'isBot': true,
-        'text': _greetings[lang]!,
-      });
+      if (_messages.isEmpty) {
+        _messages.add({
+          'isBot': true,
+          'text': _greetings[lang]!,
+        });
+      } else if (isSwitch) {
+        _messages.add({
+          'isBot': true,
+          'text': _greetings[lang]!,
+        });
+      }
       _faqs = List<Map<String, String>>.from(_allLocalizedFaqs[lang]!);
     });
+    if (isSwitch) {
+      _scrollToBottom();
+    }
   }
 
   final ScrollController _scrollController = ScrollController();
-  final GlobalKey<AnimatedListState> _listKey = GlobalKey<AnimatedListState>();
 
   void _askQuestion(String question, String answer) async {
     setState(() {
       _faqs.removeWhere((faq) => faq['q'] == question);
+      _messages.add({'isBot': false, 'text': question});
     });
-
-    // Add user question
-    _messages.add({'isBot': false, 'text': question});
-    _listKey.currentState?.insertItem(_messages.length - 1);
     
     _scrollToBottom();
 
-    // Fake delay for typing
-    await Future.delayed(const Duration(milliseconds: 600));
+    // Delay for typing simulation
+    await Future.delayed(const Duration(milliseconds: 400));
 
-    // Add bot answer
-    _messages.add({'isBot': true, 'text': answer});
-    _listKey.currentState?.insertItem(_messages.length - 1);
+    if (!mounted) return;
+    setState(() {
+      _messages.add({'isBot': true, 'text': answer});
+    });
     
     _scrollToBottom();
   }
@@ -215,7 +221,9 @@ class _InstructorChatbotScreenState extends State<InstructorChatbotScreen> {
             icon: const Icon(Icons.language),
             tooltip: 'Select Language',
             onSelected: (String lang) {
-              _loadLanguage(lang);
+              if (_currentLanguage != lang) {
+                _loadLanguage(lang, isSwitch: true);
+              }
             },
             itemBuilder: (BuildContext context) {
               return ['English', 'हिन्दी', 'मराठी'].map((String choice) {
@@ -237,14 +245,13 @@ class _InstructorChatbotScreenState extends State<InstructorChatbotScreen> {
       body: Column(
         children: [
           Expanded(
-            child: AnimatedList(
-              key: _listKey,
+            child: ListView.builder(
               controller: _scrollController,
               padding: const EdgeInsets.all(16),
-              initialItemCount: _messages.length,
-              itemBuilder: (context, index, animation) {
+              itemCount: _messages.length,
+              itemBuilder: (context, index) {
                 final msg = _messages[index];
-                return _buildMessageBubble(msg['text'], msg['isBot'], animation, isDark);
+                return _buildMessageBubble(msg['text'], msg['isBot'], isDark);
               },
             ),
           ),
@@ -288,62 +295,56 @@ class _InstructorChatbotScreenState extends State<InstructorChatbotScreen> {
     );
   }
 
-  Widget _buildMessageBubble(String text, bool isBot, Animation<double> animation, bool isDark) {
-    return SizeTransition(
-      sizeFactor: animation,
-      child: FadeTransition(
-        opacity: animation,
-        child: Padding(
-          padding: const EdgeInsets.only(bottom: 16),
-          child: Row(
-            mainAxisAlignment: isBot ? MainAxisAlignment.start : MainAxisAlignment.end,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              if (isBot) ...[
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.primaryGreen.withValues(alpha: 0.3), width: 1),
-                    image: const DecorationImage(
-                      image: AssetImage('assets/images/igrow_teacher_bot.png'),
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-              ],
-              Flexible(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: isBot 
-                        ? (isDark ? AppColors.cardDark : AppColors.white)
-                        : AppColors.primaryGreen,
-                    borderRadius: BorderRadius.only(
-                      topLeft: const Radius.circular(20),
-                      topRight: const Radius.circular(20),
-                      bottomLeft: isBot ? const Radius.circular(4) : const Radius.circular(20),
-                      bottomRight: isBot ? const Radius.circular(20) : const Radius.circular(4),
-                    ),
-                    border: isBot ? Border.all(color: isDark ? AppColors.lineDark : AppColors.lineLight) : null,
-                  ),
-                  child: Text(
-                    text,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: isBot 
-                          ? (isDark ? AppColors.white : AppColors.inkDark)
-                          : AppColors.white,
-                      height: 1.4,
-                    ),
-                  ),
+  Widget _buildMessageBubble(String text, bool isBot, bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        mainAxisAlignment: isBot ? MainAxisAlignment.start : MainAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          if (isBot) ...[
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.primaryGreen.withValues(alpha: 0.3), width: 1),
+                image: const DecorationImage(
+                  image: AssetImage('assets/images/igrow_teacher_bot.png'),
+                  fit: BoxFit.cover,
                 ),
               ),
-              if (!isBot) const SizedBox(width: 40), // Margin for user messages
-            ],
+            ),
+            const SizedBox(width: 8),
+          ],
+          Flexible(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: isBot 
+                    ? (isDark ? AppColors.cardDark : AppColors.white)
+                    : AppColors.primaryGreen,
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(20),
+                  topRight: const Radius.circular(20),
+                  bottomLeft: isBot ? const Radius.circular(4) : const Radius.circular(20),
+                  bottomRight: isBot ? const Radius.circular(20) : const Radius.circular(4),
+                ),
+                border: isBot ? Border.all(color: isDark ? AppColors.lineDark : AppColors.lineLight) : null,
+              ),
+              child: Text(
+                text,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: isBot 
+                      ? (isDark ? AppColors.white : AppColors.inkDark)
+                      : AppColors.white,
+                  height: 1.4,
+                ),
+              ),
+            ),
           ),
-        ),
+          if (!isBot) const SizedBox(width: 40), // Margin for user messages
+        ],
       ),
     );
   }

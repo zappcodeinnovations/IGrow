@@ -98,7 +98,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           return RouteNames.farmerHome;
         }
         
-        if (role == UserRole.instructor && state.matchedLocation.startsWith('/farmer')) {
+        if (role == UserRole.instructor &&
+            state.matchedLocation.startsWith('/farmer') &&
+            !state.matchedLocation.startsWith('/farmer/course') &&
+            !state.matchedLocation.startsWith('/farmer/ebook')) {
           return RouteNames.instructorHome;
         }
       }
@@ -164,6 +167,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       // ─── Player & Details ─────────────────────────────────────────────
       GoRoute(
         path: '/farmer/course/:id',
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          return CourseDetailsScreen(courseId: id);
+        },
+      ),
+      GoRoute(
+        path: '/course/:id',
         builder: (context, state) {
           final id = state.pathParameters['id']!;
           return CourseDetailsScreen(courseId: id);
@@ -291,7 +301,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: RouteNames.explore,
             builder: (context, state) {
               final search = state.uri.queryParameters['search'];
-              return ExploreScreen(initialSearch: search);
+              final tabParam = state.uri.queryParameters['tab'];
+              final initialTab = (tabParam == 'ebooks' || tabParam == '1') ? 1 : 0;
+              return ExploreScreen(initialSearch: search, initialTab: initialTab);
             },
           ),
           GoRoute(
