@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/swagger_generated/app_api.swagger.dart';
 import '../../../data/models/api_models/instructor_model.dart';
 import '../../../data/repositories/student_repository.dart';
+import '../../../core/services/course_progress_service.dart';
 import '../../auth/providers/auth_provider.dart';
 
 final studentRepositoryProvider = Provider<StudentRepository>((ref) {
@@ -100,11 +101,34 @@ final studentCategoriesProvider = FutureProvider<List<Category>>((ref) async {
   return response.results;
 });
 
-/// Provider for fetching student enrollments (My Courses).
+/// Provider for fetching student enrollments (My Courses), enriched with accurate local progress.
 final studentEnrollmentsProvider = FutureProvider<List<Enrollment>>((ref) async {
   final repo = ref.watch(studentRepositoryProvider);
   final response = await repo.getEnrollments();
-  return response.results;
+  final list = response.results;
+
+  final enriched = <Enrollment>[];
+  for (final enr in list) {
+    final slug = enr.courseSlug ?? enr.course;
+    final localPercent = await CourseProgressService.instance.getCoursePercentage(slug);
+    final localCompleted = await CourseProgressService.instance.getCompletedLectures(slug);
+
+    double effectivePercentage = enr.completionPercentage ?? 0.0;
+    if (localPercent != null && localPercent > effectivePercentage) {
+      effectivePercentage = localPercent;
+    } else if (localCompleted.isNotEmpty && effectivePercentage == 0.0) {
+      effectivePercentage = 100.0;
+    }
+
+    final isCompleted = effectivePercentage >= 100.0 || (enr.completed == true);
+
+    enriched.add(enr.copyWith(
+      completionPercentage: effectivePercentage,
+      completed: isCompleted,
+    ));
+  }
+
+  return enriched;
 });
 
 /// Provider for checking if a student is enrolled in a specific course by ID or slug.
@@ -210,17 +234,32 @@ class CourseProgressNotifier extends StateNotifier<AsyncValue<Set<String>>> {
   final String slug;
 
   Future<void> loadProgress() async {
+    // 1. Instantly load locally cached progress
+    final localCached = await CourseProgressService.instance.getCompletedLectures(slug);
+    if (localCached.isNotEmpty) {
+      state = AsyncValue.data(localCached);
+    }
+
     try {
       final repo = ref.read(studentRepositoryProvider);
       final data = await repo.getCourseProgress(slug);
-      final completedIds = parseCompletedLectureIds(data);
-      state = AsyncValue.data(completedIds);
+      final remoteCompletedIds = parseCompletedLectureIds(data);
+      final merged = {...localCached, ...remoteCompletedIds};
+      state = AsyncValue.data(merged);
+      await CourseProgressService.instance.saveCompletedLectures(slug, merged);
     } catch (e, st) {
-      state = AsyncValue.error(e, st);
+      if (localCached.isEmpty) {
+        state = AsyncValue.error(e, st);
+      }
     }
   }
 
-  Future<void> markLectureCompletion(String lectureId, {required bool completed, int? watchedTime}) async {
+  Future<void> markLectureCompletion(
+    String lectureId, {
+    required bool completed,
+    int? watchedTime,
+    int? totalLectures,
+  }) async {
     final currentSet = state.value ?? <String>{};
     final updatedSet = Set<String>.from(currentSet);
     if (completed) {
@@ -231,11 +270,29 @@ class CourseProgressNotifier extends StateNotifier<AsyncValue<Set<String>>> {
     // Optimistic reactive update
     state = AsyncValue.data(updatedSet);
 
+    // Save completed lectures locally
+    await CourseProgressService.instance.saveCompletedLectures(slug, updatedSet);
+
+    // Calculate and save course percentage
+    if (totalLectures != null && totalLectures > 0) {
+      await CourseProgressService.instance.calculateAndSaveProgress(
+        slug,
+        totalLectures: totalLectures,
+        currentCompletedLectures: updatedSet,
+      );
+    } else {
+      final percent = updatedSet.isNotEmpty ? 100.0 : 0.0;
+      await CourseProgressService.instance.saveCoursePercentage(slug, percent);
+    }
+
+    // Invalidate studentEnrollmentsProvider so dashboard reflects progress immediately!
+    ref.invalidate(studentEnrollmentsProvider);
+
     try {
       final repo = ref.read(studentRepositoryProvider);
       await repo.updateLectureProgress(lectureId, completed: completed, watchedTime: watchedTime);
     } catch (e) {
-      // Keep optimistic state or handle error gracefully
+      // Keep optimistic state
     }
   }
 }

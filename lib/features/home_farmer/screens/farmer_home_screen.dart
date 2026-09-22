@@ -47,6 +47,20 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
     }
   }
 
+  Future<void> _refreshDashboard() async {
+    // Invalidate all data providers so they re-fetch from the network
+    ref.invalidate(studentEnrollmentsProvider);
+    ref.invalidate(studentEbooksProvider(''));
+    ref.invalidate(studentCatalogProvider(const CatalogQuery()));
+    ref.invalidate(studentCategoriesProvider);
+    ref.invalidate(topInstructorsProvider);
+    ref.invalidate(studentCartProvider);
+    // Reload quiz history from local storage
+    await _loadQuizHistory();
+    // Wait for enrollments to finish re-fetching before completing
+    await ref.read(studentEnrollmentsProvider.future).catchError((_) => <Enrollment>[]);
+  }
+
   String _getTimeBasedGreeting() {
     final hour = DateTime.now().hour;
     if (hour < 12) {
@@ -170,9 +184,15 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
 
     return Scaffold(
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-          child: Column(
+        child: RefreshIndicator(
+          onRefresh: _refreshDashboard,
+          color: AppColors.primaryGreen,
+          backgroundColor: isDark ? AppColors.cardDark : AppColors.white,
+          displacement: 60,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+            child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // ── Top Brand App Bar (Agrilearn Web Header Actions) ──────────────
@@ -797,10 +817,11 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-            ],
-          ),
-        ),
-      ),
+            ], // end Column children
+          ), // end Column
+        ), // end SingleChildScrollView
+      ), // end RefreshIndicator
+    ), // end SafeArea
     );
   }
 

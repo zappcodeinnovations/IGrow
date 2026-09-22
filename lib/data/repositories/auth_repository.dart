@@ -6,6 +6,7 @@ import 'package:chopper/chopper.dart' as chopper;
 import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
 import '../../core/network/token_storage.dart';
+import '../../core/services/notification_service.dart';
 import '../models/user_model.dart';
 import '../models/user_role.dart';
 
@@ -327,8 +328,40 @@ class ApiAuthRepository implements AuthRepository {
   @override
   Future<void> logout() async {
     try {
-      await appApi.apiV1AuthLogoutPost();
+      final fcmToken = await NotificationService.instance
+          .getFcmToken(maxRetries: 1)
+          .timeout(const Duration(seconds: 2), onTimeout: () => null);
+      final refreshToken = await tokenStorage.getRefreshToken();
+      final accessToken = await tokenStorage.getAccessToken();
+
+      final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/auth/logout/');
+      await http
+          .post(
+            uri,
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+              if (accessToken != null) 'Authorization': 'Bearer $accessToken',
+            },
+            body: jsonEncode({
+              if (refreshToken != null) 'refresh': refreshToken,
+              if (fcmToken != null) 'fcm_token': fcmToken,
+            }),
+          )
+          .timeout(const Duration(seconds: 5), onTimeout: () => http.Response('{}', 408));
+    } catch (_) {
+      try {
+        await appApi.apiV1AuthLogoutPost();
+      } catch (_) {}
+    }
+
+    // Unregister / delete FCM token so this device receives no further notifications for this user
+    try {
+      await NotificationService.instance
+          .deleteFcmToken()
+          .timeout(const Duration(seconds: 2), onTimeout: () => null);
     } catch (_) {}
+
     await tokenStorage.clearTokens();
     _currentUser = null;
   }

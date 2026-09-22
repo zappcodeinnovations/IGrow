@@ -9,6 +9,7 @@ import 'package:video_player/video_player.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../../core/services/offline_download_service.dart';
+import '../../../core/services/course_progress_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/models/api_models/course_models.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -556,109 +557,122 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen> {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      // Mark as Complete Toggle
-                      OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 8),
-                          side: BorderSide(
-                            color: completedIds.contains(_currentLecture!.id)
-                                ? AppColors.primaryGreen
-                                : AppColors.inkSoft.withValues(alpha: 0.5),
-                          ),
-                          backgroundColor:
-                              completedIds.contains(_currentLecture!.id)
-                                  ? AppColors.primaryGreen.withValues(alpha: 0.1)
-                                  : Colors.transparent,
-                        ),
-                        icon: Icon(
-                          completedIds.contains(_currentLecture!.id)
-                              ? Icons.check_circle
-                              : Icons.check_circle_outline,
-                          size: 16,
-                          color: completedIds.contains(_currentLecture!.id)
-                              ? AppColors.primaryGreen
-                              : AppColors.inkSoft,
-                        ),
-                        label: Text(
-                          completedIds.contains(_currentLecture!.id)
-                              ? 'Completed'
-                              : 'Mark Done',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: completedIds.contains(_currentLecture!.id)
-                                ? AppColors.primaryGreen
-                                : (isDark ? Colors.white : AppColors.inkDark),
-                          ),
-                        ),
-                        onPressed: () {
-                          final isCurrentlyDone =
-                              completedIds.contains(_currentLecture!.id);
-                          ref
-                              .read(
-                                  courseProgressStateProvider(_activeSlug!)
-                                      .notifier)
-                              .markLectureCompletion(
-                                _currentLecture!.id,
-                                completed: !isCurrentlyDone,
-                                watchedTime: _videoPlayerController
-                                    ?.value.position.inSeconds,
-                              );
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                !isCurrentlyDone
-                                    ? 'Marked as completed! ✓'
-                                    : 'Marked as pending',
+                      // Responsive Actions Toolbar
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Mark as Complete Toggle
+                          OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              visualDensity: VisualDensity.compact,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                              side: BorderSide(
+                                color: completedIds.contains(_currentLecture!.id)
+                                    ? AppColors.primaryGreen
+                                    : AppColors.inkSoft.withValues(alpha: 0.5),
                               ),
-                              duration: const Duration(seconds: 2),
+                              backgroundColor:
+                                  completedIds.contains(_currentLecture!.id)
+                                      ? AppColors.primaryGreen.withValues(alpha: 0.1)
+                                      : Colors.transparent,
                             ),
-                          );
-                        },
-                      ),
-                      IconButton(
-                        tooltip: 'Quick Bookmark',
-                        icon: const Icon(Icons.bookmark_add_outlined, color: AppColors.accentOrange),
-                        onPressed: () async {
-                          final currentSec = _videoPlayerController?.value.position.inSeconds ?? 0;
-                          final m = currentSec ~/ 60;
-                          final s = currentSec % 60;
-                          final timeFormatted = '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
-                          final text = '🔖 Bookmark at $timeFormatted in ${_currentLecture!.title}';
-                          try {
-                            await ref.read(studentRepositoryProvider).postCourseNote(
-                                  _activeSlug!,
-                                  text,
-                                  currentSec,
-                                );
-                            ref.invalidate(courseNotesProvider(_activeSlug!));
-                            if (!mounted || !context.mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(
+                            icon: Icon(
+                              completedIds.contains(_currentLecture!.id)
+                                  ? Icons.check_circle
+                                  : Icons.check_circle_outline,
+                              size: 15,
+                              color: completedIds.contains(_currentLecture!.id)
+                                  ? AppColors.primaryGreen
+                                  : AppColors.inkSoft,
+                            ),
+                            label: Text(
+                              completedIds.contains(_currentLecture!.id)
+                                  ? 'Completed'
+                                  : 'Mark Done',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: completedIds.contains(_currentLecture!.id)
+                                    ? AppColors.primaryGreen
+                                    : (isDark ? Colors.white : AppColors.inkDark),
+                              ),
+                            ),
+                            onPressed: () {
+                              final isCurrentlyDone =
+                                  completedIds.contains(_currentLecture!.id);
+                              ref
+                                  .read(
+                                      courseProgressStateProvider(_activeSlug!)
+                                          .notifier)
+                                  .markLectureCompletion(
+                                    _currentLecture!.id,
+                                    completed: !isCurrentlyDone,
+                                    watchedTime: _videoPlayerController
+                                        ?.value.position.inSeconds,
+                                  );
+                              ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: Row(
-                                    children: [
-                                      const Icon(Icons.bookmark_added_rounded, color: Colors.white, size: 20),
-                                      const SizedBox(width: 8),
-                                      Text('Bookmarked at $timeFormatted!'),
-                                    ],
+                                  content: Text(
+                                    !isCurrentlyDone
+                                        ? 'Marked as completed! ✓'
+                                        : 'Marked as pending',
                                   ),
-                                  backgroundColor: AppColors.accentOrange,
                                   duration: const Duration(seconds: 2),
                                 ),
                               );
-                          } catch (_) {}
-                        },
+                            },
+                          ),
+                          const SizedBox(width: 2),
+                          IconButton(
+                            visualDensity: VisualDensity.compact,
+                            constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
+                            padding: const EdgeInsets.all(4),
+                            tooltip: 'Quick Bookmark',
+                            icon: const Icon(Icons.bookmark_add_outlined, color: AppColors.accentOrange, size: 20),
+                            onPressed: () async {
+                              final currentSec = _videoPlayerController?.value.position.inSeconds ?? 0;
+                              final m = currentSec ~/ 60;
+                              final s = currentSec % 60;
+                              final timeFormatted = '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+                              final text = '🔖 Bookmark at $timeFormatted in ${_currentLecture!.title}';
+                              try {
+                                await ref.read(studentRepositoryProvider).postCourseNote(
+                                      _activeSlug!,
+                                      text,
+                                      currentSec,
+                                    );
+                                ref.invalidate(courseNotesProvider(_activeSlug!));
+                                if (!mounted || !context.mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Row(
+                                        children: [
+                                          const Icon(Icons.bookmark_added_rounded, color: Colors.white, size: 20),
+                                          const SizedBox(width: 8),
+                                          Text('Bookmarked at $timeFormatted!'),
+                                        ],
+                                      ),
+                                      backgroundColor: AppColors.accentOrange,
+                                      duration: const Duration(seconds: 2),
+                                    ),
+                                  );
+                              } catch (_) {}
+                            },
+                          ),
+                          if (_hasNextLecture(course)) ...[
+                            IconButton(
+                              visualDensity: VisualDensity.compact,
+                              constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
+                              padding: const EdgeInsets.all(4),
+                              tooltip: 'Next Lecture',
+                              icon: const Icon(Icons.skip_next,
+                                  color: AppColors.primaryGreen, size: 22),
+                              onPressed: () => _playNextLecture(course),
+                            ),
+                          ],
+                        ],
                       ),
-                      if (_hasNextLecture(course)) ...[
-                        const SizedBox(width: 4),
-                        IconButton(
-                          tooltip: 'Next Lecture',
-                          icon: const Icon(Icons.skip_next,
-                              color: AppColors.primaryGreen),
-                          onPressed: () => _playNextLecture(course),
-                        ),
-                      ],
                     ],
                   ),
                 ),
@@ -670,20 +684,25 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen> {
                   child: Column(
                     children: [
                       TabBar(
-                        isScrollable: false,
+                        isScrollable: true,
+                        tabAlignment: TabAlignment.start,
+                        padding: const EdgeInsets.symmetric(horizontal: 6),
+                        labelPadding: const EdgeInsets.symmetric(horizontal: 14),
                         labelColor: AppColors.primaryGreen,
                         unselectedLabelColor:
                             isDark ? Colors.white70 : AppColors.inkSoft,
                         indicatorColor: AppColors.primaryGreen,
                         labelStyle: const TextStyle(
-                            fontSize: 12, fontWeight: FontWeight.bold),
+                            fontSize: 13, fontWeight: FontWeight.bold),
+                        unselectedLabelStyle: const TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.w500),
                         tabs: [
                           const Tab(text: 'Curriculum'),
                           const Tab(text: 'Q&A'),
                           const Tab(text: 'Notes & Bookmarks'),
                           Tab(
                             child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
+                              mainAxisSize: MainAxisSize.min,
                               children: [
                                 const Text('Certificate'),
                                 if (isCourseFullyCompleted) ...[
@@ -873,12 +892,16 @@ class _CurriculumTab extends ConsumerWidget {
                     const Icon(Icons.attach_file,
                         size: 18, color: AppColors.primaryGreen),
                     const SizedBox(width: 8),
-                    Text(
-                      'Study Materials & Downloads (${currentLecture!.resources.length})',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.primaryGreen,
-                        fontSize: 13,
+                    Expanded(
+                      child: Text(
+                        'Study Materials & Downloads (${currentLecture!.resources.length})',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primaryGreen,
+                          fontSize: 13,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
@@ -2038,21 +2061,26 @@ class _CourseCertificateTab extends ConsumerWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Date: $completionDate',
-                        style: const TextStyle(
-                            fontSize: 11, color: AppColors.inkSoft),
-                      ),
-                      Text(
-                        'Instructor: ${course.instructorName ?? "IGrow Faculty"}',
-                        style: const TextStyle(
-                            fontSize: 11, color: AppColors.inkSoft),
-                      ),
-                    ],
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Date: $completionDate',
+                          style: const TextStyle(
+                              fontSize: 11, color: AppColors.inkSoft),
+                        ),
+                        Text(
+                          'Instructor: ${course.instructorName ?? "IGrow Faculty"}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              fontSize: 11, color: AppColors.inkSoft),
+                        ),
+                      ],
+                    ),
                   ),
+                  const SizedBox(width: 8),
                   const Column(
                     children: [
                       Icon(Icons.verified_user,

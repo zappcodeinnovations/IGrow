@@ -405,28 +405,38 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
               }
 
               // Mobile Layout
-              return ListView(
-                padding: EdgeInsets.zero,
-                children: [
-                  _buildHeroHeader(course, totalLectures),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 90),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildPurchaseCard(context, course, isDark, isEnrolled, previewVideoUrl: videoUrl),
-                        const SizedBox(height: 20),
-                        _buildWhatYouLearnCard(course, isDark),
-                        const SizedBox(height: 20),
-                        _buildCourseContent(course, isDark, isEnrolled),
-                        const SizedBox(height: 20),
-                        _buildDescriptionSection(course, isDark),
-                        const SizedBox(height: 20),
-                        _buildFeedbackSection(context, course, isDark, isEnrolled),
-                      ],
+              return RefreshIndicator(
+                onRefresh: () async {
+                  ref.invalidate(courseDetailProvider(widget.courseId));
+                  ref.invalidate(studentEnrollmentsProvider);
+                  // Wait briefly so Riverpod re-builds after invalidation
+                  await Future.delayed(const Duration(milliseconds: 500));
+                },
+                color: AppColors.primaryGreen,
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: EdgeInsets.zero,
+                  children: [
+                    _buildHeroHeader(course, totalLectures),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 90),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildPurchaseCard(context, course, isDark, isEnrolled, previewVideoUrl: videoUrl),
+                          const SizedBox(height: 20),
+                          _buildWhatYouLearnCard(course, isDark),
+                          const SizedBox(height: 20),
+                          _buildCourseContent(course, isDark, isEnrolled),
+                          const SizedBox(height: 20),
+                          _buildDescriptionSection(course, isDark),
+                          const SizedBox(height: 20),
+                          _buildFeedbackSection(context, course, isDark, isEnrolled),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               );
             },
           );

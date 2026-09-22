@@ -251,4 +251,18 @@ class NotificationService {
       print('🔔 Unsubscribed from topic: $topic');
     }
   }
+
+  /// Delete FCM Registration Token on logout to unregister push notifications
+  Future<void> deleteFcmToken() async {
+    try {
+      await _messaging.deleteToken();
+      if (kDebugMode) {
+        print('🔔 FCM Token deleted successfully on logout.');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('⚠️ Failed to delete FCM token on logout: $e');
+      }
+    }
+  }
 }

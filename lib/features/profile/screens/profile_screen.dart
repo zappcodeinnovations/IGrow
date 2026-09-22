@@ -7,6 +7,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/theme_provider.dart';
 
 import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/logout_dialog.dart';
 import '../../../data/models/user_role.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../home_instructor/providers/instructor_home_provider.dart';
@@ -494,20 +495,7 @@ class ProfileScreen extends ConsumerWidget {
 
               // Logout
               AppCard(
-                onTap: () async {
-                  final messenger = ScaffoldMessenger.of(context);
-                  await ref.read(authProvider.notifier).logout();
-                  messenger.clearSnackBars();
-                  messenger.showSnackBar(
-                    const SnackBar(
-                      content: Text('Logged out successfully.'),
-                      duration: Duration(milliseconds: 1800),
-                    ),
-                  );
-                  if (context.mounted) {
-                    context.go('/login');
-                  }
-                },
+                onTap: () => showLogoutConfirmationDialog(context, ref),
                 padding: const EdgeInsets.all(18),
                 child: Row(
                   children: [

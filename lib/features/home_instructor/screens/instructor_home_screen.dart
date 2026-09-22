@@ -12,6 +12,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/router/route_names.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../notifications/providers/notification_provider.dart';
+import '../../../core/widgets/logout_dialog.dart';
 import '../../../core/widgets/shimmer_placeholders.dart';
 
 class InstructorHomeScreen extends ConsumerStatefulWidget {
@@ -502,9 +503,16 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
           IconButton(
             icon: const Icon(Icons.tune),
             color: AppColors.primaryGreen,
+            tooltip: 'Filter',
             onPressed: _showFilterBottomSheet,
           ),
-          const SizedBox(width: 12),
+          IconButton(
+            icon: const Icon(Icons.logout_rounded),
+            color: AppColors.error,
+            tooltip: 'Logout',
+            onPressed: () => showLogoutConfirmationDialog(context, ref),
+          ),
+          const SizedBox(width: 8),
         ],
       ),
       body: SafeArea(
