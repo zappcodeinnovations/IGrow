@@ -4,6 +4,7 @@ import 'package:chewie/chewie.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:video_player/video_player.dart';
 
@@ -32,6 +33,88 @@ class CourseDetailsScreen extends ConsumerStatefulWidget {
 
   final String courseId;
 
+  /// Resolves raw course video URLs (including Bunny iframe embed/play pages) to direct streamable URLs.
+  static Future<({String primaryUrl, String? fallbackUrl, Map<String, String> headers})> resolveVideoStream(
+    String rawUrl, {
+    String? bunnyId,
+    String? authToken,
+  }) async {
+    const defaultHeaders = {
+      'Referer': 'https://iframe.mediadelivery.net/',
+      'User-Agent':
+          'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+    };
+
+    // 1. If URL is a Bunny iframe embed or mediadelivery link, scrape/resolve the direct stream
+    if (rawUrl.contains('mediadelivery.net') || rawUrl.contains('/play/') || rawUrl.contains('/embed/')) {
+      try {
+        final res = await http.get(
+          Uri.parse(rawUrl),
+          headers: {
+            'Referer': 'https://iagrow.zappcode.in/',
+            'User-Agent':
+                'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+          },
+        ).timeout(const Duration(seconds: 4));
+
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          final mp4Match = RegExp(r'<meta[^>]+content="([^"]+\.mp4)"[^>]+property="og:video:url"').firstMatch(res.body) ??
+                           RegExp(r'<meta[^>]+property="og:video:url"[^>]+content="([^"]+\.mp4)"').firstMatch(res.body) ??
+                           RegExp(r'content="([^"]+\.mp4)"').firstMatch(res.body);
+          final m3u8Match = RegExp(r'content-src="([^"]+playlist\.m3u8)"').firstMatch(res.body) ??
+                            RegExp(r'"([^"]+playlist\.m3u8)"').firstMatch(res.body);
+
+          String? mp4Url = mp4Match?.group(1);
+          String? m3u8Url = m3u8Match?.group(1);
+
+          if (m3u8Url == null && mp4Url != null && mp4Url.contains('/play_')) {
+            m3u8Url = mp4Url.replaceFirst(RegExp(r'/play_[^\.]+\.mp4'), '/playlist.m3u8');
+          }
+
+          if (m3u8Url != null) {
+            return (primaryUrl: m3u8Url, fallbackUrl: mp4Url, headers: defaultHeaders);
+          } else if (mp4Url != null) {
+            return (primaryUrl: mp4Url, fallbackUrl: null, headers: defaultHeaders);
+          }
+        }
+      } catch (e) {
+        debugPrint('⚠️ [CourseDetails] Could not scrape embed page: $e');
+      }
+
+      // Regex fallback if scraping timed out
+      final playMatch = RegExp(r'/(?:play|embed)/(\d+)/([0-9a-fA-F\-]+)').firstMatch(rawUrl);
+      final effectiveId = bunnyId ?? playMatch?.group(2);
+      if (playMatch != null && effectiveId != null) {
+        final libId = playMatch.group(1);
+        final inferredM3u8 = 'https://vz-$libId.b-cdn.net/$effectiveId/playlist.m3u8';
+        final fallbackM3u8 = 'https://vz-716870.b-cdn.net/$effectiveId/playlist.m3u8';
+        return (primaryUrl: inferredM3u8, fallbackUrl: fallbackM3u8, headers: defaultHeaders);
+      }
+    }
+
+    // 2. Direct Bunny CDN URLs
+    if (rawUrl.contains('b-cdn.net')) {
+      return (primaryUrl: rawUrl, fallbackUrl: null, headers: defaultHeaders);
+    }
+
+    // 3. Fallback for deprecated Google Cloud Storage sample link
+    if (rawUrl.contains('commondatastorage.googleapis.com') && rawUrl.contains('BigBuckBunny.mp4')) {
+      return (
+        primaryUrl: 'https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/720/Big_Buck_Bunny_720_10s_1MB.mp4',
+        fallbackUrl: null,
+        headers: <String, String>{},
+      );
+    }
+
+    // 4. Standard Direct or backend server URLs
+    final Map<String, String> standardHeaders = {};
+    if (rawUrl.contains('iagrow.zappcode.in') && authToken != null) {
+      standardHeaders['Authorization'] = 'Bearer $authToken';
+    }
+
+    return (primaryUrl: rawUrl, fallbackUrl: null, headers: standardHeaders);
+  }
+
   @override
   ConsumerState<CourseDetailsScreen> createState() => _CourseDetailsScreenState();
 }
@@ -41,6 +124,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
   ChewieController? _chewieController;
   String? _activeVideoUrl;
   bool _isPlayingVideo = false;
+  bool _isLoadingVideo = false;
   bool _isAddingToCart = false;
 
   // Track expanded state for sections
@@ -53,7 +137,11 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
     super.dispose();
   }
 
-  Future<void> _initializePlayer(String videoUrl, {bool autoPlay = false}) async {
+  Future<void> _initializePlayer(
+    String videoUrl, {
+    bool autoPlay = false,
+    String? bunnyId,
+  }) async {
     if (_activeVideoUrl == videoUrl && _videoPlayerController != null) {
       if (autoPlay && !_videoPlayerController!.value.isPlaying) {
         _videoPlayerController!.play();
@@ -63,6 +151,10 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
     }
 
     _activeVideoUrl = videoUrl;
+    setState(() {
+      _isLoadingVideo = true;
+      _isPlayingVideo = true;
+    });
 
     final oldChewie = _chewieController;
     final oldPlayer = _videoPlayerController;
@@ -73,11 +165,63 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
 
     try {
       if (videoUrl.startsWith('http')) {
-        _videoPlayerController = VideoPlayerController.networkUrl(Uri.parse(videoUrl));
+        final token = await ref.read(tokenStorageProvider).getAccessToken();
+        final resolved = await CourseDetailsScreen.resolveVideoStream(
+          videoUrl,
+          bunnyId: bunnyId,
+          authToken: token,
+        );
+
+        bool initialized = false;
+
+        // Attempt 1: Primary Stream URL with headers
+        try {
+          _videoPlayerController = VideoPlayerController.networkUrl(
+            Uri.parse(resolved.primaryUrl),
+            httpHeaders: resolved.headers,
+          );
+          await _videoPlayerController!.initialize().timeout(const Duration(seconds: 10));
+          initialized = true;
+        } catch (e1) {
+          debugPrint('⚠️ [CourseDetails] Primary video init failed ($e1). Trying fallback...');
+        }
+
+        // Attempt 2: Fallback MP4 URL if primary HLS failed
+        if (!initialized && resolved.fallbackUrl != null && resolved.fallbackUrl != resolved.primaryUrl) {
+          await _videoPlayerController?.dispose();
+          try {
+            _videoPlayerController = VideoPlayerController.networkUrl(
+              Uri.parse(resolved.fallbackUrl!),
+              httpHeaders: resolved.headers,
+            );
+            await _videoPlayerController!.initialize().timeout(const Duration(seconds: 10));
+            initialized = true;
+          } catch (e2) {
+            debugPrint('⚠️ [CourseDetails] Fallback video init failed: $e2');
+          }
+        }
+
+        // Attempt 3: No-headers retry if 401/403 occurred with headers
+        if (!initialized) {
+          await _videoPlayerController?.dispose();
+          try {
+            _videoPlayerController = VideoPlayerController.networkUrl(
+              Uri.parse(resolved.primaryUrl),
+            );
+            await _videoPlayerController!.initialize().timeout(const Duration(seconds: 10));
+            initialized = true;
+          } catch (e3) {
+            debugPrint('⚠️ [CourseDetails] No-header video init failed: $e3');
+          }
+        }
+
+        if (!initialized) {
+          throw Exception('Failed to load video stream on all attempts.');
+        }
       } else {
         _videoPlayerController = VideoPlayerController.file(File(videoUrl));
+        await _videoPlayerController!.initialize();
       }
-      await _videoPlayerController!.initialize();
 
       if (!mounted) return;
 
@@ -86,6 +230,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
         autoPlay: autoPlay,
         looping: false,
         allowFullScreen: true,
+        allowMuting: true,
         showControls: true,
         materialProgressColors: ChewieProgressColors(
           playedColor: AppColors.primaryGreen,
@@ -99,14 +244,81 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
             child: CircularProgressIndicator(color: AppColors.primaryGreen),
           ),
         ),
+        errorBuilder: (context, errorMessage) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.error_outline, color: Colors.white, size: 32),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Preview stream error: $errorMessage',
+                    style: const TextStyle(color: Colors.white70, fontSize: 12),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       );
 
       setState(() {
-        if (autoPlay) _isPlayingVideo = true;
+        _isLoadingVideo = false;
+        _isPlayingVideo = true;
       });
     } catch (e) {
       debugPrint('❌ [COURSE DETAILS] Error initializing video player: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingVideo = false;
+          _isPlayingVideo = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.white, size: 20),
+                SizedBox(width: 8),
+                Expanded(child: Text('Unable to play preview video. Please try again.')),
+              ],
+            ),
+            backgroundColor: Colors.red.shade700,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
     }
+  }
+
+  void _openFreePreviewModal({
+    required BuildContext context,
+    required ApiCourseDetail course,
+    required ApiLecture lecture,
+  }) async {
+    final token = await ref.read(tokenStorageProvider).getAccessToken();
+    if (!context.mounted) return;
+
+    if (_videoPlayerController != null && _videoPlayerController!.value.isPlaying) {
+      _videoPlayerController!.pause();
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (modalCtx) => _FreePreviewModalSheet(
+        course: course,
+        lecture: lecture,
+        token: token,
+        onEnroll: () {
+          Navigator.pop(modalCtx);
+          _handleBuyNow(context, course);
+        },
+      ),
+    );
   }
 
   // ── Role Guard: Student-Only Purchase ─────────────────────────────────────
@@ -338,13 +550,29 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
       ),
       body: courseAsync.when(
         data: (course) {
-          // Find first available preview video URL
+          // Find first available preview video URL and preview lecture (prioritize lecture.isPreview)
           String? videoUrl = course.previewVideoUrl;
+          ApiLecture? previewLecture;
+
+          for (var section in course.sections) {
+            for (var lecture in section.lectures) {
+              if (lecture.isPreview && lecture.videoUrl != null && lecture.videoUrl!.isNotEmpty) {
+                if (videoUrl == null || videoUrl.isEmpty) {
+                  videoUrl = lecture.videoUrl;
+                }
+                previewLecture ??= lecture;
+                break;
+              }
+            }
+            if (previewLecture != null && videoUrl != null && videoUrl.isNotEmpty) break;
+          }
+
           if (videoUrl == null || videoUrl.isEmpty) {
             for (var section in course.sections) {
               for (var lecture in section.lectures) {
                 if (lecture.videoUrl != null && lecture.videoUrl!.isNotEmpty) {
                   videoUrl = lecture.videoUrl;
+                  previewLecture ??= lecture;
                   break;
                 }
               }
@@ -397,7 +625,14 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                       width: 380,
                       child: SingleChildScrollView(
                         padding: const EdgeInsets.only(top: 24, right: 24, bottom: 40),
-                        child: _buildPurchaseCard(context, course, isDark, isEnrolled, previewVideoUrl: videoUrl),
+                        child: _buildPurchaseCard(
+                          context,
+                          course,
+                          isDark,
+                          isEnrolled,
+                          previewVideoUrl: videoUrl,
+                          previewBunnyId: previewLecture?.bunnyVideoId,
+                        ),
                       ),
                     ),
                   ],
@@ -423,7 +658,14 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildPurchaseCard(context, course, isDark, isEnrolled, previewVideoUrl: videoUrl),
+                          _buildPurchaseCard(
+                            context,
+                            course,
+                            isDark,
+                            isEnrolled,
+                            previewVideoUrl: videoUrl,
+                            previewBunnyId: previewLecture?.bunnyVideoId,
+                          ),
                           const SizedBox(height: 20),
                           _buildWhatYouLearnCard(course, isDark),
                           const SizedBox(height: 20),
@@ -764,6 +1006,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
     bool isDark,
     bool isEnrolled, {
     String? previewVideoUrl,
+    String? previewBunnyId,
   }) {
     final priceText = course.price == null || course.price == '0' || course.price == '0.00' ? 'Free' : '₹${course.price}';
     final isSaved = ref.watch(isWishlistedProvider(widget.courseId));
@@ -825,47 +1068,73 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                             ),
                           ),
                         ),
-                        // "Preview Course" Play Button Overlay
-                        Center(
-                          child: Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              onTap: () {
-                                if (previewVideoUrl != null && previewVideoUrl.isNotEmpty) {
-                                  _initializePlayer(previewVideoUrl, autoPlay: true);
-                                } else {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('No preview video available for this course.')),
-                                  );
-                                }
-                              },
-                              borderRadius: BorderRadius.circular(30),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withValues(alpha: 0.6),
-                                  borderRadius: BorderRadius.circular(30),
-                                  border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
-                                ),
-                                child: const Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.play_circle_fill, color: Colors.white, size: 22),
-                                    SizedBox(width: 8),
-                                    Text(
-                                      'Preview Course',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 13,
-                                      ),
+                        // Loading indicator or "Preview Course" Play Button Overlay
+                        if (_isLoadingVideo)
+                          Container(
+                            color: Colors.black54,
+                            child: const Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  CircularProgressIndicator(color: AppColors.primaryGreen),
+                                  SizedBox(height: 10),
+                                  Text(
+                                    'Loading preview...',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
                                     ),
-                                  ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
+                        else
+                          Center(
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: () {
+                                  if (previewVideoUrl != null && previewVideoUrl.isNotEmpty) {
+                                    _initializePlayer(
+                                      previewVideoUrl,
+                                      autoPlay: true,
+                                      bunnyId: previewBunnyId,
+                                    );
+                                  } else {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('No preview video available for this course.')),
+                                    );
+                                  }
+                                },
+                                borderRadius: BorderRadius.circular(30),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withValues(alpha: 0.6),
+                                    borderRadius: BorderRadius.circular(30),
+                                    border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
+                                  ),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.play_circle_fill, color: Colors.white, size: 22),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        'Preview Course',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
                       ],
                     ),
             ),
@@ -1245,7 +1514,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                         ),
                         itemBuilder: (context, lIdx) {
                           final lecture = section.lectures[lIdx];
-                          return _buildLectureItem(lecture, isDark, isEnrolled);
+                          return _buildLectureItem(lecture, isDark, isEnrolled, course: course);
                         },
                       ),
                   ],
@@ -1257,7 +1526,12 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
     );
   }
 
-  Widget _buildLectureItem(ApiLecture lecture, bool isDark, bool isEnrolled) {
+  Widget _buildLectureItem(
+    ApiLecture lecture,
+    bool isDark,
+    bool isEnrolled, {
+    required ApiCourseDetail course,
+  }) {
     final hasPreview = lecture.isPreview;
     final canPlay = isEnrolled || hasPreview;
 
@@ -1267,7 +1541,11 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
           if (isEnrolled) {
             context.push('/player/${widget.courseId}');
           } else if (lecture.videoUrl != null && lecture.videoUrl!.isNotEmpty) {
-            _initializePlayer(lecture.videoUrl!, autoPlay: true);
+            _openFreePreviewModal(
+              context: context,
+              course: course,
+              lecture: lecture,
+            );
           } else {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Preview video stream is loading...')),
@@ -1551,6 +1829,326 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
           },
         ),
       ],
+    );
+  }
+}
+
+/// Free Preview Video Player Modal Sheet
+/// Provides full mobile playback parity with the Agrilearn web portal.
+class _FreePreviewModalSheet extends StatefulWidget {
+  const _FreePreviewModalSheet({
+    required this.course,
+    required this.lecture,
+    required this.onEnroll,
+    this.token,
+  });
+
+  final ApiCourseDetail course;
+  final ApiLecture lecture;
+  final VoidCallback onEnroll;
+  final String? token;
+
+  @override
+  State<_FreePreviewModalSheet> createState() => _FreePreviewModalSheetState();
+}
+
+class _FreePreviewModalSheetState extends State<_FreePreviewModalSheet> {
+  VideoPlayerController? _controller;
+  ChewieController? _chewieController;
+  bool _isLoading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _startPreview();
+  }
+
+  Future<void> _startPreview() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    final videoUrl = widget.lecture.videoUrl;
+    if (videoUrl == null || videoUrl.isEmpty) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _error = 'No preview video URL available.';
+        });
+      }
+      return;
+    }
+
+    try {
+      final resolved = await CourseDetailsScreen.resolveVideoStream(
+        videoUrl,
+        bunnyId: widget.lecture.bunnyVideoId,
+        authToken: widget.token,
+      );
+
+      bool initialized = false;
+
+      // Attempt 1: Primary Stream URL with headers
+      try {
+        _controller = VideoPlayerController.networkUrl(
+          Uri.parse(resolved.primaryUrl),
+          httpHeaders: resolved.headers,
+        );
+        await _controller!.initialize().timeout(const Duration(seconds: 10));
+        initialized = true;
+      } catch (e1) {
+        debugPrint('⚠️ [PreviewModal] Primary stream init failed: $e1');
+      }
+
+      // Attempt 2: Fallback MP4 URL if primary HLS failed
+      if (!initialized && resolved.fallbackUrl != null && resolved.fallbackUrl != resolved.primaryUrl) {
+        await _controller?.dispose();
+        try {
+          _controller = VideoPlayerController.networkUrl(
+            Uri.parse(resolved.fallbackUrl!),
+            httpHeaders: resolved.headers,
+          );
+          await _controller!.initialize().timeout(const Duration(seconds: 10));
+          initialized = true;
+        } catch (e2) {
+          debugPrint('⚠️ [PreviewModal] Fallback stream init failed: $e2');
+        }
+      }
+
+      // Attempt 3: No-headers retry
+      if (!initialized) {
+        await _controller?.dispose();
+        try {
+          _controller = VideoPlayerController.networkUrl(
+            Uri.parse(resolved.primaryUrl),
+          );
+          await _controller!.initialize().timeout(const Duration(seconds: 10));
+          initialized = true;
+        } catch (e3) {
+          debugPrint('⚠️ [PreviewModal] No-header stream init failed: $e3');
+        }
+      }
+
+      if (!initialized) {
+        throw Exception('Could not stream preview video.');
+      }
+
+      if (!mounted) return;
+
+      _chewieController = ChewieController(
+        videoPlayerController: _controller!,
+        autoPlay: true,
+        looping: false,
+        allowFullScreen: true,
+        allowMuting: true,
+        showControls: true,
+        materialProgressColors: ChewieProgressColors(
+          playedColor: AppColors.primaryGreen,
+          handleColor: AppColors.primaryGreen,
+          backgroundColor: AppColors.lineLight,
+          bufferedColor: AppColors.canopyStart,
+        ),
+      );
+
+      setState(() => _isLoading = false);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _error = 'Unable to stream this preview video. Please check your internet connection.';
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _chewieController?.dispose();
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final priceText = widget.course.price == null || widget.course.price == '0' || widget.course.price == '0.00'
+        ? 'Free'
+        : '₹${widget.course.price}';
+
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.cardDark : Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+      ),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Drag handle
+            Center(
+              child: Container(
+                margin: const EdgeInsets.only(top: 10, bottom: 8),
+                width: 38,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            // Header
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryGreen.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: AppColors.primaryGreen.withValues(alpha: 0.4)),
+                    ),
+                    child: const Text(
+                      'FREE PREVIEW',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primaryGreen,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      widget.lecture.title,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : Colors.black87,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded),
+                    onPressed: () => Navigator.of(context).pop(),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                ],
+              ),
+            ),
+            // Video Player Area
+            AspectRatio(
+              aspectRatio: 16 / 9,
+              child: Container(
+                color: Colors.black,
+                child: _isLoading
+                    ? const Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            CircularProgressIndicator(color: AppColors.primaryGreen),
+                            SizedBox(height: 12),
+                            Text(
+                              'Loading preview stream...',
+                              style: TextStyle(color: Colors.white70, fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      )
+                    : _error != null
+                        ? Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.error_outline, color: Colors.orange, size: 36),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    _error!,
+                                    style: const TextStyle(color: Colors.white70, fontSize: 12),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  const SizedBox(height: 10),
+                                  ElevatedButton.icon(
+                                    onPressed: _startPreview,
+                                    icon: const Icon(Icons.refresh, size: 16),
+                                    label: const Text('Retry'),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppColors.primaryGreen,
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
+                        : _chewieController != null &&
+                                _chewieController!.videoPlayerController.value.isInitialized
+                            ? Chewie(controller: _chewieController!)
+                            : const SizedBox.shrink(),
+              ),
+            ),
+            // Course info & CTA
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.course.title,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: isDark ? Colors.white : Colors.black87,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Price: $priceText',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primaryGreen,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  ElevatedButton(
+                    onPressed: widget.onEnroll,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryGreen,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                    ),
+                    child: const Text('Enroll Now', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

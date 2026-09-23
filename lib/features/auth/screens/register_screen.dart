@@ -223,8 +223,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     ),
                   ),
                   textInputAction: TextInputAction.next,
-                  validator: (v) => (v == null || v.length < 8)
-                      ? 'Min 8 characters'
+                  validator: (v) => (v == null || v.length < 4)
+                      ? 'Min 4 characters'
                       : null,
                 ),
                 const SizedBox(height: 16),
