@@ -46,11 +46,16 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
 
   void _applyCoupon() {
     final code = _couponController.text.trim().toUpperCase();
-    if (code.isEmpty) return;
+    if (code.isEmpty) {
+      setState(() {
+        _couponError = 'Please enter a coupon code';
+      });
+      return;
+    }
 
-    if (code == 'AGRI10') {
-      ref.read(appliedCouponProvider.notifier).state = const AppliedCoupon(
-        code: 'AGRI10',
+    if (code == 'AGRI10' || code == 'AG10') {
+      ref.read(appliedCouponProvider.notifier).state = AppliedCoupon(
+        code: code == 'AG10' ? 'AG10' : 'AGRI10',
         discountPercent: 10,
         description: '10% Agriculture Special Discount',
       );
@@ -413,18 +418,24 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                     const SizedBox(height: 12),
                     if (appliedCoupon == null) ...[
                       Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Expanded(
                             child: TextField(
                               controller: _couponController,
                               textCapitalization: TextCapitalization.characters,
+                              onChanged: (value) {
+                                if (_couponError != null) {
+                                  setState(() => _couponError = null);
+                                }
+                              },
                               style: TextStyle(
                                 color: isDark ? Colors.white : AppColors.inkDark,
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
                               ),
                               decoration: InputDecoration(
-                                hintText: 'Enter code (e.g. AGRI10)',
+                                hintText: 'Enter code (e.g. AG10, AGRI10)',
                                 hintStyle: TextStyle(
                                   color: isDark ? Colors.white38 : AppColors.inkSoft,
                                   fontSize: 13,
@@ -447,9 +458,24 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                                   borderRadius: BorderRadius.circular(10),
                                   borderSide: const BorderSide(color: AppColors.primaryGreen, width: 1.5),
                                 ),
+                                errorBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: const BorderSide(color: Colors.redAccent, width: 1.2),
+                                ),
+                                focusedErrorBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
+                                ),
                                 contentPadding: const EdgeInsets.symmetric(
                                     horizontal: 14, vertical: 12),
                                 errorText: _couponError,
+                                errorMaxLines: 3,
+                                errorStyle: const TextStyle(
+                                  fontSize: 12,
+                                  height: 1.3,
+                                  color: Colors.redAccent,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
                             ),
                           ),
