@@ -17,6 +17,7 @@ import '../../notifications/providers/notification_provider.dart';
 import '../../wishlist/providers/wishlist_provider.dart';
 import '../../../core/services/quiz_service.dart';
 import '../providers/student_provider.dart';
+import '../providers/weather_provider.dart';
 
 /// Upgraded Student / Farmer Dashboard Screen matching the Agrilearn Web UI & UX.
 class FarmerHomeScreen extends ConsumerStatefulWidget {
@@ -58,6 +59,8 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
     ref.invalidate(studentCartProvider);
     // Reload quiz history from local storage
     await _loadQuizHistory();
+    // Refresh real-time weather data
+    ref.read(weatherProvider.notifier).refresh();
     // Wait for enrollments to finish re-fetching before completing
     await ref.read(studentEnrollmentsProvider.future).catchError((_) => <Enrollment>[]);
   }
@@ -169,6 +172,8 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
     final ebooksAsync = ref.watch(studentEbooksProvider(''));
     final cartAsync = ref.watch(studentCartProvider);
     final wishlistAsync = ref.watch(wishlistProvider);
+    final weatherAsync = ref.watch(weatherProvider);
+    final weatherData = weatherAsync.valueOrNull;
 
     final enrollmentsCount = enrollmentsAsync.maybeWhen(data: (list) => list.length, orElse: () => 0);
     final ebooksCount = ebooksAsync.maybeWhen(data: (list) => list.length, orElse: () => 0);
@@ -415,44 +420,58 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                       ],
                     ),
                   ),
-                  // Weather Chip
-                  Container(
-                    margin: const EdgeInsets.only(left: 6),
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: AppColors.skyBlue.withValues(alpha: 0.12),
+                  // Weather Chip (Dynamic Real-Time Geolocation & Weather API)
+                  Tooltip(
+                    message: 'Live Weather • Tap to refresh',
+                    child: InkWell(
+                      onTap: () => ref.read(weatherProvider.notifier).refresh(),
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: AppColors.skyBlue.withValues(alpha: 0.25)),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.wb_sunny_rounded,
-                          color: AppColors.accentOrange,
-                          size: 18,
+                      child: Container(
+                        margin: const EdgeInsets.only(left: 6),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: AppColors.skyBlue.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: AppColors.skyBlue.withValues(alpha: 0.25)),
                         ),
-                        const SizedBox(width: 6),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(
-                              '32°C',
-                              style: Theme.of(context).textTheme.titleSmall?.copyWith(height: 1, fontSize: 12),
+                            Icon(
+                              weatherData?.weatherIcon ?? Icons.wb_sunny_rounded,
+                              color: AppColors.accentOrange,
+                              size: 18,
                             ),
-                            Text(
-                              (user?.locationDistrict != null && user!.locationDistrict!.trim().isNotEmpty)
-                                  ? user.locationDistrict!
-                                  : (user?.locationState != null && user!.locationState!.trim().isNotEmpty)
-                                      ? user.locationState!
-                                      : (user?.location != null && user!.location!.trim().isNotEmpty)
-                                          ? user.location!
-                                          : 'Pune',
-                              style: Theme.of(context).textTheme.labelSmall?.copyWith(color: AppColors.inkSoft, fontSize: 9.5),
+                            const SizedBox(width: 6),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  weatherData?.temperatureFormatted ?? '28°C',
+                                  style: Theme.of(context).textTheme.titleSmall?.copyWith(height: 1, fontSize: 12),
+                                ),
+                                ConstrainedBox(
+                                  constraints: const BoxConstraints(maxWidth: 80),
+                                  child: Text(
+                                    (weatherData != null && weatherData.locationName.trim().isNotEmpty)
+                                        ? weatherData.locationName
+                                        : (user?.locationDistrict != null && user!.locationDistrict!.trim().isNotEmpty)
+                                            ? user.locationDistrict!
+                                            : (user?.locationState != null && user!.locationState!.trim().isNotEmpty)
+                                                ? user.locationState!
+                                                : (user?.location != null && user!.location!.trim().isNotEmpty)
+                                                    ? user.location!
+                                                    : 'Pune',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: Theme.of(context).textTheme.labelSmall?.copyWith(color: AppColors.inkSoft, fontSize: 9.5),
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
-                      ],
+                      ),
                     ),
                   ),
                 ],
