@@ -80,7 +80,7 @@ class AppTheme {
   static const double buttonRadius = 16;
   static const double sheetRadius = 26;
   static const double chipRadius = 12;
-  static const double inputRadius = 14;
+  static const double inputRadius = 16;
   static const double minTouchTarget = 48;
   static const double preferredTouchTarget = 54;
 
@@ -159,15 +159,15 @@ class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: AppColors.white,
+        fillColor: const Color(0xFFF3F6F1),
         contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(inputRadius),
-          borderSide: const BorderSide(color: AppColors.lineLight),
+          borderSide: const BorderSide(color: Color(0xFFE2E8DE)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(inputRadius),
-          borderSide: const BorderSide(color: AppColors.lineLight),
+          borderSide: const BorderSide(color: Color(0xFFE2E8DE)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(inputRadius),
@@ -294,7 +294,7 @@ class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: AppColors.cardDark,
+        fillColor: const Color(0xFF19251D),
         contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(inputRadius),

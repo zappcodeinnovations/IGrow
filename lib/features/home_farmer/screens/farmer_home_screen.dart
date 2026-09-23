@@ -7,6 +7,7 @@ import '../../../core/network/swagger_generated/app_api.swagger.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/growth_ring_progress.dart';
+import '../../../core/utils/responsive_layout.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/shimmer_placeholders.dart';
 import '../../../data/models/api_models/instructor_model.dart';
@@ -191,8 +192,11 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
           displacement: 60,
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-            child: Column(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            child: ResponsiveContentConstraint(
+              maxWidth: 1040,
+              padding: EdgeInsets.zero,
+              child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // ── Top Brand App Bar (Agrilearn Web Header Actions) ──────────────
@@ -817,11 +821,12 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-            ], // end Column children
-          ), // end Column
-        ), // end SingleChildScrollView
-      ), // end RefreshIndicator
-    ), // end SafeArea
+            ],
+          ),
+        ),
+        ),
+      ),
+    ),
     );
   }
 

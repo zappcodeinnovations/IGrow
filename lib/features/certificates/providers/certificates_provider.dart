@@ -5,7 +5,7 @@ import '../../../data/models/api_models/course_models.dart';
 import '../../explore/providers/explore_provider.dart';
 
 /// Provider fetching all user enrollments for certificate management.
-final studentEnrollmentsProvider = FutureProvider<List<ApiEnrollment>>((ref) async {
+final studentEnrollmentsProvider = FutureProvider.autoDispose<List<ApiEnrollment>>((ref) async {
   final repo = ref.watch(courseRepositoryProvider);
   try {
     debugPrint('🎓 [CertificatesProvider] Fetching student enrollments');
@@ -19,7 +19,7 @@ final studentEnrollmentsProvider = FutureProvider<List<ApiEnrollment>>((ref) asy
 });
 
 /// Provider filtering enrollments that are 100% completed with certificates available.
-final completedCertificatesProvider = Provider<List<ApiEnrollment>>((ref) {
+final completedCertificatesProvider = Provider.autoDispose<List<ApiEnrollment>>((ref) {
   final enrollmentsAsync = ref.watch(studentEnrollmentsProvider);
   return enrollmentsAsync.maybeWhen(
     data: (list) => list.where((e) => e.completed || e.completionPercentage >= 100.0).toList(),
@@ -28,7 +28,7 @@ final completedCertificatesProvider = Provider<List<ApiEnrollment>>((ref) {
 });
 
 /// Provider filtering enrollments still in progress.
-final inProgressEnrollmentsProvider = Provider<List<ApiEnrollment>>((ref) {
+final inProgressEnrollmentsProvider = Provider.autoDispose<List<ApiEnrollment>>((ref) {
   final enrollmentsAsync = ref.watch(studentEnrollmentsProvider);
   return enrollmentsAsync.maybeWhen(
     data: (list) => list.where((e) => !e.completed && e.completionPercentage < 100.0).toList(),

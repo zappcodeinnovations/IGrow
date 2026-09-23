@@ -624,8 +624,6 @@ class InstructorRepository {
 
   /// Answer a question.
   Future<void> answerQuestion(String questionId, String answer) async {
-    // The endpoint is a POST with no body schema? Let's check how to pass answer.
-    // Assuming we pass it in raw form if there's no typed body.
     final token = await tokenStorage.getAccessToken();
     final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/instructor/qa/$questionId/answer/');
     final rawResponse = await http.post(
@@ -634,7 +632,10 @@ class InstructorRepository {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
       },
-      body: jsonEncode({'answer': answer}),
+      body: jsonEncode({
+        'answer_text': answer,
+        'answer': answer,
+      }),
     );
     if (rawResponse.statusCode >= 300) {
       throw Exception('Failed to answer question: ${rawResponse.body}');
@@ -791,6 +792,134 @@ class InstructorRepository {
     } else {
       debugPrint('❌ [InstructorRepository] uploadCertificateTemplate ERROR (${response.statusCode}): ${response.body}');
       throw Exception('Failed to upload certificate (${response.statusCode}): ${response.body}');
+    }
+  }
+
+  // ── Reviews & Ratings ──────────────────────────────────────────
+
+  /// Fetch all reviews received on instructor's courses.
+  Future<List<Map<String, dynamic>>> getInstructorReviews() async {
+    final token = await tokenStorage.getAccessToken();
+
+    // 1. First try the dedicated instructor reviews endpoint
+    try {
+      final response = await http.get(
+        Uri.parse('https://iagrow.zappcode.in/api/v1/instructor/reviews/'),
+        headers: {
+          if (token != null) 'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      );
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final decoded = jsonDecode(response.body);
+        if (decoded is List && decoded.isNotEmpty) {
+          debugPrint('⭐ [InstructorRepository] Loaded ${decoded.length} reviews from /instructor/reviews/');
+          return decoded.cast<Map<String, dynamic>>();
+        } else if (decoded is Map && decoded['results'] is List && (decoded['results'] as List).isNotEmpty) {
+          final list = (decoded['results'] as List).cast<Map<String, dynamic>>();
+          debugPrint('⭐ [InstructorRepository] Loaded ${list.length} paginated reviews from /instructor/reviews/');
+          return list;
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ [InstructorRepository] /instructor/reviews/ error: $e');
+    }
+
+    // 2. Fallback: Aggregate reviews directly across instructor's authored courses
+    try {
+      final coursesRes = await getCourses();
+      final courses = coursesRes.results;
+      final List<Map<String, dynamic>> allReviews = [];
+
+      // Build ID and title to slug mapping from catalog in case instructor course object has null slug
+      final Map<String, String> idToSlug = {};
+      final Map<String, String> titleToSlug = {};
+      try {
+        final catRes = await http.get(
+          Uri.parse('https://iagrow.zappcode.in/api/v1/courses/catalog/'),
+          headers: {'Accept': 'application/json'},
+        );
+        if (catRes.statusCode >= 200 && catRes.statusCode < 300) {
+          final catDecoded = jsonDecode(catRes.body);
+          final catList = (catDecoded is Map ? catDecoded['results'] : catDecoded) as List?;
+          if (catList != null) {
+            for (final c in catList) {
+              if (c is Map<String, dynamic>) {
+                final id = c['id']?.toString() ?? '';
+                final slug = c['slug']?.toString() ?? '';
+                final title = c['title']?.toString() ?? '';
+                if (id.isNotEmpty && slug.isNotEmpty) idToSlug[id] = slug;
+                if (title.isNotEmpty && slug.isNotEmpty) titleToSlug[title.toLowerCase()] = slug;
+              }
+            }
+          }
+        }
+      } catch (_) {}
+
+      await Future.wait(courses.map((course) async {
+        String? slug = course.slug;
+        if (slug == null || slug.isEmpty) {
+          slug = idToSlug[course.id] ?? titleToSlug[course.title.toLowerCase()];
+        }
+        if (slug == null || slug.isEmpty) return;
+
+        try {
+          final res = await http.get(
+            Uri.parse('https://iagrow.zappcode.in/api/v1/courses/$slug/reviews/'),
+            headers: {'Accept': 'application/json'},
+          );
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            final decoded = jsonDecode(res.body);
+            if (decoded is List) {
+              for (final r in decoded) {
+                if (r is Map<String, dynamic>) {
+                  allReviews.add({
+                    ...r,
+                    if (!r.containsKey('course_title') || r['course_title'] == null)
+                      'course_title': course.title,
+                  });
+                }
+              }
+            }
+          }
+        } catch (_) {}
+      }));
+
+      // Sort by newest created_at first
+      allReviews.sort((a, b) {
+        final aDate = a['created_at']?.toString() ?? '';
+        final bDate = b['created_at']?.toString() ?? '';
+        return bDate.compareTo(aDate);
+      });
+
+      debugPrint('⭐ [InstructorRepository] Consolidated ${allReviews.length} reviews across ${courses.length} courses');
+      return allReviews;
+    } catch (e) {
+      debugPrint('⚠️ [InstructorRepository] getInstructorReviews fallback error: $e');
+      return [];
+    }
+  }
+
+  /// Reply to a student review.
+  Future<void> replyToReview(String reviewId, String reply) async {
+    final token = await tokenStorage.getAccessToken();
+    final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/instructor/reviews/$reviewId/reply/');
+    final response = await http.post(
+      uri,
+      headers: {
+        if (token != null) 'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'reply': reply,
+        'instructor_reply': reply,
+        'reply_text': reply,
+        'comment': reply,
+      }),
+    );
+    if (response.statusCode >= 300) {
+      debugPrint('⚠️ [InstructorRepository] replyToReview status ${response.statusCode}: ${response.body}');
+      throw Exception('Failed to send reply (${response.statusCode})');
     }
   }
 }

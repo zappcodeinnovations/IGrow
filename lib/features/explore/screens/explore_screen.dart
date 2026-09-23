@@ -52,6 +52,17 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
   }
 
   @override
+  void didUpdateWidget(covariant ExploreScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialSearch != oldWidget.initialSearch) {
+      setState(() {
+        _searchQuery = widget.initialSearch ?? '';
+        _searchController.text = widget.initialSearch ?? '';
+      });
+    }
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
@@ -531,9 +542,14 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                 Expanded(
                   child: TextField(
                     controller: _searchController,
+                    onChanged: (value) {
+                      setState(() {
+                        _searchQuery = value.trim();
+                      });
+                    },
                     onSubmitted: (value) {
                       setState(() {
-                        _searchQuery = value;
+                        _searchQuery = value.trim();
                       });
                     },
                     style: Theme.of(context).textTheme.bodyMedium,
@@ -549,6 +565,20 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                     ),
                   ),
                 ),
+                if (_searchController.text.isNotEmpty)
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded, size: 18, color: AppColors.inkSoft),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                    tooltip: 'Clear search',
+                    onPressed: () {
+                      _searchController.clear();
+                      setState(() {
+                        _searchQuery = '';
+                      });
+                    },
+                  ),
+                const SizedBox(width: 6),
               ],
             ),
           ),
@@ -725,11 +755,28 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                             ),
                           ),
                           const SizedBox(height: 12),
-                          if (_activeFilterCount > 0) ...[
+                          if (_activeFilterCount > 0 || _searchQuery.isNotEmpty) ...[
                             SingleChildScrollView(
                               scrollDirection: Axis.horizontal,
                               child: Row(
                                 children: [
+                                  if (_searchQuery.isNotEmpty)
+                                    Padding(
+                                      padding: const EdgeInsets.only(right: 6),
+                                      child: InputChip(
+                                        label: Text('Search: "$_searchQuery"'),
+                                        avatar: const Icon(Icons.search_rounded, size: 14, color: AppColors.primaryGreen),
+                                        onDeleted: () {
+                                          _searchController.clear();
+                                          setState(() {
+                                            _searchQuery = '';
+                                          });
+                                        },
+                                        deleteIconColor: AppColors.primaryGreen,
+                                        backgroundColor: AppColors.primaryGreen.withValues(alpha: 0.1),
+                                        labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primaryGreen),
+                                      ),
+                                    ),
                                   if (_selectedLevel.isNotEmpty)
                                     Padding(
                                       padding: const EdgeInsets.only(right: 6),
@@ -826,55 +873,74 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                             ))).when(
                               data: (courses) {
                                 if (courses.isEmpty) {
-                                  return Center(
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(24.0),
-                                      child: Column(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          Icon(Icons.search_off_rounded, size: 56, color: AppColors.inkSoft.withValues(alpha: 0.5)),
-                                          const SizedBox(height: 12),
-                                          Text(
-                                            'No courses found',
-                                            style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                                          ),
-                                          const SizedBox(height: 6),
-                                          Text(
-                                            'Try adjusting your search keywords, price, or rating filters.',
-                                            textAlign: TextAlign.center,
-                                            style: TextStyle(color: AppColors.inkSoft, fontSize: 13),
-                                          ),
-                                          if (_activeFilterCount > 0) ...[
-                                            const SizedBox(height: 16),
-                                            TextButton.icon(
-                                              icon: const Icon(Icons.refresh_rounded, size: 18),
-                                              label: const Text('Clear Filters'),
-                                              onPressed: () {
-                                                _searchController.clear();
-                                                setState(() {
-                                                  _searchQuery = '';
-                                                  _selectedLevel = '';
-                                                  _selectedOrdering = '';
-                                                  _selectedPricePreset = 'all';
-                                                  _minPrice = null;
-                                                  _maxPrice = null;
-                                                  _minRating = null;
-                                                  _selectedCategory = 'all';
-                                                });
-                                              },
+                                  return RefreshIndicator(
+                                    color: AppColors.primaryGreen,
+                                    onRefresh: () async {
+                                      ref.invalidate(studentCatalogProvider);
+                                      ref.invalidate(studentCategoriesProvider);
+                                    },
+                                    child: ListView(
+                                      physics: const AlwaysScrollableScrollPhysics(),
+                                      children: [
+                                        const SizedBox(height: 60),
+                                        Center(
+                                          child: Padding(
+                                            padding: const EdgeInsets.all(24.0),
+                                            child: Column(
+                                              mainAxisAlignment: MainAxisAlignment.center,
+                                              children: [
+                                                Icon(Icons.search_off_rounded, size: 56, color: AppColors.inkSoft.withValues(alpha: 0.5)),
+                                                const SizedBox(height: 12),
+                                                Text(
+                                                  'No courses found',
+                                                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                                                ),
+                                                const SizedBox(height: 6),
+                                                Text(
+                                                  'Try adjusting your search keywords, price, or rating filters.',
+                                                  textAlign: TextAlign.center,
+                                                  style: TextStyle(color: AppColors.inkSoft, fontSize: 13),
+                                                ),
+                                                const SizedBox(height: 16),
+                                                TextButton.icon(
+                                                  icon: const Icon(Icons.refresh_rounded, size: 18),
+                                                  label: const Text('Show All Courses'),
+                                                  onPressed: () {
+                                                    _searchController.clear();
+                                                    setState(() {
+                                                      _searchQuery = '';
+                                                      _selectedLevel = '';
+                                                      _selectedOrdering = '';
+                                                      _selectedPricePreset = 'all';
+                                                      _minPrice = null;
+                                                      _maxPrice = null;
+                                                      _minRating = null;
+                                                      _selectedCategory = 'all';
+                                                    });
+                                                  },
+                                                ),
+                                              ],
                                             ),
-                                          ],
-                                        ],
-                                      ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   );
                                 }
-                                return ListView.separated(
-                                  itemCount: courses.length,
-                                  separatorBuilder: (_, __) => const SizedBox(height: 16),
-                                  itemBuilder: (context, index) {
-                                    return _CatalogCourseCard(course: courses[index]);
+                                return RefreshIndicator(
+                                  color: AppColors.primaryGreen,
+                                  onRefresh: () async {
+                                    ref.invalidate(studentCatalogProvider);
+                                    ref.invalidate(studentCategoriesProvider);
                                   },
+                                  child: ListView.separated(
+                                    physics: const AlwaysScrollableScrollPhysics(),
+                                    itemCount: courses.length,
+                                    separatorBuilder: (_, __) => const SizedBox(height: 16),
+                                    itemBuilder: (context, index) {
+                                      return _CatalogCourseCard(course: courses[index]);
+                                    },
+                                  ),
                                 );
                               },
                               loading: () => ListView.separated(

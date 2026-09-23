@@ -12,7 +12,7 @@ final instructorRepositoryProvider = Provider<InstructorRepository>((ref) {
 });
 
 /// Provider for fetching the instructor's stats overview.
-final instructorStatsProvider = FutureProvider<Map<String, dynamic>>((ref) async {
+final instructorStatsProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
   final repo = ref.watch(instructorRepositoryProvider);
   return await repo.getStats();
 });
@@ -24,7 +24,7 @@ final instructorTransactionsProvider = FutureProvider<List<Map<String, dynamic>>
 });
 
 /// Provider for fetching the instructor's pending Q&A questions.
-final instructorQaProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
+final instructorQaProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
   final repo = ref.watch(instructorRepositoryProvider);
   return await repo.getQuestions();
 });
@@ -32,7 +32,7 @@ final instructorQaProvider = FutureProvider<List<Map<String, dynamic>>>((ref) as
 typedef InstructorCoursesQuery = ({String search, String ordering});
 
 /// Provider for fetching the instructor's authored courses.
-final instructorCoursesProvider = FutureProvider.family<List<ApiCourseList>, InstructorCoursesQuery>((ref, query) async {
+final instructorCoursesProvider = FutureProvider.autoDispose.family<List<ApiCourseList>, InstructorCoursesQuery>((ref, query) async {
   final repo = ref.watch(instructorRepositoryProvider);
   final search = query.search;
   final ordering = query.ordering;
@@ -40,14 +40,14 @@ final instructorCoursesProvider = FutureProvider.family<List<ApiCourseList>, Ins
     search: (search.isNotEmpty) ? search : null,
     ordering: (ordering.isNotEmpty) ? ordering : null,
   );
-  return response.results ?? [];
+  return response.results;
 });
 
 /// Provider for fetching the instructor's authored ebooks.
 final instructorEbooksProvider = FutureProvider<List<dynamic>>((ref) async {
   final repo = ref.watch(instructorRepositoryProvider);
   final response = await repo.getEBooks();
-  return response.results ?? [];
+  return response.results;
 });
 
 /// Provider for fetching a specific course's details for the instructor.
@@ -65,5 +65,11 @@ final instructorCourseCertificatesProvider = FutureProvider.family<List<dynamic>
   } catch (e) {
     return [];
   }
+});
+
+/// Provider for fetching all live reviews on the instructor's courses.
+final instructorReviewsProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+  final repo = ref.watch(instructorRepositoryProvider);
+  return await repo.getInstructorReviews();
 });
 

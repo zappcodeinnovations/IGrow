@@ -1,13 +1,18 @@
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/responsive_layout.dart';
 import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/app_segmented_pill.dart';
+import '../../../core/widgets/app_sticky_action_bar.dart';
+import '../../../core/widgets/app_text_field.dart';
 import '../../../core/widgets/kyc_restricted_view.dart';
 import '../../../data/models/user_model.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -919,41 +924,74 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
             },
           ),
         ),
+        bottomNavigationBar: AppStickyActionBar(
+          isLoading: _isSubmitting,
+          secondaryLabel: _currentStep > 1 ? 'Back' : null,
+          onSecondaryPressed: _currentStep > 1
+              ? () => setState(() => _currentStep--)
+              : null,
+          primaryLabel: _currentStep == 1
+              ? 'Continue to Curriculum'
+              : _currentStep == 2
+                  ? 'Continue to Certificate'
+                  : 'Create Course Draft',
+          primaryIcon: _currentStep == 3
+              ? Icons.cloud_done_rounded
+              : Icons.arrow_forward_rounded,
+          statusText: 'Step $_currentStep of 3: ${_currentStep == 1 ? "Details" : _currentStep == 2 ? "Curriculum" : "Certificate"}',
+          onPrimaryPressed: () {
+            if (_currentStep == 1) {
+              if (_validateStep1()) {
+                setState(() => _currentStep = 2);
+              }
+            } else if (_currentStep == 2) {
+              if (_validateStep2()) {
+                setState(() => _currentStep = 3);
+              }
+            } else {
+              _submitCreateCourseDraft();
+            }
+          },
+        ),
         body: Stack(
           children: [
             SafeArea(
-              child: SingleChildScrollView(
-                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    // Subtitle
-                    Text(
-                      _currentStep == 1
-                          ? 'Fill out the basic details of your agricultural course.'
-                          : _currentStep == 2
-                              ? 'Add your video lectures, chapters, and quizzes.'
-                              : 'Upload your signature to issue valid certificates upon completion.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: isDark ? Colors.grey.shade400 : AppColors.inkSoft,
+              bottom: false,
+              child: ResponsiveContentConstraint(
+                maxWidth: 820,
+                child: SingleChildScrollView(
+                  keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      // Subtitle
+                      Text(
+                        _currentStep == 1
+                            ? 'Fill out the basic details of your agricultural course.'
+                            : _currentStep == 2
+                                ? 'Add your video lectures, chapters, and quizzes.'
+                                : 'Upload your signature to issue valid certificates upon completion.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: isDark ? Colors.grey.shade400 : AppColors.inkSoft,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 20),
+                      const SizedBox(height: 20),
 
-                    // Wizard Stepper Indicator (1 - 2 - 3)
-                    _buildStepperIndicator(),
-                    const SizedBox(height: 24),
+                      // Wizard Stepper Indicator (1 - 2 - 3)
+                      _buildStepperIndicator(),
+                      const SizedBox(height: 24),
 
-                    // Step Content
-                    if (_currentStep == 1) _buildStep1BasicDetails(isDark),
-                    if (_currentStep == 2) _buildStep2Curriculum(isDark),
-                    if (_currentStep == 3) _buildStep3Certificate(isDark),
+                      // Step Content
+                      if (_currentStep == 1) _buildStep1BasicDetails(isDark),
+                      if (_currentStep == 2) _buildStep2Curriculum(isDark),
+                      if (_currentStep == 3) _buildStep3Certificate(isDark),
 
-                    const SizedBox(height: 40),
-                  ],
+                      const SizedBox(height: 80),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -1097,209 +1135,440 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
   // ── Step 1: Basic Details View ────────────────────────────────────────────
 
   Widget _buildStep1BasicDetails(bool isDark) {
-    return AppCard(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Course Title
-          _buildFieldLabel('Course Title *'),
-          TextField(
-            controller: _titleController,
-            decoration: const InputDecoration(
-              hintText: 'e.g., Advanced Hydroponics for Urban Farmers',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 18),
+    const categoryEmojis = {
+      'Organic Farming': '🌾',
+      'Dairy Farming': '🥛',
+      'Agribusiness': '💼',
+      'Livestock': '🐄',
+      'Hydroponics & Aquaponics': '💧',
+      'Soil Management': '🪴',
+      'Crop Protection': '🛡️',
+      'Horticulture': '🍎',
+    };
 
-          // Short Description
-          _buildFieldLabel('Short Description'),
-          TextField(
-            controller: _shortDescController,
-            maxLines: 2,
-            decoration: const InputDecoration(
-              hintText: 'A brief 1-2 sentence overview of the course...',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 18),
+    final pricePresets = [0, 299, 499, 999, 1499];
 
-          // Full Description
-          _buildFieldLabel('Full Description *'),
-          TextField(
-            controller: _descController,
-            maxLines: 4,
-            decoration: const InputDecoration(
-              hintText: 'Provide a detailed description of what students will learn...',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          // Course Thumbnail Upload
-          _buildFieldLabel('Course Thumbnail'),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              border: Border.all(
-                color: isDark ? AppColors.lineDark : Colors.grey.shade300,
-              ),
-              borderRadius: BorderRadius.circular(12),
-              color: isDark ? Colors.black26 : Colors.grey.shade50,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (_coverImage != null) ...[
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Stack(
-                      children: [
-                        Image.file(
-                          _coverImage!,
-                          width: double.infinity,
-                          height: 140,
-                          fit: BoxFit.cover,
-                        ),
-                        Positioned(
-                          top: 8,
-                          right: 8,
-                          child: CircleAvatar(
-                            radius: 14,
-                            backgroundColor: Colors.black54,
-                            child: IconButton(
-                              padding: EdgeInsets.zero,
-                              icon: const Icon(Icons.close, size: 16, color: Colors.white),
-                              onPressed: () => setState(() => _coverImage = null),
-                            ),
-                          ),
-                        ),
-                      ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ── Card 1: Course Identity ──────────────────────────────
+        AppCard(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryGreen.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.menu_book_rounded,
+                      color: AppColors.primaryGreen,
+                      size: 20,
                     ),
                   ),
-                  const SizedBox(height: 10),
-                ],
-                Row(
-                  children: [
-                    OutlinedButton.icon(
-                      onPressed: _pickCoverImage,
-                      icon: const Icon(Icons.cloud_upload_outlined, size: 18),
-                      label: Text(_coverImage != null ? 'Change Thumbnail' : 'Upload Thumbnail'),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Course Information',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: isDark ? Colors.white : AppColors.inkDark,
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              AppTextField(
+                controller: _titleController,
+                label: 'Course Title *',
+                hint: 'e.g., Advanced Hydroponics for Urban Farmers',
+                prefixIcon: const Icon(Icons.title_rounded, color: AppColors.primaryGreen),
+              ),
+              const SizedBox(height: 16),
+              AppTextField(
+                controller: _shortDescController,
+                label: 'Short Overview',
+                hint: 'A quick 1-2 sentence hook describing your course...',
+                maxLines: 2,
+                prefixIcon: const Icon(Icons.short_text_rounded, color: AppColors.primaryGreen),
+              ),
+              const SizedBox(height: 16),
+              AppTextField(
+                controller: _descController,
+                label: 'Full Description *',
+                hint: 'Detailed curriculum topics, who this course is for, and outcomes...',
+                maxLines: 4,
+                prefixIcon: const Icon(Icons.description_outlined, color: AppColors.primaryGreen),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 18),
+
+        // ── Card 2: Classification & Target Audience ──────────────
+        AppCard(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.accentOrange.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.category_rounded,
+                      color: AppColors.accentOrange,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Category & Experience Level',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: isDark ? Colors.white : AppColors.inkDark,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+
+              // Level Selector via AppSegmentedPillGroup
+              _buildFieldLabel('Experience Level'),
+              AppSegmentedPillGroup<String>(
+                isExpanded: true,
+                options: _levels.map((lvl) {
+                  final emoji = lvl == 'Beginner' ? '🌱' : lvl == 'Intermediate' ? '🌿' : '🌳';
+                  return AppPillOption(value: lvl, label: lvl, emoji: emoji);
+                }).toList(),
+                selectedValue: _selectedLevel,
+                onChanged: (val) => setState(() => _selectedLevel = val),
+              ),
+              const SizedBox(height: 20),
+
+              // Category Selector with Visual Chips
+              _buildFieldLabel('Farming Category'),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: _categories.map((c) {
+                  final isSelected = _selectedCategory == c;
+                  final emoji = categoryEmojis[c] ?? '🌱';
+                  return InkWell(
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      setState(() => _selectedCategory = c);
+                    },
+                    borderRadius: BorderRadius.circular(20),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? AppColors.primaryGreen
+                            : (isDark ? AppColors.cardDark : const Color(0xFFF3F6F1)),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: isSelected
+                              ? AppColors.primaryGreen
+                              : (isDark ? AppColors.lineDark : const Color(0xFFE2E8DE)),
+                          width: isSelected ? 1.5 : 1,
+                        ),
+                        boxShadow: isSelected
+                            ? [
+                                BoxShadow(
+                                  color: AppColors.primaryGreen.withValues(alpha: 0.25),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ]
+                            : null,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(emoji, style: const TextStyle(fontSize: 14)),
+                          const SizedBox(width: 6),
+                          Text(
+                            c,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                              color: isSelected
+                                  ? Colors.white
+                                  : (isDark ? Colors.white : AppColors.inkDark),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 20),
+
+              // Language Selector with Pills
+              _buildFieldLabel('Instruction Language'),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: _languages.map((l) {
+                  final isSelected = _selectedLanguage == l;
+                  return InkWell(
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      setState(() => _selectedLanguage = l);
+                    },
+                    borderRadius: BorderRadius.circular(16),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? AppColors.greenDark
+                            : (isDark ? AppColors.bgDark : const Color(0xFFF3F6F1)),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isSelected
+                              ? AppColors.primaryGreen
+                              : (isDark ? AppColors.lineDark : const Color(0xFFE2E8DE)),
+                        ),
+                      ),
                       child: Text(
-                        '16:9 (1280x720), JPG/PNG',
+                        l,
                         style: TextStyle(
-                          fontSize: 11,
-                          color: isDark ? Colors.grey.shade400 : AppColors.inkSoft,
+                          fontSize: 12,
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          color: isSelected ? Colors.white : (isDark ? Colors.white70 : AppColors.inkDark),
                         ),
                       ),
                     ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          // Category
-          _buildFieldLabel('Category'),
-          DropdownButtonFormField<String>(
-            isExpanded: true,
-            initialValue: _selectedCategory,
-            decoration: const InputDecoration(border: OutlineInputBorder()),
-            items: _categories.map((c) {
-              return DropdownMenuItem(value: c, child: Text(c, overflow: TextOverflow.ellipsis));
-            }).toList(),
-            onChanged: (val) {
-              if (val != null) setState(() => _selectedCategory = val);
-            },
-          ),
-          const SizedBox(height: 18),
-
-          // Level
-          _buildFieldLabel('Course Level'),
-          DropdownButtonFormField<String>(
-            isExpanded: true,
-            initialValue: _selectedLevel,
-            decoration: const InputDecoration(border: OutlineInputBorder()),
-            items: _levels.map((l) {
-              return DropdownMenuItem(value: l, child: Text(l));
-            }).toList(),
-            onChanged: (val) {
-              if (val != null) setState(() => _selectedLevel = val);
-            },
-          ),
-          const SizedBox(height: 18),
-
-          // Price & Language
-          _buildFieldLabel('Price (₹)'),
-          TextField(
-            controller: _priceController,
-            focusNode: _priceFocusNode,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: const InputDecoration(
-              hintText: 'e.g., 1499 (0 for Free)',
-              prefixText: '₹ ',
-              border: OutlineInputBorder(),
-            ),
-            onChanged: (val) {
-              if (val.length > 1 && val.startsWith('0') && !val.startsWith('0.')) {
-                final cleaned = val.replaceFirst(RegExp(r'^0+'), '');
-                final target = cleaned.isEmpty ? '0' : cleaned;
-                _priceController.value = TextEditingValue(
-                  text: target,
-                  selection: TextSelection.collapsed(offset: target.length),
-                );
-              }
-            },
-          ),
-          const SizedBox(height: 18),
-
-          _buildFieldLabel('Language'),
-          DropdownButtonFormField<String>(
-            isExpanded: true,
-            initialValue: _selectedLanguage,
-            decoration: const InputDecoration(border: OutlineInputBorder()),
-            items: _languages.map((l) {
-              return DropdownMenuItem(value: l, child: Text(l));
-            }).toList(),
-            onChanged: (val) {
-              if (val != null) setState(() => _selectedLanguage = val);
-            },
-          ),
-          const SizedBox(height: 30),
-
-          // Actions
-          Row(
-            children: [
-              TextButton(
-                onPressed: () => context.pop(),
-                child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+                  );
+                }).toList(),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: FilledButton.icon(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primaryGreen,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            ],
+          ),
+        ),
+        const SizedBox(height: 18),
+
+        // ── Card 3: Pricing & Media Cover ─────────────────────────
+        AppCard(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.skyBlue.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.currency_rupee_rounded,
+                      color: AppColors.skyBlue,
+                      size: 20,
+                    ),
                   ),
-                  onPressed: () {
-                    if (_validateStep1()) {
-                      setState(() => _currentStep = 2);
-                    }
-                  },
-                  icon: const Icon(Icons.arrow_forward_rounded, size: 18),
-                  label: const Text('Save & Continue', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Pricing & Thumbnail',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: isDark ? Colors.white : AppColors.inkDark,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+
+              // Price Presets
+              _buildFieldLabel('Quick Price Preset'),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: pricePresets.map((p) {
+                  final textVal = p == 0 ? '0' : '$p';
+                  final isSelected = _priceController.text.trim() == textVal;
+                  return InkWell(
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      setState(() {
+                        _priceController.text = textVal;
+                      });
+                    },
+                    borderRadius: BorderRadius.circular(14),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? AppColors.primaryGreen
+                            : (isDark ? AppColors.cardDark : const Color(0xFFF3F6F1)),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: isSelected
+                              ? AppColors.primaryGreen
+                              : (isDark ? AppColors.lineDark : const Color(0xFFE2E8DE)),
+                          width: isSelected ? 1.5 : 1,
+                        ),
+                      ),
+                      child: Text(
+                        p == 0 ? 'Free (₹0)' : '₹$p',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                          color: isSelected ? Colors.white : (isDark ? Colors.white : AppColors.inkDark),
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 14),
+
+              // Price Input Field
+              AppTextField(
+                controller: _priceController,
+                focusNode: _priceFocusNode,
+                label: 'Course Price (₹)',
+                hint: '0 for free or enter custom amount',
+                prefixIcon: const Icon(Icons.sell_outlined, color: AppColors.primaryGreen),
+                prefixText: '₹ ',
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                onChanged: (val) {
+                  if (val.length > 1 && val.startsWith('0') && !val.startsWith('0.')) {
+                    final cleaned = val.replaceFirst(RegExp(r'^0+'), '');
+                    final target = cleaned.isEmpty ? '0' : cleaned;
+                    _priceController.value = TextEditingValue(
+                      text: target,
+                      selection: TextSelection.collapsed(offset: target.length),
+                    );
+                  }
+                  setState(() {});
+                },
+              ),
+              const SizedBox(height: 22),
+
+              // Modern Studio Cover Upload Dropzone
+              _buildFieldLabel('Course Cover Banner'),
+              InkWell(
+                onTap: _pickCoverImage,
+                borderRadius: BorderRadius.circular(18),
+                child: Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.black26 : const Color(0xFFF3F6F1),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: isDark ? AppColors.lineDark : const Color(0xFFDCE4D8),
+                      width: 1.5,
+                    ),
+                  ),
+                  child: _coverImage != null
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(17),
+                          child: Stack(
+                            children: [
+                              Image.file(
+                                _coverImage!,
+                                width: double.infinity,
+                                height: 180,
+                                fit: BoxFit.cover,
+                              ),
+                              Positioned(
+                                top: 10,
+                                right: 10,
+                                child: InkWell(
+                                  onTap: () => setState(() => _coverImage = null),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: const BoxDecoration(
+                                      color: Colors.black54,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(Icons.close, size: 18, color: Colors.white),
+                                  ),
+                                ),
+                              ),
+                              Positioned(
+                                bottom: 10,
+                                left: 10,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withValues(alpha: 0.72),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.edit_rounded, size: 14, color: Colors.white),
+                                      SizedBox(width: 4),
+                                      Text(
+                                        'Change Banner',
+                                        style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      : Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
+                          child: Column(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primaryGreen.withValues(alpha: 0.12),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.add_photo_alternate_outlined,
+                                  color: AppColors.primaryGreen,
+                                  size: 32,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                'Upload Course Cover Image',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                  color: isDark ? Colors.white : AppColors.inkDark,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Recommended 16:9 banner (1280x720) in JPG or PNG',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: isDark ? Colors.white60 : AppColors.inkSoft,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                 ),
               ),
             ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 

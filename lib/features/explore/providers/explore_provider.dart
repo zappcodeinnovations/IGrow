@@ -16,7 +16,7 @@ final courseRepositoryProvider = Provider<CourseRepository>((ref) {
 typedef ExploreCoursesQuery = ({String search, String category, String level, String ordering});
 
 /// Provider for fetching courses in explore screen with optional search and category query.
-final exploreCoursesProvider = FutureProvider.family<List<ApiCourseList>, ExploreCoursesQuery>((ref, query) async {
+final exploreCoursesProvider = FutureProvider.autoDispose.family<List<ApiCourseList>, ExploreCoursesQuery>((ref, query) async {
   final repo = ref.watch(courseRepositoryProvider);
   final search = query.search;
   final category = query.category;
@@ -31,13 +31,13 @@ final exploreCoursesProvider = FutureProvider.family<List<ApiCourseList>, Explor
   return response.results;
 });
 
-final courseDetailProvider = FutureProvider.family<ApiCourseDetail, String>((ref, id) async {
+final courseDetailProvider = FutureProvider.autoDispose.family<ApiCourseDetail, String>((ref, id) async {
   final repo = ref.watch(courseRepositoryProvider);
   return repo.getCourseDetail(id);
 });
 
 /// Provider for fetching live student reviews for a course.
-final courseReviewsProvider = FutureProvider.family<List<ApiCourseReview>, String>((ref, slugOrId) async {
+final courseReviewsProvider = FutureProvider.autoDispose.family<List<ApiCourseReview>, String>((ref, slugOrId) async {
   final repo = ref.watch(courseRepositoryProvider);
   return repo.getCourseReviews(slugOrId);
 });

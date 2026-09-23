@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../core/network/api_exception.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/responsive_layout.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_text_field.dart';
@@ -306,9 +307,11 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
         backgroundColor: Colors.transparent,
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          child: Column(
+        child: ResponsiveContentConstraint(
+          maxWidth: 720,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Status Card
@@ -591,6 +594,7 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
             ],
           ),
         ),
+      ),
       ),
     );
   }

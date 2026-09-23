@@ -58,7 +58,7 @@ class CatalogQuery {
 }
 
 /// Provider for fetching the course catalog with full search, category, level, price & rating filters.
-final studentCatalogProvider = FutureProvider.family<List<CourseList>, CatalogQuery>((ref, query) async {
+final studentCatalogProvider = FutureProvider.autoDispose.family<List<CourseList>, CatalogQuery>((ref, query) async {
   final repo = ref.watch(studentRepositoryProvider);
   final response = await repo.getCourseCatalog(
     search: query.search.isNotEmpty ? query.search : null,
@@ -80,7 +80,7 @@ final studentCatalogProvider = FutureProvider.family<List<CourseList>, CatalogQu
 });
 
 /// Provider for fetching the ebooks catalog.
-final studentEbooksProvider = FutureProvider.family<List<EBook>, String>((ref, search) async {
+final studentEbooksProvider = FutureProvider.autoDispose.family<List<EBook>, String>((ref, search) async {
   final repo = ref.watch(studentRepositoryProvider);
   final response = await repo.getEbooksCatalog(
     search: search.isNotEmpty ? search : null,
@@ -89,20 +89,20 @@ final studentEbooksProvider = FutureProvider.family<List<EBook>, String>((ref, s
 });
 
 /// Provider for fetching a single ebook detail by slug or ID.
-final ebookDetailProvider = FutureProvider.family<EBook, String>((ref, slugOrId) async {
+final ebookDetailProvider = FutureProvider.autoDispose.family<EBook, String>((ref, slugOrId) async {
   final repo = ref.watch(studentRepositoryProvider);
   return await repo.getEbookDetail(slugOrId);
 });
 
 /// Provider for fetching categories.
-final studentCategoriesProvider = FutureProvider<List<Category>>((ref) async {
+final studentCategoriesProvider = FutureProvider.autoDispose<List<Category>>((ref) async {
   final repo = ref.watch(studentRepositoryProvider);
   final response = await repo.getCategories();
   return response.results;
 });
 
 /// Provider for fetching student enrollments (My Courses), enriched with accurate local progress.
-final studentEnrollmentsProvider = FutureProvider<List<Enrollment>>((ref) async {
+final studentEnrollmentsProvider = FutureProvider.autoDispose<List<Enrollment>>((ref) async {
   final repo = ref.watch(studentRepositoryProvider);
   final response = await repo.getEnrollments();
   final list = response.results;
@@ -132,7 +132,7 @@ final studentEnrollmentsProvider = FutureProvider<List<Enrollment>>((ref) async 
 });
 
 /// Provider for checking if a student is enrolled in a specific course by ID or slug.
-final isCourseEnrolledProvider = Provider.family<bool, String>((ref, courseIdOrSlug) {
+final isCourseEnrolledProvider = Provider.autoDispose.family<bool, String>((ref, courseIdOrSlug) {
   if (courseIdOrSlug.isEmpty) return false;
   final enrollmentsAsync = ref.watch(studentEnrollmentsProvider);
   return enrollmentsAsync.maybeWhen(
@@ -148,31 +148,31 @@ final isCourseEnrolledProvider = Provider.family<bool, String>((ref, courseIdOrS
 });
 
 /// Provider for fetching the student's cart.
-final studentCartProvider = FutureProvider<Cart>((ref) async {
+final studentCartProvider = FutureProvider.autoDispose<Cart>((ref) async {
   final repo = ref.watch(studentRepositoryProvider);
   return await repo.getCart();
 });
 
 /// Provider for fetching course Q&A.
-final courseQaProvider = FutureProvider.family<List<Map<String, dynamic>>, String>((ref, slug) async {
+final courseQaProvider = FutureProvider.autoDispose.family<List<Map<String, dynamic>>, String>((ref, slug) async {
   final repo = ref.watch(studentRepositoryProvider);
   return await repo.getCourseQa(slug);
 });
 
 /// Provider for fetching course private notes.
-final courseNotesProvider = FutureProvider.family<List<Map<String, dynamic>>, String>((ref, slug) async {
+final courseNotesProvider = FutureProvider.autoDispose.family<List<Map<String, dynamic>>, String>((ref, slug) async {
   final repo = ref.watch(studentRepositoryProvider);
   return await repo.getCourseNotes(slug);
 });
 
 /// Provider for fetching a section's quiz.
-final sectionQuizProvider = FutureProvider.family<Map<String, dynamic>?, String>((ref, sectionId) async {
+final sectionQuizProvider = FutureProvider.autoDispose.family<Map<String, dynamic>?, String>((ref, sectionId) async {
   final repo = ref.watch(studentRepositoryProvider);
   return await repo.getSectionQuiz(sectionId);
 });
 
 /// Provider for fetching raw course progress map.
-final courseProgressProvider = FutureProvider.family<Map<String, dynamic>, String>((ref, slug) async {
+final courseProgressProvider = FutureProvider.autoDispose.family<Map<String, dynamic>, String>((ref, slug) async {
   final repo = ref.watch(studentRepositoryProvider);
   return await repo.getCourseProgress(slug);
 });
@@ -298,12 +298,12 @@ class CourseProgressNotifier extends StateNotifier<AsyncValue<Set<String>>> {
 }
 
 /// Family provider for student's reactive course lecture completion set.
-final courseProgressStateProvider = StateNotifierProvider.family<CourseProgressNotifier, AsyncValue<Set<String>>, String>((ref, slug) {
+final courseProgressStateProvider = StateNotifierProvider.autoDispose.family<CourseProgressNotifier, AsyncValue<Set<String>>, String>((ref, slug) {
   return CourseProgressNotifier(ref, slug);
 });
 
 /// Provider for fetching Top Instructors showcase on student dashboard.
-final topInstructorsProvider = FutureProvider<List<ApiTopInstructor>>((ref) async {
+final topInstructorsProvider = FutureProvider.autoDispose<List<ApiTopInstructor>>((ref) async {
   final repo = ref.watch(studentRepositoryProvider);
   return await repo.getTopInstructors();
 });

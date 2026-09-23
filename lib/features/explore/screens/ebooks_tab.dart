@@ -12,40 +12,52 @@ class EbooksTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     
-    return ref.watch(studentEbooksProvider('')).when(
-      data: (ebooks) {
-        if (ebooks.isEmpty) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(32),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.menu_book_rounded,
-                    size: 56,
-                    color: AppColors.inkSoft.withValues(alpha: 0.5),
+    return RefreshIndicator(
+      color: AppColors.primaryGreen,
+      onRefresh: () async {
+        ref.invalidate(studentEbooksProvider(''));
+      },
+      child: ref.watch(studentEbooksProvider('')).when(
+        data: (ebooks) {
+          if (ebooks.isEmpty) {
+            return ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: const [
+                SizedBox(height: 80),
+                Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(32),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.menu_book_rounded,
+                          size: 56,
+                          color: AppColors.inkSoft,
+                        ),
+                        SizedBox(height: 12),
+                        Text(
+                          'No E-Books Available',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                        SizedBox(height: 6),
+                        Text(
+                          'Agricultural e-books and farming guides will appear here soon.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 13, color: AppColors.inkSoft),
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'No E-Books Available',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 6),
-                  const Text(
-                    'Agricultural e-books and farming guides will appear here soon.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 13, color: AppColors.inkSoft),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }
-        return ListView.separated(
-          padding: const EdgeInsets.only(top: 16, bottom: 20),
-          itemCount: ebooks.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 16),
+                ),
+              ],
+            );
+          }
+          return ListView.separated(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.only(top: 16, bottom: 20),
+            itemCount: ebooks.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 16),
           itemBuilder: (context, index) {
             final ebook = ebooks[index];
             return GestureDetector(
@@ -143,6 +155,7 @@ class EbooksTab extends ConsumerWidget {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

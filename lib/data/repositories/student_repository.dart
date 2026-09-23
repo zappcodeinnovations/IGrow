@@ -303,7 +303,7 @@ class StudentRepository {
   }
 
   /// Post a question to course Q&A.
-  Future<void> postCourseQa(String slug, String question) async {
+  Future<void> postCourseQa(String slug, String question, {String? lectureId}) async {
     final token = await tokenStorage.getAccessToken();
     final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/progress/course/$slug/qa/');
     
@@ -313,7 +313,11 @@ class StudentRepository {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
       },
-      body: jsonEncode({'question': question}),
+      body: jsonEncode({
+        'question_text': question,
+        'question': question,
+        if (lectureId != null && lectureId.isNotEmpty) 'lecture_id': lectureId,
+      }),
     );
     if (response.statusCode >= 300) {
       throw Exception('Failed to post question: ${response.body}');

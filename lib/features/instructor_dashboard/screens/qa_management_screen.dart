@@ -92,7 +92,7 @@ class _QaManagementScreenState extends ConsumerState<QaManagementScreen> {
                 final qId = q['id']?.toString() ?? '';
                 final courseName = q['course_title'] ?? 'Course';
                 final studentName = q['student_name'] ?? 'Student';
-                final questionText = q['question'] ?? 'No text';
+                final questionText = q['question_text'] ?? q['question'] ?? 'No text';
                 final isAnswered = q['is_answered'] == true;
 
                 if (!_answerControllers.containsKey(qId)) {
@@ -109,7 +109,7 @@ class _QaManagementScreenState extends ConsumerState<QaManagementScreen> {
                         children: [
                           CircleAvatar(
                             radius: 16,
-                            backgroundColor: AppColors.skyBlue.withOpacity(0.2),
+                            backgroundColor: AppColors.skyBlue.withValues(alpha: 0.2),
                             child: const Icon(Icons.person, size: 16, color: AppColors.skyBlue),
                           ),
                           const SizedBox(width: 8),
@@ -126,7 +126,7 @@ class _QaManagementScreenState extends ConsumerState<QaManagementScreen> {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
-                                color: AppColors.primaryGreen.withOpacity(0.1),
+                                color: AppColors.primaryGreen.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: const Text('Answered', style: TextStyle(color: AppColors.primaryGreen, fontSize: 12)),
@@ -180,7 +180,7 @@ class _QaManagementScreenState extends ConsumerState<QaManagementScreen> {
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: AppColors.lineLight.withOpacity(0.5),
+                            color: AppColors.lineLight.withValues(alpha: 0.5),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(

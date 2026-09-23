@@ -276,9 +276,6 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
   }
 
   void _showReviewsBottomSheet(BuildContext context, Map<String, dynamic> stats) {
-    final totalReviews = stats['total_reviews'] ?? 0;
-    final avgRating = (stats['average_rating'] as num?)?.toDouble() ?? 4.8;
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -287,119 +284,151 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
       ),
       builder: (sheetContext) {
         final isDark = Theme.of(sheetContext).brightness == Brightness.dark;
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        return Consumer(
+          builder: (context, ref, _) {
+            final reviewsAsync = ref.watch(instructorReviewsProvider);
+            final liveReviews = reviewsAsync.value ?? [];
+            final totalReviews = liveReviews.isNotEmpty
+                ? liveReviews.length
+                : ((stats['total_reviews'] as num?)?.toInt() ?? 0);
+            final double avgRating = liveReviews.isNotEmpty
+                ? (liveReviews.map((r) => (r['rating'] as num?)?.toInt() ?? 5).reduce((a, b) => a + b) / liveReviews.length)
+                : ((stats['average_rating'] as num?)?.toDouble() ?? 5.0);
+
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: AppColors.signalYellow.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Icon(Icons.star_rounded, color: AppColors.signalYellow, size: 24),
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2),
                       ),
-                      const SizedBox(width: 12),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
                         children: [
-                          Text(
-                            'Student Reviews & Ratings',
-                            style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: AppColors.signalYellow.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(Icons.star_rounded, color: AppColors.signalYellow, size: 24),
                           ),
-                          Text(
-                            '⭐ ${avgRating.toStringAsFixed(1)} average rating • $totalReviews student reviews',
-                            style: const TextStyle(fontSize: 12, color: AppColors.inkSoft),
+                          const SizedBox(width: 12),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Student Reviews & Ratings',
+                                style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                              ),
+                              Text(
+                                '⭐ ${avgRating.toStringAsFixed(1)} average rating • $totalReviews student reviews',
+                                style: const TextStyle(fontSize: 12, color: AppColors.inkSoft),
+                              ),
+                            ],
                           ),
                         ],
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded),
+                        onPressed: () => Navigator.pop(sheetContext),
                       ),
                     ],
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.close_rounded),
-                    onPressed: () => Navigator.pop(sheetContext),
+                  const Divider(height: 24),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: isDark ? AppColors.cardDark : AppColors.bgLight,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Row(
+                      children: [
+                        Text(
+                          avgRating.toStringAsFixed(1),
+                          style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: AppColors.primaryGreen),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: List.generate(
+                                  5,
+                                  (i) => Icon(
+                                    i < avgRating.floor() ? Icons.star_rounded : (i < avgRating ? Icons.star_half_rounded : Icons.star_outline_rounded),
+                                    color: AppColors.signalYellow,
+                                    size: 20,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Based on $totalReviews verified enrolled student ratings',
+                                style: const TextStyle(fontSize: 12, color: AppColors.inkSoft),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
+                  const SizedBox(height: 16),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppColors.signalYellow.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.rate_review_outlined, color: AppColors.signalYellow, size: 20),
+                    ),
+                    title: const Text('Manage Reviews & Replies', style: TextStyle(fontWeight: FontWeight.bold)),
+                    subtitle: Text('See all $totalReviews ratings and reply to students', style: const TextStyle(fontSize: 12)),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: () {
+                      Navigator.pop(sheetContext);
+                      context.push(RouteNames.instructorReviews);
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryGreen.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.question_answer_outlined, color: AppColors.primaryGreen, size: 20),
+                    ),
+                    title: const Text('Student Q&A & Inquiries', style: TextStyle(fontWeight: FontWeight.bold)),
+                    subtitle: const Text('Manage student discussions and doubts', style: TextStyle(fontSize: 12)),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: () {
+                      Navigator.pop(sheetContext);
+                      context.push('/instructor/qa');
+                    },
+                  ),
+                  const SizedBox(height: 12),
                 ],
               ),
-              const Divider(height: 24),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: isDark ? AppColors.cardDark : AppColors.bgLight,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Row(
-                  children: [
-                    Text(
-                      avgRating.toStringAsFixed(1),
-                      style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: AppColors.primaryGreen),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: List.generate(
-                              5,
-                              (i) => Icon(
-                                i < avgRating.floor() ? Icons.star_rounded : Icons.star_half_rounded,
-                                color: AppColors.signalYellow,
-                                size: 20,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Based on $totalReviews verified enrolled student ratings',
-                            style: const TextStyle(fontSize: 12, color: AppColors.inkSoft),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryGreen.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.question_answer_outlined, color: AppColors.primaryGreen, size: 20),
-                ),
-                title: const Text('Student Q&A & Inquiries', style: TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: const Text('Manage student discussions and doubts', style: TextStyle(fontSize: 12)),
-                trailing: const Icon(Icons.chevron_right_rounded),
-                onTap: () {
-                  Navigator.pop(sheetContext);
-                  context.push('/instructor/qa');
-                },
-              ),
-              const SizedBox(height: 12),
-            ],
-          ),
+            );
+          },
         );
       },
     );
@@ -691,12 +720,23 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: _StatCard(
-                          icon: Icons.star_rounded,
-                          label: 'Reviews',
-                          value: '${stats['total_reviews'] ?? 0}',
-                          color: AppColors.signalYellow,
-                          onTap: () => _showReviewsBottomSheet(context, stats),
+                        child: Consumer(
+                          builder: (context, ref, _) {
+                            final reviewsAsync = ref.watch(instructorReviewsProvider);
+                            final liveReviews = reviewsAsync.value;
+                            final liveCount = liveReviews?.length;
+                            final totalReviewsCount = (liveCount != null && liveCount > 0)
+                                ? liveCount
+                                : ((stats['total_reviews'] as num?)?.toInt() ?? 0);
+
+                            return _StatCard(
+                              icon: Icons.star_rounded,
+                              label: 'Reviews',
+                              value: '$totalReviewsCount',
+                              color: AppColors.signalYellow,
+                              onTap: () => _showReviewsBottomSheet(context, stats),
+                            );
+                          },
                         ),
                       ),
                     ],

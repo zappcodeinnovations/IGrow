@@ -4,7 +4,7 @@ import '../../../core/network/api_client.dart';
 import '../../auth/providers/auth_provider.dart';
 
 /// Provider for fetching the featured courses from the catalog.
-final featuredCoursesProvider = FutureProvider<List<CourseList>>((ref) async {
+final featuredCoursesProvider = FutureProvider.autoDispose<List<CourseList>>((ref) async {
   final appApi = ref.watch(appApiProvider);
   final response = await appApi.apiV1CoursesCatalogGet();
   if (!response.isSuccessful) {
@@ -14,7 +14,7 @@ final featuredCoursesProvider = FutureProvider<List<CourseList>>((ref) async {
 });
 
 /// Provider for fetching the farmer's active enrollments.
-final myEnrollmentsProvider = FutureProvider<List<Enrollment>>((ref) async {
+final myEnrollmentsProvider = FutureProvider.autoDispose<List<Enrollment>>((ref) async {
   final appApi = ref.watch(appApiProvider);
   final response = await appApi.apiV1EnrollmentsGet();
   if (!response.isSuccessful) {

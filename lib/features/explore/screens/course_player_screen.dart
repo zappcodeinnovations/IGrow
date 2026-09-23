@@ -9,7 +9,6 @@ import 'package:video_player/video_player.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../../core/services/offline_download_service.dart';
-import '../../../core/services/course_progress_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/models/api_models/course_models.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -407,16 +406,20 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen> {
           final completionPercent = totalLecturesCount > 0
               ? ((completedCount / totalLecturesCount) * 100).round()
               : 0;
-          final isCourseFullyCompleted =
-              totalLecturesCount > 0 && completedCount >= totalLecturesCount;
+          final isKeyboardOpen = View.of(context).viewInsets.bottom > 0;
 
           return Column(
             children: [
               // ── 1. Video Player / Reading Banner Area ─────────────
-              Container(
-                width: double.infinity,
-                height: 230,
-                color: Colors.black,
+              Visibility(
+                visible: !isKeyboardOpen,
+                maintainState: true,
+                maintainAnimation: true,
+                maintainSize: false,
+                child: Container(
+                  width: double.infinity,
+                  height: 230,
+                  color: Colors.black,
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
@@ -511,9 +514,10 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen> {
                   ],
                 ),
               ),
+            ),
 
               // ── 2. Lecture Quick Action Bar (Completion & Next) ───
-              if (_currentLecture != null)
+              if (_currentLecture != null && !isKeyboardOpen)
                 Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -696,23 +700,11 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen> {
                             fontSize: 13, fontWeight: FontWeight.bold),
                         unselectedLabelStyle: const TextStyle(
                             fontSize: 13, fontWeight: FontWeight.w500),
-                        tabs: [
-                          const Tab(text: 'Curriculum'),
-                          const Tab(text: 'Q&A'),
-                          const Tab(text: 'Notes & Bookmarks'),
-                          Tab(
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Text('Certificate'),
-                                if (isCourseFullyCompleted) ...[
-                                  const SizedBox(width: 4),
-                                  const Icon(Icons.verified,
-                                      size: 14, color: AppColors.accentOrange),
-                                ],
-                              ],
-                            ),
-                          ),
+                        tabs: const [
+                          Tab(text: 'Curriculum'),
+                          Tab(text: 'Q&A'),
+                          Tab(text: 'Notes & Bookmarks'),
+                          Tab(text: 'Reviews'),
                         ],
                       ),
                       Expanded(
@@ -731,7 +723,10 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen> {
                             ),
 
                             // ── TAB 2: Q&A FORUM ─────────────────────
-                            _CourseQaTab(courseSlug: _activeSlug!),
+                            _CourseQaTab(
+                              courseSlug: _activeSlug!,
+                              lectureId: _currentLecture?.id,
+                            ),
 
                             // ── TAB 3: TIMESTAMPED NOTES ─────────────
                             _CourseNotesTab(
@@ -745,12 +740,10 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen> {
                               },
                             ),
 
-                            // ── TAB 4: CERTIFICATE OF COMPLETION ─────
-                            _CourseCertificateTab(
-                              course: course,
-                              isCompleted: isCourseFullyCompleted,
-                              completedCount: completedCount,
-                              totalLectures: totalLecturesCount,
+                            // ── TAB 4: REVIEWS & RATINGS ─────────────
+                            _CourseReviewsTab(
+                              courseSlug: _activeSlug!,
+                              courseTitle: course.title,
                             ),
                           ],
                         ),
@@ -818,9 +811,20 @@ class _CurriculumTab extends ConsumerWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bookmarkedLectures = ref.watch(lectureBookmarksProvider(course.slug ?? course.id));
 
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
+    return RefreshIndicator(
+      color: AppColors.primaryGreen,
+      onRefresh: () async {
+        final slug = course.slug ?? course.id;
+        ref.invalidate(courseDetailProvider(slug));
+        ref.invalidate(courseProgressProvider(slug));
+        try {
+          await ref.read(courseDetailProvider(slug).future);
+        } catch (_) {}
+      },
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        children: [
         // Overall Course Progress Bar Card
         Container(
           padding: const EdgeInsets.all(14),
@@ -1095,8 +1099,9 @@ class _CurriculumTab extends ConsumerWidget {
           );
         }),
       ],
-    );
-  }
+    ),
+  );
+}
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1240,8 +1245,12 @@ class _ResourceItemTile extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _CourseQaTab extends ConsumerStatefulWidget {
-  const _CourseQaTab({required this.courseSlug});
+  const _CourseQaTab({
+    required this.courseSlug,
+    this.lectureId,
+  });
   final String courseSlug;
+  final String? lectureId;
 
   @override
   ConsumerState<_CourseQaTab> createState() => _CourseQaTabState();
@@ -1256,19 +1265,32 @@ class _CourseQaTabState extends ConsumerState<_CourseQaTab> {
     if (text.isEmpty) return;
     setState(() => _isSubmitting = true);
     try {
-      await ref
-          .read(studentRepositoryProvider)
-          .postCourseQa(widget.courseSlug, text);
+      await ref.read(studentRepositoryProvider).postCourseQa(
+            widget.courseSlug,
+            text,
+            lectureId: widget.lectureId,
+          );
       _controller.clear();
       ref.invalidate(courseQaProvider(widget.courseSlug));
+      if (mounted) {
+        FocusScope.of(context).unfocus();
+      }
     } catch (e) {
       if (mounted) {
         final messenger = ScaffoldMessenger.of(context);
         messenger.clearSnackBars();
+        String msg = e.toString().replaceAll('Exception: ', '');
+        if (msg.contains('"error":')) {
+          try {
+            final match = RegExp(r'"error"\s*:\s*"([^"]+)"').firstMatch(msg);
+            if (match != null) msg = match.group(1)!;
+          } catch (_) {}
+        }
         messenger.showSnackBar(
           SnackBar(
-            content: Text('Error posting question: $e'),
-            duration: const Duration(milliseconds: 2000),
+            content: Text(msg),
+            backgroundColor: AppColors.error,
+            duration: const Duration(seconds: 3),
           ),
         );
       }
@@ -1285,36 +1307,49 @@ class _CourseQaTabState extends ConsumerState<_CourseQaTab> {
     return Column(
       children: [
         Expanded(
-          child: qaAsync.when(
-            data: (questions) {
-              if (questions.isEmpty) {
-                return const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.chat_bubble_outline,
-                            size: 48, color: AppColors.inkSoft),
-                        SizedBox(height: 12),
-                        Text(
-                          'No discussions yet.',
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 16),
+          child: RefreshIndicator(
+            color: AppColors.primaryGreen,
+            onRefresh: () async {
+              ref.invalidate(courseQaProvider(widget.courseSlug));
+              await ref.read(courseQaProvider(widget.courseSlug).future).catchError((_) => <Map<String, dynamic>>[]);
+            },
+            child: qaAsync.when(
+              data: (questions) {
+                if (questions.isEmpty) {
+                  return ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: const [
+                      SizedBox(height: 80),
+                      Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(24),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.chat_bubble_outline,
+                                  size: 48, color: AppColors.inkSoft),
+                              SizedBox(height: 12),
+                              Text(
+                                'No discussions yet.',
+                                style: TextStyle(
+                                    fontWeight: FontWeight.bold, fontSize: 16),
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                'Have a question about the course? Ask below and the instructor will reply!',
+                                textAlign: TextAlign.center,
+                                style:
+                                    TextStyle(color: AppColors.inkSoft, fontSize: 13),
+                              ),
+                            ],
+                          ),
                         ),
-                        SizedBox(height: 4),
-                        Text(
-                          'Have a question about the course? Ask below and the instructor will reply!',
-                          textAlign: TextAlign.center,
-                          style:
-                              TextStyle(color: AppColors.inkSoft, fontSize: 13),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }
+                      ),
+                    ],
+                  );
+                }
               return ListView.builder(
+                physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.all(16),
                 itemCount: questions.length,
                 itemBuilder: (context, index) {
@@ -1445,47 +1480,70 @@ class _CourseQaTabState extends ConsumerState<_CourseQaTab> {
             error: (err, _) => Center(child: Text('Error: $err')),
           ),
         ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          decoration: BoxDecoration(
-            color: isDark ? AppColors.cardDark : Colors.white,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 10,
-                offset: const Offset(0, -3),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _controller,
-                  decoration: const InputDecoration(
-                    hintText: 'Ask a question...',
-                    border: OutlineInputBorder(),
-                    contentPadding:
-                        EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      ),
+        SafeArea(
+          top: false,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.cardDark : Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, -3),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _controller,
+                    decoration: InputDecoration(
+                      hintText: 'Ask a question...',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: isDark ? Colors.white12 : AppColors.lineLight,
+                        ),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: isDark ? Colors.white12 : AppColors.lineLight,
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(
+                          color: AppColors.primaryGreen,
+                          width: 1.5,
+                        ),
+                      ),
+                      contentPadding:
+                          const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    ),
+                    onSubmitted: (_) => _submit(),
                   ),
                 ),
-              ),
-              const SizedBox(width: 10),
-              _isSubmitting
-                  ? const SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: AppColors.primaryGreen,
+                const SizedBox(width: 10),
+                _isSubmitting
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.primaryGreen,
+                        ),
+                      )
+                    : IconButton(
+                        icon: const Icon(Icons.send_rounded,
+                            color: AppColors.primaryGreen),
+                        onPressed: _submit,
                       ),
-                    )
-                  : IconButton(
-                      icon: const Icon(Icons.send,
-                          color: AppColors.primaryGreen),
-                      onPressed: _submit,
-                    ),
-            ],
+              ],
+            ),
           ),
         ),
       ],
@@ -1607,86 +1665,86 @@ class _CourseNotesTabState extends ConsumerState<_CourseNotesTab> {
               ),
             ),
           ),
-          child: Row(
-            children: [
-              // Filter Chips
-              Wrap(
-                spacing: 6,
-                children: [
-                  ChoiceChip(
-                    visualDensity: VisualDensity.compact,
-                    label: const Text('All'),
-                    selected: _activeFilter == 'all',
-                    selectedColor: AppColors.primaryGreen.withValues(alpha: 0.15),
-                    labelStyle: TextStyle(
-                      fontSize: 11.5,
-                      fontWeight: _activeFilter == 'all' ? FontWeight.bold : FontWeight.normal,
-                      color: _activeFilter == 'all' ? AppColors.primaryGreen : null,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                // Filter Chips
+                ChoiceChip(
+                  visualDensity: VisualDensity.compact,
+                  label: const Text('All'),
+                  selected: _activeFilter == 'all',
+                  selectedColor: AppColors.primaryGreen.withValues(alpha: 0.15),
+                  labelStyle: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: _activeFilter == 'all' ? FontWeight.bold : FontWeight.normal,
+                    color: _activeFilter == 'all' ? AppColors.primaryGreen : null,
+                  ),
+                  onSelected: (val) {
+                    if (val) setState(() => _activeFilter = 'all');
+                  },
+                ),
+                const SizedBox(width: 6),
+                ChoiceChip(
+                  visualDensity: VisualDensity.compact,
+                  label: const Text('Notes 📝'),
+                  selected: _activeFilter == 'notes',
+                  selectedColor: AppColors.primaryGreen.withValues(alpha: 0.15),
+                  labelStyle: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: _activeFilter == 'notes' ? FontWeight.bold : FontWeight.normal,
+                    color: _activeFilter == 'notes' ? AppColors.primaryGreen : null,
+                  ),
+                  onSelected: (val) {
+                    if (val) setState(() => _activeFilter = 'notes');
+                  },
+                ),
+                const SizedBox(width: 6),
+                ChoiceChip(
+                  visualDensity: VisualDensity.compact,
+                  label: const Text('Bookmarks 🔖'),
+                  selected: _activeFilter == 'bookmarks',
+                  selectedColor: AppColors.accentOrange.withValues(alpha: 0.15),
+                  labelStyle: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: _activeFilter == 'bookmarks' ? FontWeight.bold : FontWeight.normal,
+                    color: _activeFilter == 'bookmarks' ? AppColors.accentOrange : null,
+                  ),
+                  onSelected: (val) {
+                    if (val) setState(() => _activeFilter = 'bookmarks');
+                  },
+                ),
+                const SizedBox(width: 10),
+                // Quick Bookmark Button
+                InkWell(
+                  onTap: _isSubmitting ? null : _quickBookmark,
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppColors.accentOrange.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.accentOrange.withValues(alpha: 0.3)),
                     ),
-                    onSelected: (val) {
-                      if (val) setState(() => _activeFilter = 'all');
-                    },
-                  ),
-                  ChoiceChip(
-                    visualDensity: VisualDensity.compact,
-                    label: const Text('Notes 📝'),
-                    selected: _activeFilter == 'notes',
-                    selectedColor: AppColors.primaryGreen.withValues(alpha: 0.15),
-                    labelStyle: TextStyle(
-                      fontSize: 11.5,
-                      fontWeight: _activeFilter == 'notes' ? FontWeight.bold : FontWeight.normal,
-                      color: _activeFilter == 'notes' ? AppColors.primaryGreen : null,
-                    ),
-                    onSelected: (val) {
-                      if (val) setState(() => _activeFilter = 'notes');
-                    },
-                  ),
-                  ChoiceChip(
-                    visualDensity: VisualDensity.compact,
-                    label: const Text('Bookmarks 🔖'),
-                    selected: _activeFilter == 'bookmarks',
-                    selectedColor: AppColors.accentOrange.withValues(alpha: 0.15),
-                    labelStyle: TextStyle(
-                      fontSize: 11.5,
-                      fontWeight: _activeFilter == 'bookmarks' ? FontWeight.bold : FontWeight.normal,
-                      color: _activeFilter == 'bookmarks' ? AppColors.accentOrange : null,
-                    ),
-                    onSelected: (val) {
-                      if (val) setState(() => _activeFilter = 'bookmarks');
-                    },
-                  ),
-                ],
-              ),
-              const Spacer(),
-              // Quick Bookmark Button
-              InkWell(
-                onTap: _isSubmitting ? null : _quickBookmark,
-                borderRadius: BorderRadius.circular(8),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: AppColors.accentOrange.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppColors.accentOrange.withValues(alpha: 0.3)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.bookmark_add_rounded, size: 14, color: AppColors.accentOrange),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Bookmark ${_formatTime(widget.currentPositionSeconds)}',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.accentOrange,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.bookmark_add_rounded, size: 14, color: AppColors.accentOrange),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Bookmark ${_formatTime(widget.currentPositionSeconds)}',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.accentOrange,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
 
@@ -1813,49 +1871,70 @@ class _CourseNotesTabState extends ConsumerState<_CourseNotesTab> {
         ),
 
         // ── Input Strip at Bottom ─────────────────────────────────
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          decoration: BoxDecoration(
-            color: isDark ? AppColors.cardDark : Colors.white,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 10,
-                offset: const Offset(0, -3),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _controller,
-                  decoration: InputDecoration(
-                    hintText:
-                        'Add note at ${_formatTime(widget.currentPositionSeconds)}...',
-                    border: const OutlineInputBorder(),
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 10),
-                  ),
-                  onSubmitted: (_) => _submit(),
+        SafeArea(
+          top: false,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.cardDark : Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, -3),
                 ),
-              ),
-              const SizedBox(width: 10),
-              _isSubmitting
-                  ? const SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: AppColors.accentOrange,
+              ],
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _controller,
+                    decoration: InputDecoration(
+                      hintText:
+                          'Add note at ${_formatTime(widget.currentPositionSeconds)}...',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: isDark ? Colors.white12 : AppColors.lineLight,
+                        ),
                       ),
-                    )
-                  : IconButton(
-                      icon: const Icon(Icons.add_circle,
-                          color: AppColors.accentOrange),
-                      onPressed: _submit,
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: isDark ? Colors.white12 : AppColors.lineLight,
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(
+                          color: AppColors.accentOrange,
+                          width: 1.5,
+                        ),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10),
                     ),
-            ],
+                    onSubmitted: (_) => _submit(),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                _isSubmitting
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.accentOrange,
+                        ),
+                      )
+                    : IconButton(
+                        icon: const Icon(Icons.add_circle,
+                            color: AppColors.accentOrange),
+                        onPressed: _submit,
+                      ),
+              ],
+            ),
           ),
         ),
       ],
@@ -1864,269 +1943,435 @@ class _CourseNotesTabState extends ConsumerState<_CourseNotesTab> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TAB 4: CERTIFICATE OF COMPLETION
+// TAB 4: REVIEWS & RATINGS (Agrilearn Parity)
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _CourseCertificateTab extends ConsumerWidget {
-  const _CourseCertificateTab({
-    required this.course,
-    required this.isCompleted,
-    required this.completedCount,
-    required this.totalLectures,
+class _CourseReviewsTab extends ConsumerStatefulWidget {
+  const _CourseReviewsTab({
+    required this.courseSlug,
+    required this.courseTitle,
   });
 
-  final ApiCourseDetail course;
-  final bool isCompleted;
-  final int completedCount;
-  final int totalLectures;
+  final String courseSlug;
+  final String courseTitle;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final user = ref.watch(authProvider).user;
-    final studentName = user?.fullName ?? 'Valued Student';
-    final completionDate = DateFormat('MMMM dd, yyyy').format(DateTime.now());
+  ConsumerState<_CourseReviewsTab> createState() => _CourseReviewsTabState();
+}
 
-    if (!isCompleted) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: AppColors.accentOrange.withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.lock_outline,
-                  size: 56,
-                  color: AppColors.accentOrange,
-                ),
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'Certificate Locked',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                'Complete all lectures ($completedCount / $totalLectures finished) to unlock your verified Certificate of Completion.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: isDark ? Colors.white70 : AppColors.inkSoft,
-                  fontSize: 14,
-                  height: 1.4,
-                ),
-              ),
-              const SizedBox(height: 24),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: LinearProgressIndicator(
-                  value: totalLectures > 0
-                      ? (completedCount / totalLectures)
-                      : 0.0,
-                  minHeight: 10,
-                  backgroundColor: isDark
-                      ? AppColors.lineDark
-                      : AppColors.lineLight,
-                  valueColor: const AlwaysStoppedAnimation<Color>(
-                    AppColors.accentOrange,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
+class _CourseReviewsTabState extends ConsumerState<_CourseReviewsTab> {
+  int _selectedRating = 5;
+  final _commentController = TextEditingController();
+  bool _isSubmitting = false;
+
+  String _getRatingLabel(int rating) {
+    switch (rating) {
+      case 1:
+        return 'Poor';
+      case 2:
+        return 'Fair';
+      case 3:
+        return 'Good';
+      case 4:
+        return 'Very Good';
+      case 5:
+        return 'Excellent! 🌟';
+      default:
+        return '';
     }
+  }
 
-    // 100% Completed: Display Official Certificate Card
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
+  Future<void> _submitReview() async {
+    if (_isSubmitting) return;
+    setState(() => _isSubmitting = true);
+    final messenger = ScaffoldMessenger.of(context);
+
+    try {
+      final repo = ref.read(courseRepositoryProvider);
+      await repo.submitCourseReview(
+        widget.courseSlug,
+        rating: _selectedRating,
+        comment: _commentController.text.trim(),
+      );
+
+      // Invalidate providers so lists refresh
+      ref.invalidate(courseReviewsProvider(widget.courseSlug));
+      ref.invalidate(courseDetailProvider(widget.courseSlug));
+
+      _commentController.clear();
+      if (mounted) {
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('Thank you! Your review has been submitted. ⭐'),
+            backgroundColor: AppColors.primaryGreen,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+            backgroundColor: AppColors.error,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _commentController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final reviewsAsync = ref.watch(courseReviewsProvider(widget.courseSlug));
+
+    return RefreshIndicator(
+      color: AppColors.primaryGreen,
+      onRefresh: () async {
+        ref.invalidate(courseReviewsProvider(widget.courseSlug));
+        try {
+          await ref.read(courseReviewsProvider(widget.courseSlug).future);
+        } catch (_) {}
+      },
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        children: [
+        // ── 1. "Leave a Review" Card (matching Agrilearn CoursePlayerPage) ──
         Container(
           padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppColors.primaryGreen.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.primaryGreen),
-          ),
-          child: const Row(
-            children: [
-              Icon(Icons.celebration, color: AppColors.primaryGreen, size: 28),
-              SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Congratulations! Course Completed',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.primaryGreen,
-                        fontSize: 14,
-                      ),
-                    ),
-                    Text(
-                      'You have mastered all lectures and curriculum milestones.',
-                      style: TextStyle(fontSize: 12),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 20),
-
-        // Beautiful Certificate Mockup Container
-        Container(
-          padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
             color: isDark ? AppColors.cardDark : Colors.white,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: const Color(0xFFD4AF37), // Gold border
-              width: 3,
+              color: isDark ? Colors.white12 : AppColors.lineLight,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.08),
-                blurRadius: 16,
-                offset: const Offset(0, 4),
+                color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
               ),
             ],
           ),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.workspace_premium,
-                  size: 48, color: Color(0xFFD4AF37)),
-              const SizedBox(height: 8),
-              const Text(
-                'IGROW CERTIFICATE OF COMPLETION',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  letterSpacing: 1.5,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w900,
-                  color: Color(0xFFB8860B),
-                ),
+              Row(
+                children: [
+                  const Icon(Icons.star_rounded, color: AppColors.signalYellow, size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Leave a Review',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : AppColors.inkDark,
+                    ),
+                  ),
+                ],
               ),
-              const Divider(height: 28, thickness: 1),
-              const Text(
-                'THIS IS PROUDLY PRESENTED TO',
-                style: TextStyle(
-                  fontSize: 11,
-                  letterSpacing: 1.2,
-                  color: AppColors.inkSoft,
-                  fontWeight: FontWeight.w600,
-                ),
+              const SizedBox(height: 12),
+              // Star Selector
+              Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 2,
+                runSpacing: 4,
+                children: [
+                  ...List.generate(5, (index) {
+                    final starVal = index + 1;
+                    return InkWell(
+                      onTap: () => setState(() => _selectedRating = starVal),
+                      borderRadius: BorderRadius.circular(20),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                        child: Icon(
+                          starVal <= _selectedRating ? Icons.star_rounded : Icons.star_outline_rounded,
+                          size: 30,
+                          color: starVal <= _selectedRating ? AppColors.signalYellow : (isDark ? Colors.white30 : Colors.grey.shade400),
+                        ),
+                      ),
+                    );
+                  }),
+                  const SizedBox(width: 8),
+                  Text(
+                    _getRatingLabel(_selectedRating),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primaryGreen,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 8),
-              Text(
-                studentName,
-                textAlign: TextAlign.center,
+              const SizedBox(height: 14),
+              // Comment Input
+              TextField(
+                controller: _commentController,
+                maxLines: 3,
                 style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
                   color: isDark ? Colors.white : AppColors.inkDark,
+                ),
+                decoration: InputDecoration(
+                  hintText: 'Tell us what you think about this course (optional)...',
+                  hintStyle: TextStyle(
+                    fontSize: 13,
+                    color: isDark ? Colors.white38 : AppColors.inkSoft,
+                  ),
+                  filled: true,
+                  fillColor: isDark ? const Color(0xFF161A17) : const Color(0xFFF7F9F6),
+                  contentPadding: const EdgeInsets.all(12),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: isDark ? Colors.white12 : AppColors.lineLight,
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: isDark ? Colors.white12 : AppColors.lineLight,
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(
+                      color: AppColors.primaryGreen,
+                      width: 1.5,
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: 12),
-              const Text(
-                'for successfully completing the course curriculum for',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: AppColors.inkSoft,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                course.title,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.primaryGreen,
-                ),
-              ),
-              const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Date: $completionDate',
-                          style: const TextStyle(
-                              fontSize: 11, color: AppColors.inkSoft),
-                        ),
-                        Text(
-                          'Instructor: ${course.instructorName ?? "IGrow Faculty"}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                              fontSize: 11, color: AppColors.inkSoft),
-                        ),
-                      ],
+              // Submit Button
+              Align(
+                alignment: Alignment.centerRight,
+                child: FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primaryGreen,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
                     ),
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
                   ),
-                  const SizedBox(width: 8),
-                  const Column(
-                    children: [
-                      Icon(Icons.verified_user,
-                          color: AppColors.primaryGreen, size: 28),
-                      Text(
-                        'VERIFIED',
-                        style: TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primaryGreen,
-                        ),
-                      ),
-                    ],
+                  onPressed: _isSubmitting ? null : _submitReview,
+                  icon: _isSubmitting
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.send_rounded, size: 16),
+                  label: Text(
+                    _isSubmitting ? 'Submitting...' : 'Submit Review',
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                   ),
-                ],
+                ),
               ),
             ],
           ),
         ),
 
-        const SizedBox(height: 24),
+        const SizedBox(height: 20),
 
-        ElevatedButton.icon(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.primaryGreen,
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 14),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
+        // ── 2. Reviews Header ──
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Course Reviews',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: isDark ? Colors.white : AppColors.inkDark,
+              ),
+            ),
+            reviewsAsync.when(
+              data: (reviews) => Text(
+                '${reviews.length} ${reviews.length == 1 ? "review" : "reviews"}',
+                style: const TextStyle(fontSize: 12, color: AppColors.inkSoft, fontWeight: FontWeight.w500),
+              ),
+              loading: () => const SizedBox.shrink(),
+              error: (_, __) => const SizedBox.shrink(),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 12),
+
+        // ── 3. Reviews List ──
+        reviewsAsync.when(
+          loading: () => const Center(
+            child: Padding(
+              padding: EdgeInsets.all(24),
+              child: CircularProgressIndicator(color: AppColors.primaryGreen),
             ),
           ),
-          icon: const Icon(Icons.download),
-          label: const Text(
-            'Download Certificate',
-            style: TextStyle(fontWeight: FontWeight.bold),
+          error: (err, _) => Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.cardDark : Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: isDark ? Colors.white10 : AppColors.lineLight),
+            ),
+            child: Text(
+              'Unable to load reviews right now.',
+              style: TextStyle(color: isDark ? Colors.white70 : AppColors.inkSoft, fontSize: 13),
+              textAlign: TextAlign.center,
+            ),
           ),
-          onPressed: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Certificate downloaded successfully! 🎓'),
-                backgroundColor: AppColors.primaryGreen,
-              ),
+          data: (reviews) {
+            if (reviews.isEmpty) {
+              return Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.cardDark : Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: isDark ? Colors.white10 : AppColors.lineLight),
+                ),
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.rate_review_outlined,
+                      size: 40,
+                      color: isDark ? Colors.white38 : AppColors.inkSoft,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'No reviews yet',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : AppColors.inkDark,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Your review helps other students discover great courses!',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.inkSoft,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            return ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: reviews.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              itemBuilder: (context, index) {
+                final review = reviews[index];
+                return Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.cardDark : Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: isDark ? Colors.white10 : AppColors.lineLight,
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 16,
+                            backgroundColor: AppColors.primaryGreen.withValues(alpha: 0.15),
+                            backgroundImage: review.studentAvatar != null && review.studentAvatar!.isNotEmpty
+                                ? NetworkImage(review.studentAvatar!)
+                                : null,
+                            child: review.studentAvatar == null || review.studentAvatar!.isEmpty
+                                ? Text(
+                                    review.studentName.isNotEmpty ? review.studentName[0].toUpperCase() : 'S',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.primaryGreen,
+                                      fontSize: 12,
+                                    ),
+                                  )
+                                : null,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  review.studentName,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                    color: isDark ? Colors.white : AppColors.inkDark,
+                                  ),
+                                ),
+                                Row(
+                                  children: [
+                                    ...List.generate(5, (sIdx) {
+                                      return Icon(
+                                        sIdx < review.rating ? Icons.star_rounded : Icons.star_outline_rounded,
+                                        size: 14,
+                                        color: sIdx < review.rating ? AppColors.signalYellow : Colors.grey.shade400,
+                                      );
+                                    }),
+                                    if (review.createdAt != null) ...[
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        DateFormat.yMMMd().format(review.createdAt!),
+                                        style: const TextStyle(
+                                          color: AppColors.inkSoft,
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (review.comment.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          review.comment,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: isDark ? Colors.white70 : AppColors.inkDark,
+                            height: 1.3,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                );
+              },
             );
           },
         ),
       ],
-    );
-  }
+    ),
+  );
+}
 }

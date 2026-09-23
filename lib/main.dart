@@ -7,7 +7,10 @@ import 'core/router/app_router.dart';
 import 'core/services/notification_service.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_provider.dart';
-
+import 'features/explore/providers/explore_provider.dart';
+import 'features/home_farmer/providers/farmer_home_provider.dart';
+import 'features/home_farmer/providers/student_provider.dart';
+import 'features/home_instructor/providers/instructor_home_provider.dart';
 import 'firebase_options.dart';
 
 void main() async {
@@ -35,11 +38,53 @@ void main() async {
   );
 }
 
-class IGrowApp extends ConsumerWidget {
+class IGrowApp extends ConsumerStatefulWidget {
   const IGrowApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<IGrowApp> createState() => _IGrowAppState();
+}
+
+class _IGrowAppState extends ConsumerState<IGrowApp> {
+  late final AppLifecycleListener _lifecycleListener;
+  DateTime? _lastSyncTime;
+
+  @override
+  void initState() {
+    super.initState();
+    _lifecycleListener = AppLifecycleListener(
+      onResume: _onAppResume,
+    );
+  }
+
+  @override
+  void dispose() {
+    _lifecycleListener.dispose();
+    super.dispose();
+  }
+
+  void _onAppResume() {
+    final now = DateTime.now();
+    if (_lastSyncTime != null && now.difference(_lastSyncTime!).inSeconds < 5) {
+      return; // 5-second debounce
+    }
+    _lastSyncTime = now;
+    debugPrint('🔄 [Lifecycle] App resumed: triggering cross-platform sync...');
+
+    // Invalidate instructor providers
+    ref.invalidate(instructorCoursesProvider);
+    ref.invalidate(instructorStatsProvider);
+    ref.invalidate(instructorQaProvider);
+    ref.invalidate(instructorReviewsProvider);
+
+    // Invalidate student & explore providers
+    ref.invalidate(studentEnrollmentsProvider);
+    ref.invalidate(featuredCoursesProvider);
+    ref.invalidate(exploreCoursesProvider);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final router = ref.watch(appRouterProvider);
     final themeMode = ref.watch(themeProvider);
 
