@@ -16,6 +16,40 @@ import '../../auth/providers/auth_provider.dart';
 import '../../home_farmer/providers/student_provider.dart';
 import '../providers/explore_provider.dart';
 
+/// Resolves the effective stream URL for the selected quality (Auto, 240p, 360p, 480p, 720p).
+String resolveQualityStreamUrl(String baseStreamUrl, String quality) {
+  final cleanQuality = quality.toLowerCase().trim();
+  if (cleanQuality == 'auto' || cleanQuality.isEmpty) {
+    return baseStreamUrl.replaceAll(RegExp(r'/\d{3,4}p/video\.m3u8'), '/playlist.m3u8');
+  }
+  // If baseStreamUrl is a Bunny HLS master playlist (playlist.m3u8)
+  if (baseStreamUrl.contains('/playlist.m3u8')) {
+    return baseStreamUrl.replaceAll('/playlist.m3u8', '/$cleanQuality/video.m3u8');
+  }
+  // If baseStreamUrl already points to another resolution (e.g. 480p/video.m3u8)
+  if (RegExp(r'/\d{3,4}p/video\.m3u8').hasMatch(baseStreamUrl)) {
+    return baseStreamUrl.replaceAll(RegExp(r'/\d{3,4}p/video\.m3u8'), '/$cleanQuality/video.m3u8');
+  }
+  // If direct MP4 renditions (e.g. play_480p.mp4)
+  if (baseStreamUrl.contains('play_')) {
+    return baseStreamUrl.replaceAll(RegExp(r'play_\d{3,4}p\.mp4'), 'play_$cleanQuality.mp4');
+  }
+  return baseStreamUrl;
+}
+
+/// Formats a Duration object into a clean digital timestamp string (mm:ss or hh:mm:ss).
+String formatVideoDuration(Duration duration) {
+  final totalSeconds = duration.inSeconds;
+  if (totalSeconds <= 0) return '00:00';
+  final hours = totalSeconds ~/ 3600;
+  final minutes = (totalSeconds % 3600) ~/ 60;
+  final seconds = totalSeconds % 60;
+  if (hours > 0) {
+    return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+  }
+  return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+}
+
 class CoursePlayerScreen extends ConsumerStatefulWidget {
   const CoursePlayerScreen({super.key, required this.courseId});
 
@@ -38,6 +72,14 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen> {
   bool _hasAutoCompletedCurrentLecture = false;
   String? _activeSlug;
   DateTime? _lastProgressUpdateTime;
+
+  // Video Quality Selection State
+  String _selectedQuality = 'Auto';
+  String? _activeBaseStreamUrl;
+  bool _isOfflinePlayback = false;
+
+  // Dynamic live video durations detected from actual media streams
+  final Map<String, String> _lectureRealDurations = {};
 
   @override
   void initState() {
@@ -74,6 +116,10 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen> {
     final duration = controller.value.duration;
 
     if (duration.inSeconds > 0) {
+      if (_currentLecture != null && !_lectureRealDurations.containsKey(_currentLecture!.id)) {
+        _lectureRealDurations[_currentLecture!.id] = formatVideoDuration(duration);
+      }
+
       final progressRatio = (position.inMilliseconds / duration.inMilliseconds).clamp(0.0, 1.0);
 
       // 1. Auto-complete current lecture when 90% or more is watched
@@ -196,25 +242,17 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen> {
 
       if (localPath != null && File(localPath).existsSync()) {
         debugPrint('⚡ [CoursePlayer] Playing lecture from local offline cache: $localPath');
+        _isOfflinePlayback = true;
+        _selectedQuality = 'Offline';
         _videoPlayerController = VideoPlayerController.file(File(localPath));
         await _videoPlayerController!.initialize();
 
-        _chewieController = ChewieController(
-          videoPlayerController: _videoPlayerController!,
-          autoPlay: true,
-          looping: false,
-          aspectRatio: _videoPlayerController!.value.aspectRatio > 0
-              ? _videoPlayerController!.value.aspectRatio
-              : 16 / 9,
-          errorBuilder: (context, errorMessage) {
-            return Center(
-              child: Text(
-                'Offline playback error: $errorMessage',
-                style: const TextStyle(color: Colors.white),
-              ),
-            );
-          },
-        );
+        final offlineSec = _videoPlayerController!.value.duration.inSeconds;
+        if (offlineSec > 0) {
+          _lectureRealDurations[lecture.id] = formatVideoDuration(_videoPlayerController!.value.duration);
+        }
+
+        _chewieController = _createChewieController(_videoPlayerController!);
 
         _videoPlayerController!.addListener(_onVideoPlayerTick);
 
@@ -283,7 +321,11 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen> {
             resolvedUrl.contains('bunny') ||
             resolvedUrl.contains('mediadelivery.net');
 
-        debugPrint('▶️ [CoursePlayer] Initializing video stream: $resolvedUrl (isBunny=$isBunny)');
+        _isOfflinePlayback = false;
+        _activeBaseStreamUrl = resolvedUrl;
+        final effectiveStreamUrl = resolveQualityStreamUrl(resolvedUrl, _selectedQuality);
+
+        debugPrint('▶️ [CoursePlayer] Initializing video stream: $effectiveStreamUrl (base: $resolvedUrl, quality: $_selectedQuality, isBunny=$isBunny)');
 
         Map<String, String> headers = {};
         // Only attach Authorization header if the video is hosted on our own backend server.
@@ -303,7 +345,7 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen> {
         }
 
         _videoPlayerController = VideoPlayerController.networkUrl(
-          Uri.parse(resolvedUrl),
+          Uri.parse(effectiveStreamUrl),
           httpHeaders: headers,
         );
 
@@ -321,7 +363,7 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen> {
             await _videoPlayerController?.dispose();
             headers['Referer'] = 'https://iframe.mediadelivery.net/';
             _videoPlayerController = VideoPlayerController.networkUrl(
-              Uri.parse(resolvedUrl),
+              Uri.parse(effectiveStreamUrl),
               httpHeaders: headers,
             );
             await _videoPlayerController!.initialize().timeout(
@@ -335,7 +377,7 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen> {
             debugPrint('⚠️ [CoursePlayer] Video stream failed with headers ($e), retrying without headers...');
             await _videoPlayerController?.dispose();
             _videoPlayerController = VideoPlayerController.networkUrl(
-              Uri.parse(resolvedUrl),
+              Uri.parse(effectiveStreamUrl),
             );
             await _videoPlayerController!.initialize().timeout(
               const Duration(seconds: 12),
@@ -344,7 +386,24 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen> {
               },
             );
           } else {
-            rethrow;
+            // Fallback to base master playlist if quality stream failed
+            if (effectiveStreamUrl != resolvedUrl) {
+              debugPrint('⚠️ [CoursePlayer] Specific quality failed, falling back to Auto master stream: $e');
+              await _videoPlayerController?.dispose();
+              _selectedQuality = 'Auto';
+              _videoPlayerController = VideoPlayerController.networkUrl(
+                Uri.parse(resolvedUrl),
+                httpHeaders: headers,
+              );
+              await _videoPlayerController!.initialize().timeout(
+                const Duration(seconds: 12),
+                onTimeout: () {
+                  throw Exception('Video load timed out on fallback.');
+                },
+              );
+            } else {
+              rethrow;
+            }
           }
         }
       } else {
@@ -358,11 +417,15 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen> {
         );
       }
 
+      final totalSec = _videoPlayerController!.value.duration.inSeconds;
+      if (totalSec > 0) {
+        _lectureRealDurations[lecture.id] = formatVideoDuration(_videoPlayerController!.value.duration);
+      }
+
       // Resume video from saved position if user previously watched it
       if (_activeSlug != null) {
         final savedSec = await CourseProgressService.instance
             .getLectureWatchPositionSeconds(_activeSlug!, lecture.id);
-        final totalSec = _videoPlayerController!.value.duration.inSeconds;
         if (savedSec > 5 && totalSec > 0 && savedSec < (totalSec * 0.95)) {
           await _videoPlayerController!.seekTo(Duration(seconds: savedSec));
         }
@@ -370,22 +433,7 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen> {
 
       _videoPlayerController!.addListener(_onVideoPlayerTick);
 
-      _chewieController = ChewieController(
-        videoPlayerController: _videoPlayerController!,
-        autoPlay: true,
-        looping: false,
-        allowFullScreen: true,
-        allowMuting: true,
-        allowPlaybackSpeedChanging: true,
-        playbackSpeeds: const [0.5, 0.75, 1.0, 1.25, 1.5, 2.0],
-        showControls: true,
-        materialProgressColors: ChewieProgressColors(
-          playedColor: AppColors.primaryGreen,
-          handleColor: AppColors.primaryGreen,
-          backgroundColor: Colors.white24,
-          bufferedColor: AppColors.canopyStart.withValues(alpha: 0.5),
-        ),
-      );
+      _chewieController = _createChewieController(_videoPlayerController!);
 
       if (mounted) {
         setState(() {
@@ -400,6 +448,316 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen> {
           _videoErrorMessage =
               'Unable to stream this video right now. (${e.toString().replaceAll("Exception: ", "")})';
         });
+      }
+    }
+  }
+
+  ChewieController _createChewieController(VideoPlayerController playerController) {
+    return ChewieController(
+      videoPlayerController: playerController,
+      autoPlay: true,
+      looping: false,
+      allowFullScreen: true,
+      allowMuting: true,
+      allowPlaybackSpeedChanging: true,
+      playbackSpeeds: const [0.5, 0.75, 1.0, 1.25, 1.5, 2.0],
+      showControls: true,
+      showOptions: true,
+      additionalOptions: (context) {
+        return [
+          OptionItem(
+            onTap: (ctx) {
+              Navigator.of(ctx).pop();
+              _showQualitySelectionSheet(context);
+            },
+            iconData: Icons.tune_rounded,
+            title: 'Quality',
+            subtitle: _selectedQuality,
+          ),
+        ];
+      },
+      materialProgressColors: ChewieProgressColors(
+        playedColor: AppColors.primaryGreen,
+        handleColor: AppColors.primaryGreen,
+        backgroundColor: Colors.white24,
+        bufferedColor: AppColors.canopyStart.withValues(alpha: 0.5),
+      ),
+    );
+  }
+
+  void _showQualitySelectionSheet(BuildContext sheetContext) {
+    final isDark = Theme.of(sheetContext).brightness == Brightness.dark;
+
+    final qualities = [
+      {
+        'value': 'Auto',
+        'title': 'Auto (Recommended)',
+        'desc': 'Adjusts resolution dynamically based on network',
+        'icon': Icons.auto_awesome_rounded,
+      },
+      {
+        'value': '480p',
+        'title': '480p (High)',
+        'desc': 'Clear picture quality, best on Wi-Fi',
+        'icon': Icons.hd_outlined,
+      },
+      {
+        'value': '360p',
+        'title': '360p (Standard)',
+        'desc': 'Balanced video quality & data usage',
+        'icon': Icons.smart_display_outlined,
+      },
+      {
+        'value': '240p',
+        'title': '240p (Data Saver)',
+        'desc': 'Lowest data usage, suitable for weak cellular',
+        'icon': Icons.data_saver_on_outlined,
+      },
+    ];
+
+    showModalBottomSheet(
+      context: sheetContext,
+      useRootNavigator: true,
+      backgroundColor: isDark ? AppColors.cardDark : AppColors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.tune_rounded,
+                            color: AppColors.primaryGreen, size: 22),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Video Playback Quality',
+                          style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
+                      ],
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded, size: 20),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                if (_isOfflinePlayback) ...[
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.offline_pin_rounded,
+                            color: AppColors.primaryGreen, size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'This video is playing from offline storage at downloaded quality.',
+                            style: Theme.of(ctx).textTheme.bodySmall,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ] else ...[
+                  ...qualities.map((item) {
+                    final value = item['value'] as String;
+                    final isSelected = _selectedQuality == value;
+                    return InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        if (!isSelected) {
+                          _changeVideoQuality(value);
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 12, horizontal: 12),
+                        margin: const EdgeInsets.symmetric(vertical: 4),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? AppColors.primaryGreen.withValues(alpha: 0.1)
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(12),
+                          border: isSelected
+                              ? Border.all(
+                                  color: AppColors.primaryGreen
+                                      .withValues(alpha: 0.3))
+                              : null,
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              item['icon'] as IconData,
+                              size: 20,
+                              color: isSelected
+                                  ? AppColors.primaryGreen
+                                  : AppColors.inkSoft,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    item['title'] as String,
+                                    style: Theme.of(ctx)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.copyWith(
+                                          fontWeight: isSelected
+                                              ? FontWeight.bold
+                                              : FontWeight.w500,
+                                          color: isSelected
+                                              ? AppColors.primaryGreen
+                                              : null,
+                                        ),
+                                  ),
+                                  Text(
+                                    item['desc'] as String,
+                                    style: Theme.of(ctx)
+                                        .textTheme
+                                        .bodySmall
+                                        ?.copyWith(
+                                          fontSize: 11,
+                                          color: AppColors.inkSoft,
+                                        ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            if (isSelected)
+                              const Icon(
+                                Icons.check_circle_rounded,
+                                color: AppColors.primaryGreen,
+                                size: 20,
+                              ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _changeVideoQuality(String newQuality) async {
+    if (newQuality == _selectedQuality || _videoPlayerController == null) return;
+    if (_isOfflinePlayback || _currentLecture == null || _activeBaseStreamUrl == null) return;
+
+    final previousQuality = _selectedQuality;
+    final currentPosition = _videoPlayerController!.value.position;
+    final wasPlaying = _videoPlayerController!.value.isPlaying;
+
+    setState(() {
+      _selectedQuality = newQuality;
+      _isLoadingVideo = true;
+    });
+
+    try {
+      final targetUrl = resolveQualityStreamUrl(_activeBaseStreamUrl!, newQuality);
+      debugPrint('🎛️ [CoursePlayer] Changing video quality to $newQuality: $targetUrl');
+
+      final token = await ref.read(tokenStorageProvider).getAccessToken();
+      final isBunny = targetUrl.contains('b-cdn.net') ||
+          targetUrl.contains('bunny') ||
+          targetUrl.contains('mediadelivery.net');
+      Map<String, String> headers = {};
+      final isBackendHost = targetUrl.contains('iagrow.zappcode.in') ||
+          targetUrl.contains('localhost') ||
+          targetUrl.contains('127.0.0.1') ||
+          targetUrl.contains('10.0.2.2');
+      if (token != null && isBackendHost) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+      if (isBunny) {
+        headers['Referer'] = 'https://iframe.mediadelivery.net/';
+        headers['User-Agent'] =
+            'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36';
+      }
+
+      VideoPlayerController newController = VideoPlayerController.networkUrl(
+        Uri.parse(targetUrl),
+        httpHeaders: headers,
+      );
+
+      try {
+        await newController.initialize().timeout(
+          const Duration(seconds: 12),
+          onTimeout: () => throw Exception('Quality switch timed out'),
+        );
+      } catch (err) {
+        debugPrint('⚠️ [CoursePlayer] Quality stream failed with primary headers, retrying clean: $err');
+        await newController.dispose();
+        newController = VideoPlayerController.networkUrl(Uri.parse(targetUrl));
+        await newController.initialize().timeout(
+          const Duration(seconds: 12),
+          onTimeout: () => throw Exception('Quality switch timed out on retry'),
+        );
+      }
+
+      _videoPlayerController?.removeListener(_onVideoPlayerTick);
+      final oldPlayer = _videoPlayerController;
+      final oldChewie = _chewieController;
+
+      _videoPlayerController = newController;
+      if (currentPosition > Duration.zero) {
+        await _videoPlayerController!.seekTo(currentPosition);
+      }
+      _videoPlayerController!.addListener(_onVideoPlayerTick);
+
+      _chewieController = _createChewieController(_videoPlayerController!);
+
+      oldChewie?.dispose();
+      await oldPlayer?.dispose();
+
+      if (wasPlaying) {
+        await _videoPlayerController!.play();
+      }
+
+      if (mounted) {
+        setState(() {
+          _isLoadingVideo = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Video quality changed to $newQuality'),
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('❌ [CoursePlayer] Failed to change video quality: $e');
+      if (mounted) {
+        setState(() {
+          _selectedQuality = previousQuality;
+          _isLoadingVideo = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not switch quality ($e)'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
     }
   }
@@ -743,6 +1101,46 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen> {
                               } catch (_) {}
                             },
                           ),
+                          const SizedBox(width: 2),
+                          // Quality Selector Chip Button
+                          InkWell(
+                            borderRadius: BorderRadius.circular(8),
+                            onTap: () => _showQualitySelectionSheet(context),
+                            child: Tooltip(
+                              message: 'Playback Quality ($_selectedQuality)',
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 7, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primaryGreen
+                                      .withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: AppColors.primaryGreen
+                                        .withValues(alpha: 0.35),
+                                    width: 1,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.tune_rounded,
+                                        size: 13,
+                                        color: AppColors.primaryGreen),
+                                    const SizedBox(width: 3),
+                                    Text(
+                                      _selectedQuality,
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.primaryGreen,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
                           if (_hasNextLecture(course)) ...[
                             IconButton(
                               visualDensity: VisualDensity.compact,
@@ -797,6 +1195,8 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen> {
                               completionPercent: completionPercent,
                               completedCount: completedCount,
                               totalLectures: totalLecturesCount,
+                              videoPlayerController: _videoPlayerController,
+                              lectureRealDurations: _lectureRealDurations,
                               onSelectLecture: (lec, sec) =>
                                   _playLecture(lec, sec),
                             ),
@@ -875,6 +1275,8 @@ class _CurriculumTab extends ConsumerWidget {
     required this.completedCount,
     required this.totalLectures,
     required this.onSelectLecture,
+    this.videoPlayerController,
+    this.lectureRealDurations = const {},
   });
 
   final ApiCourseDetail course;
@@ -884,6 +1286,8 @@ class _CurriculumTab extends ConsumerWidget {
   final int completedCount;
   final int totalLectures;
   final Function(ApiLecture, ApiCourseSection) onSelectLecture;
+  final VideoPlayerController? videoPlayerController;
+  final Map<String, String> lectureRealDurations;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -1067,6 +1471,12 @@ class _CurriculumTab extends ConsumerWidget {
                 ...section.lectures.map((lecture) {
                   final isPlaying = currentLecture?.id == lecture.id;
                   final isDone = completedIds.contains(lecture.id);
+                  final liveDuration = (isPlaying &&
+                          videoPlayerController != null &&
+                          videoPlayerController!.value.isInitialized &&
+                          videoPlayerController!.value.duration.inSeconds > 0)
+                      ? formatVideoDuration(videoPlayerController!.value.duration)
+                      : (lectureRealDurations[lecture.id] ?? lecture.durationFormatted);
 
                   return ListTile(
                     dense: true,
@@ -1109,14 +1519,15 @@ class _CurriculumTab extends ConsumerWidget {
                           ),
                           const SizedBox(width: 8),
                         ],
-                        if (lecture.durationFormatted != null) ...[
+                        if (liveDuration != null && liveDuration.isNotEmpty) ...[
                           Text(
-                            lecture.durationFormatted!,
+                            liveDuration,
                             style: TextStyle(
                               fontSize: 12,
-                              color: isDark
-                                  ? Colors.white70
-                                  : AppColors.inkSoft,
+                              fontWeight: isPlaying ? FontWeight.w600 : FontWeight.normal,
+                              color: isPlaying
+                                  ? AppColors.primaryGreen
+                                  : (isDark ? Colors.white70 : AppColors.inkSoft),
                             ),
                           ),
                           const SizedBox(width: 4),
