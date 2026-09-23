@@ -524,9 +524,13 @@ class InstructorRepository {
   }
 
   /// Create E-Book draft.
-  Future<Map<String, dynamic>> createEBook(Map<String, dynamic> data, {String? filePath}) async {
-    debugPrint('📤 [InstructorRepository] createEBook: sending data=$data, filePath=$filePath');
-    if (filePath != null) {
+  Future<Map<String, dynamic>> createEBook(
+    Map<String, dynamic> data, {
+    String? filePath,
+    String? coverImagePath,
+  }) async {
+    debugPrint('📤 [InstructorRepository] createEBook: sending data=$data, filePath=$filePath, coverImagePath=$coverImagePath');
+    if (filePath != null || coverImagePath != null) {
       final token = await tokenStorage.getAccessToken();
       final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/instructor/ebooks/');
       final request = http.MultipartRequest('POST', uri);
@@ -536,7 +540,12 @@ class InstructorRepository {
         request.fields[key] = value.toString();
       });
       
-      request.files.add(await http.MultipartFile.fromPath('pdf_file', filePath));
+      if (filePath != null) {
+        request.files.add(await http.MultipartFile.fromPath('pdf_file', filePath));
+      }
+      if (coverImagePath != null) {
+        request.files.add(await http.MultipartFile.fromPath('cover_image', coverImagePath));
+      }
       
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
