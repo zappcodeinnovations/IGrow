@@ -212,6 +212,7 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
       useRootNavigator: true,
       builder: (dialogCtx) {
         _loadingDialogContext = dialogCtx;
+        final isDark = Theme.of(dialogCtx).brightness == Brightness.dark;
         return PopScope(
           canPop: false,
           child: AlertDialog(
@@ -244,20 +245,39 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                     ],
                   ),
                   if (onCancel != null) ...[
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 14),
                     const Divider(height: 1),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 10),
                     Align(
                       alignment: Alignment.centerRight,
-                      child: TextButton.icon(
+                      child: OutlinedButton.icon(
                         onPressed: () {
                           _dismissLoadingDialog();
                           onCancel();
                         },
-                        icon: const Icon(Icons.close, size: 16, color: Colors.grey),
-                        label: const Text(
+                        icon: const Icon(Icons.close_rounded, size: 15, color: AppColors.error),
+                        label: Text(
                           'Cancel / Finish Later',
-                          style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.w600),
+                          style: TextStyle(
+                            color: isDark ? Colors.white : AppColors.inkDark,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: isDark ? Colors.white : AppColors.inkDark,
+                          backgroundColor: isDark
+                              ? AppColors.cardDark
+                              : const Color(0xFFF9FAFB),
+                          side: BorderSide(
+                            color: isDark ? AppColors.lineDark : const Color(0xFFD1D5DB),
+                            width: 1.2,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          visualDensity: VisualDensity.compact,
                         ),
                       ),
                     ),
