@@ -1,7 +1,9 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/network/api_exception.dart';
@@ -12,8 +14,60 @@ import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_text_field.dart';
 import '../../auth/providers/auth_provider.dart';
 
+/// Mapping of 4-letter IFSC prefixes to major Indian commercial and public banks.
+const Map<String, String> kIfscBankPrefixes = {
+  'KKBK': 'Kotak Mahindra Bank',
+  'SBIN': 'State Bank of India',
+  'HDFC': 'HDFC Bank',
+  'ICIC': 'ICICI Bank',
+  'UTIB': 'Axis Bank',
+  'AXIS': 'Axis Bank',
+  'PUNB': 'Punjab National Bank',
+  'BARB': 'Bank of Baroda',
+  'CNRB': 'Canara Bank',
+  'UBIN': 'Union Bank of India',
+  'BKID': 'Bank of India',
+  'IOBA': 'Indian Overseas Bank',
+  'IDIB': 'Indian Bank',
+  'CBIN': 'Central Bank of India',
+  'MAHB': 'Bank of Maharashtra',
+  'PSIB': 'Punjab & Sind Bank',
+  'UCBA': 'UCO Bank',
+  'YESB': 'Yes Bank',
+  'INDB': 'IndusInd Bank',
+  'IDFB': 'IDFC FIRST Bank',
+  'FDRL': 'Federal Bank',
+  'KVBL': 'Karur Vysya Bank',
+  'SIBL': 'South Indian Bank',
+  'RBLN': 'RBL Bank',
+  'CSBK': 'CSB Bank',
+  'BDBL': 'Bandhan Bank',
+  'AUBL': 'AU Small Finance Bank',
+  'ESFB': 'Equitas Small Finance Bank',
+  'UJVN': 'Ujjivan Small Finance Bank',
+  'AIRP': 'Airtel Payments Bank',
+  'PYTM': 'Paytm Payments Bank',
+  'IPOS': 'India Post Payments Bank',
+  'JAKA': 'Jammu & Kashmir Bank',
+  'CORP': 'Corporation Bank',
+  'ANDB': 'Andhra Bank',
+  'SYNB': 'Syndicate Bank',
+  'ALLA': 'Allahabad Bank',
+  'VIJB': 'Vijaya Bank',
+  'ORBC': 'Oriental Bank of Commerce',
+};
+
+/// Resolves a bank name from an IFSC code prefix instantly.
+String? resolveIfscBankPrefix(String ifsc) {
+  final clean = ifsc.trim().toUpperCase();
+  if (clean.length < 4) return null;
+  final prefix = clean.substring(0, 4);
+  return kIfscBankPrefixes[prefix];
+}
+
 class InstructorKycScreen extends ConsumerStatefulWidget {
-  const InstructorKycScreen({super.key});
+  final http.Client? httpClient;
+  const InstructorKycScreen({super.key, this.httpClient});
 
   @override
   ConsumerState<InstructorKycScreen> createState() => _InstructorKycScreenState();
@@ -34,6 +88,12 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
   File? _selectedDocImage;
   bool _isLoading = false;
   bool _isEditingExisting = false;
+
+  // IFSC Auto-fetch state
+  bool _isFetchingIfsc = false;
+  String? _ifscHelperText;
+  bool _bankNameManuallyEdited = false;
+  String? _lastFetchedIfsc;
 
   final ImagePicker _picker = ImagePicker();
 
@@ -56,6 +116,15 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
     _confirmAccountController = TextEditingController(text: user?.bankAccountNumber ?? '');
     _ifscController = TextEditingController(text: user?.bankIfscCode ?? '');
 
+    if ((user?.bankName ?? '').isNotEmpty) {
+      _bankNameManuallyEdited = true;
+    } else if ((user?.bankIfscCode ?? '').isNotEmpty) {
+      final prefillBank = resolveIfscBankPrefix(user!.bankIfscCode!);
+      if (prefillBank != null) {
+        _bankNameController.text = prefillBank;
+      }
+    }
+
     // Refresh profile on open to capture any immediate admin changes
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(authProvider.notifier).refreshUserSilent();
@@ -71,6 +140,113 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
     _confirmAccountController.dispose();
     _ifscController.dispose();
     super.dispose();
+  }
+
+  void _onIfscChanged(String val) {
+    final clean = val.trim().toUpperCase();
+
+    // Auto-capitalize field content smoothly without resetting cursor position
+    if (val != clean) {
+      final currentOffset = _ifscController.selection.baseOffset;
+      _ifscController.value = TextEditingValue(
+        text: clean,
+        selection: TextSelection.collapsed(
+          offset: currentOffset.clamp(0, clean.length),
+        ),
+      );
+    }
+
+    // Instant bank name prefix matching (e.g. KKBK -> Kotak Mahindra Bank)
+    if (clean.length >= 4) {
+      final mappedBank = resolveIfscBankPrefix(clean);
+      if (mappedBank != null && !_bankNameManuallyEdited) {
+        if (_bankNameController.text.trim().isEmpty ||
+            _bankNameController.text.trim() != mappedBank) {
+          _bankNameController.text = mappedBank;
+        }
+      }
+    } else if (clean.isEmpty && !_bankNameManuallyEdited) {
+      _bankNameController.clear();
+      setState(() {
+        _ifscHelperText = null;
+      });
+    }
+
+    // When full 11-character code is entered, perform online lookup for branch details
+    if (clean.length == 11 && RegExp(r'^[A-Z]{4}0[A-Z0-9]{6}$').hasMatch(clean)) {
+      if (clean != _lastFetchedIfsc) {
+        _fetchIfscDetails(clean);
+      }
+    } else if (clean.length < 11) {
+      if (_ifscHelperText != null) {
+        setState(() {
+          _ifscHelperText = null;
+        });
+      }
+    }
+  }
+
+  Future<void> _fetchIfscDetails(String ifsc) async {
+    setState(() {
+      _isFetchingIfsc = true;
+      _lastFetchedIfsc = ifsc;
+    });
+
+    try {
+      final uri = Uri.parse('https://ifsc.razorpay.com/$ifsc');
+      final client = widget.httpClient ?? http.Client();
+      final response = await client.get(uri).timeout(const Duration(seconds: 4));
+
+      if (!mounted) return;
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final bank = data['BANK']?.toString();
+        final branch = data['BRANCH']?.toString();
+        final city = data['CITY']?.toString();
+
+        if (bank != null && bank.trim().isNotEmpty && !_bankNameManuallyEdited) {
+          _bankNameController.text = bank.trim();
+        }
+
+        setState(() {
+          if (branch != null && branch.trim().isNotEmpty) {
+            _ifscHelperText = 'Branch: ${branch.trim()}${city != null ? ', ${city.trim()}' : ''}';
+          } else if (bank != null) {
+            _ifscHelperText = 'Bank: $bank';
+          }
+        });
+      } else {
+        // If API returns non-200 (e.g. 404 for synthetic branch code like kkbk0001849)
+        final mapped = resolveIfscBankPrefix(ifsc);
+        if (mapped != null) {
+          if (!_bankNameManuallyEdited) {
+            _bankNameController.text = mapped;
+          }
+          setState(() {
+            _ifscHelperText = 'Bank: $mapped';
+          });
+        }
+      }
+    } catch (_) {
+      // Graceful fallback to prefix mapping upon network error or timeout
+      if (!mounted) return;
+      final mapped = resolveIfscBankPrefix(ifsc);
+      if (mapped != null) {
+        if (!_bankNameManuallyEdited) {
+          _bankNameController.text = mapped;
+        }
+        setState(() {
+          _ifscHelperText = 'Bank: $mapped';
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isFetchingIfsc = false;
+        });
+      }
+    }
   }
 
   Future<void> _pickImage(ImageSource source) async {
@@ -464,6 +640,9 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
                         hint: 'e.g. State Bank of India, HDFC, ICICI',
                         prefixIcon: const Icon(Icons.account_balance_rounded,
                             color: AppColors.primaryGreen),
+                        onChanged: (val) {
+                          _bankNameManuallyEdited = true;
+                        },
                         validator: (val) {
                           if (val == null || val.trim().isEmpty) {
                             return 'Please enter bank name';
@@ -521,6 +700,24 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
                         keyboardType: TextInputType.text,
                         prefixIcon: const Icon(Icons.qr_code_2_rounded,
                             color: AppColors.primaryGreen),
+                        suffixIcon: _isFetchingIfsc
+                            ? const Padding(
+                                padding: EdgeInsets.all(12),
+                                child: SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: AppColors.primaryGreen,
+                                  ),
+                                ),
+                              )
+                            : (_ifscHelperText != null
+                                ? const Icon(Icons.check_circle_rounded,
+                                    color: AppColors.primaryGreen, size: 20)
+                                : null),
+                        helperText: _ifscHelperText,
+                        onChanged: _onIfscChanged,
                         validator: (val) {
                           if (val == null || val.trim().isEmpty) {
                             return 'Please enter IFSC code';
