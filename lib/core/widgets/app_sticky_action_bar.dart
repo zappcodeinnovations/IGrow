@@ -29,6 +29,7 @@ class AppStickyActionBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final hasLeftContent = (onSecondaryPressed != null && secondaryLabel != null) || statusText != null;
 
     return ClipRRect(
       child: BackdropFilter(
@@ -56,6 +57,7 @@ class AppStickyActionBar extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               child: Row(
                 children: [
+                  // Secondary / Back button (optional)
                   if (onSecondaryPressed != null && secondaryLabel != null) ...[
                     OutlinedButton(
                       style: OutlinedButton.styleFrom(
@@ -69,6 +71,8 @@ class AppStickyActionBar extends StatelessWidget {
                     ),
                     const SizedBox(width: 12),
                   ],
+
+                  // Status label (expands to fill remaining space)
                   if (statusText != null) ...[
                     Expanded(
                       child: Text(
@@ -84,56 +88,69 @@ class AppStickyActionBar extends StatelessWidget {
                     ),
                     const SizedBox(width: 12),
                   ],
-                  Expanded(
-                    flex: (statusText == null && onSecondaryPressed == null) ? 1 : 0,
-                    child: SizedBox(
+
+                  // Primary action button
+                  // - When there's left content (status/secondary), button is fixed-width
+                  // - When it's alone, it expands full width
+                  if (hasLeftContent)
+                    SizedBox(
                       height: 50,
-                      child: FilledButton(
-                        style: FilledButton.styleFrom(
-                          backgroundColor: AppColors.primaryGreen,
-                          elevation: 2,
-                          shadowColor: AppColors.primaryGreen.withValues(alpha: 0.4),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          padding: const EdgeInsets.symmetric(horizontal: 24),
-                        ),
-                        onPressed: isLoading ? null : onPrimaryPressed,
-                        child: isLoading
-                            ? const SizedBox(
-                                width: 22,
-                                height: 22,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.5,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : Row(
-                                mainAxisSize: MainAxisSize.min,
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    primaryLabel,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 15,
-                                    ),
-                                  ),
-                                  if (primaryIcon != null) ...[
-                                    const SizedBox(width: 8),
-                                    Icon(primaryIcon, size: 18),
-                                  ],
-                                ],
-                              ),
+                      child: _buildPrimaryButton(isDark),
+                    )
+                  else
+                    Expanded(
+                      child: SizedBox(
+                        height: 50,
+                        child: _buildPrimaryButton(isDark),
                       ),
                     ),
-                  ),
                 ],
               ),
             ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildPrimaryButton(bool isDark) {
+    return FilledButton(
+      style: FilledButton.styleFrom(
+        backgroundColor: AppColors.primaryGreen,
+        elevation: 2,
+        shadowColor: AppColors.primaryGreen.withValues(alpha: 0.4),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+      ),
+      onPressed: isLoading ? null : onPrimaryPressed,
+      child: isLoading
+          ? const SizedBox(
+              width: 22,
+              height: 22,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.5,
+                color: Colors.white,
+              ),
+            )
+          : Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  primaryLabel,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                  ),
+                ),
+                if (primaryIcon != null) ...[
+                  const SizedBox(width: 8),
+                  Icon(primaryIcon, size: 18),
+                ],
+              ],
+            ),
     );
   }
 }

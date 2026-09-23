@@ -109,13 +109,16 @@ final studentEnrollmentsProvider = FutureProvider.autoDispose<List<Enrollment>>(
 
   final enriched = <Enrollment>[];
   for (final enr in list) {
-    final slug = enr.courseSlug ?? enr.course;
-    final localPercent = await CourseProgressService.instance.getCoursePercentage(slug);
-    final localCompleted = await CourseProgressService.instance.getCompletedLectures(slug);
+    final primaryKey = (enr.courseSlug != null && enr.courseSlug!.isNotEmpty) ? enr.courseSlug! : enr.course;
+    final secondaryKey = enr.course;
+    final localPercent = await CourseProgressService.instance
+        .getCoursePercentage(primaryKey, secondaryKey: secondaryKey);
+    final localCompleted = (await CourseProgressService.instance.getCompletedLectures(primaryKey))
+        .union(await CourseProgressService.instance.getCompletedLectures(secondaryKey));
 
     double effectivePercentage = enr.completionPercentage ?? 0.0;
-    if (localPercent != null && localPercent > effectivePercentage) {
-      effectivePercentage = localPercent;
+    if (localPercent != null && localPercent > 0.0) {
+      effectivePercentage = localPercent > effectivePercentage ? localPercent : effectivePercentage;
     } else if (localCompleted.isNotEmpty && effectivePercentage == 0.0) {
       effectivePercentage = 100.0;
     }
@@ -264,8 +267,10 @@ class CourseProgressNotifier extends StateNotifier<AsyncValue<Set<String>>> {
     final updatedSet = Set<String>.from(currentSet);
     if (completed) {
       updatedSet.add(lectureId);
+      await CourseProgressService.instance.saveLectureWatchProgress(slug, lectureId, 1.0);
     } else {
       updatedSet.remove(lectureId);
+      await CourseProgressService.instance.saveLectureWatchProgress(slug, lectureId, 0.0);
     }
     // Optimistic reactive update
     state = AsyncValue.data(updatedSet);
@@ -285,8 +290,9 @@ class CourseProgressNotifier extends StateNotifier<AsyncValue<Set<String>>> {
       await CourseProgressService.instance.saveCoursePercentage(slug, percent);
     }
 
-    // Invalidate studentEnrollmentsProvider so dashboard reflects progress immediately!
+    // Invalidate providers so dashboard & player reflect progress immediately!
     ref.invalidate(studentEnrollmentsProvider);
+    ref.invalidate(coursePercentageProvider(slug));
 
     try {
       final repo = ref.read(studentRepositoryProvider);
@@ -300,6 +306,12 @@ class CourseProgressNotifier extends StateNotifier<AsyncValue<Set<String>>> {
 /// Family provider for student's reactive course lecture completion set.
 final courseProgressStateProvider = StateNotifierProvider.autoDispose.family<CourseProgressNotifier, AsyncValue<Set<String>>, String>((ref, slug) {
   return CourseProgressNotifier(ref, slug);
+});
+
+/// Provider for fetching the locally cached course percentage for any course slug.
+final coursePercentageProvider = FutureProvider.autoDispose.family<double, String>((ref, slug) async {
+  final percent = await CourseProgressService.instance.getCoursePercentage(slug);
+  return percent ?? 0.0;
 });
 
 /// Provider for fetching Top Instructors showcase on student dashboard.

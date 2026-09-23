@@ -756,27 +756,6 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
               ),
               const SizedBox(height: 28),
 
-              // ── Categories ─────────────────────────────────────────────
-              Text('Categories', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontSize: 18)),
-              const SizedBox(height: 14),
-              ref.watch(studentCategoriesProvider).when(
-                data: (categories) {
-                  if (categories.isEmpty) return const SizedBox.shrink();
-                  return Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
-                    children: categories.map((cat) => _CategoryChip(icon: Icons.label_outline_rounded, label: cat.name)).toList(),
-                  );
-                },
-                loading: () => Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: List.generate(5, (_) => const ShimmerCategoryChip()),
-                ),
-                error: (err, _) => const Center(child: Text('Categories not found')),
-              ),
-              const SizedBox(height: 28),
-
               // ── Daily Tip ──────────────────────────────────────────────
               AppCard(
                 padding: const EdgeInsets.all(18),
@@ -892,7 +871,13 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                           ),
                           const SizedBox(height: 10),
                           GestureDetector(
-                            onTap: () => context.push('/player/${enr.courseSlug}'),
+                            onTap: () async {
+                              final target = (enr.courseSlug != null && enr.courseSlug!.isNotEmpty)
+                                  ? enr.courseSlug!
+                                  : enr.course;
+                              await context.push('/player/$target');
+                              ref.invalidate(studentEnrollmentsProvider);
+                            },
                             child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                               decoration: BoxDecoration(
@@ -1477,37 +1462,6 @@ class _CourseCard extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _CategoryChip extends StatelessWidget {
-  const _CategoryChip({required this.icon, required this.label});
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.cardDark : AppColors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isDark ? AppColors.lineDark : AppColors.lineLight,
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: AppColors.primaryGreen),
-          const SizedBox(width: 6),
-          Text(label, style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 11.5)),
-        ],
       ),
     );
   }

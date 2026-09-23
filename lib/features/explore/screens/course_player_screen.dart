@@ -9,6 +9,7 @@ import 'package:video_player/video_player.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../../core/services/offline_download_service.dart';
+import '../../../core/services/course_progress_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/models/api_models/course_models.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -30,11 +31,13 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen> {
 
   ApiLecture? _currentLecture;
   ApiCourseSection? _currentSection;
+  ApiCourseDetail? _currentCourse;
 
   bool _isLoadingVideo = false;
   String? _videoErrorMessage;
   bool _hasAutoCompletedCurrentLecture = false;
   String? _activeSlug;
+  DateTime? _lastProgressUpdateTime;
 
   @override
   void initState() {
@@ -44,11 +47,23 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen> {
 
   @override
   void dispose() {
+    _flushCurrentProgress();
     _videoPlayerController?.removeListener(_onVideoPlayerTick);
     _videoPlayerController?.dispose();
     _chewieController?.dispose();
     WakelockPlus.disable();
     super.dispose();
+  }
+
+  void _flushCurrentProgress() {
+    final controller = _videoPlayerController;
+    if (controller == null || !controller.value.isInitialized) return;
+    final position = controller.value.position;
+    final duration = controller.value.duration;
+    if (duration.inSeconds > 0) {
+      final ratio = position.inMilliseconds / duration.inMilliseconds;
+      _savePartialProgress(ratio, position.inSeconds);
+    }
   }
 
   void _onVideoPlayerTick() {
@@ -59,7 +74,9 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen> {
     final duration = controller.value.duration;
 
     if (duration.inSeconds > 0) {
-      final progressRatio = position.inMilliseconds / duration.inMilliseconds;
+      final progressRatio = (position.inMilliseconds / duration.inMilliseconds).clamp(0.0, 1.0);
+
+      // 1. Auto-complete current lecture when 90% or more is watched
       if (progressRatio >= 0.90 &&
           !_hasAutoCompletedCurrentLecture &&
           _currentLecture != null &&
@@ -67,7 +84,53 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen> {
         _hasAutoCompletedCurrentLecture = true;
         _triggerAutoCompletion(_currentLecture!);
       }
+
+      // 2. Throttled partial watch progress saving (every 2 seconds)
+      final now = DateTime.now();
+      if (_lastProgressUpdateTime == null ||
+          now.difference(_lastProgressUpdateTime!).inSeconds >= 2) {
+        _lastProgressUpdateTime = now;
+        _savePartialProgress(progressRatio, position.inSeconds);
+      }
     }
+  }
+
+  Future<void> _savePartialProgress(double ratio, int positionSeconds) async {
+    if (_currentLecture == null) return;
+    final course = _currentCourse ?? ref.read(courseDetailProvider(widget.courseId)).value;
+    final allLectureIds =
+        course?.sections.expand((s) => s.lectures).map((l) => l.id).toList() ?? [];
+
+    final slug = _activeSlug ?? course?.slug ?? widget.courseId;
+    final courseId = course?.id ?? widget.courseId;
+
+    await CourseProgressService.instance.updateLectureWatchAndRecalculate(
+      courseSlugOrId: slug,
+      secondaryKey: courseId,
+      lectureId: _currentLecture!.id,
+      watchRatio: ratio,
+      positionSeconds: positionSeconds,
+      allLectureIds: allLectureIds.isNotEmpty ? allLectureIds : [_currentLecture!.id],
+    );
+
+    // Refresh enrollment & percentage providers so dashboard & player reflect progress immediately
+    if (mounted) {
+      ref.invalidate(studentEnrollmentsProvider);
+      ref.invalidate(coursePercentageProvider(slug));
+      if (courseId != slug) {
+        ref.invalidate(coursePercentageProvider(courseId));
+      }
+    }
+
+    // Sync with backend API in background
+    try {
+      final repo = ref.read(studentRepositoryProvider);
+      repo.updateLectureProgress(
+        _currentLecture!.id,
+        completed: ratio >= 0.90,
+        watchedTime: positionSeconds,
+      );
+    } catch (_) {}
   }
 
   void _triggerAutoCompletion(ApiLecture lecture) {
@@ -295,6 +358,16 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen> {
         );
       }
 
+      // Resume video from saved position if user previously watched it
+      if (_activeSlug != null) {
+        final savedSec = await CourseProgressService.instance
+            .getLectureWatchPositionSeconds(_activeSlug!, lecture.id);
+        final totalSec = _videoPlayerController!.value.duration.inSeconds;
+        if (savedSec > 5 && totalSec > 0 && savedSec < (totalSec * 0.95)) {
+          await _videoPlayerController!.seekTo(Duration(seconds: savedSec));
+        }
+      }
+
       _videoPlayerController!.addListener(_onVideoPlayerTick);
 
       _chewieController = ChewieController(
@@ -332,9 +405,11 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen> {
   }
 
   void _playLecture(ApiLecture lecture, ApiCourseSection section) {
+    _flushCurrentProgress();
     setState(() {
       _currentLecture = lecture;
       _currentSection = section;
+      _hasAutoCompletedCurrentLecture = false;
     });
     _initializePlayer(lecture);
   }
@@ -383,6 +458,7 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen> {
       ),
       body: courseAsync.when(
         data: (course) {
+          _currentCourse = course;
           _activeSlug = course.slug ?? widget.courseId;
           final progressAsync = ref.watch(courseProgressStateProvider(_activeSlug!));
           final completedIds = progressAsync.value ?? <String>{};
@@ -403,9 +479,12 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen> {
           final totalLecturesCount = allLectures.length;
           final completedCount =
               allLectures.where((l) => completedIds.contains(l.id)).length;
-          final completionPercent = totalLecturesCount > 0
+          final discretePercent = totalLecturesCount > 0
               ? ((completedCount / totalLecturesCount) * 100).round()
               : 0;
+          final granularPercentAsync = ref.watch(coursePercentageProvider(_activeSlug!));
+          final granularPercent = granularPercentAsync.value?.round() ?? 0;
+          final completionPercent = granularPercent > discretePercent ? granularPercent : discretePercent;
           final isKeyboardOpen = View.of(context).viewInsets.bottom > 0;
 
           return Column(

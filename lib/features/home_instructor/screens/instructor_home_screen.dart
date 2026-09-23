@@ -1202,8 +1202,11 @@ class _CoursePerformanceCard extends StatelessWidget {
   }
 }
 
-class _AgriLearnCourseCard extends StatelessWidget {
-  const _AgriLearnCourseCard({
+typedef _AgriLearnCourseCard = AgriLearnCourseCard;
+
+class AgriLearnCourseCard extends StatelessWidget {
+  const AgriLearnCourseCard({
+    super.key,
     required this.course,
     required this.onManage,
     this.onViewLive,
@@ -1224,7 +1227,12 @@ class _AgriLearnCourseCard extends StatelessWidget {
     Color badgeText;
     String badgeLabel;
 
-    if (status == 'APPROVED' || status == 'LIVE' || status == 'PUBLISHED') {
+    final isLive = status == 'APPROVED' ||
+        status == 'LIVE' ||
+        status == 'PUBLISHED' ||
+        status == 'ACTIVE';
+
+    if (isLive) {
       badgeBg = Colors.green.shade50;
       badgeText = Colors.green.shade700;
       badgeLabel = '• Live';
@@ -1241,8 +1249,6 @@ class _AgriLearnCourseCard extends StatelessWidget {
       badgeText = isDark ? Colors.grey.shade300 : Colors.grey.shade700;
       badgeLabel = '• Draft';
     }
-
-    final isLive = status == 'APPROVED' || status == 'LIVE' || status == 'PUBLISHED';
 
     return AppCard(
       padding: const EdgeInsets.all(14),
@@ -1355,7 +1361,7 @@ class _AgriLearnCourseCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
 
-          // Action Buttons: [Manage Course] [View Live] [Delete]
+          // Action Buttons: [Manage Course] (only if not live) [View Live] [Delete]
           Row(
             children: [
               Expanded(
@@ -1363,24 +1369,25 @@ class _AgriLearnCourseCard extends StatelessWidget {
                   spacing: 8,
                   runSpacing: 6,
                   children: [
-                    OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        side: const BorderSide(color: AppColors.primaryGreen),
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                      onPressed: onManage,
-                      icon: const Icon(Icons.settings_outlined, size: 14, color: AppColors.primaryGreen),
-                      label: const Text(
-                        'Manage Course',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primaryGreen,
+                    if (!isLive)
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          side: const BorderSide(color: AppColors.primaryGreen),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        onPressed: onManage,
+                        icon: const Icon(Icons.settings_outlined, size: 14, color: AppColors.primaryGreen),
+                        label: const Text(
+                          'Manage Course',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primaryGreen,
+                          ),
                         ),
                       ),
-                    ),
                     if (isLive && onViewLive != null)
                       OutlinedButton.icon(
                         style: OutlinedButton.styleFrom(

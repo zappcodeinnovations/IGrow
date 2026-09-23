@@ -1196,7 +1196,11 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
         _settingsInitialized = true;
       }
 
-      final isLocked = course.status == 'PROCESSING';
+      final isLive = course.status == 'APPROVED' ||
+          course.status == 'ACTIVE' ||
+          course.status == 'LIVE' ||
+          course.status == 'PUBLISHED';
+      final isLocked = course.status == 'PROCESSING' || isLive;
 
       return Scaffold(
         appBar: AppBar(
@@ -1219,7 +1223,7 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
             ],
           ),
           actions: [
-            if (course.status == 'APPROVED' || course.status == 'ACTIVE')
+            if (isLive)
               Padding(
                 padding: const EdgeInsets.only(right: 8),
                 child: OutlinedButton.icon(
@@ -1229,7 +1233,10 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                     padding: const EdgeInsets.symmetric(horizontal: 10),
                     minimumSize: const Size(0, 36),
                   ),
-                  onPressed: () => context.push('/course/${course.slug ?? course.id}'),
+                  onPressed: () {
+                    final targetSlug = (course.slug != null && course.slug!.isNotEmpty) ? course.slug! : course.id;
+                    context.push('/course/$targetSlug');
+                  },
                   icon: const Icon(Icons.visibility_outlined, size: 16),
                   label: const Text('View Live', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                 ),
@@ -1319,6 +1326,10 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
 
   Widget _buildCurriculumTab(ApiCourseDetail course, bool isLocked) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isLive = course.status == 'APPROVED' ||
+        course.status == 'ACTIVE' ||
+        course.status == 'LIVE' ||
+        course.status == 'PUBLISHED';
     return RefreshIndicator(
       color: AppColors.primaryGreen,
       onRefresh: () async {
@@ -1332,13 +1343,19 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
           _buildStatusBanner(course),
           const SizedBox(height: 16),
 
-          // Locked in AI Review Banner
+          // Locked Banner (AI Review or Verified Live)
           if (isLocked) ...[
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: isDark ? AppColors.warning.withValues(alpha: 0.12) : const Color(0xFFFFF8E1),
-                border: Border.all(color: AppColors.warning.withValues(alpha: 0.5)),
+                color: isLive
+                    ? (isDark ? AppColors.primaryGreen.withValues(alpha: 0.12) : const Color(0xFFE8F5E9))
+                    : (isDark ? AppColors.warning.withValues(alpha: 0.12) : const Color(0xFFFFF8E1)),
+                border: Border.all(
+                  color: isLive
+                      ? AppColors.primaryGreen.withValues(alpha: 0.5)
+                      : AppColors.warning.withValues(alpha: 0.5),
+                ),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
@@ -1347,12 +1364,14 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                   Container(
                     padding: const EdgeInsets.all(7),
                     decoration: BoxDecoration(
-                      color: AppColors.warning.withValues(alpha: 0.2),
+                      color: isLive
+                          ? AppColors.primaryGreen.withValues(alpha: 0.2)
+                          : AppColors.warning.withValues(alpha: 0.2),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(
-                      Icons.hourglass_top_rounded,
-                      color: AppColors.warning,
+                    child: Icon(
+                      isLive ? Icons.verified_rounded : Icons.hourglass_top_rounded,
+                      color: isLive ? AppColors.primaryGreen : AppColors.warning,
                       size: 18,
                     ),
                   ),
@@ -1362,16 +1381,22 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'AI Moderation in Progress (Locked)',
+                          isLive
+                              ? 'Course Verified & Live (Read-Only)'
+                              : 'AI Moderation in Progress (Locked)',
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.bold,
-                            color: isDark ? const Color(0xFFFFB74D) : const Color(0xFF8A5B00),
+                            color: isLive
+                                ? (isDark ? const Color(0xFF81C784) : const Color(0xFF1B5E20))
+                                : (isDark ? const Color(0xFFFFB74D) : const Color(0xFF8A5B00)),
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Editing is disabled while our content safety engine reviews your course. This page automatically checks status and will refresh when the review completes.',
+                          isLive
+                              ? 'This course has been verified by admin and published live on the marketplace. Editing is disabled to preserve student learning progress and course integrity.'
+                              : 'Editing is disabled while our content safety engine reviews your course. This page automatically checks status and will refresh when the review completes.',
                           style: TextStyle(
                             fontSize: 12,
                             height: 1.35,
