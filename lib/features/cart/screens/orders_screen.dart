@@ -108,30 +108,43 @@ class OrdersScreen extends ConsumerWidget {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Row(
-                            children: [
-                              Text(
-                                order.gatewayReference ?? 'REF-${order.id.substring(0, 8)}',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 13,
-                                  color: AppColors.primaryGreen,
+                          Expanded(
+                            child: Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    order.gatewayReference ?? 'REF-${order.id.substring(0, 8)}',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                      color: AppColors.primaryGreen,
+                                    ),
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(width: 4),
-                              InkWell(
-                                onTap: () {
-                                  if (order.gatewayReference != null) {
-                                    Clipboard.setData(ClipboardData(text: order.gatewayReference!));
+                                const SizedBox(width: 6),
+                                InkWell(
+                                  borderRadius: BorderRadius.circular(4),
+                                  onTap: () {
+                                    final refId = order.gatewayReference ?? 'REF-${order.id.substring(0, 8)}';
+                                    Clipboard.setData(ClipboardData(text: refId));
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('Reference ID copied!')),
+                                      const SnackBar(
+                                        content: Text('Reference ID copied!'),
+                                        duration: Duration(seconds: 2),
+                                      ),
                                     );
-                                  }
-                                },
-                                child: const Icon(Icons.copy, size: 14, color: AppColors.inkSoft),
-                              ),
-                            ],
+                                  },
+                                  child: const Padding(
+                                    padding: EdgeInsets.all(2),
+                                    child: Icon(Icons.copy, size: 14, color: AppColors.inkSoft),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
+                          const SizedBox(width: 8),
                           Container(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 10, vertical: 4),
@@ -181,6 +194,7 @@ class OrdersScreen extends ConsumerWidget {
                                   ],
                                 ),
                               ),
+                              const SizedBox(width: 8),
                               Text('₹${item.priceAtPurchase}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                             ],
                           ),
@@ -191,30 +205,43 @@ class OrdersScreen extends ConsumerWidget {
 
                       // Bottom Row: Total & Invoice Button
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('Total Paid', style: TextStyle(fontSize: 11, color: AppColors.inkSoft)),
-                              Text(
-                                '₹${order.totalAmount}',
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w900,
-                                  color: AppColors.primaryGreen,
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text('Total Paid', style: TextStyle(fontSize: 11, color: AppColors.inkSoft)),
+                                const SizedBox(height: 2),
+                                FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    '₹${order.totalAmount}',
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w900,
+                                      color: AppColors.primaryGreen,
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                          Row(
+                          const SizedBox(width: 8),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 4,
+                            alignment: WrapAlignment.end,
                             children: [
                               OutlinedButton.icon(
                                 style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                                   side: const BorderSide(color: AppColors.primaryGreen),
                                   foregroundColor: AppColors.primaryGreen,
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                  visualDensity: VisualDensity.compact,
                                 ),
                                 icon: const Icon(Icons.receipt_long, size: 14),
                                 label: const Text('Invoice', style: TextStyle(fontSize: 12)),
@@ -227,14 +254,14 @@ class OrdersScreen extends ConsumerWidget {
                                   isDark: isDark,
                                 ),
                               ),
-                              if (order.items.isNotEmpty && order.items.first.course != null) ...[
-                                const SizedBox(width: 8),
+                              if (order.items.isNotEmpty && order.items.first.course != null)
                                 ElevatedButton.icon(
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: AppColors.primaryGreen,
                                     foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                    visualDensity: VisualDensity.compact,
                                   ),
                                   icon: const Icon(Icons.play_arrow, size: 14),
                                   label: const Text('Learn', style: TextStyle(fontSize: 12)),
@@ -242,7 +269,6 @@ class OrdersScreen extends ConsumerWidget {
                                     context.push('/player/${order.items.first.course}');
                                   },
                                 ),
-                              ],
                             ],
                           ),
                         ],
@@ -341,23 +367,48 @@ class OrdersScreen extends ConsumerWidget {
               // Billed To & Invoice No
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Billed To:', style: TextStyle(fontSize: 11, color: AppColors.inkSoft)),
-                      Text(studentName, style: const TextStyle(fontWeight: FontWeight.bold)),
-                      Text(studentEmail, style: const TextStyle(fontSize: 11)),
-                    ],
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Billed To:', style: TextStyle(fontSize: 11, color: AppColors.inkSoft)),
+                        Text(
+                          studentName,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          studentEmail,
+                          style: const TextStyle(fontSize: 11),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
                   ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      const Text('Invoice No:', style: TextStyle(fontSize: 11, color: AppColors.inkSoft)),
-                      Text('INV-${order.id.substring(0, 8).toUpperCase()}',
-                          style: const TextStyle(fontWeight: FontWeight.bold)),
-                      Text(dateStr, style: const TextStyle(fontSize: 10)),
-                    ],
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        const Text('Invoice No:', style: TextStyle(fontSize: 11, color: AppColors.inkSoft)),
+                        Text(
+                          'INV-${order.id.substring(0, 8).toUpperCase()}',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          dateStr,
+                          style: const TextStyle(fontSize: 10),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),

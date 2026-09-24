@@ -92,68 +92,6 @@ class ProfileScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 20),
 
-              // Wallet Card (Farmer Only)
-              if (isFarmer) ...[
-                AppCard(
-                  onTap: () => context.push('/orders'),
-                  padding: EdgeInsets.zero,
-                  child: Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [AppColors.primaryGreen, AppColors.greenDark],
-                      ),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Wallet Balance',
-                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    color: AppColors.white.withValues(alpha: 0.8),
-                                  ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: AppColors.white.withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    'Orders & History',
-                                    style: Theme.of(context).textTheme.labelSmall?.copyWith(color: AppColors.white),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  const Icon(Icons.arrow_forward_ios_rounded, size: 10, color: AppColors.white),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          '₹2,450',
-                          style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                                color: AppColors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-              ],
-
               // Revenue Card (Instructor Only)
               if (!isFarmer) ...[
                 ref.watch(instructorStatsProvider).when(
