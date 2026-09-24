@@ -74,7 +74,7 @@ class NotificationService {
       // Fetch token in background with retry so it doesn't block app startup
       getFcmToken();
 
-      // Listen for token refresh
+      // Listen for token refresh — always await to ensure backend gets the latest token
       _messaging.onTokenRefresh.listen((newToken) async {
         if (kDebugMode) {
           print('\n==================== [FCM TOKEN REFRESHED] ====================');
@@ -84,7 +84,8 @@ class NotificationService {
         try {
           final accessToken = await TokenStorage().getAccessToken();
           if (accessToken != null && accessToken.isNotEmpty) {
-            unawaited(registerFCMToken(accessToken, customToken: newToken));
+            // Use customToken directly — do NOT call getFreshFcmToken() here to avoid loop
+            await registerFCMToken(accessToken, customToken: newToken);
           }
         } catch (e) {
           if (kDebugMode) {

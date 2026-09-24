@@ -163,11 +163,13 @@ class ApiAuthRepository implements AuthRepository {
       refresh: data['refresh'],
     );
 
-    // Safely register fresh FCM token in background without blocking login UI or API response
+    // Safely register existing FCM token in background without blocking login
+    // NOTE: Do NOT use forceRefresh:true here — it deletes the token, triggers
+    // onTokenRefresh, and causes a race condition with backend registration.
     unawaited(
       NotificationService.instance.registerFCMToken(
         data['access'] as String,
-        forceRefresh: true,
+        forceRefresh: false,
       ),
     );
 
@@ -384,9 +386,11 @@ class ApiAuthRepository implements AuthRepository {
     try {
       final token = await tokenStorage.getAccessToken();
       if (token != null && token.isNotEmpty) {
+        // forceRefresh:false — use existing token; avoid deleteToken() which triggers
+        // onTokenRefresh and causes race conditions with backend registration.
         await NotificationService.instance.registerFCMToken(
           token,
-          forceRefresh: true,
+          forceRefresh: false,
         );
       }
     } catch (e) {
