@@ -1,8 +1,13 @@
+import 'dart:async';
+import 'dart:convert';
 import 'dart:developer' as developer;
+import 'dart:io';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:http/http.dart' as http;
+import '../network/token_storage.dart';
 
 /// Top-level background message handler for FCM.
 /// Must be a top-level function annotated with @pragma('vm:entry-point').
@@ -70,11 +75,21 @@ class NotificationService {
       getFcmToken();
 
       // Listen for token refresh
-      _messaging.onTokenRefresh.listen((newToken) {
+      _messaging.onTokenRefresh.listen((newToken) async {
         if (kDebugMode) {
           print('\n==================== [FCM TOKEN REFRESHED] ====================');
           print(newToken);
           print('===============================================================\n');
+        }
+        try {
+          final accessToken = await TokenStorage().getAccessToken();
+          if (accessToken != null && accessToken.isNotEmpty) {
+            unawaited(registerFCMToken(accessToken, customToken: newToken));
+          }
+        } catch (e) {
+          if (kDebugMode) {
+            print('⚠️ [NotificationService] Failed to sync refreshed token: $e');
+          }
         }
       });
 
@@ -262,6 +277,77 @@ class NotificationService {
     } catch (e) {
       if (kDebugMode) {
         print('⚠️ Failed to delete FCM token on logout: $e');
+      }
+    }
+  }
+
+  /// Force fresh token generation by deleting any existing instance token
+  Future<String?> getFreshFcmToken() async {
+    try {
+      await _messaging.deleteToken();
+      final freshToken = await _messaging.getToken();
+      if (kDebugMode) {
+        print('\n==================== [FRESH_TOKEN] ====================');
+        print('FRESH_TOKEN: $freshToken');
+        print('=======================================================\n');
+      }
+      return freshToken;
+    } catch (e) {
+      if (kDebugMode) {
+        print('⚠️ [NotificationService] Failed to delete and generate fresh token: $e');
+      }
+      return await getFcmToken();
+    }
+  }
+
+  /// Register device FCM token with backend API.
+  /// Executes with a safe timeout and internal error handling so it is completely
+  /// non-blocking and will never degrade app performance or crash other features.
+  Future<void> registerFCMToken(
+    String accessToken, {
+    String? customToken,
+    bool forceRefresh = false,
+  }) async {
+    try {
+      final token = customToken ??
+          (forceRefresh
+              ? await getFreshFcmToken()
+              : await getFcmToken(maxRetries: 2));
+      if (token == null || token.isEmpty) {
+        if (kDebugMode) {
+          print('⚠️ [NotificationService] No FCM token available; skipping backend registration.');
+        }
+        return;
+      }
+
+      final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/auth/fcm-token/');
+      final response = await http
+          .post(
+            uri,
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+              'Authorization': 'Bearer $accessToken',
+            },
+            body: jsonEncode({
+              'fcm_token': token,
+              'device_type': Platform.isIOS ? 'ios' : 'android',
+            }),
+          )
+          .timeout(const Duration(seconds: 8));
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        if (kDebugMode) {
+          print('✅ [NotificationService] FCM token registered with backend successfully!');
+        }
+      } else {
+        if (kDebugMode) {
+          print('⚠️ [NotificationService] Backend returned ${response.statusCode}: ${response.body}');
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('⚠️ [NotificationService] Failed to register FCM token with backend: $e');
       }
     }
   }

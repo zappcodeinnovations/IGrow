@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/models/api_models/course_models.dart';
 import '../../../data/models/api_models/order_models.dart';
 import '../../explore/providers/explore_provider.dart';
+import '../../home_farmer/providers/student_provider.dart';
 import '../providers/cart_provider.dart';
-import 'checkout_success_screen.dart';
 
 class CheckoutScreen extends ConsumerStatefulWidget {
   const CheckoutScreen({super.key, this.directCourseId});
@@ -107,17 +108,18 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
             couponCode: coupon?.code,
           );
 
+      ref.invalidate(studentEnrollmentsProvider);
+
       if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (_) => CheckoutSuccessScreen(
-              orderResult: result,
-              originalTotal: originalTotal,
-              finalTotal: finalTotal,
-              paymentMethod: _selectedPaymentMethod,
-              purchasedItems: items,
-            ),
-          ),
+        context.pushReplacement(
+          RouteNames.paymentSuccess,
+          extra: {
+            'orderResult': result,
+            'originalTotal': originalTotal,
+            'finalTotal': finalTotal,
+            'paymentMethod': _selectedPaymentMethod,
+            'purchasedItems': items,
+          },
         );
       }
     } catch (e) {

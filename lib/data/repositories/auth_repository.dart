@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
@@ -13,6 +14,7 @@ import '../models/user_role.dart';
 abstract class AuthRepository {
   Future<UserModel?> getCurrentUser({bool forceRefresh = false});
   Future<UserModel> login({required String email, required String password});
+  Future<void> syncFcmToken();
   Future<void> register({
     required String fullName,
     required String email,
@@ -159,6 +161,14 @@ class ApiAuthRepository implements AuthRepository {
     await tokenStorage.saveTokens(
       access: data['access'],
       refresh: data['refresh'],
+    );
+
+    // Safely register fresh FCM token in background without blocking login UI or API response
+    unawaited(
+      NotificationService.instance.registerFCMToken(
+        data['access'] as String,
+        forceRefresh: true,
+      ),
     );
 
     final meResponse = await appApi.apiV1AuthMeGet();
@@ -368,6 +378,23 @@ class ApiAuthRepository implements AuthRepository {
 
   @override
   Future<bool> hasSession() => tokenStorage.hasToken();
+
+  @override
+  Future<void> syncFcmToken() async {
+    try {
+      final token = await tokenStorage.getAccessToken();
+      if (token != null && token.isNotEmpty) {
+        await NotificationService.instance.registerFCMToken(
+          token,
+          forceRefresh: true,
+        );
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('⚠️ [AUTH REPO] Failed to sync FCM token: $e');
+      }
+    }
+  }
 
   @override
   Future<UserModel> updateProfile(PatchedUserProfileRequest request) async {

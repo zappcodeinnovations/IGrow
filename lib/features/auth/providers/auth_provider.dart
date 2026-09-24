@@ -138,6 +138,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
       if (user != null) {
         state = AuthState(status: AuthStatus.authenticated, user: user);
         _startPeriodicSync();
+        // Safely sync FCM token with backend in background without delaying session check
+        unawaited(_repo.syncFcmToken());
       } else {
         state = const AuthState(status: AuthStatus.unauthenticated);
       }

@@ -38,6 +38,7 @@ import '../../features/upload_course/screens/upload_ebook_screen.dart';
 import '../../features/home_instructor/screens/instructor_chatbot_screen.dart';
 import '../../features/cart/screens/cart_screen.dart';
 import '../../features/cart/screens/checkout_screen.dart';
+import '../../features/cart/screens/checkout_success_screen.dart';
 import '../../features/cart/screens/orders_screen.dart';
 import '../../features/notifications/screens/notifications_screen.dart';
 import '../../features/wishlist/screens/wishlist_screen.dart';
@@ -199,7 +200,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/player/:id',
         builder: (context, state) {
           final id = state.pathParameters['id']!;
-          return CoursePlayerScreen(courseId: id);
+          final fromCheckout = state.uri.queryParameters['fromCheckout'] == 'true';
+          return CoursePlayerScreen(courseId: id, fromCheckout: fromCheckout);
         },
       ),
       GoRoute(
@@ -225,6 +227,19 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final courseId = state.uri.queryParameters['courseId'];
           return CheckoutScreen(directCourseId: courseId);
+        },
+      ),
+      GoRoute(
+        path: RouteNames.paymentSuccess,
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>? ?? {};
+          return CheckoutSuccessScreen(
+            orderResult: (extra['orderResult'] as Map<String, dynamic>?) ?? {},
+            originalTotal: (extra['originalTotal'] as num?)?.toDouble() ?? 0.0,
+            finalTotal: (extra['finalTotal'] as num?)?.toDouble() ?? 0.0,
+            paymentMethod: extra['paymentMethod'] as String? ?? 'DUMMY_CARD',
+            purchasedItems: extra['purchasedItems'] as List<dynamic>? ?? [],
+          );
         },
       ),
       GoRoute(

@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:video_player/video_player.dart';
 
+import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/shimmer_placeholders.dart';
 import '../../../data/models/api_models/course_models.dart';
@@ -516,13 +517,29 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final courseAsync = ref.watch(courseDetailProvider(widget.courseId));
 
-    return Scaffold(
-      backgroundColor: isDark ? AppColors.bgDark : const Color(0xFFF9FBF8),
-      appBar: AppBar(
-        backgroundColor: isDark ? AppColors.bgDark : const Color(0xFF0F3D1F),
-        foregroundColor: Colors.white,
-        elevation: 0,
-        title: courseAsync.maybeWhen(
+    return PopScope(
+      canPop: context.canPop(),
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        context.go(RouteNames.farmerHome);
+      },
+      child: Scaffold(
+        backgroundColor: isDark ? AppColors.bgDark : const Color(0xFFF9FBF8),
+        appBar: AppBar(
+          backgroundColor: isDark ? AppColors.bgDark : const Color(0xFF0F3D1F),
+          foregroundColor: Colors.white,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go(RouteNames.farmerHome);
+              }
+            },
+          ),
+          title: courseAsync.maybeWhen(
           data: (course) => Text(
             course.title,
             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: Colors.white),
@@ -844,7 +861,8 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
         },
         orElse: () => const SizedBox.shrink(),
       ),
-    );
+    ),
+  );
   }
 
   // ── Hero Header ─────────────────────────────────────────────────────────────

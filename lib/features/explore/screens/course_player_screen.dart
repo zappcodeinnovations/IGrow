@@ -15,6 +15,7 @@ import '../../../data/models/api_models/course_models.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../home_farmer/providers/student_provider.dart';
 import '../providers/explore_provider.dart';
+import '../../../core/router/route_names.dart';
 
 /// Resolves the effective stream URL for the selected quality (Auto, 240p, 360p, 480p, 720p).
 String resolveQualityStreamUrl(String baseStreamUrl, String quality) {
@@ -51,9 +52,14 @@ String formatVideoDuration(Duration duration) {
 }
 
 class CoursePlayerScreen extends ConsumerStatefulWidget {
-  const CoursePlayerScreen({super.key, required this.courseId});
+  const CoursePlayerScreen({
+    super.key,
+    required this.courseId,
+    this.fromCheckout = false,
+  });
 
   final String courseId;
+  final bool fromCheckout;
 
   @override
   ConsumerState<CoursePlayerScreen> createState() => _CoursePlayerScreenState();
@@ -796,24 +802,41 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen> {
     return currentIndex != -1 && currentIndex < allLectures.length - 1;
   }
 
+  void _handleBackNavigation() {
+    _videoPlayerController?.pause();
+    if (widget.fromCheckout) {
+      context.go(RouteNames.farmerHome);
+    } else if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go(RouteNames.farmerHome);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final courseAsync = ref.watch(courseDetailProvider(widget.courseId));
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          _currentLecture?.title ?? 'Course Player',
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        _handleBackNavigation();
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(
+            _currentLecture?.title ?? 'Course Player',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: _handleBackNavigation,
+          ),
         ),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.pop(),
-        ),
-      ),
       body: courseAsync.when(
         data: (course) {
           _currentCourse = course;
@@ -1258,7 +1281,8 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen> {
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 }
 

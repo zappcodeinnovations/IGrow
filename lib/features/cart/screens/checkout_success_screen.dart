@@ -44,11 +44,22 @@ class CheckoutSuccessScreen extends ConsumerWidget {
     final orderId = orderData['id']?.toString() ?? 'ORD-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
     final nowFormatted = DateFormat('MMMM dd, yyyy • hh:mm a').format(DateTime.now());
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Order Confirmed'),
-        automaticallyImplyLeading: false,
-      ),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        context.go(RouteNames.farmerHome);
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Order Confirmed'),
+          automaticallyImplyLeading: false,
+          leading: IconButton(
+            icon: const Icon(Icons.close_rounded),
+            tooltip: 'Close to Dashboard',
+            onPressed: () => context.go(RouteNames.farmerHome),
+          ),
+        ),
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
@@ -306,7 +317,7 @@ class CheckoutSuccessScreen extends ConsumerWidget {
                       ),
                       onPressed: () {
                         if (courseId.isNotEmpty) {
-                          context.push('/player/$courseId');
+                          context.push('/player/$courseId?fromCheckout=true');
                         } else {
                           context.go(RouteNames.farmerHome);
                         }
@@ -367,7 +378,8 @@ class CheckoutSuccessScreen extends ConsumerWidget {
           const SizedBox(height: 20),
         ],
       ),
-    );
+    ),
+  );
   }
 
   Widget _buildDetailRow(String label, String value, bool isDark,
