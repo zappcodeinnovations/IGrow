@@ -11,13 +11,73 @@ import '../network/token_storage.dart';
 
 /// Top-level background message handler for FCM.
 /// Must be a top-level function annotated with @pragma('vm:entry-point').
+/// This runs in a separate Dart isolate — no access to UI or app state.
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  // Re-initialize Firebase in this background isolate
   await Firebase.initializeApp();
-  developer.log('FCM Background message received: ${message.messageId}', name: 'NotificationService');
+
+  developer.log(
+    'FCM Background message received: ${message.messageId}',
+    name: 'NotificationService',
+  );
+
   if (kDebugMode) {
     print('🔔 FCM Background Message: ${message.notification?.title} - ${message.notification?.body}');
     print('📦 FCM Background Data: ${message.data}');
+  }
+
+  // ─── IMPORTANT: Show local notification for data-only messages ───────────
+  // When a FCM "data-only" message arrives (no notification payload),
+  // Android will NOT auto-display anything — we must show it manually.
+  // For "notification" messages, FCM handles display automatically via the
+  // default_notification_channel_id set in AndroidManifest.xml.
+  // We show here as a safety net so screen-off / background always shows.
+  final rawTitle = message.notification?.title ?? message.data['title'];
+  final rawBody  = message.notification?.body  ?? message.data['body'];
+
+  final title = (rawTitle != null && rawTitle.toString().trim().isNotEmpty)
+      ? rawTitle.toString().trim()
+      : (message.data.isNotEmpty ? 'iGrow Notification' : null);
+  final body  = (rawBody != null && rawBody.toString().trim().isNotEmpty)
+      ? rawBody.toString().trim()
+      : '';
+
+  if (title != null) {
+    try {
+      // Initialize local notifications plugin in this background isolate
+      final plugin = FlutterLocalNotificationsPlugin();
+      const androidInit = AndroidInitializationSettings('@mipmap/launcher_icon');
+
+      // flutter_local_notifications v22+ requires named parameters
+      await plugin.initialize(
+        settings: const InitializationSettings(android: androidInit),
+      );
+
+      // Safe positive 32-bit integer ID to prevent overflow and collision
+      final notificationId = DateTime.now().millisecondsSinceEpoch.remainder(100000);
+
+      await plugin.show(
+        id: notificationId,
+        title: title,
+        body: body,
+        notificationDetails: const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'high_importance_channel',
+            'High Importance Notifications',
+            channelDescription: 'This channel is used for important real-time notifications.',
+            importance: Importance.max,
+            priority: Priority.high,
+            playSound: true,
+            enableVibration: true,
+            visibility: NotificationVisibility.public,
+          ),
+        ),
+        payload: message.data.toString(),
+      );
+    } catch (e) {
+      developer.log('Failed to show background notification: $e', name: 'NotificationService');
+    }
   }
 }
 
@@ -192,35 +252,56 @@ class NotificationService {
   /// Display a heads-up notification when app is in the foreground
   Future<void> _showForegroundNotification(RemoteMessage message) async {
     final notification = message.notification;
-    final android = message.notification?.android;
 
-    // Use notification title/body or fallback to data payload if title is null
-    final title = notification?.title ?? message.data['title'] ?? 'New Notification';
-    final body = notification?.body ?? message.data['body'] ?? '';
+    // Use notification title/body or fallback to data payload with safe non-empty defaults
+    final rawTitle = notification?.title ?? message.data['title'];
+    final rawBody  = notification?.body  ?? message.data['body'];
 
-    await _localNotifications.show(
-      id: notification.hashCode,
-      title: title,
-      body: body,
-      notificationDetails: NotificationDetails(
-        android: AndroidNotificationDetails(
-          _androidChannel.id,
-          _androidChannel.name,
-          channelDescription: _androidChannel.description,
-          icon: android?.smallIcon ?? '@mipmap/launcher_icon',
-          importance: Importance.max,
-          priority: Priority.high,
-          playSound: true,
-          enableVibration: true,
+    final title = (rawTitle != null && rawTitle.toString().trim().isNotEmpty)
+        ? rawTitle.toString().trim()
+        : 'iGrow Notification';
+    final body = (rawBody != null && rawBody.toString().trim().isNotEmpty)
+        ? rawBody.toString().trim()
+        : '';
+
+    try {
+      // Safe positive 32-bit integer ID to prevent overflow and duplicate collision
+      final notificationId = DateTime.now().millisecondsSinceEpoch.remainder(100000);
+
+      await _localNotifications.show(
+        id: notificationId,
+        title: title,
+        body: body,
+        notificationDetails: NotificationDetails(
+          android: AndroidNotificationDetails(
+            _androidChannel.id,
+            _androidChannel.name,
+            channelDescription: _androidChannel.description,
+            icon: '@mipmap/launcher_icon',
+            importance: Importance.max,
+            priority: Priority.high,
+            playSound: true,
+            enableVibration: true,
+            visibility: NotificationVisibility.public,
+            // Ensure heads-up banner shows even when screen is on
+            fullScreenIntent: false,
+          ),
+          iOS: const DarwinNotificationDetails(
+            presentAlert: true,
+            presentBadge: true,
+            presentSound: true,
+          ),
         ),
-        iOS: const DarwinNotificationDetails(
-          presentAlert: true,
-          presentBadge: true,
-          presentSound: true,
-        ),
-      ),
-      payload: message.data.toString(),
-    );
+        payload: message.data.toString(),
+      );
+      if (kDebugMode) {
+        print('✅ [_showForegroundNotification] Successfully displayed notification #$notificationId: $title');
+      }
+    } catch (e, st) {
+      if (kDebugMode) {
+        print('❌ [_showForegroundNotification] Failed to show notification: $e\n$st');
+      }
+    }
   }
 
   /// Get FCM Registration Token with retry support

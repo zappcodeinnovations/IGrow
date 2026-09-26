@@ -41,6 +41,26 @@ class QuizService {
     return quiz != null && quiz.isNotEmpty;
   }
 
+  static const String _passedPrefix = 'section_quiz_passed_';
+
+  /// Mark whether a section's quiz has been passed by the student.
+  static Future<void> setSectionQuizPassed(String sectionId, bool passed) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('$_passedPrefix$sectionId', passed);
+    } catch (_) {}
+  }
+
+  /// Check whether a section's quiz has been passed.
+  static Future<bool> isSectionQuizPassed(String sectionId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getBool('$_passedPrefix$sectionId') ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Record a completed quiz in the student's quiz history.
   static Future<void> recordQuizCompletion({
     required String topic,

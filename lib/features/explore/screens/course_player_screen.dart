@@ -65,7 +65,8 @@ class CoursePlayerScreen extends ConsumerStatefulWidget {
   ConsumerState<CoursePlayerScreen> createState() => _CoursePlayerScreenState();
 }
 
-class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen> {
+class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
+    with WidgetsBindingObserver {
   VideoPlayerController? _videoPlayerController;
   ChewieController? _chewieController;
 
@@ -87,14 +88,32 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen> {
   // Dynamic live video durations detected from actual media streams
   final Map<String, String> _lectureRealDurations = {};
 
+  // Keyboard visibility — tracked via WidgetsBindingObserver for
+  // immediate, reliable updates without any frame delay.
+  bool _isKeyboardVisible = false;
+
   @override
   void initState() {
     super.initState();
     WakelockPlus.enable();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeMetrics() {
+    // Called by Flutter whenever the window metrics change (e.g. keyboard
+    // slides in/out).  We read the bottom view-inset from the first view.
+    final bottomInset = WidgetsBinding
+        .instance.platformDispatcher.views.first.viewInsets.bottom;
+    final keyboardVisible = bottomInset > 0;
+    if (keyboardVisible != _isKeyboardVisible && mounted) {
+      setState(() => _isKeyboardVisible = keyboardVisible);
+    }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _flushCurrentProgress();
     _videoPlayerController?.removeListener(_onVideoPlayerTick);
     _videoPlayerController?.dispose();
@@ -803,13 +822,25 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen> {
   }
 
   void _handleBackNavigation() {
+    // If keyboard is visible, dismiss it first — do NOT navigate away.
+    // Use the state variable (updated by WidgetsBindingObserver) which is
+    // always in sync; avoids the race-condition of re-reading viewInsets.
+    if (_isKeyboardVisible) {
+      FocusScope.of(context).unfocus();
+      return;
+    }
     _videoPlayerController?.pause();
     if (widget.fromCheckout) {
+      // After purchase flow, always land on home
       context.go(RouteNames.farmerHome);
     } else if (context.canPop()) {
+      // Normal push-navigation: just pop back
       context.pop();
     } else {
-      context.go(RouteNames.farmerHome);
+      // Player was opened as a top-level route (e.g. from home "Start Learning")
+      // — go back to the Course Details screen, NOT the dashboard
+      final courseSlug = _activeSlug ?? widget.courseId;
+      context.go('/farmer/course/$courseSlug');
     }
   }
 
@@ -825,6 +856,10 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen> {
         _handleBackNavigation();
       },
       child: Scaffold(
+        // IMPORTANT: Keep false so the Scaffold does NOT shrink when the
+        // keyboard opens. The video area collapses via AnimatedContainer
+        // instead, preventing the double-resize overflow.
+        resizeToAvoidBottomInset: false,
         appBar: AppBar(
           title: Text(
             _currentLecture?.title ?? 'Course Player',
@@ -866,20 +901,19 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen> {
           final granularPercentAsync = ref.watch(coursePercentageProvider(_activeSlug!));
           final granularPercent = granularPercentAsync.value?.round() ?? 0;
           final completionPercent = granularPercent > discretePercent ? granularPercent : discretePercent;
-          final isKeyboardOpen = View.of(context).viewInsets.bottom > 0;
-
           return Column(
             children: [
               // ── 1. Video Player / Reading Banner Area ─────────────
-              Visibility(
-                visible: !isKeyboardOpen,
-                maintainState: true,
-                maintainAnimation: true,
-                maintainSize: false,
-                child: Container(
-                  width: double.infinity,
-                  height: 230,
-                  color: Colors.black,
+              // AnimatedContainer collapses to 0 height when the keyboard
+              // is open, avoiding overflow and restoring instantly when
+              // the keyboard is dismissed (no frame delay).
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                curve: Curves.easeInOut,
+                width: double.infinity,
+                height: _isKeyboardVisible ? 0 : 230,
+                color: Colors.black,
+                clipBehavior: Clip.hardEdge,
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
@@ -974,10 +1008,9 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen> {
                   ],
                 ),
               ),
-            ),
 
               // ── 2. Lecture Quick Action Bar (Completion & Next) ───
-              if (_currentLecture != null && !isKeyboardOpen)
+              if (_currentLecture != null && !_isKeyboardVisible)
                 Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -1233,6 +1266,7 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen> {
                             // ── TAB 3: TIMESTAMPED NOTES ─────────────
                             _CourseNotesTab(
                               courseSlug: _activeSlug!,
+                              videoPlayerController: _videoPlayerController,
                               currentPositionSeconds: _videoPlayerController
                                       ?.value.position.inSeconds ??
                                   0,
@@ -1593,20 +1627,41 @@ class _CurriculumTab extends ConsumerWidget {
                   );
                 }),
                 // Section Quiz link
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.accentOrange,
-                      side: const BorderSide(color: AppColors.accentOrange),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                Consumer(
+                  builder: (context, ref, _) {
+                    final isPassedAsync = ref.watch(sectionQuizPassedProvider(section.id));
+                    final isPassed = isPassedAsync.value ?? false;
+
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: isPassed ? AppColors.primaryGreen : AppColors.accentOrange,
+                          side: BorderSide(
+                            color: isPassed ? AppColors.primaryGreen : AppColors.accentOrange,
+                          ),
+                          backgroundColor: isPassed
+                              ? AppColors.primaryGreen.withValues(alpha: 0.08)
+                              : Colors.transparent,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        icon: Icon(
+                          isPassed ? Icons.check_circle_rounded : Icons.quiz_rounded,
+                          size: 16,
+                          color: isPassed ? AppColors.primaryGreen : AppColors.accentOrange,
+                        ),
+                        label: Text(
+                          isPassed ? 'Quiz Passed ✅ • Review / Retake' : 'Take Section Quiz',
+                          style: TextStyle(
+                            fontWeight: isPassed ? FontWeight.bold : FontWeight.w600,
+                          ),
+                        ),
+                        onPressed: () => context.push('/quiz/${section.id}'),
                       ),
-                    ),
-                    icon: const Icon(Icons.quiz_rounded, size: 16),
-                    label: const Text('Take Section Quiz'),
-                    onPressed: () => context.push('/quiz/${section.id}'),
-                  ),
+                    );
+                  },
                 ),
               ],
             ),
@@ -1995,69 +2050,76 @@ class _CourseQaTabState extends ConsumerState<_CourseQaTab> {
           ),
         ),
       ),
-        SafeArea(
-          top: false,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: BoxDecoration(
-              color: isDark ? AppColors.cardDark : Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, -3),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    decoration: InputDecoration(
-                      hintText: 'Ask a question...',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(
-                          color: isDark ? Colors.white12 : AppColors.lineLight,
-                        ),
+        // ── Input strip — sits above keyboard + safe area bottom ──
+        // viewInsets.bottom is needed because resizeToAvoidBottomInset
+        // is false on the parent Scaffold.
+        Container(
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 10,
+            bottom: 10 +
+                MediaQuery.of(context).padding.bottom +
+                MediaQuery.of(context).viewInsets.bottom,
+          ),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.cardDark : Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, -3),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _controller,
+                  decoration: InputDecoration(
+                    hintText: 'Ask a question...',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: isDark ? Colors.white12 : AppColors.lineLight,
                       ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(
-                          color: isDark ? Colors.white12 : AppColors.lineLight,
-                        ),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(
-                          color: AppColors.primaryGreen,
-                          width: 1.5,
-                        ),
-                      ),
-                      contentPadding:
-                          const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                     ),
-                    onSubmitted: (_) => _submit(),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                _isSubmitting
-                    ? const SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: AppColors.primaryGreen,
-                        ),
-                      )
-                    : IconButton(
-                        icon: const Icon(Icons.send_rounded,
-                            color: AppColors.primaryGreen),
-                        onPressed: _submit,
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: isDark ? Colors.white12 : AppColors.lineLight,
                       ),
-              ],
-            ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(
+                        color: AppColors.primaryGreen,
+                        width: 1.5,
+                      ),
+                    ),
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  ),
+                  onSubmitted: (_) => _submit(),
+                ),
+              ),
+              const SizedBox(width: 10),
+              _isSubmitting
+                  ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppColors.primaryGreen,
+                      ),
+                    )
+                  : IconButton(
+                      icon: const Icon(Icons.send_rounded,
+                          color: AppColors.primaryGreen),
+                      onPressed: _submit,
+                    ),
+            ],
           ),
         ),
       ],
@@ -2073,11 +2135,13 @@ class _CourseNotesTab extends ConsumerStatefulWidget {
   const _CourseNotesTab({
     required this.courseSlug,
     required this.currentPositionSeconds,
+    this.videoPlayerController,
     required this.onSeek,
   });
 
   final String courseSlug;
   final int currentPositionSeconds;
+  final VideoPlayerController? videoPlayerController;
   final Function(int) onSeek;
 
   @override
@@ -2089,6 +2153,41 @@ class _CourseNotesTabState extends ConsumerState<_CourseNotesTab> {
   bool _isSubmitting = false;
   String _activeFilter = 'all'; // 'all', 'notes', 'bookmarks'
 
+  @override
+  void initState() {
+    super.initState();
+    widget.videoPlayerController?.addListener(_onPlayerTick);
+  }
+
+  @override
+  void didUpdateWidget(covariant _CourseNotesTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.videoPlayerController != widget.videoPlayerController) {
+      oldWidget.videoPlayerController?.removeListener(_onPlayerTick);
+      widget.videoPlayerController?.addListener(_onPlayerTick);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.videoPlayerController?.removeListener(_onPlayerTick);
+    _controller.dispose();
+    super.dispose();
+  }
+
+  int _lastTickSec = -1;
+  void _onPlayerTick() {
+    final sec = widget.videoPlayerController?.value.position.inSeconds ?? 0;
+    if (sec != _lastTickSec && mounted) {
+      _lastTickSec = sec;
+      setState(() {});
+    }
+  }
+
+  int _getCurrentSeconds() {
+    return widget.videoPlayerController?.value.position.inSeconds ?? widget.currentPositionSeconds;
+  }
+
   String _formatTime(int seconds) {
     final m = seconds ~/ 60;
     final s = seconds % 60;
@@ -2096,14 +2195,15 @@ class _CourseNotesTabState extends ConsumerState<_CourseNotesTab> {
   }
 
   Future<void> _quickBookmark() async {
-    final formatted = _formatTime(widget.currentPositionSeconds);
+    final sec = _getCurrentSeconds();
+    final formatted = _formatTime(sec);
     final text = '🔖 Bookmark at $formatted';
     setState(() => _isSubmitting = true);
     try {
       await ref.read(studentRepositoryProvider).postCourseNote(
             widget.courseSlug,
             text,
-            widget.currentPositionSeconds,
+            sec,
           );
       ref.invalidate(courseNotesProvider(widget.courseSlug));
       if (mounted) {
@@ -2136,12 +2236,15 @@ class _CourseNotesTabState extends ConsumerState<_CourseNotesTab> {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
 
+    final sec = _getCurrentSeconds();
     setState(() => _isSubmitting = true);
+    // Dismiss keyboard before submitting so screen returns to normal
+    if (mounted) FocusScope.of(context).unfocus();
     try {
       await ref.read(studentRepositoryProvider).postCourseNote(
             widget.courseSlug,
             text,
-            widget.currentPositionSeconds,
+            sec,
           );
       _controller.clear();
       ref.invalidate(courseNotesProvider(widget.courseSlug));
@@ -2314,7 +2417,12 @@ class _CourseNotesTabState extends ConsumerState<_CourseNotesTab> {
                 itemCount: filteredNotes.length,
                 itemBuilder: (context, index) {
                   final n = filteredNotes[index];
-                  final timestamp = n['timestamp'] as int? ?? 0;
+                  final rawTime = n['timestamp_seconds'] ?? n['timestamp'];
+                  final int timestamp = rawTime is int
+                      ? rawTime
+                      : (rawTime is num
+                          ? rawTime.toInt()
+                          : (int.tryParse(rawTime?.toString() ?? '') ?? 0));
                   final noteText = (n['note_text'] ?? n['content'] ?? '').toString();
                   final noteId = n['id']?.toString();
                   final isBookmark = noteText.toLowerCase().contains('bookmark') || noteText.contains('🔖');
@@ -2385,70 +2493,76 @@ class _CourseNotesTabState extends ConsumerState<_CourseNotesTab> {
         ),
 
         // ── Input Strip at Bottom ─────────────────────────────────
-        SafeArea(
-          top: false,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: BoxDecoration(
-              color: isDark ? AppColors.cardDark : Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, -3),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    decoration: InputDecoration(
-                      hintText:
-                          'Add note at ${_formatTime(widget.currentPositionSeconds)}...',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(
-                          color: isDark ? Colors.white12 : AppColors.lineLight,
-                        ),
+        // viewInsets.bottom is needed because resizeToAvoidBottomInset
+        // is false on the parent Scaffold.
+        Container(
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 10,
+            bottom: 10 +
+                MediaQuery.of(context).padding.bottom +
+                MediaQuery.of(context).viewInsets.bottom,
+          ),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.cardDark : Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, -3),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _controller,
+                  decoration: InputDecoration(
+                    hintText:
+                        'Add note at ${_formatTime(_getCurrentSeconds())}...',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: isDark ? Colors.white12 : AppColors.lineLight,
                       ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(
-                          color: isDark ? Colors.white12 : AppColors.lineLight,
-                        ),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(
-                          color: AppColors.accentOrange,
-                          width: 1.5,
-                        ),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 10),
                     ),
-                    onSubmitted: (_) => _submit(),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                _isSubmitting
-                    ? const SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: AppColors.accentOrange,
-                        ),
-                      )
-                    : IconButton(
-                        icon: const Icon(Icons.add_circle,
-                            color: AppColors.accentOrange),
-                        onPressed: _submit,
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: isDark ? Colors.white12 : AppColors.lineLight,
                       ),
-              ],
-            ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(
+                        color: AppColors.accentOrange,
+                        width: 1.5,
+                      ),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 10),
+                  ),
+                  onSubmitted: (_) => _submit(),
+                ),
+              ),
+              const SizedBox(width: 10),
+              _isSubmitting
+                  ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppColors.accentOrange,
+                      ),
+                    )
+                  : IconButton(
+                      icon: const Icon(Icons.add_circle,
+                          color: AppColors.accentOrange),
+                      onPressed: _submit,
+                    ),
+            ],
           ),
         ),
       ],

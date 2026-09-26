@@ -237,6 +237,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             orderResult: (extra['orderResult'] as Map<String, dynamic>?) ?? {},
             originalTotal: (extra['originalTotal'] as num?)?.toDouble() ?? 0.0,
             finalTotal: (extra['finalTotal'] as num?)?.toDouble() ?? 0.0,
+            discountAmount: (extra['discountAmount'] as num?)?.toDouble() ?? 0.0,
+            couponCode: extra['couponCode'] as String?,
             paymentMethod: extra['paymentMethod'] as String? ?? 'DUMMY_CARD',
             purchasedItems: extra['purchasedItems'] as List<dynamic>? ?? [],
           );

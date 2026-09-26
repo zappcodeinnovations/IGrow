@@ -124,5 +124,13 @@ void main() {
       await QuizService.deleteSectionQuiz(sectionId);
       expect(await QuizService.hasSectionQuiz(sectionId), false);
     });
+
+    test('Section quiz passed status can be persisted and verified', () async {
+      const sectionId = 'sec-passed-123';
+      expect(await QuizService.isSectionQuizPassed(sectionId), false);
+
+      await QuizService.setSectionQuizPassed(sectionId, true);
+      expect(await QuizService.isSectionQuizPassed(sectionId), true);
+    });
   });
 }

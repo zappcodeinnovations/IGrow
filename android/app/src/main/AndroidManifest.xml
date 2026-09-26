@@ -9,19 +9,32 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <!-- Notification Permission for Android 13+ -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Required for FCM to wake device when screen is off (Doze mode bypass) -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- Required to re-register FCM after device reboot -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Required if using foreground service for high-priority delivery -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
     <application
         android:label="iGrow"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon">
 
-        <!-- Default FCM notification channel -->
+        <!-- Default FCM notification channel (must match channel id in NotificationService) -->
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
             android:value="high_importance_channel" />
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_icon"
             android:resource="@mipmap/launcher_icon" />
+        <!-- Opt-in to FCM delivery metrics — helps with debugging delayed/dropped notifications -->
+        <meta-data
+            android:name="firebase_messaging_auto_init_enabled"
+            android:value="true" />
+        <meta-data
+            android:name="firebase_analytics_collection_enabled"
+            android:value="true" />
         <activity
             android:name=".MainActivity"
             android:exported="true"

@@ -36,7 +36,13 @@ class WishlistNotifier extends StateNotifier<AsyncValue<List<ApiWishlistItem>>> 
   Future<bool> toggleCourse(String courseId, {ApiWishlistItem? previewItem}) async {
     final currentList = List<ApiWishlistItem>.from(state.value ?? []);
     final existingIndex = currentList.indexWhere(
-      (item) => item.targetId == courseId || item.id == courseId || item.slug == courseId,
+      (item) =>
+          item.targetId == courseId ||
+          item.id == courseId ||
+          item.slug == courseId ||
+          (previewItem != null &&
+              ((previewItem.targetId.isNotEmpty && item.targetId == previewItem.targetId) ||
+                  (previewItem.slug.isNotEmpty && item.slug == previewItem.slug))),
     );
 
     final isCurrentlyInWishlist = existingIndex >= 0;
@@ -56,10 +62,37 @@ class WishlistNotifier extends StateNotifier<AsyncValue<List<ApiWishlistItem>>> 
       
       // If server confirmed addition and returned an ID, update the local item's ID
       if (result.inWishlist) {
-        if (!isCurrentlyInWishlist && previewItem == null) {
+        if (result.id != null && result.id!.isNotEmpty && currentList.isNotEmpty) {
+          final idx = currentList.indexWhere(
+            (item) => item.targetId == courseId || item.id == courseId || item.slug == courseId,
+          );
+          if (idx >= 0) {
+            final old = currentList[idx];
+            currentList[idx] = ApiWishlistItem(
+              id: result.id!,
+              targetId: old.targetId.isNotEmpty ? old.targetId : courseId,
+              type: old.type,
+              title: old.title,
+              slug: old.slug,
+              thumbnail: old.thumbnail,
+              cover: old.cover,
+              price: old.price,
+              category: old.category,
+              rating: old.rating,
+              addedAt: old.addedAt ?? DateTime.now(),
+            );
+            state = AsyncValue.data(currentList);
+          }
+        } else if (!isCurrentlyInWishlist && previewItem == null) {
           // Re-fetch from server to get full item details
           await loadWishlist();
         }
+      } else {
+        // Server says it's removed; ensure it's removed locally
+        currentList.removeWhere(
+          (item) => item.targetId == courseId || item.id == courseId || item.slug == courseId,
+        );
+        state = AsyncValue.data(currentList);
       }
       return result.inWishlist;
     } catch (e) {
@@ -74,7 +107,13 @@ class WishlistNotifier extends StateNotifier<AsyncValue<List<ApiWishlistItem>>> 
   Future<bool> toggleEbook(String ebookId, {ApiWishlistItem? previewItem}) async {
     final currentList = List<ApiWishlistItem>.from(state.value ?? []);
     final existingIndex = currentList.indexWhere(
-      (item) => item.targetId == ebookId || item.id == ebookId || item.slug == ebookId,
+      (item) =>
+          item.targetId == ebookId ||
+          item.id == ebookId ||
+          item.slug == ebookId ||
+          (previewItem != null &&
+              ((previewItem.targetId.isNotEmpty && item.targetId == previewItem.targetId) ||
+                  (previewItem.slug.isNotEmpty && item.slug == previewItem.slug))),
     );
 
     final isCurrentlyInWishlist = existingIndex >= 0;
@@ -92,8 +131,36 @@ class WishlistNotifier extends StateNotifier<AsyncValue<List<ApiWishlistItem>>> 
       final repo = ref.read(wishlistRepositoryProvider);
       final result = await repo.toggleWishlist(ebookId: ebookId);
 
-      if (result.inWishlist && !isCurrentlyInWishlist && previewItem == null) {
-        await loadWishlist();
+      if (result.inWishlist) {
+        if (result.id != null && result.id!.isNotEmpty && currentList.isNotEmpty) {
+          final idx = currentList.indexWhere(
+            (item) => item.targetId == ebookId || item.id == ebookId || item.slug == ebookId,
+          );
+          if (idx >= 0) {
+            final old = currentList[idx];
+            currentList[idx] = ApiWishlistItem(
+              id: result.id!,
+              targetId: old.targetId.isNotEmpty ? old.targetId : ebookId,
+              type: old.type,
+              title: old.title,
+              slug: old.slug,
+              thumbnail: old.thumbnail,
+              cover: old.cover,
+              price: old.price,
+              category: old.category,
+              rating: old.rating,
+              addedAt: old.addedAt ?? DateTime.now(),
+            );
+            state = AsyncValue.data(currentList);
+          }
+        } else if (!isCurrentlyInWishlist && previewItem == null) {
+          await loadWishlist();
+        }
+      } else {
+        currentList.removeWhere(
+          (item) => item.targetId == ebookId || item.id == ebookId || item.slug == ebookId,
+        );
+        state = AsyncValue.data(currentList);
       }
       return result.inWishlist;
     } catch (e) {

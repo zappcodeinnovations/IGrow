@@ -1370,6 +1370,8 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                       Expanded(
                         child: Text(
                           module.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                         ),
                       ),
@@ -1563,12 +1565,14 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                               children: [
                                 const Icon(Icons.menu_book, size: 16, color: Colors.purple),
                                 const SizedBox(width: 6),
-                                Text(
-                                  'Attach E-Book to this Module (Optional):',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: isDark ? Colors.grey.shade300 : AppColors.inkDark,
+                                Expanded(
+                                  child: Text(
+                                    'Attach E-Book to this Module (Optional):',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: isDark ? Colors.grey.shade300 : AppColors.inkDark,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -1661,6 +1665,8 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                                     const SizedBox(height: 2),
                                     Text(
                                       '${module.quizQuestions.length} Questions • Passing: ${module.quizPassingPercent}%',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                       style: TextStyle(
                                         fontSize: 11,
                                         color: isDark ? Colors.amber.shade200 : const Color(0xFFB45309),

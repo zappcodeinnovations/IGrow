@@ -1,21 +1,30 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/models/api_models/course_models.dart';
 import '../../../data/models/api_models/order_models.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../providers/cart_provider.dart';
 
-class CheckoutSuccessScreen extends ConsumerWidget {
+class CheckoutSuccessScreen extends ConsumerStatefulWidget {
   const CheckoutSuccessScreen({
     super.key,
     required this.orderResult,
     required this.originalTotal,
     required this.finalTotal,
+    this.discountAmount = 0.0,
+    this.couponCode,
     required this.paymentMethod,
     required this.purchasedItems,
   });
@@ -23,22 +32,114 @@ class CheckoutSuccessScreen extends ConsumerWidget {
   final Map<String, dynamic> orderResult;
   final double originalTotal;
   final double finalTotal;
+  final double discountAmount;
+  final String? couponCode;
   final String paymentMethod;
   final List<dynamic> purchasedItems;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<CheckoutSuccessScreen> createState() => _CheckoutSuccessScreenState();
+}
+
+class _CheckoutSuccessScreenState extends ConsumerState<CheckoutSuccessScreen> {
+  late Map<String, dynamic> _orderResult;
+  late double _originalTotal;
+  late double _finalTotal;
+  late double _discountAmount;
+  late String? _couponCode;
+  late String _paymentMethod;
+  late List<dynamic> _purchasedItems;
+
+  @override
+  void initState() {
+    super.initState();
+    _orderResult = Map<String, dynamic>.from(widget.orderResult);
+    _originalTotal = widget.originalTotal;
+    _finalTotal = widget.finalTotal;
+    _discountAmount = widget.discountAmount;
+    _couponCode = widget.couponCode;
+    _paymentMethod = widget.paymentMethod;
+    _purchasedItems = List<dynamic>.from(widget.purchasedItems);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _syncWithSavedState();
+  }
+
+  @override
+  void didUpdateWidget(CheckoutSuccessScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Never overwrite valid non-zero values with 0.0 when GoRouter rebuilds after modal pop
+    if (widget.finalTotal > 0) {
+      _finalTotal = widget.finalTotal;
+    }
+    if (widget.originalTotal > 0) {
+      _originalTotal = widget.originalTotal;
+    }
+    if (widget.purchasedItems.isNotEmpty) {
+      _purchasedItems = List<dynamic>.from(widget.purchasedItems);
+    }
+    if (widget.orderResult.isNotEmpty) {
+      _orderResult = Map<String, dynamic>.from(widget.orderResult);
+    }
+    if (widget.couponCode != null) {
+      _couponCode = widget.couponCode;
+    }
+    if (widget.paymentMethod.isNotEmpty && widget.paymentMethod != 'DUMMY_CARD') {
+      _paymentMethod = widget.paymentMethod;
+    }
+    _syncWithSavedState();
+  }
+
+  void _syncWithSavedState() {
+    final saved = ref.read(lastCheckoutDataProvider);
+    if (saved != null) {
+      if (_finalTotal <= 0 && saved.finalTotal > 0) {
+        _finalTotal = saved.finalTotal;
+      }
+      if (_originalTotal <= 0 && saved.originalTotal > 0) {
+        _originalTotal = saved.originalTotal;
+      }
+      if (_purchasedItems.isEmpty && saved.purchasedItems.isNotEmpty) {
+        _purchasedItems = List<dynamic>.from(saved.purchasedItems);
+      }
+      if (_orderResult.isEmpty && saved.orderResult.isNotEmpty) {
+        _orderResult = Map<String, dynamic>.from(saved.orderResult);
+      }
+      if (_couponCode == null && saved.couponCode != null) {
+        _couponCode = saved.couponCode;
+      }
+      if (_discountAmount <= 0 && saved.discountAmount > 0) {
+        _discountAmount = saved.discountAmount;
+      }
+    }
+
+    // Also fallback to backend order object inside _orderResult if _finalTotal is still 0
+    final orderMap = _orderResult['order'] is Map ? _orderResult['order'] as Map<String, dynamic> : _orderResult;
+    if (_finalTotal <= 0 && orderMap['total_amount'] != null) {
+      _finalTotal = double.tryParse(orderMap['total_amount'].toString()) ?? _finalTotal;
+    }
+    if (_originalTotal <= 0 && _finalTotal > 0) {
+      _originalTotal = _finalTotal + _discountAmount;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    _syncWithSavedState();
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final user = ref.watch(authProvider).user;
     final studentName = user?.fullName ?? 'Valued Student';
     final studentEmail = user?.email ?? 'student@igrow.com';
 
-    final orderData = orderResult['order'] is Map
-        ? orderResult['order'] as Map<String, dynamic>
-        : orderResult;
+    final orderData = _orderResult['order'] is Map
+        ? _orderResult['order'] as Map<String, dynamic>
+        : _orderResult;
 
     final gatewayRef = orderData['gateway_reference']?.toString() ??
-        orderResult['gateway_reference']?.toString() ??
+        _orderResult['gateway_reference']?.toString() ??
         'AGRIPAY_${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
 
     final orderId = orderData['id']?.toString() ?? 'ORD-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
@@ -93,7 +194,7 @@ class CheckoutSuccessScreen extends ConsumerWidget {
           const SizedBox(height: 6),
           Center(
             child: Text(
-              orderResult['message']?.toString() ??
+              _orderResult['message']?.toString() ??
                   'You have been successfully enrolled in your course(s).',
               textAlign: TextAlign.center,
               style: TextStyle(
@@ -175,7 +276,7 @@ class CheckoutSuccessScreen extends ConsumerWidget {
                   color: isDark ? const Color(0xFF334A3A) : AppColors.lineLight,
                 ),
                 _buildDetailRow('Date & Time', nowFormatted, isDark),
-                _buildDetailRow('Payment Mode', paymentMethod, isDark),
+                _buildDetailRow('Payment Mode', _paymentMethod, isDark),
                 _buildDetailRow('Status', 'COMPLETED (PAID)', isDark,
                     valueColor: isDark ? AppColors.greenLight : AppColors.primaryGreen),
                 Divider(
@@ -197,7 +298,7 @@ class CheckoutSuccessScreen extends ConsumerWidget {
                     const SizedBox(width: 12),
                     Flexible(
                       child: Text(
-                        '₹${finalTotal.toStringAsFixed(2)}',
+                        '₹${_finalTotal.toStringAsFixed(2)}',
                         textAlign: TextAlign.end,
                         style: TextStyle(
                           fontSize: 20,
@@ -216,7 +317,7 @@ class CheckoutSuccessScreen extends ConsumerWidget {
 
           // ── Enrolled Courses List ──────────────────────────────────
           Text(
-            'Enrolled Courses (${purchasedItems.length})',
+            'Enrolled Courses (${_purchasedItems.length})',
             style: TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: 16,
@@ -225,7 +326,7 @@ class CheckoutSuccessScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 10),
 
-          ...purchasedItems.map((item) {
+          ..._purchasedItems.map((item) {
             String title = 'Course';
             String courseId = '';
 
@@ -351,8 +452,11 @@ class CheckoutSuccessScreen extends ConsumerWidget {
               dateStr: nowFormatted,
               studentName: studentName,
               studentEmail: studentEmail,
-              finalTotal: finalTotal,
-              items: purchasedItems,
+              originalTotal: _originalTotal,
+              finalTotal: _finalTotal,
+              discountAmount: _discountAmount,
+              couponCode: _couponCode,
+              items: _purchasedItems,
               isDark: isDark,
             ),
           ),
@@ -421,10 +525,17 @@ class CheckoutSuccessScreen extends ConsumerWidget {
     required String dateStr,
     required String studentName,
     required String studentEmail,
+    required double originalTotal,
     required double finalTotal,
+    required double discountAmount,
+    String? couponCode,
     required List<dynamic> items,
     required bool isDark,
   }) {
+    final effectiveDiscount = discountAmount > 0
+        ? discountAmount
+        : ((originalTotal - finalTotal) > 0.01 ? (originalTotal - finalTotal) : 0.0);
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -589,6 +700,36 @@ class CheckoutSuccessScreen extends ConsumerWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
+                  const Text('Subtotal:', style: TextStyle(fontSize: 12)),
+                  Text('₹${originalTotal.toStringAsFixed(2)}',
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                ],
+              ),
+              if (effectiveDiscount > 0) ...[
+                const SizedBox(height: 4),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Coupon Discount (${couponCode ?? "PROMO"}):',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isDark ? AppColors.greenLight : AppColors.primaryGreen,
+                        )),
+                    Text(
+                      '-₹${effectiveDiscount.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? AppColors.greenLight : AppColors.primaryGreen,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+              const SizedBox(height: 4),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
                   const Text('CGST (0%):', style: TextStyle(fontSize: 12)),
                   const Text('₹0.00', style: TextStyle(fontSize: 12)),
                 ],
@@ -652,14 +793,199 @@ class CheckoutSuccessScreen extends ConsumerWidget {
                 ),
                 icon: const Icon(Icons.download),
                 label: const Text('Download Receipt'),
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Receipt downloaded successfully! 📄'),
-                      backgroundColor: AppColors.primaryGreen,
-                    ),
-                  );
+                onPressed: () async {
+                  try {
+                    final pdf = pw.Document();
+                    pdf.addPage(
+                      pw.Page(
+                        pageFormat: PdfPageFormat.a4,
+                        margin: const pw.EdgeInsets.all(32),
+                        build: (pw.Context pCtx) {
+                          return pw.Column(
+                            crossAxisAlignment: pw.CrossAxisAlignment.start,
+                            children: [
+                              pw.Row(
+                                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                                children: [
+                                  pw.Column(
+                                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                                    children: [
+                                      pw.Text(
+                                        'IGROW EDUCATION',
+                                        style: pw.TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: pw.FontWeight.bold,
+                                          color: PdfColors.green800,
+                                        ),
+                                      ),
+                                      pw.Text(
+                                        'Kisan Ki Digital Pathshala',
+                                        style: const pw.TextStyle(
+                                          fontSize: 11,
+                                          color: PdfColors.grey,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  pw.Container(
+                                    padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    decoration: pw.BoxDecoration(
+                                      color: PdfColors.green100,
+                                      borderRadius: pw.BorderRadius.circular(6),
+                                    ),
+                                    child: pw.Text(
+                                      'TAX INVOICE',
+                                      style: pw.TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: pw.FontWeight.bold,
+                                        color: PdfColors.green800,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              pw.Divider(color: PdfColors.grey300),
+                              pw.Row(
+                                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                                children: [
+                                  pw.Column(
+                                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                                    children: [
+                                      pw.Text('Billed To:', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey)),
+                                      pw.Text(studentName, style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                                      pw.Text(studentEmail, style: const pw.TextStyle(fontSize: 10)),
+                                    ],
+                                  ),
+                                  pw.Column(
+                                    crossAxisAlignment: pw.CrossAxisAlignment.end,
+                                    children: [
+                                      pw.Text('Invoice No:', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey)),
+                                      pw.Text('INV-${orderId.substring(0, 8).toUpperCase()}',
+                                          style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                                      pw.Text(dateStr, style: const pw.TextStyle(fontSize: 10)),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              pw.SizedBox(height: 16),
+                              pw.TableHelper.fromTextArray(
+                                headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11),
+                                headerDecoration: const pw.BoxDecoration(color: PdfColors.green50),
+                                cellStyle: const pw.TextStyle(fontSize: 11),
+                                headers: ['Course / Description', 'SAC', 'Amount'],
+                                data: items.map((item) {
+                                  String title = 'Agriculture Course';
+                                  String price = '0.00';
+                                  if (item is ApiCourseDetail) {
+                                    title = item.title;
+                                    price = item.price ?? '0.00';
+                                  } else if (item is ApiCartItem) {
+                                    title = item.courseDetail?['title']?.toString() ?? 'Course';
+                                    price = item.courseDetail?['price']?.toString() ?? '0.00';
+                                  }
+                                  return [title, '998311', 'Rs. $price'];
+                                }).toList(),
+                              ),
+                              pw.Divider(color: PdfColors.grey300),
+                              pw.Row(
+                                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                                children: [
+                                  pw.Text('Subtotal:', style: const pw.TextStyle(fontSize: 11)),
+                                  pw.Text('Rs. ${originalTotal.toStringAsFixed(2)}', style: const pw.TextStyle(fontSize: 11)),
+                                ],
+                              ),
+                              if (effectiveDiscount > 0) ...[
+                                pw.SizedBox(height: 4),
+                                pw.Row(
+                                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    pw.Text('Coupon Discount (${couponCode ?? "PROMO"}):',
+                                        style: pw.TextStyle(fontSize: 11, color: PdfColors.green800)),
+                                    pw.Text('-Rs. ${effectiveDiscount.toStringAsFixed(2)}',
+                                        style: pw.TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: pw.FontWeight.bold,
+                                          color: PdfColors.green800,
+                                        )),
+                                  ],
+                                ),
+                              ],
+                              pw.SizedBox(height: 4),
+                              pw.Row(
+                                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                                children: [
+                                  pw.Text('CGST (0%):', style: const pw.TextStyle(fontSize: 11)),
+                                  pw.Text('Rs. 0.00', style: const pw.TextStyle(fontSize: 11)),
+                                ],
+                              ),
+                              pw.SizedBox(height: 4),
+                              pw.Row(
+                                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                                children: [
+                                  pw.Text('SGST (0%):', style: const pw.TextStyle(fontSize: 11)),
+                                  pw.Text('Rs. 0.00', style: const pw.TextStyle(fontSize: 11)),
+                                ],
+                              ),
+                              pw.SizedBox(height: 8),
+                              pw.Row(
+                                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                                children: [
+                                  pw.Text('Grand Total Paid:',
+                                      style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 13)),
+                                  pw.Text('Rs. ${finalTotal.toStringAsFixed(2)}',
+                                      style: pw.TextStyle(
+                                        fontWeight: pw.FontWeight.bold,
+                                        fontSize: 15,
+                                        color: PdfColors.green800,
+                                      )),
+                                ],
+                              ),
+                              pw.SizedBox(height: 24),
+                              pw.Center(
+                                child: pw.Container(
+                                  padding: const pw.EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                  decoration: pw.BoxDecoration(
+                                    border: pw.Border.all(color: PdfColors.green800, width: 2),
+                                    borderRadius: pw.BorderRadius.circular(8),
+                                  ),
+                                  child: pw.Text(
+                                    'PAID & VERIFIED  •  IGROW',
+                                    style: pw.TextStyle(
+                                      fontWeight: pw.FontWeight.bold,
+                                      color: PdfColors.green800,
+                                      fontSize: 11,
+                                      letterSpacing: 1.5,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    );
+
+                    final pdfBytes = await pdf.save();
+                    final dir = await getApplicationDocumentsDirectory();
+                    final filePath = '${dir.path}/receipt_${orderId.substring(0, 8)}.pdf';
+                    final file = File(filePath);
+                    await file.writeAsBytes(pdfBytes);
+
+                    await Printing.sharePdf(
+                      bytes: pdfBytes,
+                      filename: 'IGrow_Receipt_${orderId.substring(0, 8)}.pdf',
+                    );
+
+                    if (ctx.mounted) Navigator.pop(ctx);
+                  } catch (e) {
+                    debugPrint('Error generating receipt PDF: $e');
+                    if (ctx.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Failed to generate receipt: $e'), backgroundColor: AppColors.error),
+                      );
+                    }
+                  }
                 },
               ),
             ],

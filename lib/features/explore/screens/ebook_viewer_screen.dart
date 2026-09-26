@@ -165,7 +165,10 @@ class _EbookViewerScreenState extends ConsumerState<EbookViewerScreen> {
               children: [
                 Consumer(
                   builder: (context, ref, _) {
-                    final isSaved = ref.watch(isWishlistedProvider(widget.ebookId));
+                    final effectiveId = (ebook.id != null && ebook.id!.isNotEmpty) ? ebook.id! : widget.ebookId;
+                    final isSaved = ref.watch(isWishlistedProvider(effectiveId)) ||
+                        (ebook.slug != null && ebook.slug!.isNotEmpty && ref.watch(isWishlistedProvider(ebook.slug!))) ||
+                        ref.watch(isWishlistedProvider(widget.ebookId));
                     return IconButton(
                       icon: Icon(
                         isSaved ? Icons.favorite : Icons.favorite_border,
@@ -176,10 +179,10 @@ class _EbookViewerScreenState extends ConsumerState<EbookViewerScreen> {
                         try {
                           final preview = ApiWishlistItem(
                             id: '',
-                            targetId: widget.ebookId,
+                            targetId: effectiveId,
                             type: 'ebook',
                             title: ebook.title,
-                            slug: ebook.slug ?? '',
+                            slug: ebook.slug ?? (widget.ebookId.contains('-') ? widget.ebookId : ''),
                             cover: ebook.coverImage,
                             price: '0.00',
                             category: ebook.category?.toString() ?? 'General',
@@ -187,7 +190,7 @@ class _EbookViewerScreenState extends ConsumerState<EbookViewerScreen> {
                           );
                           final inWishlist = await ref
                               .read(wishlistProvider.notifier)
-                              .toggleEbook(widget.ebookId, previewItem: preview);
+                              .toggleEbook(effectiveId, previewItem: preview);
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(

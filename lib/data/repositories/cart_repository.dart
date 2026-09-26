@@ -114,6 +114,40 @@ class CartRepository {
     }
   }
 
+  /// Validate and apply coupon code via backend API.
+  Future<Map<String, dynamic>> applyCoupon(String code) async {
+    debugPrint('🎟️ [CartRepository] applyCoupon: code=$code');
+    final token = await tokenStorage.getAccessToken();
+    final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/apply-coupon/');
+    final response = await http.post(
+      uri,
+      headers: {
+        if (token != null) 'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({'code': code}),
+    );
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      debugPrint('✅ [CartRepository] applyCoupon SUCCESS: ${response.body}');
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map<String, dynamic>) {
+        return decoded;
+      }
+      return Map<String, dynamic>.from(decoded as Map);
+    } else {
+      debugPrint('⚠️ [CartRepository] applyCoupon FAILED (${response.statusCode}): ${response.body}');
+      String errMsg = 'Invalid or expired coupon code.';
+      try {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map && decoded.containsKey('error')) {
+          errMsg = decoded['error'].toString();
+        }
+      } catch (_) {}
+      throw Exception(errMsg);
+    }
+  }
+
   /// Checkout — processes sandbox payment and enrolls.
   Future<Map<String, dynamic>> checkout({
     String? gatewayName,

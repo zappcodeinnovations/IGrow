@@ -88,6 +88,12 @@ class OrdersScreen extends ConsumerWidget {
                   ? DateFormat('MMMM dd, yyyy • hh:mm a').format(order.createdAt!)
                   : 'Recent Purchase';
               final isSuccess = (order.status ?? 'SUCCESS').toUpperCase() == 'SUCCESS';
+              final itemSubtotal = order.items.fold<double>(
+                0.0,
+                (sum, it) => sum + (double.tryParse(it.priceAtPurchase) ?? 0.0),
+              );
+              final parsedAmount = double.tryParse(order.totalAmount) ?? 0.0;
+              final displayAmount = parsedAmount > 0 ? parsedAmount : (itemSubtotal > 0 ? itemSubtotal : 0.0);
 
               return Card(
                 margin: const EdgeInsets.only(bottom: 16),
@@ -218,7 +224,7 @@ class OrdersScreen extends ConsumerWidget {
                                   fit: BoxFit.scaleDown,
                                   alignment: Alignment.centerLeft,
                                   child: Text(
-                                    '₹${order.totalAmount}',
+                                    '₹${displayAmount.toStringAsFixed(2)}',
                                     style: const TextStyle(
                                       fontSize: 18,
                                       fontWeight: FontWeight.w900,
@@ -308,6 +314,14 @@ class OrdersScreen extends ConsumerWidget {
     required String dateStr,
     required bool isDark,
   }) {
+    final subtotal = order.items.fold<double>(
+      0.0,
+      (sum, it) => sum + (double.tryParse(it.priceAtPurchase) ?? 0.0),
+    );
+    final rawPaid = double.tryParse(order.totalAmount) ?? 0.0;
+    final totalPaid = rawPaid > 0 ? rawPaid : (subtotal > 0 ? subtotal : 0.0);
+    final discount = (subtotal - totalPaid) > 0.01 ? (subtotal - totalPaid) : 0.0;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -461,6 +475,28 @@ class OrdersScreen extends ConsumerWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
+                  const Text('Subtotal:', style: TextStyle(fontSize: 12)),
+                  Text('₹${subtotal.toStringAsFixed(2)}',
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                ],
+              ),
+              if (discount > 0) ...[
+                const SizedBox(height: 4),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Discount / Coupon Applied:',
+                        style: TextStyle(fontSize: 12, color: AppColors.primaryGreen)),
+                    Text('-₹${discount.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                            fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primaryGreen)),
+                  ],
+                ),
+              ],
+              const SizedBox(height: 4),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
                   const Text('CGST (0%):', style: TextStyle(fontSize: 12)),
                   const Text('₹0.00', style: TextStyle(fontSize: 12)),
                 ],
@@ -479,7 +515,7 @@ class OrdersScreen extends ConsumerWidget {
                 children: [
                   const Text('Grand Total Paid:', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
                   Text(
-                    '₹${order.totalAmount}',
+                    '₹${totalPaid.toStringAsFixed(2)}',
                     style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primaryGreen),
                   ),
                 ],
@@ -612,7 +648,33 @@ class OrdersScreen extends ConsumerWidget {
                             ),
                             pw.Divider(color: PdfColors.grey300),
 
+                            // Subtotal & Discount
+                            pw.Row(
+                              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                              children: [
+                                pw.Text('Subtotal:', style: const pw.TextStyle(fontSize: 11)),
+                                pw.Text('Rs. ${subtotal.toStringAsFixed(2)}', style: const pw.TextStyle(fontSize: 11)),
+                              ],
+                            ),
+                            if (discount > 0) ...[
+                              pw.SizedBox(height: 4),
+                              pw.Row(
+                                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                                children: [
+                                  pw.Text('Discount / Coupon Applied:',
+                                      style: pw.TextStyle(fontSize: 11, color: PdfColors.green800)),
+                                  pw.Text('-Rs. ${discount.toStringAsFixed(2)}',
+                                      style: pw.TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: pw.FontWeight.bold,
+                                        color: PdfColors.green800,
+                                      )),
+                                ],
+                              ),
+                            ],
+
                             // Taxes
+                            pw.SizedBox(height: 4),
                             pw.Row(
                               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                               children: [
@@ -634,7 +696,7 @@ class OrdersScreen extends ConsumerWidget {
                               children: [
                                 pw.Text('Grand Total Paid:',
                                     style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 13)),
-                                pw.Text('Rs. ${order.totalAmount}',
+                                pw.Text('Rs. ${totalPaid.toStringAsFixed(2)}',
                                     style: pw.TextStyle(
                                       fontWeight: pw.FontWeight.bold,
                                       fontSize: 15,

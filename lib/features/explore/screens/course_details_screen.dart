@@ -349,14 +349,14 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Text(
-              'Sirf student hi is course ko buy kar sakta hai.\n\nInstructors cannot purchase courses. Please switch to your Farmer / Student profile to enroll.',
+              'This action is only available to students and farmers.\n\nInstructors cannot purchase courses. Please switch to your Student / Farmer profile to enroll.',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 13.5, height: 1.4),
             ),
             if (canSwitchToFarmer) ...[
               const SizedBox(height: 14),
               const Text(
-                'Aapke account me Student role available hai. Kya aap switch karna chahte hain?',
+                'A Student profile is available on your account. Would you like to switch?',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 12, color: Colors.grey),
               ),
@@ -413,10 +413,12 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
     }
 
     setState(() => _isAddingToCart = true);
-    debugPrint('🛒 [CourseDetails] Adding course to cart: ${course.title} (ID: ${widget.courseId})');
+    // Always use course.id (UUID from API) — widget.courseId may be a slug
+    final effectiveCourseId = course.id.isNotEmpty ? course.id : widget.courseId;
+    debugPrint('🛒 [CourseDetails] Adding course to cart: ${course.title} (widgetId: ${widget.courseId}, courseId: $effectiveCourseId)');
 
     try {
-      await ref.read(cartProvider.notifier).addToCart(widget.courseId);
+      await ref.read(cartProvider.notifier).addToCart(effectiveCourseId);
       debugPrint('✅ [CourseDetails] Added course to cart SUCCESS: ${course.title}');
       if (context.mounted) {
         final messenger = ScaffoldMessenger.of(context);
@@ -470,17 +472,20 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
       return;
     }
 
-    context.push('/checkout?courseId=${widget.courseId}');
+    // Always use course.id (UUID) for checkout; widget.courseId may be a slug
+    final effectiveId = course.id.isNotEmpty ? course.id : widget.courseId;
+    context.push('/checkout?courseId=$effectiveId');
   }
 
   Future<void> _toggleWishlist(ApiCourseDetail course) async {
     try {
+      final effectiveId = course.id.isNotEmpty ? course.id : widget.courseId;
       final preview = ApiWishlistItem(
         id: '',
-        targetId: widget.courseId,
+        targetId: effectiveId,
         type: 'course',
         title: course.title,
-        slug: course.slug ?? '',
+        slug: course.slug ?? (widget.courseId.contains('-') ? widget.courseId : ''),
         thumbnail: course.thumbnail,
         price: course.price ?? '0.00',
         category: course.categoryDisplay ?? course.category ?? 'General',
@@ -488,7 +493,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
       );
       final inWishlist = await ref
           .read(wishlistProvider.notifier)
-          .toggleCourse(widget.courseId, previewItem: preview);
+          .toggleCourse(effectiveId, previewItem: preview);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -551,7 +556,9 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
         actions: [
           courseAsync.maybeWhen(
             data: (course) {
-              final isSaved = ref.watch(isWishlistedProvider(widget.courseId));
+              final isSaved = ref.watch(isWishlistedProvider(course.id)) ||
+                  (course.slug != null && course.slug!.isNotEmpty && ref.watch(isWishlistedProvider(course.slug!))) ||
+                  ref.watch(isWishlistedProvider(widget.courseId));
               return IconButton(
                 icon: Icon(
                   isSaved ? Icons.favorite : Icons.favorite_border,
@@ -1027,7 +1034,9 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
     String? previewBunnyId,
   }) {
     final priceText = course.price == null || course.price == '0' || course.price == '0.00' ? 'Free' : '₹${course.price}';
-    final isSaved = ref.watch(isWishlistedProvider(widget.courseId));
+    final isSaved = ref.watch(isWishlistedProvider(course.id)) ||
+        (course.slug != null && course.slug!.isNotEmpty && ref.watch(isWishlistedProvider(course.slug!))) ||
+        ref.watch(isWishlistedProvider(widget.courseId));
     final inCart = ref.watch(isCourseInCartProvider(widget.courseId)) ||
                    (course.slug != null && ref.watch(isCourseInCartProvider(course.slug!)));
 

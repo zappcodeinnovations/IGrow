@@ -21,7 +21,12 @@ void main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-    await NotificationService.instance.initialize();
+    await NotificationService.instance.initialize(
+      onNotificationClick: (message) {
+        // Handle notification tap — navigate based on message.data if needed
+        debugPrint('🔔 [App] Notification tapped: ${message.data}');
+      },
+    );
   } catch (e) {
     debugPrint('Firebase initialization error: $e');
   }

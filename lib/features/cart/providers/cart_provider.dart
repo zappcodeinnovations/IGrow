@@ -28,6 +28,30 @@ class AppliedCoupon {
 /// State provider for tracking the currently applied coupon.
 final appliedCouponProvider = StateProvider<AppliedCoupon?>((ref) => null);
 
+/// Model representing the last completed checkout data.
+class LastCheckoutData {
+  const LastCheckoutData({
+    this.orderResult = const {},
+    this.originalTotal = 0.0,
+    this.finalTotal = 0.0,
+    this.discountAmount = 0.0,
+    this.couponCode,
+    this.paymentMethod = 'DUMMY_CARD',
+    this.purchasedItems = const [],
+  });
+
+  final Map<String, dynamic> orderResult;
+  final double originalTotal;
+  final double finalTotal;
+  final double discountAmount;
+  final String? couponCode;
+  final String paymentMethod;
+  final List<dynamic> purchasedItems;
+}
+
+/// Provider for persisting the last checkout session data across navigation & router rebuilds.
+final lastCheckoutDataProvider = StateProvider<LastCheckoutData?>((ref) => null);
+
 /// Provider for fetching user's order history.
 final ordersProvider = FutureProvider<List<ApiOrder>>((ref) async {
   final repo = ref.watch(cartRepositoryProvider);

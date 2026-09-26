@@ -16,7 +16,7 @@ class QuizPlayerScreen extends ConsumerStatefulWidget {
 }
 
 class _QuizPlayerScreenState extends ConsumerState<QuizPlayerScreen> {
-  final Map<String, String> _answers = {};
+  final Map<String, int> _answers = {};
   bool _isSubmitting = false;
   Map<String, dynamic>? _results;
   bool _showReview = false;
@@ -59,16 +59,26 @@ class _QuizPlayerScreenState extends ConsumerState<QuizPlayerScreen> {
       );
       setState(() => _results = results);
 
+      final isPassed = results['passed'] == true || results['is_passed'] == true;
+      if (isPassed) {
+        await QuizService.setSectionQuizPassed(widget.sectionId, true);
+        ref.invalidate(sectionQuizPassedProvider(widget.sectionId));
+      }
+
       // Record in Quiz History for the farmer/student panel
       final title = quizData['title']?.toString() ?? 'Section Quiz';
       final scoreVal = results['score'] ?? 0;
       final totalVal = results['total_questions'] ?? questions.length;
-      final numScore = scoreVal is int ? scoreVal : int.tryParse(scoreVal.toString()) ?? 0;
-      final numTotal = totalVal is int ? totalVal : int.tryParse(totalVal.toString()) ?? questions.length;
+      final numScore = scoreVal is num ? scoreVal.round() : (int.tryParse(scoreVal.toString()) ?? 0);
+      final numTotal = totalVal is num ? totalVal.round() : (int.tryParse(totalVal.toString()) ?? questions.length);
+
+      final scoreDisplay = scoreVal is num
+          ? '${scoreVal.toStringAsFixed(1).replaceAll('.0', '')}%'
+          : '$numScore / $numTotal';
 
       await QuizService.recordQuizCompletion(
         topic: title,
-        scoreText: '$numScore / $numTotal',
+        scoreText: scoreDisplay,
         score: numScore,
         total: numTotal,
       );
@@ -157,14 +167,22 @@ class _QuizPlayerScreenState extends ConsumerState<QuizPlayerScreen> {
           final title = quiz['title']?.toString() ?? 'Section Quiz';
           final description = quiz['description']?.toString() ?? '';
           final questions = quiz['questions'] as List? ?? [];
-          final passingPercent = quiz['passing_percent'] as int? ?? 70;
+          final passingPercent = (quiz['passing_score'] is num)
+              ? (quiz['passing_score'] as num).round()
+              : (quiz['passing_percent'] is num
+                  ? (quiz['passing_percent'] as num).round()
+                  : int.tryParse(quiz['passing_score']?.toString() ?? '') ??
+                      int.tryParse(quiz['passing_percent']?.toString() ?? '') ?? 70);
 
           if (_results != null) {
             // Show Results Screen
-            final score = _results!['score'] ?? 0;
-            final total = _results!['total_questions'] ?? questions.length;
-            final percentage = _results!['percentage'] ?? (total > 0 ? ((score / total) * 100).round() : 0);
-            final isPassed = _results!['is_passed'] ?? (percentage >= passingPercent);
+            final isPassed = _results!['passed'] == true || _results!['is_passed'] == true;
+            final rawScore = _results!['score'] ?? 0;
+            final passingRequired = _results!['passing_score'] ?? _results!['passing_percentage'] ?? passingPercent;
+            final backendMessage = _results!['message']?.toString();
+            final scoreString = rawScore is num
+                ? rawScore.toStringAsFixed(1).replaceAll('.0', '')
+                : rawScore.toString();
 
             return SingleChildScrollView(
               padding: const EdgeInsets.all(24),
@@ -184,9 +202,10 @@ class _QuizPlayerScreenState extends ConsumerState<QuizPlayerScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    isPassed
-                        ? 'You have successfully passed this section assessment!'
-                        : 'Review the material and try again to improve your score.',
+                    backendMessage ??
+                        (isPassed
+                            ? 'You have successfully passed this section assessment!'
+                            : 'Review the material and try again to improve your score.'),
                     textAlign: TextAlign.center,
                     style: TextStyle(color: isDark ? Colors.grey.shade400 : AppColors.inkSoft),
                   ),
@@ -206,9 +225,9 @@ class _QuizPlayerScreenState extends ConsumerState<QuizPlayerScreen> {
                     child: Column(
                       children: [
                         Text(
-                          'Score: $score / $total ($percentage%)',
+                          'Score: $scoreString% • Passing: $passingRequired%',
                           style: TextStyle(
-                            fontSize: 22,
+                            fontSize: 20,
                             fontWeight: FontWeight.bold,
                             color: isPassed ? const Color(0xFF15803D) : const Color(0xFFB45309),
                           ),
@@ -223,7 +242,7 @@ class _QuizPlayerScreenState extends ConsumerState<QuizPlayerScreen> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
-                            isPassed ? 'STATUS: PASSED' : 'STATUS: NEEDS IMPROVEMENT',
+                            isPassed ? 'STATUS: PASSED ✅' : 'STATUS: NEEDS IMPROVEMENT',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 12,
@@ -233,7 +252,7 @@ class _QuizPlayerScreenState extends ConsumerState<QuizPlayerScreen> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Minimum Passing Score: $passingPercent%',
+                          'Minimum Passing Score: $passingRequired%',
                           style: TextStyle(fontSize: 11.5, color: isDark ? Colors.grey.shade400 : AppColors.inkSoft),
                         ),
                       ],
@@ -257,13 +276,39 @@ class _QuizPlayerScreenState extends ConsumerState<QuizPlayerScreen> {
                       final qId = q['id']?.toString() ?? 'q_${idx + 1}';
                       final questionText = q['question_text'] ?? q['question'] ?? 'Question ${idx + 1}';
                       final options = (q['options'] as List? ?? []).map((e) => e.toString()).toList();
-                      final correctIdx = q['correct_option_index'] as int? ?? 0;
-                      final correctAnswer = options.isNotEmpty && correctIdx < options.length
-                          ? options[correctIdx]
-                          : (q['correct_answer']?.toString() ?? '');
-                      final userAnswer = _answers[qId];
-                      final isCorrect = userAnswer != null &&
-                          userAnswer.trim().toLowerCase() == correctAnswer.trim().toLowerCase();
+
+                      final backendResults = (_results!['results'] as List?)
+                              ?.whereType<Map<String, dynamic>>()
+                              .toList() ??
+                          [];
+                      final backendItem = backendResults.firstWhere(
+                        (r) => r['question_id']?.toString() == qId,
+                        orElse: () => <String, dynamic>{},
+                      );
+
+                      final userIndex = _answers[qId];
+                      final userAnswerText = (userIndex != null && userIndex >= 0 && userIndex < options.length)
+                          ? options[userIndex]
+                          : 'Not answered';
+
+                      bool isCorrect = false;
+                      String correctAnswerText = '';
+
+                      if (backendItem.isNotEmpty) {
+                        isCorrect = backendItem['correct'] == true;
+                        final correctIdx = backendItem['correct_answer'] as int?;
+                        if (correctIdx != null && correctIdx >= 0 && correctIdx < options.length) {
+                          correctAnswerText = options[correctIdx];
+                        }
+                      } else {
+                        final correctIdx = q['correct_option_index'] as int? ?? 0;
+                        isCorrect = userIndex == correctIdx;
+                        if (correctIdx >= 0 && correctIdx < options.length) {
+                          correctAnswerText = options[correctIdx];
+                        } else if (q['correct_answer'] != null) {
+                          correctAnswerText = q['correct_answer'].toString();
+                        }
+                      }
 
                       return Container(
                         margin: const EdgeInsets.only(bottom: 12),
@@ -296,16 +341,16 @@ class _QuizPlayerScreenState extends ConsumerState<QuizPlayerScreen> {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              'Your answer: ${userAnswer ?? "Not answered"}',
+                              'Your answer: $userAnswerText',
                               style: TextStyle(
                                 fontSize: 12,
                                 color: isCorrect ? Colors.green.shade700 : Colors.red.shade700,
                               ),
                             ),
-                            if (!isCorrect && correctAnswer.isNotEmpty) ...[
+                            if (!isCorrect && correctAnswerText.isNotEmpty) ...[
                               const SizedBox(height: 2),
                               Text(
-                                'Correct answer: $correctAnswer',
+                                'Correct answer: $correctAnswerText',
                                 style: const TextStyle(fontSize: 12, color: Colors.green, fontWeight: FontWeight.w600),
                               ),
                             ],
@@ -403,14 +448,15 @@ class _QuizPlayerScreenState extends ConsumerState<QuizPlayerScreen> {
                               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                             ),
                             const SizedBox(height: 12),
-                            ...options.map((option) {
-                              final optionText = option.toString();
-                              final isSelected = _answers[questionId] == optionText;
+                            ...options.asMap().entries.map((optEntry) {
+                              final optIndex = optEntry.key;
+                              final optionText = optEntry.value.toString();
+                              final isSelected = _answers[questionId] == optIndex;
 
                               return InkWell(
                                 borderRadius: BorderRadius.circular(8),
                                 onTap: () {
-                                  setState(() => _answers[questionId] = optionText);
+                                  setState(() => _answers[questionId] = optIndex);
                                 },
                                 child: Container(
                                   margin: const EdgeInsets.only(bottom: 6),

@@ -79,6 +79,25 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       setState(() {
         _couponError = 'Invalid coupon code. Try AGRI10 or KISAN50';
       });
+
+      // Also attempt backend verification for dynamic admin-created coupons
+      ref.read(cartRepositoryProvider).applyCoupon(code).then((res) {
+        final discountVal = (res['discount_amount'] as num?)?.toDouble() ?? 0.0;
+        final origVal = (res['original_total'] as num?)?.toDouble() ?? 0.0;
+        final percent = (origVal > 0 && discountVal > 0)
+            ? ((discountVal / origVal) * 100).roundToDouble()
+            : (discountVal > 0 ? discountVal : 10.0);
+        if (mounted) {
+          ref.read(appliedCouponProvider.notifier).state = AppliedCoupon(
+            code: res['code']?.toString() ?? code,
+            discountPercent: percent > 0 ? percent : 10,
+            description: res['message']?.toString() ?? '${percent.toInt()}% Special Discount',
+          );
+          setState(() => _couponError = null);
+        }
+      }).catchError((_) {
+        // Keeps the invalid coupon error
+      });
     }
   }
 
@@ -110,6 +129,21 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
 
       ref.invalidate(studentEnrollmentsProvider);
 
+      final discountAmount = coupon != null
+          ? (originalTotal * coupon.discountPercent / 100)
+          : (originalTotal - finalTotal).clamp(0.0, double.infinity);
+
+      // Persist checkout state in provider so modal dismissals never reset amounts to 0
+      ref.read(lastCheckoutDataProvider.notifier).state = LastCheckoutData(
+        orderResult: result,
+        originalTotal: originalTotal,
+        finalTotal: finalTotal,
+        discountAmount: discountAmount,
+        couponCode: coupon?.code,
+        paymentMethod: _selectedPaymentMethod,
+        purchasedItems: List.from(items),
+      );
+
       if (mounted) {
         context.pushReplacement(
           RouteNames.paymentSuccess,
@@ -117,6 +151,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
             'orderResult': result,
             'originalTotal': originalTotal,
             'finalTotal': finalTotal,
+            'discountAmount': discountAmount,
+            'couponCode': coupon?.code,
             'paymentMethod': _selectedPaymentMethod,
             'purchasedItems': items,
           },

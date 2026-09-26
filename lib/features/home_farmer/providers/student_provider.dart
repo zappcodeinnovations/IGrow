@@ -4,6 +4,7 @@ import '../../../core/network/swagger_generated/app_api.swagger.dart';
 import '../../../data/models/api_models/instructor_model.dart';
 import '../../../data/repositories/student_repository.dart';
 import '../../../core/services/course_progress_service.dart';
+import '../../../core/services/quiz_service.dart';
 import '../../auth/providers/auth_provider.dart';
 
 final studentRepositoryProvider = Provider<StudentRepository>((ref) {
@@ -172,6 +173,11 @@ final courseNotesProvider = FutureProvider.autoDispose.family<List<Map<String, d
 final sectionQuizProvider = FutureProvider.autoDispose.family<Map<String, dynamic>?, String>((ref, sectionId) async {
   final repo = ref.watch(studentRepositoryProvider);
   return await repo.getSectionQuiz(sectionId);
+});
+
+/// Provider for checking if a section's quiz has been passed locally.
+final sectionQuizPassedProvider = FutureProvider.autoDispose.family<bool, String>((ref, sectionId) async {
+  return await QuizService.isSectionQuizPassed(sectionId);
 });
 
 /// Provider for fetching raw course progress map.

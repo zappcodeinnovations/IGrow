@@ -280,6 +280,7 @@ class ApiCourseSection {
     this.sortOrder,
     this.lectures = const [],
     this.lectureCount,
+    this.quiz,
   });
 
   final String id;
@@ -288,6 +289,16 @@ class ApiCourseSection {
   final int? sortOrder;
   final List<ApiLecture> lectures;
   final String? lectureCount;
+  final dynamic quiz;
+
+  bool get hasQuiz {
+    if (quiz == null) return false;
+    if (quiz is bool) return quiz as bool;
+    if (quiz is Map) return (quiz as Map).isNotEmpty;
+    if (quiz is String) return (quiz as String).isNotEmpty;
+    if (quiz is List) return (quiz as List).isNotEmpty;
+    return true;
+  }
 
   factory ApiCourseSection.fromJson(Map<String, dynamic> json) {
     try {
@@ -304,6 +315,7 @@ class ApiCourseSection {
                 .toList() ??
             [],
         lectureCount: json['lecture_count']?.toString(),
+        quiz: json['quiz'] ?? json['has_quiz'] ?? json['quiz_id'],
       );
     } catch (e) {
       debugPrint('Error parsing ApiCourseSection: $e\nJSON: $json');
