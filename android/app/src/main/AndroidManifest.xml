@@ -19,7 +19,8 @@
     <application
         android:label="iGrow"
         android:name="${applicationName}"
-        android:icon="@mipmap/launcher_icon">
+        android:icon="@mipmap/launcher_icon"
+        android:allowBackup="false">
 
         <!-- Default FCM notification channel (must match channel id in NotificationService) -->
         <meta-data
