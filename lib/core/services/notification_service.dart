@@ -350,11 +350,13 @@ class NotificationService {
   }
 
   /// Delete FCM Registration Token on logout to unregister push notifications
+  /// and clear all pending local notifications from the status bar tray.
   Future<void> deleteFcmToken() async {
     try {
       await _messaging.deleteToken();
+      await _localNotifications.cancelAll();
       if (kDebugMode) {
-        print('🔔 FCM Token deleted successfully on logout.');
+        print('🔔 FCM Token deleted and all local notifications cleared on logout.');
       }
     } catch (e) {
       if (kDebugMode) {

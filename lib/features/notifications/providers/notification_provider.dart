@@ -17,12 +17,17 @@ final notificationRepositoryProvider = Provider<NotificationRepository>((ref) {
 
 /// Reactive state notifier managing user notifications with live background polling.
 class NotificationsNotifier extends StateNotifier<AsyncValue<List<ApiNotification>>> {
-  NotificationsNotifier(this.ref) : super(const AsyncValue.loading()) {
-    loadNotifications();
-    _startPolling();
+  NotificationsNotifier(this.ref, {this.sessionKey}) : super(const AsyncValue.loading()) {
+    if (sessionKey != null) {
+      loadNotifications();
+      _startPolling();
+    } else {
+      state = const AsyncValue.data([]);
+    }
   }
 
   final Ref ref;
+  final String? sessionKey;
   Timer? _pollingTimer;
 
   bool get _isStudent {
@@ -30,19 +35,30 @@ class NotificationsNotifier extends StateNotifier<AsyncValue<List<ApiNotificatio
     return user?.activeRole == UserRole.farmer;
   }
 
+  /// Clears in-memory notifications cache and cancels active polling timers.
+  void clear() {
+    _pollingTimer?.cancel();
+    _pollingTimer = null;
+    state = const AsyncValue.data([]);
+  }
+
   void _startPolling() {
     _pollingTimer?.cancel();
+    if (sessionKey == null) return;
+
     // Poll every 30 seconds for student or 15s for instructor per Agrilearn specification
-    _pollingTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+    final interval = _isStudent ? const Duration(seconds: 30) : const Duration(seconds: 15);
+    _pollingTimer = Timer.periodic(interval, (_) {
       _pollQuietly();
     });
   }
 
   Future<void> _pollQuietly() async {
+    if (!mounted || sessionKey == null) return;
     try {
       final repo = ref.read(notificationRepositoryProvider);
       final items = await repo.getNotifications(isStudent: _isStudent);
-      if (items.isNotEmpty) {
+      if (items.isNotEmpty && mounted) {
         state = AsyncValue.data(items);
       }
     } catch (_) {}
@@ -51,18 +67,28 @@ class NotificationsNotifier extends StateNotifier<AsyncValue<List<ApiNotificatio
   @override
   void dispose() {
     _pollingTimer?.cancel();
+    _pollingTimer = null;
     super.dispose();
   }
 
   Future<void> loadNotifications() async {
+    if (sessionKey == null) {
+      state = const AsyncValue.data([]);
+      return;
+    }
+
     state = const AsyncValue.loading();
     try {
       final repo = ref.read(notificationRepositoryProvider);
       final items = await repo.getNotifications(isStudent: _isStudent);
-      state = AsyncValue.data(items);
+      if (mounted) {
+        state = AsyncValue.data(items);
+      }
     } catch (e, st) {
       debugPrint('❌ [NotificationsNotifier] loadNotifications error: $e');
-      state = AsyncValue.error(e, st);
+      if (mounted) {
+        state = AsyncValue.error(e, st);
+      }
     }
   }
 
@@ -94,7 +120,6 @@ class NotificationsNotifier extends StateNotifier<AsyncValue<List<ApiNotificatio
     }
   }
 
-
   Future<void> markAllAsRead() async {
     final currentList = state.value ?? [];
     state = AsyncValue.data(
@@ -111,9 +136,20 @@ class NotificationsNotifier extends StateNotifier<AsyncValue<List<ApiNotificatio
 }
 
 /// Provider exposing reactive notification list.
+/// Automatically resets and invalidates when user logs out or switches roles.
 final notificationsProvider =
     StateNotifierProvider<NotificationsNotifier, AsyncValue<List<ApiNotification>>>((ref) {
-  return NotificationsNotifier(ref);
+  // Key off authenticated user ID and active role.
+  // When user logs out (null), Riverpod cleanly disposes the previous notifier
+  // and creates an unauthenticated notifier with empty state.
+  // When user logs in as Instructor or Student, a fresh notifier is created
+  // which immediately fetches the right role's notifications.
+  final sessionKey = ref.watch(authProvider.select((state) {
+    if (!state.isAuthenticated || state.user == null) return null;
+    return '${state.user!.id}_${state.user!.activeRole.name}';
+  }));
+
+  return NotificationsNotifier(ref, sessionKey: sessionKey);
 });
 
 /// Provider computing count of unread notifications for badges.
