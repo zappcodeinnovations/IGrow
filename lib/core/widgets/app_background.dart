@@ -27,7 +27,7 @@ class AppBackground extends StatelessWidget {
       // In dark mode: white icons.
       statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
       statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
-      systemNavigationBarColor: isDark ? const Color(0xFF0F1B14) : Colors.white,
+      systemNavigationBarColor: isDark ? const Color(0xFF101913) : const Color(0xFFF7FAF5),
       systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
     );
 
