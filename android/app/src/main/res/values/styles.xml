@@ -13,6 +13,7 @@
 
          This Theme is only used starting with V2 of Flutter's Android embedding. -->
     <color name="app_bg_light">#F8FAF5</color>
+    <color name="app_bg_dark">#14201A</color>
     <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
         <item name="android:windowBackground">@color/app_bg_light</item>
     </style>
