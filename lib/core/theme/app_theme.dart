@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'app_colors.dart';
 import 'app_typography.dart';
@@ -119,6 +120,13 @@ class AppTheme {
         scrolledUnderElevation: 0.5,
         centerTitle: false,
         titleTextStyle: AppTypography.headlineSmall(),
+        systemOverlayStyle: const SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.dark,
+          statusBarBrightness: Brightness.light,
+          systemNavigationBarColor: Colors.transparent,
+          systemNavigationBarIconBrightness: Brightness.dark,
+        ),
       ),
       cardTheme: CardThemeData(
         color: AppColors.white,
@@ -254,6 +262,13 @@ class AppTheme {
         scrolledUnderElevation: 0.5,
         centerTitle: false,
         titleTextStyle: AppTypography.headlineSmall(color: AppColors.white),
+        systemOverlayStyle: const SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.light,
+          statusBarBrightness: Brightness.dark,
+          systemNavigationBarColor: Colors.transparent,
+          systemNavigationBarIconBrightness: Brightness.light,
+        ),
       ),
       cardTheme: CardThemeData(
         color: AppColors.cardDark,

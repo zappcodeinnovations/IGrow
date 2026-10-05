@@ -487,6 +487,7 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
     final userName = (user != null && user.fullName.isNotEmpty) ? user.fullName : 'Ravi Kumar';
 
     return Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.transparent,

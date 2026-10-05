@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'app_background.dart';
 import '../../data/models/user_role.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../router/route_names.dart';
@@ -44,26 +45,41 @@ class ShellScaffold extends ConsumerWidget {
       }
     }
 
-    return Scaffold(
-      body: child,
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          border: Border(
-            top: BorderSide(
-              color: isDark ? AppColors.lineDark : AppColors.lineLight,
+    return AppBackground(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: child,
+        bottomNavigationBar: Container(
+          decoration: BoxDecoration(
+            color: (isDark ? AppColors.bgDark : Colors.white).withValues(alpha: 0.95),
+            border: Border(
+              top: BorderSide(
+                color: isDark ? AppColors.lineDark : const Color(0xFFE2EBE0),
+                width: 1,
+              ),
             ),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primaryGreen.withValues(alpha: isDark ? 0.08 : 0.06),
+                blurRadius: 16,
+                offset: const Offset(0, -4),
+              ),
+            ],
           ),
-        ),
-        child: BottomNavigationBar(
-          currentIndex: currentIndex,
-          onTap: (index) => _onTap(context, index, isFarmer),
-          backgroundColor: isDark ? AppColors.bgDark : AppColors.bgLight,
-          selectedItemColor: AppColors.primaryGreen,
-          unselectedItemColor: AppColors.inkSoft,
-          showSelectedLabels: true,
-          showUnselectedLabels: true,
-          type: BottomNavigationBarType.fixed,
-          elevation: 0,
+          child: BottomNavigationBar(
+            currentIndex: currentIndex,
+            onTap: (index) => _onTap(context, index, isFarmer),
+            backgroundColor: Colors.transparent,
+            selectedItemColor: AppColors.primaryGreen,
+            unselectedItemColor: isDark ? const Color(0xFF8B9E90) : AppColors.inkSoft,
+            selectedFontSize: 12,
+            unselectedFontSize: 11,
+            selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600),
+            unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500),
+            showSelectedLabels: true,
+            showUnselectedLabels: true,
+            type: BottomNavigationBarType.fixed,
+            elevation: 0,
           items: isFarmer
               ? const [
                   BottomNavigationBarItem(
@@ -109,6 +125,7 @@ class ShellScaffold extends ConsumerWidget {
                     label: 'Profile',
                   ),
                 ],
+          ),
         ),
       ),
     );

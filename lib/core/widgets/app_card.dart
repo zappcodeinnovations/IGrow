@@ -29,6 +29,11 @@ class AppCard extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = isDark ? AppColors.cardDark : AppColors.white;
 
+    final defaultBorder = Border.all(
+      color: isDark ? AppColors.lineDark : const Color(0xFFE2EBE0),
+      width: 1.0,
+    );
+
     Widget card = AnimatedContainer(
       width: double.infinity,
       duration: const Duration(milliseconds: 200),
@@ -37,15 +42,21 @@ class AppCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(borderRadius),
-        border: border != null
-            ? Border.fromBorderSide(border!)
-            : null,
+        border: border != null ? Border.fromBorderSide(border!) : defaultBorder,
         boxShadow: hasShadow
-            ? AppColors.greenShadow(
-                blurRadius: 20,
-                offset: const Offset(0, 6),
-                opacity: isDark ? 0.08 : 0.12,
-              )
+            ? [
+                BoxShadow(
+                  color: AppColors.primaryGreen.withValues(alpha: isDark ? 0.12 : 0.08),
+                  blurRadius: 22,
+                  offset: const Offset(0, 8),
+                ),
+                BoxShadow(
+                  color: (isDark ? Colors.black : const Color(0xFF1B2318))
+                      .withValues(alpha: isDark ? 0.3 : 0.03),
+                  blurRadius: 3,
+                  offset: const Offset(0, 1),
+                ),
+              ]
             : null,
       ),
       child: child,

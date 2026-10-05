@@ -24,6 +24,7 @@ class CommunityScreen extends ConsumerWidget {
     final postsAsync = ref.watch(communityPostsProvider);
 
     return Scaffold(
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(20),
