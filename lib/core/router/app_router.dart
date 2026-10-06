@@ -233,16 +233,37 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: RouteNames.paymentSuccess,
         builder: (context, state) {
           final extra = state.extra as Map<String, dynamic>? ?? {};
+          final qp = state.uri.queryParameters;
+
+          final originalTotal = (extra['originalTotal'] as num?)?.toDouble() ??
+              double.tryParse(qp['originalTotal'] ?? '') ??
+              0.0;
+          final finalTotal = (extra['finalTotal'] as num?)?.toDouble() ??
+              double.tryParse(qp['finalTotal'] ?? '') ??
+              0.0;
+          final discountAmount = (extra['discountAmount'] as num?)?.toDouble() ??
+              double.tryParse(qp['discountAmount'] ?? '') ??
+              0.0;
+          final couponCode = extra['couponCode'] as String? ?? qp['couponCode'];
+          final paymentMethod = extra['paymentMethod'] as String? ??
+              qp['paymentMethod'] ??
+              'DUMMY_CARD';
+          final purchasedItems = extra['purchasedItems'] as List<dynamic>? ?? [];
+
           return CheckoutSuccessScreen(
             orderResult: (extra['orderResult'] as Map<String, dynamic>?) ?? {},
-            originalTotal: (extra['originalTotal'] as num?)?.toDouble() ?? 0.0,
-            finalTotal: (extra['finalTotal'] as num?)?.toDouble() ?? 0.0,
-            discountAmount: (extra['discountAmount'] as num?)?.toDouble() ?? 0.0,
-            couponCode: extra['couponCode'] as String?,
-            paymentMethod: extra['paymentMethod'] as String? ?? 'DUMMY_CARD',
-            purchasedItems: extra['purchasedItems'] as List<dynamic>? ?? [],
+            originalTotal: originalTotal,
+            finalTotal: finalTotal,
+            discountAmount: discountAmount,
+            couponCode: couponCode,
+            paymentMethod: paymentMethod,
+            purchasedItems: purchasedItems,
           );
         },
+      ),
+      GoRoute(
+        path: '/payment-success',
+        redirect: (context, state) => state.uri.toString().replaceFirst('/payment-success', RouteNames.paymentSuccess),
       ),
       GoRoute(
         path: '/orders',

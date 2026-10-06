@@ -13,17 +13,23 @@ final cartRepositoryProvider = Provider<CartRepository>((ref) {
   return CartRepository(appApi: appApi, tokenStorage: tokenStorage);
 });
 
-/// Model representing an applied discount coupon.
+/// Model representing an applied discount coupon returned dynamically by backend.
 class AppliedCoupon {
   const AppliedCoupon({
     required this.code,
-    required this.discountPercent,
+    this.discountPercent = 0.0,
+    this.discountAmount = 0.0,
+    this.newTotal,
     required this.description,
+    this.rawBackendResponse,
   });
 
   final String code;
   final double discountPercent;
+  final double discountAmount;
+  final double? newTotal;
   final String description;
+  final Map<String, dynamic>? rawBackendResponse;
 }
 
 /// State provider for tracking the currently applied coupon.

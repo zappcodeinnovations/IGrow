@@ -186,8 +186,8 @@ class CartRepository {
   }
 
   /// Validate and apply coupon code via backend API.
-  Future<Map<String, dynamic>> applyCoupon(String code) async {
-    debugPrint('🎟️ [CartRepository] applyCoupon: code=$code');
+  Future<Map<String, dynamic>> applyCoupon(String code, {String? courseId}) async {
+    debugPrint('🎟️ [CartRepository] applyCoupon: code=$code, courseId=$courseId');
     final token = await tokenStorage.getAccessToken();
     final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/apply-coupon/');
     final response = await http.post(
@@ -196,7 +196,10 @@ class CartRepository {
         if (token != null) 'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
       },
-      body: jsonEncode({'code': code}),
+      body: jsonEncode({
+        'code': code,
+        if (courseId != null) 'course_id': courseId,
+      }),
     );
 
     if (response.statusCode >= 200 && response.statusCode < 300) {

@@ -93,6 +93,44 @@ class _CheckoutSuccessScreenState extends ConsumerState<CheckoutSuccessScreen> {
     _syncWithSavedState();
   }
 
+  static (String title, String id, String price) extractItemInfo(dynamic item) {
+    if (item is ApiCourseDetail) {
+      return (item.title, item.id, item.price ?? '0.00');
+    } else if (item is ApiCartItem) {
+      final title = item.courseDetail?['title']?.toString() ??
+          item.courseDetail?['name']?.toString() ??
+          'Course';
+      final price = item.courseDetail?['price']?.toString() ??
+          item.courseDetail?['discount_price']?.toString() ??
+          '0.00';
+      return (title, item.course, price);
+    } else if (item is ApiOrderItem) {
+      final title = item.courseTitle ?? 'Course';
+      final courseId = item.course ?? item.id;
+      final price = item.priceAtPurchase;
+      return (title, courseId, price);
+    } else if (item is Map) {
+      final map = Map<String, dynamic>.from(item);
+      final title = map['course_title']?.toString() ??
+          map['title']?.toString() ??
+          map['name']?.toString() ??
+          (map['course_detail'] is Map
+              ? (map['course_detail']['title']?.toString() ?? map['course_detail']['name']?.toString())
+              : null) ??
+          'Course';
+      final courseId = map['course']?.toString() ??
+          map['course_id']?.toString() ??
+          map['id']?.toString() ??
+          '';
+      final price = map['price_at_purchase']?.toString() ??
+          map['price']?.toString() ??
+          (map['course_detail'] is Map ? map['course_detail']['price']?.toString() : null) ??
+          '0.00';
+      return (title, courseId, price);
+    }
+    return ('Course', '', '0.00');
+  }
+
   void _syncWithSavedState() {
     final saved = ref.read(lastCheckoutDataProvider);
     if (saved != null) {
@@ -116,11 +154,51 @@ class _CheckoutSuccessScreenState extends ConsumerState<CheckoutSuccessScreen> {
       }
     }
 
-    // Also fallback to backend order object inside _orderResult if _finalTotal is still 0
-    final orderMap = _orderResult['order'] is Map ? _orderResult['order'] as Map<String, dynamic> : _orderResult;
-    if (_finalTotal <= 0 && orderMap['total_amount'] != null) {
-      _finalTotal = double.tryParse(orderMap['total_amount'].toString()) ?? _finalTotal;
+    // Also fallback to backend order object inside _orderResult
+    final orderMap = _orderResult['order'] is Map
+        ? _orderResult['order'] as Map<String, dynamic>
+        : _orderResult;
+
+    if (_purchasedItems.isEmpty && orderMap['items'] is List && (orderMap['items'] as List).isNotEmpty) {
+      _purchasedItems = List<dynamic>.from(orderMap['items'] as List);
     }
+
+    if (orderMap['discount_amount'] != null) {
+      final backendDiscount = double.tryParse(orderMap['discount_amount'].toString()) ?? 0.0;
+      if (backendDiscount > 0) _discountAmount = backendDiscount;
+    }
+    if (orderMap['coupon_code'] != null && _couponCode == null) {
+      _couponCode = orderMap['coupon_code'].toString();
+    }
+
+    if (_finalTotal <= 0 && orderMap['total_amount'] != null) {
+      final backendTotal = double.tryParse(orderMap['total_amount'].toString()) ?? 0.0;
+      if (backendTotal > 0) {
+        if (_originalTotal <= 0) _originalTotal = backendTotal;
+        if (_discountAmount > 0) {
+          _finalTotal = (_originalTotal - _discountAmount).clamp(0.0, double.infinity);
+        } else {
+          _finalTotal = backendTotal;
+        }
+      }
+    }
+
+    if (_finalTotal <= 0 && _originalTotal > 0) {
+      _finalTotal = (_originalTotal - _discountAmount).clamp(0.0, double.infinity);
+    }
+
+    if (_finalTotal <= 0 && _purchasedItems.isNotEmpty) {
+      double sum = 0.0;
+      for (final it in _purchasedItems) {
+        final (_, _, priceStr) = extractItemInfo(it);
+        sum += double.tryParse(priceStr) ?? 0.0;
+      }
+      if (sum > 0) {
+        if (_originalTotal <= 0) _originalTotal = sum;
+        _finalTotal = (_originalTotal - _discountAmount).clamp(0.0, double.infinity);
+      }
+    }
+
     if (_originalTotal <= 0 && _finalTotal > 0) {
       _originalTotal = _finalTotal + _discountAmount;
     }
@@ -134,15 +212,38 @@ class _CheckoutSuccessScreenState extends ConsumerState<CheckoutSuccessScreen> {
     final studentName = user?.fullName ?? 'Valued Student';
     final studentEmail = user?.email ?? 'student@igrow.com';
 
+    final ordersAsync = ref.watch(ordersProvider);
     final orderData = _orderResult['order'] is Map
         ? _orderResult['order'] as Map<String, dynamic>
         : _orderResult;
 
+    // Fallback items and amounts from the newly created order in ordersProvider if still empty
+    if (_purchasedItems.isEmpty && ordersAsync.valueOrNull?.isNotEmpty == true) {
+      final latest = ordersAsync.valueOrNull!.first;
+      if (latest.items.isNotEmpty) {
+        _purchasedItems = List<dynamic>.from(latest.items);
+      }
+      if (_finalTotal <= 0) {
+        final latestTotal = double.tryParse(latest.totalAmount) ?? 0.0;
+        if (latestTotal > 0) {
+          if (_originalTotal <= 0) _originalTotal = latestTotal;
+          _finalTotal = (_originalTotal - _discountAmount).clamp(0.0, double.infinity);
+        }
+      }
+    }
+
     final gatewayRef = orderData['gateway_reference']?.toString() ??
         _orderResult['gateway_reference']?.toString() ??
+        (ordersAsync.valueOrNull?.isNotEmpty == true
+            ? ordersAsync.valueOrNull!.first.gatewayReference
+            : null) ??
         'AGRIPAY_${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
 
-    final orderId = orderData['id']?.toString() ?? 'ORD-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
+    final orderId = orderData['id']?.toString() ??
+        (ordersAsync.valueOrNull?.isNotEmpty == true
+            ? ordersAsync.valueOrNull!.first.id
+            : null) ??
+        'ORD-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
     final nowFormatted = DateFormat('MMMM dd, yyyy • hh:mm a').format(DateTime.now());
 
     return PopScope(
@@ -327,18 +428,7 @@ class _CheckoutSuccessScreenState extends ConsumerState<CheckoutSuccessScreen> {
           const SizedBox(height: 10),
 
           ..._purchasedItems.map((item) {
-            String title = 'Course';
-            String courseId = '';
-
-            if (item is ApiCourseDetail) {
-              title = item.title;
-              courseId = item.id;
-            } else if (item is ApiCartItem) {
-              title = item.courseDetail?['title']?.toString() ??
-                  item.courseDetail?['name']?.toString() ??
-                  'Course';
-              courseId = item.course;
-            }
+            final (title, courseId, _) = extractItemInfo(item);
 
             return Container(
               margin: const EdgeInsets.only(bottom: 12),
@@ -661,15 +751,7 @@ class _CheckoutSuccessScreenState extends ConsumerState<CheckoutSuccessScreen> {
 
               // Items
               ...items.map((item) {
-                String title = 'Course';
-                String price = '0.00';
-                if (item is ApiCourseDetail) {
-                  title = item.title;
-                  price = item.price ?? '0.00';
-                } else if (item is ApiCartItem) {
-                  title = item.courseDetail?['title']?.toString() ?? 'Course';
-                  price = item.courseDetail?['price']?.toString() ?? '0.00';
-                }
+                final (title, _, price) = extractItemInfo(item);
 
                 return Padding(
                   padding: const EdgeInsets.symmetric(
@@ -875,15 +957,7 @@ class _CheckoutSuccessScreenState extends ConsumerState<CheckoutSuccessScreen> {
                                 cellStyle: const pw.TextStyle(fontSize: 11),
                                 headers: ['Course / Description', 'SAC', 'Amount'],
                                 data: items.map((item) {
-                                  String title = 'Agriculture Course';
-                                  String price = '0.00';
-                                  if (item is ApiCourseDetail) {
-                                    title = item.title;
-                                    price = item.price ?? '0.00';
-                                  } else if (item is ApiCartItem) {
-                                    title = item.courseDetail?['title']?.toString() ?? 'Course';
-                                    price = item.courseDetail?['price']?.toString() ?? '0.00';
-                                  }
+                                  final (title, _, price) = extractItemInfo(item);
                                   return [title, '998311', 'Rs. $price'];
                                 }).toList(),
                               ),

@@ -32,6 +32,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   final _cardHolderController = TextEditingController();
 
   bool _isProcessing = false;
+  bool _isApplyingCoupon = false;
   String? _couponError;
 
   @override
@@ -45,7 +46,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     super.dispose();
   }
 
-  void _applyCoupon() {
+  Future<void> _applyCoupon() async {
     final code = _couponController.text.trim().toUpperCase();
     if (code.isEmpty) {
       setState(() {
@@ -54,50 +55,54 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       return;
     }
 
-    if (code == 'AGRI10' || code == 'AG10') {
-      ref.read(appliedCouponProvider.notifier).state = AppliedCoupon(
-        code: code == 'AG10' ? 'AG10' : 'AGRI10',
-        discountPercent: 10,
-        description: '10% Agriculture Special Discount',
-      );
-      setState(() => _couponError = null);
-    } else if (code == 'KISAN50') {
-      ref.read(appliedCouponProvider.notifier).state = const AppliedCoupon(
-        code: 'KISAN50',
-        discountPercent: 50,
-        description: '50% Kisan Diwas Discount',
-      );
-      setState(() => _couponError = null);
-    } else if (code == 'FREE100') {
-      ref.read(appliedCouponProvider.notifier).state = const AppliedCoupon(
-        code: 'FREE100',
-        discountPercent: 100,
-        description: '100% Scholarship Discount',
-      );
-      setState(() => _couponError = null);
-    } else {
-      setState(() {
-        _couponError = 'Invalid coupon code. Try AGRI10 or KISAN50';
-      });
+    setState(() {
+      _isApplyingCoupon = true;
+      _couponError = null;
+    });
 
-      // Also attempt backend verification for dynamic admin-created coupons
-      ref.read(cartRepositoryProvider).applyCoupon(code).then((res) {
-        final discountVal = (res['discount_amount'] as num?)?.toDouble() ?? 0.0;
-        final origVal = (res['original_total'] as num?)?.toDouble() ?? 0.0;
-        final percent = (origVal > 0 && discountVal > 0)
-            ? ((discountVal / origVal) * 100).roundToDouble()
-            : (discountVal > 0 ? discountVal : 10.0);
-        if (mounted) {
-          ref.read(appliedCouponProvider.notifier).state = AppliedCoupon(
-            code: res['code']?.toString() ?? code,
-            discountPercent: percent > 0 ? percent : 10,
-            description: res['message']?.toString() ?? '${percent.toInt()}% Special Discount',
+    try {
+      final res = await ref.read(cartRepositoryProvider).applyCoupon(
+            code,
+            courseId: widget.directCourseId,
           );
-          setState(() => _couponError = null);
-        }
-      }).catchError((_) {
-        // Keeps the invalid coupon error
-      });
+
+      // Dynamically extract values returned by backend API
+      final discountAmountVal = (res['discount_amount'] as num?)?.toDouble() ??
+          (res['discount'] as num?)?.toDouble() ??
+          0.0;
+      final discountPercentVal = (res['discount_percent'] as num?)?.toDouble() ??
+          (res['percent'] as num?)?.toDouble() ??
+          0.0;
+      final newTotalVal = (res['new_total'] as num?)?.toDouble() ??
+          (res['payable_amount'] as num?)?.toDouble() ??
+          (res['total'] as num?)?.toDouble();
+      final desc = res['message']?.toString() ??
+          res['description']?.toString() ??
+          res['detail']?.toString() ??
+          'Coupon applied successfully!';
+
+      ref.read(appliedCouponProvider.notifier).state = AppliedCoupon(
+        code: res['code']?.toString() ?? code,
+        discountPercent: discountPercentVal,
+        discountAmount: discountAmountVal,
+        newTotal: newTotalVal,
+        description: desc,
+        rawBackendResponse: res,
+      );
+
+      if (mounted) {
+        setState(() => _couponError = null);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _couponError = e.toString().replaceAll('Exception: ', '');
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isApplyingCoupon = false);
+      }
     }
   }
 
@@ -114,11 +119,14 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   }) async {
     setState(() => _isProcessing = true);
 
+    // Snapshot purchased items immediately before async checkout clears cart
+    final purchasedItemsSnapshot = List<dynamic>.from(items);
+
     try {
       final coupon = ref.read(appliedCouponProvider);
       final rawCard = _cardNumberController.text.replaceAll(' ', '');
       final result = await ref.read(cartProvider.notifier).checkout(
-            paymentMethod: 'DUMMY_CARD',
+            paymentMethod: _selectedPaymentMethod,
             courseId: widget.directCourseId,
             cardNumber: rawCard.isNotEmpty ? rawCard : '4242424242424242',
             cardExpiry: _cardExpiryController.text.isNotEmpty ? _cardExpiryController.text : '12/28',
@@ -129,32 +137,68 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
 
       ref.invalidate(studentEnrollmentsProvider);
 
-      final discountAmount = coupon != null
-          ? (originalTotal * coupon.discountPercent / 100)
-          : (originalTotal - finalTotal).clamp(0.0, double.infinity);
+      // Dynamically extract values directly from backend order summary payload
+      final orderData = (result['order'] is Map)
+          ? result['order'] as Map<String, dynamic>
+          : result;
 
-      // Persist checkout state in provider so modal dismissals never reset amounts to 0
+      final backendTotal = (orderData['total_amount'] as num?)?.toDouble() ??
+          double.tryParse(orderData['total_amount']?.toString() ?? '');
+      final backendDiscount = (orderData['discount_amount'] as num?)?.toDouble() ??
+          double.tryParse(orderData['discount_amount']?.toString() ?? '');
+      final backendItems = orderData['items'] is List ? (orderData['items'] as List) : null;
+
+      final dynamicDiscount = backendDiscount ??
+          (coupon != null
+              ? (coupon.discountAmount > 0
+                  ? coupon.discountAmount
+                  : (originalTotal * coupon.discountPercent / 100))
+              : (originalTotal - finalTotal).clamp(0.0, double.infinity));
+
+      final dynamicPayable = backendTotal ??
+          (originalTotal - dynamicDiscount).clamp(0.0, double.infinity);
+
+      final dynamicItems = (backendItems != null && backendItems.isNotEmpty)
+          ? List<dynamic>.from(backendItems)
+          : purchasedItemsSnapshot;
+
+      // Persist dynamic checkout state in provider so modal dismissals or rebuilds never reset amounts
       ref.read(lastCheckoutDataProvider.notifier).state = LastCheckoutData(
         orderResult: result,
         originalTotal: originalTotal,
-        finalTotal: finalTotal,
-        discountAmount: discountAmount,
+        finalTotal: dynamicPayable,
+        discountAmount: dynamicDiscount,
         couponCode: coupon?.code,
         paymentMethod: _selectedPaymentMethod,
-        purchasedItems: List.from(items),
+        purchasedItems: dynamicItems,
       );
 
+      // Reset active coupon for next order sessions
+      ref.read(appliedCouponProvider.notifier).state = null;
+
       if (mounted) {
+        final queryParams = <String, String>{
+          'originalTotal': originalTotal.toStringAsFixed(2),
+          'finalTotal': dynamicPayable.toStringAsFixed(2),
+          'discountAmount': dynamicDiscount.toStringAsFixed(2),
+          if (coupon?.code != null) 'couponCode': coupon!.code,
+          'paymentMethod': _selectedPaymentMethod,
+        };
+        final uri = Uri(
+          path: RouteNames.paymentSuccess,
+          queryParameters: queryParams,
+        );
+
         context.pushReplacement(
-          RouteNames.paymentSuccess,
+          uri.toString(),
           extra: {
             'orderResult': result,
             'originalTotal': originalTotal,
-            'finalTotal': finalTotal,
-            'discountAmount': discountAmount,
+            'finalTotal': dynamicPayable,
+            'discountAmount': dynamicDiscount,
             'couponCode': coupon?.code,
             'paymentMethod': _selectedPaymentMethod,
-            'purchasedItems': items,
+            'purchasedItems': dynamicItems,
           },
         );
       }
@@ -251,7 +295,15 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
             );
           }
 
-          final originalTotal = double.tryParse(cart.total ?? '0') ?? 0.0;
+          final parsedCartTotal = double.tryParse(cart.total ?? '0') ?? 0.0;
+          final calculatedCartTotal = cart.items.fold<double>(0.0, (sum, it) {
+            final p = double.tryParse(it.courseDetail?['price']?.toString() ?? '') ??
+                double.tryParse(it.courseDetail?['discount_price']?.toString() ?? '') ??
+                0.0;
+            return sum + p;
+          });
+          final originalTotal = parsedCartTotal > 0 ? parsedCartTotal : calculatedCartTotal;
+
           return _buildCheckoutContent(
             context,
             isDark: isDark,
@@ -284,10 +336,27 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     required List<dynamic> items,
     required double originalTotal,
   }) {
-    final discountAmount = appliedCoupon != null
-        ? (originalTotal * appliedCoupon.discountPercent / 100)
-        : 0.0;
-    final finalTotal = (originalTotal - discountAmount).clamp(0.0, double.infinity);
+    final double discountAmount;
+    final double finalTotal;
+
+    if (appliedCoupon != null) {
+      if (appliedCoupon.newTotal != null) {
+        finalTotal = appliedCoupon.newTotal!.clamp(0.0, double.infinity);
+        discountAmount = (originalTotal - finalTotal).clamp(0.0, double.infinity);
+      } else if (appliedCoupon.discountAmount > 0) {
+        discountAmount = appliedCoupon.discountAmount.clamp(0.0, originalTotal);
+        finalTotal = (originalTotal - discountAmount).clamp(0.0, double.infinity);
+      } else if (appliedCoupon.discountPercent > 0) {
+        discountAmount = (originalTotal * appliedCoupon.discountPercent / 100).clamp(0.0, originalTotal);
+        finalTotal = (originalTotal - discountAmount).clamp(0.0, double.infinity);
+      } else {
+        discountAmount = 0.0;
+        finalTotal = originalTotal;
+      }
+    } else {
+      discountAmount = 0.0;
+      finalTotal = originalTotal;
+    }
 
     return Column(
       children: [
@@ -526,14 +595,23 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                             ),
-                            onPressed: _applyCoupon,
-                            child: const Text('Apply', style: TextStyle(fontWeight: FontWeight.bold)),
+                            onPressed: _isApplyingCoupon ? null : _applyCoupon,
+                            child: _isApplyingCoupon
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Text('Apply', style: TextStyle(fontWeight: FontWeight.bold)),
                           ),
                         ],
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        '💡 Try coupon AGRI10 for 10% off or KISAN50 for 50% off!',
+                        'Enter a promotional coupon code to apply an instant discount.',
                         style: TextStyle(
                           fontSize: 12,
                           color: isDark ? Colors.white60 : AppColors.inkSoft,
@@ -567,7 +645,9 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                                     ),
                                   ),
                                   Text(
-                                    'Saved ₹${discountAmount.toStringAsFixed(2)} (${appliedCoupon.discountPercent.toInt()}%)',
+                                    appliedCoupon.discountPercent > 0
+                                        ? 'Saved ₹${discountAmount.toStringAsFixed(2)} (${appliedCoupon.discountPercent.toInt()}%)'
+                                        : 'Saved ₹${discountAmount.toStringAsFixed(2)}',
                                     style: TextStyle(
                                       fontSize: 12,
                                       color: isDark ? Colors.white70 : AppColors.inkSoft,
