@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/network/swagger_generated/app_api.swagger.dart';
 import '../../../core/router/route_names.dart';
@@ -140,16 +141,35 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                 leading: const Icon(Icons.email_outlined, color: AppColors.skyBlue),
                 title: const Text('Email Support'),
                 subtitle: const Text('support@iagrow.zappcode.in'),
-                trailing: const Icon(Icons.copy_rounded, size: 18, color: AppColors.inkSoft),
-                onTap: () {
+                trailing: const Icon(Icons.open_in_new_rounded, size: 18, color: AppColors.inkSoft),
+                onTap: () async {
                   Navigator.pop(context);
-                  Clipboard.setData(const ClipboardData(text: 'support@iagrow.zappcode.in'));
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Support email copied to clipboard: support@iagrow.zappcode.in'),
-                      duration: Duration(milliseconds: 2000),
-                    ),
+                  final emailUri = Uri(
+                    scheme: 'mailto',
+                    path: 'support@iagrow.zappcode.in',
+                    queryParameters: {
+                      'subject': 'Support Request - iGrow Student',
+                    },
                   );
+                  try {
+                    final launched = await launchUrl(
+                      emailUri,
+                      mode: LaunchMode.externalApplication,
+                    );
+                    if (!launched) {
+                      throw Exception('Could not launch mail client');
+                    }
+                  } catch (_) {
+                    Clipboard.setData(const ClipboardData(text: 'support@iagrow.zappcode.in'));
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Support email copied to clipboard: support@iagrow.zappcode.in'),
+                          duration: Duration(milliseconds: 2000),
+                        ),
+                      );
+                    }
+                  }
                 },
               ),
               const SizedBox(height: 16),

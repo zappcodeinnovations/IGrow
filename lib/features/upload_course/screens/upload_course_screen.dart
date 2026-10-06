@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -786,20 +788,120 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _isSubmitting = false);
-        _showErrorSnackbar('Failed to create course draft: $e');
+        final isOffline = _isNetworkError(e);
+        final friendlyMsg = _getFriendlyErrorMessage(e);
+        _showErrorSnackbar(
+          friendlyMsg,
+          icon: isOffline ? Icons.wifi_off_rounded : Icons.error_outline_rounded,
+          onRetry: () => _submitCreateCourseDraft(),
+        );
       }
     }
   }
 
-  void _showErrorSnackbar(String msg) {
+  bool _isNetworkError(dynamic e) {
+    if (e is SocketException || e is TimeoutException) {
+      return true;
+    }
+    final s = e.toString().toLowerCase();
+    return s.contains('socketexception') ||
+        s.contains('clientexception') ||
+        s.contains('connection abort') ||
+        s.contains('connection refused') ||
+        s.contains('connection reset') ||
+        s.contains('connection closed') ||
+        s.contains('failed host lookup') ||
+        s.contains('network is unreachable') ||
+        s.contains('handshake') ||
+        s.contains('timed out') ||
+        s.contains('timeoutexception') ||
+        s.contains('no internet') ||
+        s.contains('offline') ||
+        s.contains('network error');
+  }
+
+  String _getFriendlyErrorMessage(dynamic e) {
+    if (_isNetworkError(e)) {
+      return 'No internet connection. Please check your network and try again.';
+    }
+
+    final raw = e.toString();
+    try {
+      if (raw.contains('{') && raw.contains('}')) {
+        final startIndex = raw.indexOf('{');
+        final endIndex = raw.lastIndexOf('}') + 1;
+        final jsonStr = raw.substring(startIndex, endIndex);
+        final decoded = jsonDecode(jsonStr);
+
+        if (decoded is Map<String, dynamic>) {
+          if (decoded['detail'] != null) return decoded['detail'].toString();
+          if (decoded['message'] != null) return decoded['message'].toString();
+          if (decoded['error'] != null) return decoded['error'].toString();
+          if (decoded['non_field_errors'] is List && (decoded['non_field_errors'] as List).isNotEmpty) {
+            return (decoded['non_field_errors'] as List).first.toString();
+          }
+          for (final entry in decoded.entries) {
+            final val = entry.value;
+            if (val is List && val.isNotEmpty) {
+              return '${entry.key}: ${val.first}';
+            } else if (val is String) {
+              return '${entry.key}: $val';
+            }
+          }
+        }
+      }
+    } catch (_) {}
+
+    String clean = raw.replaceAll('Exception: ', '').trim();
+    if (clean.contains(', uri=')) {
+      clean = clean.split(', uri=').first;
+    }
+    if (clean.startsWith('Failed to create course:')) {
+      clean = clean.replaceFirst('Failed to create course:', '').trim();
+    }
+    return clean.isNotEmpty ? clean : 'Failed to create course draft. Please try again.';
+  }
+
+  void _showErrorSnackbar(
+    String msg, {
+    VoidCallback? onRetry,
+    IconData? icon,
+  }) {
     if (!mounted) return;
     final messenger = ScaffoldMessenger.of(context);
     messenger.clearSnackBars();
     messenger.showSnackBar(
       SnackBar(
-        content: Text(msg),
+        content: Row(
+          children: [
+            if (icon != null) ...[
+              Icon(icon, color: Colors.white, size: 20),
+              const SizedBox(width: 10),
+            ],
+            Expanded(
+              child: Text(
+                msg,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
         backgroundColor: AppColors.error,
-        duration: const Duration(seconds: 3),
+        duration: Duration(seconds: onRetry != null ? 6 : 3),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        action: onRetry != null
+            ? SnackBarAction(
+                label: 'Retry',
+                textColor: Colors.white,
+                backgroundColor: Colors.white.withValues(alpha: 0.2),
+                onPressed: onRetry,
+              )
+            : null,
       ),
     );
   }

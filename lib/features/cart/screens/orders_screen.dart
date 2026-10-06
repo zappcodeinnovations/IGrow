@@ -85,7 +85,7 @@ class OrdersScreen extends ConsumerWidget {
             itemBuilder: (context, index) {
               final order = orders[index];
               final dateStr = order.createdAt != null
-                  ? DateFormat('MMMM dd, yyyy • hh:mm a').format(order.createdAt!)
+                  ? DateFormat('MMMM dd, yyyy • hh:mm a').format(order.createdAt!.toLocal())
                   : 'Recent Purchase';
               final isSuccess = (order.status ?? 'SUCCESS').toUpperCase() == 'SUCCESS';
               final itemSubtotal = order.items.fold<double>(
@@ -174,7 +174,14 @@ class OrdersScreen extends ConsumerWidget {
                         ],
                       ),
                       const SizedBox(height: 4),
-                      Text(dateStr, style: const TextStyle(fontSize: 11, color: AppColors.inkSoft)),
+                      Text(
+                        dateStr,
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w500,
+                          color: isDark ? Colors.white.withValues(alpha: 0.85) : AppColors.inkDark,
+                        ),
+                      ),
                       const Divider(height: 20),
 
                       // Order Items
