@@ -1,7 +1,10 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../../core/network/api_client.dart';
+import '../../core/network/api_exception.dart';
 import '../../core/network/token_storage.dart';
 import '../models/api_models/order_models.dart';
 
@@ -12,15 +15,51 @@ class CartRepository {
   final AppApi appApi;
   final TokenStorage tokenStorage;
 
-  /// Get the current cart.
+  bool _isNetworkOrAbortError(dynamic e) {
+    if (e is SocketException || e is TimeoutException || e is http.ClientException) {
+      return true;
+    }
+    final s = e.toString().toLowerCase();
+    return s.contains('abort') ||
+        s.contains('connection') ||
+        s.contains('socket') ||
+        s.contains('handshake') ||
+        s.contains('timeout') ||
+        s.contains('clientexception') ||
+        s.contains('failed host lookup') ||
+        s.contains('network is unreachable');
+  }
+
+  /// Get the current cart with automatic single retry for transient connection drops.
   Future<ApiCart> getCart() async {
     debugPrint('🛒 [CartRepository] getCart: fetching user cart');
+    try {
+      return await _fetchCartFromApi();
+    } catch (e) {
+      if (_isNetworkOrAbortError(e)) {
+        debugPrint('🔄 [CartRepository] getCart network/abort failure ($e). Retrying once after 350ms...');
+        await Future.delayed(const Duration(milliseconds: 350));
+        try {
+          return await _fetchCartFromApi();
+        } catch (retryErr) {
+          debugPrint('❌ [CartRepository] getCart retry also failed: $retryErr');
+          throw ApiException.network('Unable to load cart. Please check your internet connection.');
+        }
+      }
+      rethrow;
+    }
+  }
+
+  Future<ApiCart> _fetchCartFromApi() async {
     final response = await appApi.apiV1CartGet();
     if (!response.isSuccessful) {
       if (response.statusCode == 404) {
         return const ApiCart(id: '');
       }
-      throw Exception('Failed to load cart: ${response.statusCode}');
+      throw ApiException(
+        statusCode: response.statusCode,
+        message: 'Failed to load cart (${response.statusCode})',
+      );
     }
 
     final dynamic data = response.body;
@@ -50,67 +89,99 @@ class CartRepository {
     debugPrint('➕ [CartRepository] addToCart: courseId=$courseId');
     final token = await tokenStorage.getAccessToken();
     final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/cart/add/');
-    final response = await http.post(
-      uri,
-      headers: {
-        if (token != null) 'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode({
-        'course_id': courseId,
-        'course': courseId,
-      }),
-    );
+    
+    http.Response response;
+    try {
+      response = await http.post(
+        uri,
+        headers: {
+          if (token != null) 'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'course_id': courseId,
+          'course': courseId,
+        }),
+      ).timeout(const Duration(seconds: 15));
+    } catch (e) {
+      debugPrint('❌ [CartRepository] addToCart network error: $e');
+      if (_isNetworkOrAbortError(e)) {
+        throw ApiException.network('Unable to add course to cart. Please check your internet connection.');
+      }
+      rethrow;
+    }
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       debugPrint('✅ [CartRepository] addToCart SUCCESS');
     } else {
       debugPrint('❌ [CartRepository] addToCart ERROR (${response.statusCode}): ${response.body}');
+      String errorMessage = 'Failed to add to cart (${response.statusCode})';
       try {
         final decoded = jsonDecode(response.body);
-        if (decoded is Map && decoded.containsKey('error')) {
-          throw Exception(decoded['error']);
+        if (decoded is Map) {
+          if (decoded.containsKey('error') && decoded['error'] != null) {
+            errorMessage = decoded['error'].toString();
+          } else if (decoded.containsKey('detail') && decoded['detail'] != null) {
+            errorMessage = decoded['detail'].toString();
+          } else if (decoded.containsKey('message') && decoded['message'] != null) {
+            errorMessage = decoded['message'].toString();
+          }
         }
       } catch (e) {
         if (e is! FormatException) rethrow;
       }
-      throw Exception('Failed to add to cart (${response.statusCode})');
+
+      if (response.statusCode >= 500) {
+        throw ApiException.server('Server error. Please try again later.');
+      }
+      throw ApiException(
+        statusCode: response.statusCode,
+        message: errorMessage,
+      );
     }
   }
 
   /// Remove a course from cart.
   Future<void> removeFromCart(String courseId) async {
     debugPrint('🗑️ [CartRepository] removeFromCart: courseId=$courseId');
-    final token = await tokenStorage.getAccessToken();
-    final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/cart/remove/$courseId/');
-    final response = await http.delete(
-      uri,
-      headers: {
-        if (token != null) 'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      },
-    );
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      debugPrint('✅ [CartRepository] removeFromCart SUCCESS');
-    } else {
-      debugPrint('⚠️ [CartRepository] removeFromCart status: ${response.statusCode}');
+    try {
+      final token = await tokenStorage.getAccessToken();
+      final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/cart/remove/$courseId/');
+      final response = await http.delete(
+        uri,
+        headers: {
+          if (token != null) 'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      ).timeout(const Duration(seconds: 15));
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        debugPrint('✅ [CartRepository] removeFromCart SUCCESS');
+      } else {
+        debugPrint('⚠️ [CartRepository] removeFromCart status: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('⚠️ [CartRepository] removeFromCart network/timeout error: $e');
     }
   }
 
   /// Clear the entire cart.
   Future<void> clearCart() async {
     debugPrint('🧹 [CartRepository] clearCart');
-    final token = await tokenStorage.getAccessToken();
-    final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/cart/clear/');
-    final response = await http.delete(
-      uri,
-      headers: {
-        if (token != null) 'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      },
-    );
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      debugPrint('✅ [CartRepository] clearCart SUCCESS');
+    try {
+      final token = await tokenStorage.getAccessToken();
+      final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/cart/clear/');
+      final response = await http.delete(
+        uri,
+        headers: {
+          if (token != null) 'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      ).timeout(const Duration(seconds: 15));
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        debugPrint('✅ [CartRepository] clearCart SUCCESS');
+      }
+    } catch (e) {
+      debugPrint('⚠️ [CartRepository] clearCart network/timeout error: $e');
     }
   }
 

@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:video_player/video_player.dart';
 
+import '../../../core/network/api_exception.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/shimmer_placeholders.dart';
@@ -433,13 +434,24 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
       }
     } catch (e) {
       debugPrint('❌ [CourseDetails] Add to cart ERROR: $e');
-      final errMsg = e.toString().replaceAll('Exception: ', '');
+      String errMsg = '';
+      if (e is ApiException) {
+        errMsg = e.message;
+      } else {
+        errMsg = e.toString()
+            .replaceAll('Exception: ', '')
+            .replaceAll('ClientException: ', '')
+            .trim();
+      }
+
+      final lower = errMsg.toLowerCase();
       if (context.mounted) {
-        if (errMsg.toLowerCase().contains('already enrolled') ||
-            errMsg.toLowerCase().contains('already purchased')) {
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.clearSnackBars();
+
+        if (lower.contains('already enrolled') ||
+            lower.contains('already purchased')) {
           ref.invalidate(studentEnrollmentsProvider);
-          final messenger = ScaffoldMessenger.of(context);
-          messenger.clearSnackBars();
           messenger.showSnackBar(
             const SnackBar(
               content: Text('You are already enrolled in this course! Tap Start Learning to begin. 🎓'),
@@ -447,14 +459,43 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
               duration: Duration(seconds: 3),
             ),
           );
-        } else if (errMsg.toLowerCase().contains('only student') ||
-            (errMsg.toLowerCase().contains('student') && errMsg.toLowerCase().contains('buy'))) {
+        } else if (lower.contains('already in cart') ||
+                   lower.contains('already added') ||
+                   lower.contains('item already')) {
+          // If already in cart on backend, refresh cart provider so UI updates to "Go to Cart"
+          ref.invalidate(cartProvider);
+          messenger.showSnackBar(
+            const SnackBar(
+              content: Text('Course is already in your cart. 🛒'),
+              backgroundColor: Color(0xFFC88528),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        } else if (lower.contains('only student') ||
+            (lower.contains('student') && lower.contains('buy'))) {
           _showStudentOnlyDialog(context);
         } else {
-          final messenger = ScaffoldMessenger.of(context);
-          messenger.clearSnackBars();
+          // Clean user-friendly message for any network or technical errors
+          String displayMsg = errMsg;
+          if (lower.contains('abort') ||
+              lower.contains('connection') ||
+              lower.contains('socket') ||
+              lower.contains('network') ||
+              lower.contains('failed host lookup') ||
+              lower.contains('timeout') ||
+              lower.contains('uri=') ||
+              lower.contains('http') ||
+              lower.contains('errno') ||
+              lower.contains('clientsoftware')) {
+            displayMsg = 'Unable to add course to cart. Please check your internet connection.';
+          }
+
           messenger.showSnackBar(
-            SnackBar(content: Text(errMsg), backgroundColor: AppColors.error),
+            SnackBar(
+              content: Text(displayMsg),
+              backgroundColor: AppColors.error,
+              duration: const Duration(seconds: 3),
+            ),
           );
         }
       }
@@ -766,8 +807,9 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
             );
           }
 
-          final inCart = ref.watch(isCourseInCartProvider(widget.courseId)) ||
-                         (course.slug != null && ref.watch(isCourseInCartProvider(course.slug!)));
+          final inCart = (course.id.isNotEmpty && ref.watch(isCourseInCartProvider(course.id))) ||
+                         ref.watch(isCourseInCartProvider(widget.courseId)) ||
+                         (course.slug != null && course.slug!.isNotEmpty && ref.watch(isCourseInCartProvider(course.slug!)));
           final priceText = course.price == null || course.price == '0' || course.price == '0.00' ? 'Free' : '₹${course.price}';
 
           return Container(
@@ -1037,8 +1079,9 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
     final isSaved = ref.watch(isWishlistedProvider(course.id)) ||
         (course.slug != null && course.slug!.isNotEmpty && ref.watch(isWishlistedProvider(course.slug!))) ||
         ref.watch(isWishlistedProvider(widget.courseId));
-    final inCart = ref.watch(isCourseInCartProvider(widget.courseId)) ||
-                   (course.slug != null && ref.watch(isCourseInCartProvider(course.slug!)));
+    final inCart = (course.id.isNotEmpty && ref.watch(isCourseInCartProvider(course.id))) ||
+                   ref.watch(isCourseInCartProvider(widget.courseId)) ||
+                   (course.slug != null && course.slug!.isNotEmpty && ref.watch(isCourseInCartProvider(course.slug!)));
 
     return Container(
       decoration: BoxDecoration(
