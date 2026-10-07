@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/app_toast.dart';
 import '../../../data/models/api_models/course_models.dart';
 import '../../../data/models/api_models/order_models.dart';
 import '../../explore/providers/explore_provider.dart';
@@ -92,11 +93,13 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
 
       if (mounted) {
         setState(() => _couponError = null);
+        AppToast.show(context, desc, isError: false);
       }
     } catch (e) {
       if (mounted) {
+        final friendlyErr = _formatUserFriendlyError(e);
         setState(() {
-          _couponError = e.toString().replaceAll('Exception: ', '');
+          _couponError = friendlyErr;
         });
       }
     } finally {
@@ -104,6 +107,58 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
         setState(() => _isApplyingCoupon = false);
       }
     }
+  }
+
+  String _formatUserFriendlyError(dynamic error) {
+    if (error == null) return 'Something went wrong. Please try again.';
+    final raw = error.toString().replaceAll('Exception: ', '').trim();
+    final lower = raw.toLowerCase();
+
+    if (lower.contains('socketexception') ||
+        lower.contains('clientexception') ||
+        lower.contains('failed host lookup') ||
+        lower.contains('connection abort') ||
+        lower.contains('network is unreachable') ||
+        lower.contains('connection refused') ||
+        lower.contains('handshakeexception') ||
+        lower.contains('no internet')) {
+      return 'No internet connection. Please check your network and try again.';
+    }
+
+    if (lower.contains('timeout') || lower.contains('timed out')) {
+      return 'Request timed out. Please check your network and try again.';
+    }
+
+    if (lower.contains('matching query does not exist') ||
+        lower.contains('not found') ||
+        lower.contains('invalid code') ||
+        lower.contains('doesnotexist')) {
+      return 'Invalid coupon code. Please verify the code and try again.';
+    }
+
+    if (lower.contains('expired')) {
+      return 'This coupon code has expired.';
+    }
+
+    if (lower.contains('already used') || lower.contains('limit reached')) {
+      return 'This coupon has already been used or reached its usage limit.';
+    }
+
+    if (lower.contains('500') ||
+        lower.contains('502') ||
+        lower.contains('503') ||
+        lower.contains('504') ||
+        lower.contains('server is temporarily') ||
+        lower.contains('server error') ||
+        lower.contains('internal server')) {
+      return 'Server is temporarily unavailable. Please try again in a few moments.';
+    }
+
+    if (raw.isNotEmpty && raw.length < 100 && !raw.contains('{') && !raw.contains('StackTrace')) {
+      return raw;
+    }
+
+    return 'Unable to process request. Please try again.';
   }
 
   void _removeCoupon() {
@@ -204,11 +259,12 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Payment failed: ${e.toString().replaceAll("Exception: ", "")}'),
-            backgroundColor: AppColors.error,
-          ),
+        final friendlyErr = _formatUserFriendlyError(e);
+        AppToast.show(
+          context,
+          'Payment failed: $friendlyErr',
+          isError: true,
+          duration: const Duration(seconds: 4),
         );
       }
     } finally {

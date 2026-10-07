@@ -1253,7 +1253,7 @@ class _CatalogCourseCard extends ConsumerWidget {
                       Icon(Icons.access_time, size: 12, color: Colors.grey.shade500),
                       const SizedBox(width: 3),
                       Text(
-                        course.totalDuration != null ? '${course.totalDuration} hrs' : '0 hrs',
+                        _formatCourseDuration(course.totalDuration),
                         style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
                       ),
                       const SizedBox(width: 8),
@@ -1335,5 +1335,21 @@ class _CatalogCourseCard extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  String _formatCourseDuration(String? totalDuration) {
+    if (totalDuration == null || totalDuration.trim().isEmpty) return '0 mins';
+    final parsed = double.tryParse(totalDuration.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0.0;
+    final totalMinutes = parsed.round();
+    if (totalMinutes <= 0) return '0 mins';
+    if (totalMinutes < 60) {
+      return '$totalMinutes mins';
+    }
+    final hours = totalMinutes ~/ 60;
+    final remainingMinutes = totalMinutes % 60;
+    if (remainingMinutes == 0) {
+      return '$hours ${hours == 1 ? "hr" : "hrs"}';
+    }
+    return '$hours hr $remainingMinutes mins';
   }
 }

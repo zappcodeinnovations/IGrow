@@ -139,6 +139,22 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
     super.dispose();
   }
 
+  String _formatCourseDuration(String? totalDuration) {
+    if (totalDuration == null || totalDuration.trim().isEmpty) return '0 mins';
+    final parsed = double.tryParse(totalDuration.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0.0;
+    final totalMinutes = parsed.round();
+    if (totalMinutes <= 0) return '0 mins';
+    if (totalMinutes < 60) {
+      return '$totalMinutes mins';
+    }
+    final hours = totalMinutes ~/ 60;
+    final remainingMinutes = totalMinutes % 60;
+    if (remainingMinutes == 0) {
+      return '$hours ${hours == 1 ? "hr" : "hrs"}';
+    }
+    return '$hours hr $remainingMinutes mins';
+  }
+
   Future<void> _initializePlayer(
     String videoUrl, {
     bool autoPlay = false,
@@ -868,20 +884,30 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                               Expanded(
                                 child: OutlinedButton(
                                   style: OutlinedButton.styleFrom(
-                                    side: const BorderSide(color: Color(0xFF1B4D2E), width: 1.5),
+                                    side: BorderSide(
+                                      color: isDark ? AppColors.primaryGreen : const Color(0xFF1B4D2E),
+                                      width: 1.5,
+                                    ),
                                     padding: const EdgeInsets.symmetric(vertical: 12),
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                                   ),
                                   onPressed: _isAddingToCart ? null : () => _handleAddToCart(context, course),
                                   child: _isAddingToCart
-                                      ? const SizedBox(
+                                      ? SizedBox(
                                           width: 16,
                                           height: 16,
-                                          child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF1B4D2E)),
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: isDark ? AppColors.primaryGreen : const Color(0xFF1B4D2E),
+                                          ),
                                         )
-                                      : const Text(
+                                      : Text(
                                           'Add to Cart',
-                                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1B4D2E)),
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 13,
+                                            color: isDark ? AppColors.primaryGreen : const Color(0xFF1B4D2E),
+                                          ),
                                         ),
                                 ),
                               ),
@@ -889,14 +915,15 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                               Expanded(
                                 child: FilledButton(
                                   style: FilledButton.styleFrom(
-                                    backgroundColor: const Color(0xFF1B4D2E),
+                                    backgroundColor: AppColors.primaryGreen,
+                                    foregroundColor: Colors.white,
                                     padding: const EdgeInsets.symmetric(vertical: 12),
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                                   ),
                                   onPressed: () => _handleBuyNow(context, course),
                                   child: const Text(
                                     'Buy Now',
-                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white),
                                   ),
                                 ),
                               ),
@@ -1017,9 +1044,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                   Icon(Icons.access_time_rounded, color: Colors.white.withValues(alpha: 0.7), size: 15),
                   const SizedBox(width: 4),
                   Text(
-                    course.totalDuration != null && course.totalDuration!.isNotEmpty
-                        ? course.totalDuration!
-                        : '0 Total Hours',
+                    _formatCourseDuration(course.totalDuration),
                     style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 12, fontWeight: FontWeight.w500),
                   ),
                 ],
@@ -1322,13 +1347,20 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                     height: 44,
                     child: OutlinedButton(
                       style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Color(0xFF1B4D2E), width: 1.5),
+                        side: BorderSide(
+                          color: isDark ? AppColors.primaryGreen : const Color(0xFF1B4D2E),
+                          width: 1.5,
+                        ),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),
                       onPressed: () => _handleBuyNow(context, course),
-                      child: const Text(
+                      child: Text(
                         'Buy Now',
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF1B4D2E)),
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? AppColors.primaryGreen : const Color(0xFF1B4D2E),
+                        ),
                       ),
                     ),
                   ),

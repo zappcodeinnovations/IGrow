@@ -275,6 +275,10 @@ class CourseProgressNotifier extends StateNotifier<AsyncValue<Set<String>>> {
       updatedSet.add(lectureId);
       await CourseProgressService.instance.saveLectureWatchProgress(slug, lectureId, 1.0);
     } else {
+      // Persist completed state: never revert an already completed lecture back to incomplete
+      if (currentSet.contains(lectureId)) {
+        return;
+      }
       updatedSet.remove(lectureId);
       await CourseProgressService.instance.saveLectureWatchProgress(slug, lectureId, 0.0);
     }

@@ -193,12 +193,14 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
       }
     }
 
-    // Sync with backend API in background
+    // Sync with backend API in background (never revert completed lectures back to incomplete)
     try {
       final repo = ref.read(studentRepositoryProvider);
+      final currentCompleted = ref.read(courseProgressStateProvider(slug)).value ?? <String>{};
+      final isDone = currentCompleted.contains(_currentLecture!.id) || ratio >= 0.90;
       repo.updateLectureProgress(
         _currentLecture!.id,
-        completed: ratio >= 0.90,
+        completed: isDone,
         watchedTime: positionSeconds,
       );
     } catch (_) {}
@@ -1098,24 +1100,29 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
                             onPressed: () {
                               final isCurrentlyDone =
                                   completedIds.contains(_currentLecture!.id);
+                              if (isCurrentlyDone) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Lecture already marked as completed! ✓'),
+                                    duration: Duration(seconds: 2),
+                                  ),
+                                );
+                                return;
+                              }
                               ref
                                   .read(
                                       courseProgressStateProvider(_activeSlug!)
                                           .notifier)
                                   .markLectureCompletion(
                                     _currentLecture!.id,
-                                    completed: !isCurrentlyDone,
+                                    completed: true,
                                     watchedTime: _videoPlayerController
                                         ?.value.position.inSeconds,
                                   );
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    !isCurrentlyDone
-                                        ? 'Marked as completed! ✓'
-                                        : 'Marked as pending',
-                                  ),
-                                  duration: const Duration(seconds: 2),
+                                const SnackBar(
+                                  content: Text('Marked as completed! ✓'),
+                                  duration: Duration(seconds: 2),
                                 ),
                               );
                             },

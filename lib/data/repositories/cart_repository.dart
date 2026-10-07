@@ -190,17 +190,25 @@ class CartRepository {
     debugPrint('🎟️ [CartRepository] applyCoupon: code=$code, courseId=$courseId');
     final token = await tokenStorage.getAccessToken();
     final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/apply-coupon/');
-    final response = await http.post(
-      uri,
-      headers: {
-        if (token != null) 'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode({
-        'code': code,
-        if (courseId != null) 'course_id': courseId,
-      }),
-    );
+    http.Response response;
+    try {
+      response = await http.post(
+        uri,
+        headers: {
+          if (token != null) 'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'code': code,
+          if (courseId != null) 'course_id': courseId,
+        }),
+      ).timeout(const Duration(seconds: 15));
+    } catch (e) {
+      if (_isNetworkOrAbortError(e)) {
+        throw Exception('No internet connection. Please check your network and try again.');
+      }
+      throw Exception('Unable to reach server. Please try again.');
+    }
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       debugPrint('✅ [CartRepository] applyCoupon SUCCESS: ${response.body}');
@@ -211,13 +219,33 @@ class CartRepository {
       return Map<String, dynamic>.from(decoded as Map);
     } else {
       debugPrint('⚠️ [CartRepository] applyCoupon FAILED (${response.statusCode}): ${response.body}');
+      if (response.statusCode >= 500) {
+        throw Exception('Server is temporarily unavailable. Please try again in a few moments.');
+      }
       String errMsg = 'Invalid or expired coupon code.';
       try {
         final decoded = jsonDecode(response.body);
-        if (decoded is Map && decoded.containsKey('error')) {
-          errMsg = decoded['error'].toString();
+        if (decoded is Map) {
+          if (decoded.containsKey('error') && decoded['error'] != null) {
+            errMsg = decoded['error'].toString();
+          } else if (decoded.containsKey('message') && decoded['message'] != null) {
+            errMsg = decoded['message'].toString();
+          } else if (decoded.containsKey('detail') && decoded['detail'] != null) {
+            errMsg = decoded['detail'].toString();
+          }
         }
       } catch (_) {}
+
+      // Clean up technical backend exceptions if any
+      final lower = errMsg.toLowerCase();
+      if (lower.contains('matching query does not exist') || lower.contains('not found') || lower.contains('doesnotexist')) {
+        errMsg = 'Invalid coupon code. Please verify the code and try again.';
+      } else if (lower.contains('already used') || lower.contains('limit reached')) {
+        errMsg = 'This coupon has already been used or reached its usage limit.';
+      } else if (lower.contains('expired')) {
+        errMsg = 'This coupon code has expired.';
+      }
+
       throw Exception(errMsg);
     }
   }
@@ -248,14 +276,22 @@ class CartRepository {
       if (couponCode != null) 'coupon_code': couponCode,
     };
 
-    final response = await http.post(
-      uri,
-      headers: {
-        if (token != null) 'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode(payload),
-    );
+    http.Response response;
+    try {
+      response = await http.post(
+        uri,
+        headers: {
+          if (token != null) 'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(payload),
+      ).timeout(const Duration(seconds: 25));
+    } catch (e) {
+      if (_isNetworkOrAbortError(e)) {
+        throw Exception('No internet connection. Please check your network and try again.');
+      }
+      throw Exception('Payment request timed out. Please check your connection and try again.');
+    }
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       debugPrint('✅ [CartRepository] checkout SUCCESS (${response.statusCode}): ${response.body}');
@@ -266,13 +302,18 @@ class CartRepository {
       }
     } else {
       debugPrint('❌ [CartRepository] checkout ERROR (${response.statusCode}): ${response.body}');
+      if (response.statusCode >= 500) {
+        throw Exception('Payment server is temporarily unavailable. Please try again in a few moments.');
+      }
       String message = 'Payment failed. Please try again.';
       try {
         final decoded = jsonDecode(response.body);
-        if (decoded is Map && decoded.containsKey('error')) {
+        if (decoded is Map && decoded.containsKey('error') && decoded['error'] != null) {
           message = decoded['error'].toString();
-        } else if (decoded is Map && decoded.containsKey('message')) {
+        } else if (decoded is Map && decoded.containsKey('message') && decoded['message'] != null) {
           message = decoded['message'].toString();
+        } else if (decoded is Map && decoded.containsKey('detail') && decoded['detail'] != null) {
+          message = decoded['detail'].toString();
         }
       } catch (_) {}
       throw Exception(message);

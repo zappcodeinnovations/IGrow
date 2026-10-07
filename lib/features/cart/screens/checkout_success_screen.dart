@@ -128,6 +128,9 @@ class _CheckoutSuccessScreenState extends ConsumerState<CheckoutSuccessScreen> {
           '0.00';
       return (title, courseId, price);
     }
+    if (item is String) {
+      return (item, '', '0.00');
+    }
     return ('Course', '', '0.00');
   }
 
@@ -161,6 +164,8 @@ class _CheckoutSuccessScreenState extends ConsumerState<CheckoutSuccessScreen> {
 
     if (_purchasedItems.isEmpty && orderMap['items'] is List && (orderMap['items'] as List).isNotEmpty) {
       _purchasedItems = List<dynamic>.from(orderMap['items'] as List);
+    } else if (_purchasedItems.isEmpty && _orderResult['enrolled_courses'] is List && (_orderResult['enrolled_courses'] as List).isNotEmpty) {
+      _purchasedItems = List<dynamic>.from(_orderResult['enrolled_courses'] as List);
     }
 
     if (orderMap['discount_amount'] != null) {
@@ -174,11 +179,9 @@ class _CheckoutSuccessScreenState extends ConsumerState<CheckoutSuccessScreen> {
     if (_finalTotal <= 0 && orderMap['total_amount'] != null) {
       final backendTotal = double.tryParse(orderMap['total_amount'].toString()) ?? 0.0;
       if (backendTotal > 0) {
-        if (_originalTotal <= 0) _originalTotal = backendTotal;
-        if (_discountAmount > 0) {
-          _finalTotal = (_originalTotal - _discountAmount).clamp(0.0, double.infinity);
-        } else {
-          _finalTotal = backendTotal;
+        _finalTotal = backendTotal;
+        if (_originalTotal <= 0) {
+          _originalTotal = backendTotal + _discountAmount;
         }
       }
     }

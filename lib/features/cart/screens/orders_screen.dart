@@ -296,19 +296,57 @@ class OrdersScreen extends ConsumerWidget {
         loading: () => const Center(
           child: CircularProgressIndicator(color: AppColors.primaryGreen),
         ),
-        error: (err, _) => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text('Error loading orders: $err'),
-              const SizedBox(height: 12),
-              ElevatedButton(
-                onPressed: () => ref.refresh(ordersProvider),
-                child: const Text('Retry'),
+        error: (err, _) {
+          final errStr = err.toString().toLowerCase();
+          final isOffline = errStr.contains('socketexception') ||
+              errStr.contains('clientexception') ||
+              errStr.contains('abort') ||
+              errStr.contains('connection') ||
+              errStr.contains('host lookup') ||
+              errStr.contains('network');
+          final displayMsg = isOffline
+              ? 'No internet connection.\nPlease check your network and try again.'
+              : 'Unable to load orders right now.\nPlease try again in a few moments.';
+
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    isOffline ? Icons.wifi_off_rounded : Icons.receipt_long_outlined,
+                    size: 54,
+                    color: isDark ? Colors.white38 : AppColors.inkSoft,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    displayMsg,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      color: isDark ? Colors.white70 : AppColors.inkDark,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryGreen,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    icon: const Icon(Icons.refresh_rounded, size: 18),
+                    onPressed: () => ref.refresh(ordersProvider),
+                    label: const Text('Retry', style: TextStyle(fontWeight: FontWeight.w600)),
+                  ),
+                ],
               ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }

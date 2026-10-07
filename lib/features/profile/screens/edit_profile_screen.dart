@@ -629,6 +629,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   }
 
   Widget _buildExperienceSelector() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Column(
@@ -647,9 +648,17 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 label: Text(exp),
                 selected: isSelected,
                 selectedColor: AppColors.primaryGreen,
+                backgroundColor: isDark ? AppColors.cardDark : Colors.grey.shade100,
+                side: BorderSide(
+                  color: isSelected
+                      ? AppColors.primaryGreen
+                      : (isDark ? AppColors.lineDark : Colors.grey.shade300),
+                ),
                 labelStyle: TextStyle(
-                  color: isSelected ? Colors.white : AppColors.inkDark,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  color: isSelected
+                      ? Colors.white
+                      : (isDark ? Colors.white.withValues(alpha: 0.85) : AppColors.inkDark),
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                 ),
                 onSelected: (selected) {
                   if (selected) {
@@ -667,6 +676,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   }
 
   Widget _buildAreasOfInterestSelector() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final currentList = _areasController.text
         .split(',')
         .map((e) => e.trim())
@@ -683,9 +693,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             'Tap tags to add/remove or type custom topics below:',
-            style: TextStyle(fontSize: 12, color: AppColors.inkSoft),
+            style: TextStyle(
+              fontSize: 12,
+              color: isDark ? Colors.white.withValues(alpha: 0.6) : AppColors.inkSoft,
+            ),
           ),
           const SizedBox(height: 8),
           Wrap(
@@ -698,12 +711,20 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   tag,
                   style: TextStyle(
                     fontSize: 12,
-                    color: isSelected ? Colors.white : AppColors.inkDark,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    color: isSelected
+                        ? Colors.white
+                        : (isDark ? Colors.white.withValues(alpha: 0.85) : AppColors.inkDark),
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                   ),
                 ),
                 selected: isSelected,
                 selectedColor: AppColors.primaryGreen,
+                backgroundColor: isDark ? AppColors.cardDark : Colors.grey.shade100,
+                side: BorderSide(
+                  color: isSelected
+                      ? AppColors.primaryGreen
+                      : (isDark ? AppColors.lineDark : Colors.grey.shade300),
+                ),
                 checkmarkColor: Colors.white,
                 onSelected: (selected) {
                   setState(() {
