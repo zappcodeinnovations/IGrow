@@ -175,7 +175,48 @@ class CartNotifier extends AsyncNotifier<ApiCart> {
     });
   }
 
-  /// Checkout the cart or direct single course.
+  /// Step 1: Create Razorpay Order
+  Future<Map<String, dynamic>> createRazorpayOrder({
+    String? couponCode,
+    String? courseId,
+    String? ebookId,
+  }) async {
+    return _repository.createRazorpayOrder(
+      couponCode: couponCode,
+      courseId: courseId,
+      ebookId: ebookId,
+    );
+  }
+
+  /// Step 3: Verify Razorpay Payment & fulfill order
+  Future<Map<String, dynamic>> verifyRazorpayPayment({
+    required String paymentId,
+    required String orderId,
+    required String signature,
+  }) async {
+    state = const AsyncLoading();
+    try {
+      final result = await _repository.verifyRazorpayPayment(
+        paymentId: paymentId,
+        orderId: orderId,
+        signature: signature,
+      );
+
+      final newCart = await _fetchCart();
+      state = AsyncData(newCart);
+
+      // Invalidate enrollments & orders so newly purchased courses show immediately!
+      ref.invalidate(studentEnrollmentsProvider);
+      ref.invalidate(ordersProvider);
+
+      return result;
+    } catch (e) {
+      state = await AsyncValue.guard(() => _fetchCart());
+      rethrow;
+    }
+  }
+
+  /// Checkout the cart or direct single course (legacy/sandbox fallback).
   Future<Map<String, dynamic>> checkout({
     String? paymentMethod,
     String? courseId,

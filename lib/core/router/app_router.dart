@@ -226,7 +226,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/checkout',
         builder: (context, state) {
           final courseId = state.uri.queryParameters['courseId'];
-          return CheckoutScreen(directCourseId: courseId);
+          final ebookId = state.uri.queryParameters['ebookId'];
+          return CheckoutScreen(
+            directCourseId: courseId,
+            directEbookId: ebookId,
+          );
         },
       ),
       GoRoute(

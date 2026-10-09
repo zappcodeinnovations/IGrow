@@ -250,6 +250,145 @@ class CartRepository {
     }
   }
 
+  /// Step 1: Create Razorpay Order
+  /// Calls POST /api/v1/orders/razorpay/create/
+  Future<Map<String, dynamic>> createRazorpayOrder({
+    String? couponCode,
+    String? courseId,
+    String? ebookId,
+  }) async {
+    debugPrint('💳 [CartRepository] createRazorpayOrder START: coupon=$couponCode, courseId=$courseId, ebookId=$ebookId');
+    final token = await tokenStorage.getAccessToken();
+    final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/orders/razorpay/create/');
+
+    final payload = <String, dynamic>{
+      if (couponCode != null && couponCode.trim().isNotEmpty)
+        'coupon_code': couponCode.trim(),
+      if (courseId != null && courseId.trim().isNotEmpty)
+        'course_id': courseId.trim(),
+      if (ebookId != null && ebookId.trim().isNotEmpty)
+        'ebook_id': ebookId.trim(),
+    };
+
+    http.Response response;
+    try {
+      response = await http.post(
+        uri,
+        headers: {
+          if (token != null) 'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(payload),
+      ).timeout(const Duration(seconds: 25));
+    } catch (e) {
+      if (_isNetworkOrAbortError(e)) {
+        throw Exception('No internet connection. Please check your network and try again.');
+      }
+      throw Exception('Payment request timed out. Please check your connection and try again.');
+    }
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      debugPrint('✅ [CartRepository] createRazorpayOrder SUCCESS (${response.statusCode}): ${response.body}');
+      try {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map<String, dynamic>) {
+          return decoded;
+        }
+        return Map<String, dynamic>.from(decoded as Map);
+      } catch (_) {
+        throw Exception('Unexpected response format from payment server.');
+      }
+    } else {
+      debugPrint('❌ [CartRepository] createRazorpayOrder ERROR (${response.statusCode}): ${response.body}');
+      String message = 'Unable to initiate order. Please try again.';
+      try {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map && decoded['error'] != null) {
+          message = decoded['error'].toString();
+        } else if (decoded is Map && decoded['message'] != null) {
+          message = decoded['message'].toString();
+        } else if (decoded is Map && decoded['detail'] != null) {
+          message = decoded['detail'].toString();
+        } else if (response.statusCode >= 500) {
+          message = 'Payment server is temporarily unavailable. Please try again in a few moments.';
+        }
+      } catch (_) {
+        if (response.statusCode >= 500) {
+          message = 'Payment server is temporarily unavailable. Please try again in a few moments.';
+        }
+      }
+      throw Exception(message);
+    }
+  }
+
+  /// Step 3: Verify Razorpay Payment
+  /// Calls POST /api/v1/orders/razorpay/verify/
+  Future<Map<String, dynamic>> verifyRazorpayPayment({
+    required String paymentId,
+    required String orderId,
+    required String signature,
+  }) async {
+    debugPrint('🔐 [CartRepository] verifyRazorpayPayment START: paymentId=$paymentId, orderId=$orderId');
+    final token = await tokenStorage.getAccessToken();
+    final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/orders/razorpay/verify/');
+
+    final payload = <String, dynamic>{
+      'razorpay_payment_id': paymentId,
+      'razorpay_order_id': orderId,
+      'razorpay_signature': signature,
+    };
+
+    http.Response response;
+    try {
+      response = await http.post(
+        uri,
+        headers: {
+          if (token != null) 'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(payload),
+      ).timeout(const Duration(seconds: 25));
+    } catch (e) {
+      if (_isNetworkOrAbortError(e)) {
+        throw Exception('No internet connection. Please check your network and try again.');
+      }
+      throw Exception('Verification request timed out. Please check your connection and try again.');
+    }
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      debugPrint('✅ [CartRepository] verifyRazorpayPayment SUCCESS (${response.statusCode}): ${response.body}');
+      try {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map<String, dynamic>) {
+          return decoded;
+        }
+        return Map<String, dynamic>.from(decoded as Map);
+      } catch (_) {
+        return {'status': 'success', 'message': 'Payment verified and order fulfilled successfully.'};
+      }
+    } else {
+      debugPrint('❌ [CartRepository] verifyRazorpayPayment ERROR (${response.statusCode}): ${response.body}');
+      String message = 'Payment verification failed.';
+      try {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map && decoded['error'] != null) {
+          message = decoded['error'].toString();
+        } else if (decoded is Map && decoded['message'] != null) {
+          message = decoded['message'].toString();
+        } else if (decoded is Map && decoded['detail'] != null) {
+          message = decoded['detail'].toString();
+        } else if (response.statusCode >= 500) {
+          message = 'Payment verification server is temporarily unavailable.';
+        }
+      } catch (_) {
+        if (response.statusCode >= 500) {
+          message = 'Payment verification server is temporarily unavailable.';
+        }
+      }
+      throw Exception(message);
+    }
+  }
+
   /// Checkout — processes sandbox payment and enrolls.
   Future<Map<String, dynamic>> checkout({
     String? gatewayName,
