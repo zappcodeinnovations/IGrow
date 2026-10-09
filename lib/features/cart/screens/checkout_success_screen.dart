@@ -1,11 +1,8 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -870,205 +867,273 @@ class _CheckoutSuccessScreenState extends ConsumerState<CheckoutSuccessScreen> {
 
               const SizedBox(height: 24),
 
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryGreen,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-                icon: const Icon(Icons.download),
-                label: const Text('Download Receipt'),
-                onPressed: () async {
-                  try {
-                    final pdf = pw.Document();
-                    pdf.addPage(
-                      pw.Page(
-                        pageFormat: PdfPageFormat.a4,
-                        margin: const pw.EdgeInsets.all(32),
-                        build: (pw.Context pCtx) {
-                          return pw.Column(
-                            crossAxisAlignment: pw.CrossAxisAlignment.start,
-                            children: [
-                              pw.Row(
-                                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                                children: [
-                                  pw.Column(
-                                    crossAxisAlignment: pw.CrossAxisAlignment.start,
-                                    children: [
-                                      pw.Text(
-                                        'IGROW EDUCATION',
-                                        style: pw.TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: pw.FontWeight.bold,
-                                          color: PdfColors.green800,
-                                        ),
-                                      ),
-                                      pw.Text(
-                                        'Kisan Ki Digital Pathshala',
-                                        style: const pw.TextStyle(
-                                          fontSize: 11,
-                                          color: PdfColors.grey,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  pw.Container(
-                                    padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                    decoration: pw.BoxDecoration(
-                                      color: PdfColors.green100,
-                                      borderRadius: pw.BorderRadius.circular(6),
-                                    ),
-                                    child: pw.Text(
-                                      'TAX INVOICE',
-                                      style: pw.TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: pw.FontWeight.bold,
-                                        color: PdfColors.green800,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              pw.Divider(color: PdfColors.grey300),
-                              pw.Row(
-                                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                                children: [
-                                  pw.Column(
-                                    crossAxisAlignment: pw.CrossAxisAlignment.start,
-                                    children: [
-                                      pw.Text('Billed To:', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey)),
-                                      pw.Text(studentName, style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                                      pw.Text(studentEmail, style: const pw.TextStyle(fontSize: 10)),
-                                    ],
-                                  ),
-                                  pw.Column(
-                                    crossAxisAlignment: pw.CrossAxisAlignment.end,
-                                    children: [
-                                      pw.Text('Invoice No:', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey)),
-                                      pw.Text('INV-${orderId.substring(0, 8).toUpperCase()}',
-                                          style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                                      pw.Text(dateStr, style: const pw.TextStyle(fontSize: 10)),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                              pw.SizedBox(height: 16),
-                              pw.TableHelper.fromTextArray(
-                                headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11),
-                                headerDecoration: const pw.BoxDecoration(color: PdfColors.green50),
-                                cellStyle: const pw.TextStyle(fontSize: 11),
-                                headers: ['Course / Description', 'SAC', 'Amount'],
-                                data: items.map((item) {
-                                  final (title, _, price) = extractItemInfo(item);
-                                  return [title, '998311', 'Rs. $price'];
-                                }).toList(),
-                              ),
-                              pw.Divider(color: PdfColors.grey300),
-                              pw.Row(
-                                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                                children: [
-                                  pw.Text('Subtotal:', style: const pw.TextStyle(fontSize: 11)),
-                                  pw.Text('Rs. ${originalTotal.toStringAsFixed(2)}', style: const pw.TextStyle(fontSize: 11)),
-                                ],
-                              ),
-                              if (effectiveDiscount > 0) ...[
-                                pw.SizedBox(height: 4),
-                                pw.Row(
-                                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    pw.Text('Coupon Discount (${couponCode ?? "PROMO"}):',
-                                        style: pw.TextStyle(fontSize: 11, color: PdfColors.green800)),
-                                    pw.Text('-Rs. ${effectiveDiscount.toStringAsFixed(2)}',
-                                        style: pw.TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: pw.FontWeight.bold,
-                                          color: PdfColors.green800,
-                                        )),
-                                  ],
-                                ),
-                              ],
-                              pw.SizedBox(height: 4),
-                              pw.Row(
-                                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                                children: [
-                                  pw.Text('CGST (0%):', style: const pw.TextStyle(fontSize: 11)),
-                                  pw.Text('Rs. 0.00', style: const pw.TextStyle(fontSize: 11)),
-                                ],
-                              ),
-                              pw.SizedBox(height: 4),
-                              pw.Row(
-                                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                                children: [
-                                  pw.Text('SGST (0%):', style: const pw.TextStyle(fontSize: 11)),
-                                  pw.Text('Rs. 0.00', style: const pw.TextStyle(fontSize: 11)),
-                                ],
-                              ),
-                              pw.SizedBox(height: 8),
-                              pw.Row(
-                                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                                children: [
-                                  pw.Text('Grand Total Paid:',
-                                      style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 13)),
-                                  pw.Text('Rs. ${finalTotal.toStringAsFixed(2)}',
-                                      style: pw.TextStyle(
-                                        fontWeight: pw.FontWeight.bold,
-                                        fontSize: 15,
-                                        color: PdfColors.green800,
-                                      )),
-                                ],
-                              ),
-                              pw.SizedBox(height: 24),
-                              pw.Center(
-                                child: pw.Container(
-                                  padding: const pw.EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                  decoration: pw.BoxDecoration(
-                                    border: pw.Border.all(color: PdfColors.green800, width: 2),
-                                    borderRadius: pw.BorderRadius.circular(8),
-                                  ),
-                                  child: pw.Text(
-                                    'PAID & VERIFIED  •  IGROW',
-                                    style: pw.TextStyle(
-                                      fontWeight: pw.FontWeight.bold,
-                                      color: PdfColors.green800,
-                                      fontSize: 11,
-                                      letterSpacing: 1.5,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          );
-                        },
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primaryGreen,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),
-                    );
+                      icon: const Icon(Icons.picture_as_pdf, size: 18),
+                      label: const Text('Save / Print PDF', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      onPressed: () async {
+                        try {
+                          final pdfBytes = await _buildReceiptPdfBytes(
+                            orderId: orderId,
+                            dateStr: dateStr,
+                            studentName: studentName,
+                            studentEmail: studentEmail,
+                            originalTotal: originalTotal,
+                            finalTotal: finalTotal,
+                            effectiveDiscount: effectiveDiscount,
+                            couponCode: couponCode,
+                            items: items,
+                          );
 
-                    final pdfBytes = await pdf.save();
-                    final dir = await getApplicationDocumentsDirectory();
-                    final filePath = '${dir.path}/receipt_${orderId.substring(0, 8)}.pdf';
-                    final file = File(filePath);
-                    await file.writeAsBytes(pdfBytes);
+                          final safeShortId = orderId.length >= 8 ? orderId.substring(0, 8) : orderId;
+                          await Printing.layoutPdf(
+                            name: 'IGrow_Receipt_$safeShortId',
+                            onLayout: (PdfPageFormat format) async => pdfBytes,
+                          );
+                        } catch (e) {
+                          debugPrint('Error saving/printing receipt PDF: $e');
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Failed to open PDF: $e'), backgroundColor: AppColors.error),
+                            );
+                          }
+                        }
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: AppColors.primaryGreen),
+                        foregroundColor: AppColors.primaryGreen,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      icon: const Icon(Icons.share, size: 18),
+                      label: const Text('Share PDF', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      onPressed: () async {
+                        try {
+                          final pdfBytes = await _buildReceiptPdfBytes(
+                            orderId: orderId,
+                            dateStr: dateStr,
+                            studentName: studentName,
+                            studentEmail: studentEmail,
+                            originalTotal: originalTotal,
+                            finalTotal: finalTotal,
+                            effectiveDiscount: effectiveDiscount,
+                            couponCode: couponCode,
+                            items: items,
+                          );
 
-                    await Printing.sharePdf(
-                      bytes: pdfBytes,
-                      filename: 'IGrow_Receipt_${orderId.substring(0, 8)}.pdf',
-                    );
-
-                    if (ctx.mounted) Navigator.pop(ctx);
-                  } catch (e) {
-                    debugPrint('Error generating receipt PDF: $e');
-                    if (ctx.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Failed to generate receipt: $e'), backgroundColor: AppColors.error),
-                      );
-                    }
-                  }
-                },
+                          final safeShortId = orderId.length >= 8 ? orderId.substring(0, 8) : orderId;
+                          await Printing.sharePdf(
+                            bytes: pdfBytes,
+                            filename: 'IGrow_Receipt_$safeShortId.pdf',
+                          );
+                        } catch (e) {
+                          debugPrint('Error sharing receipt PDF: $e');
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Failed to share receipt: $e'), backgroundColor: AppColors.error),
+                            );
+                          }
+                        }
+                      },
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  Future<Uint8List> _buildReceiptPdfBytes({
+    required String orderId,
+    required String dateStr,
+    required String studentName,
+    required String studentEmail,
+    required double originalTotal,
+    required double finalTotal,
+    required double effectiveDiscount,
+    String? couponCode,
+    required List<dynamic> items,
+  }) async {
+    final pdf = pw.Document();
+    pdf.addPage(
+      pw.Page(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(32),
+        build: (pw.Context pCtx) {
+          final safeShortId = orderId.length >= 8 ? orderId.substring(0, 8).toUpperCase() : orderId.toUpperCase();
+          return pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text(
+                        'IGROW EDUCATION',
+                        style: pw.TextStyle(
+                          fontSize: 18,
+                          fontWeight: pw.FontWeight.bold,
+                          color: PdfColors.green800,
+                        ),
+                      ),
+                      pw.Text(
+                        'Kisan Ki Digital Pathshala',
+                        style: const pw.TextStyle(
+                          fontSize: 11,
+                          color: PdfColors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
+                  pw.Container(
+                    padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: pw.BoxDecoration(
+                      color: PdfColors.green100,
+                      borderRadius: pw.BorderRadius.circular(6),
+                    ),
+                    child: pw.Text(
+                      'TAX INVOICE',
+                      style: pw.TextStyle(
+                        fontSize: 11,
+                        fontWeight: pw.FontWeight.bold,
+                        color: PdfColors.green800,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              pw.Divider(color: PdfColors.grey300),
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text('Billed To:', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey)),
+                      pw.Text(studentName, style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                      pw.Text(studentEmail, style: const pw.TextStyle(fontSize: 10)),
+                    ],
+                  ),
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.end,
+                    children: [
+                      pw.Text('Invoice No:', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey)),
+                      pw.Text('INV-$safeShortId',
+                          style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                      pw.Text(dateStr, style: const pw.TextStyle(fontSize: 10)),
+                    ],
+                  ),
+                ],
+              ),
+              pw.SizedBox(height: 16),
+              pw.TableHelper.fromTextArray(
+                headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11),
+                headerDecoration: const pw.BoxDecoration(color: PdfColors.green50),
+                cellStyle: const pw.TextStyle(fontSize: 11),
+                headers: ['Course / Description', 'SAC', 'Amount'],
+                data: items.map((item) {
+                  final (title, _, price) = extractItemInfo(item);
+                  return [title, '998311', 'Rs. $price'];
+                }).toList(),
+              ),
+              pw.Divider(color: PdfColors.grey300),
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text('Subtotal:', style: const pw.TextStyle(fontSize: 11)),
+                  pw.Text('Rs. ${originalTotal.toStringAsFixed(2)}', style: const pw.TextStyle(fontSize: 11)),
+                ],
+              ),
+              if (effectiveDiscount > 0) ...[
+                pw.SizedBox(height: 4),
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text('Coupon Discount (${couponCode ?? "PROMO"}):',
+                        style: pw.TextStyle(fontSize: 11, color: PdfColors.green800)),
+                    pw.Text('-Rs. ${effectiveDiscount.toStringAsFixed(2)}',
+                        style: pw.TextStyle(
+                          fontSize: 11,
+                          fontWeight: pw.FontWeight.bold,
+                          color: PdfColors.green800,
+                        )),
+                  ],
+                ),
+              ],
+              pw.SizedBox(height: 4),
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text('CGST (0%):', style: const pw.TextStyle(fontSize: 11)),
+                  pw.Text('Rs. 0.00', style: const pw.TextStyle(fontSize: 11)),
+                ],
+              ),
+              pw.SizedBox(height: 4),
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text('SGST (0%):', style: const pw.TextStyle(fontSize: 11)),
+                  pw.Text('Rs. 0.00', style: const pw.TextStyle(fontSize: 11)),
+                ],
+              ),
+              pw.SizedBox(height: 8),
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text('Grand Total Paid:',
+                      style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 13)),
+                  pw.Text('Rs. ${finalTotal.toStringAsFixed(2)}',
+                      style: pw.TextStyle(
+                        fontWeight: pw.FontWeight.bold,
+                        fontSize: 15,
+                        color: PdfColors.green800,
+                      )),
+                ],
+              ),
+              pw.SizedBox(height: 24),
+              pw.Center(
+                child: pw.Container(
+                  padding: const pw.EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: pw.BoxDecoration(
+                    border: pw.Border.all(color: PdfColors.green800, width: 2),
+                    borderRadius: pw.BorderRadius.circular(8),
+                  ),
+                  child: pw.Text(
+                    'PAID & VERIFIED  •  IGROW',
+                    style: pw.TextStyle(
+                      fontWeight: pw.FontWeight.bold,
+                      color: PdfColors.green800,
+                      fontSize: 11,
+                      letterSpacing: 1.5,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+
+    return await pdf.save();
   }
 }
