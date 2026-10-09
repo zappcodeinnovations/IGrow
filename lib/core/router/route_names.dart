@@ -57,6 +57,7 @@ class RouteNames {
   static const settings = '/settings';
   static const createPost = '/community/create-post';
   static const downloads = '/downloads';
+  static const news = '/news';
 
   // ─── Admin ───────────────────────────────────────────────────────
   static const adminPanel = '/admin';

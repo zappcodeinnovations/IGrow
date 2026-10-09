@@ -19,6 +19,7 @@ import '../../wishlist/providers/wishlist_provider.dart';
 import '../../../core/services/quiz_service.dart';
 import '../providers/student_provider.dart';
 import '../providers/weather_provider.dart';
+import '../../news/widgets/home_news_carousel.dart';
 
 /// Upgraded Student / Farmer Dashboard Screen matching the Agrilearn Web UI & UX.
 class FarmerHomeScreen extends ConsumerStatefulWidget {
@@ -610,148 +611,37 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
               const SizedBox(height: 16),
 
 
-              // ── Quick Navigation Action Buttons (Cart, Support, Browse Courses, Browse E-books) ──
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    // Cart Badge Button
-                    InkWell(
-                      onTap: () => context.push(RouteNames.cart),
-                      borderRadius: BorderRadius.circular(12),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-                        decoration: BoxDecoration(
-                          color: isDark ? AppColors.cardDark : Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: isDark ? AppColors.lineDark : const Color(0xFFE2EBE0),
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.primaryGreen.withValues(alpha: isDark ? 0.08 : 0.05),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          children: [
-                            Stack(
-                              clipBehavior: Clip.none,
-                              children: [
-                                Icon(
-                                  Icons.shopping_cart_outlined,
-                                  size: 19,
-                                  color: isDark ? AppColors.white : AppColors.inkDark,
-                                ),
-                                if (cartItemCount > 0)
-                                  Positioned(
-                                    top: -5,
-                                    right: -6,
-                                    child: Container(
-                                      padding: const EdgeInsets.all(3),
-                                      decoration: const BoxDecoration(
-                                        color: AppColors.accentOrange,
-                                        shape: BoxShape.circle,
-                                      ),
-                                      constraints: const BoxConstraints(minWidth: 14, minHeight: 14),
-                                      child: Text(
-                                        '$cartItemCount',
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-
-                    // Help & Support
-                    InkWell(
-                      onTap: () => _showHelpSupportModal(context),
-                      borderRadius: BorderRadius.circular(12),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-                        decoration: BoxDecoration(
-                          color: isDark ? AppColors.cardDark : Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: isDark ? AppColors.lineDark : const Color(0xFFE2EBE0),
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.primaryGreen.withValues(alpha: isDark ? 0.08 : 0.05),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.help_outline_rounded, size: 16, color: isDark ? AppColors.white : AppColors.inkDark),
-                            const SizedBox(width: 6),
-                            Text(
-                              'Help & Support',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: isDark ? AppColors.white : AppColors.inkDark,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(width: 8),
-
-                    // Browse Courses Button
-                    ElevatedButton.icon(
-                      onPressed: () => context.push(RouteNames.explore),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primaryGreen,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shadowColor: AppColors.primaryGreen.withValues(alpha: 0.35),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      icon: const Icon(Icons.menu_book_rounded, size: 16),
-                      label: const Text(
-                        'Browse Courses',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-
-                    // Browse E-books Button
-                    OutlinedButton.icon(
-                      onPressed: () => context.push('/farmer/explore?tab=ebooks'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: isDark ? const Color(0xFF86EFAC) : const Color(0xFF166534),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        side: BorderSide(color: isDark ? const Color(0xFF047857) : const Color(0xFF86EFAC)),
-                        backgroundColor: isDark ? const Color(0xFF064E3B).withValues(alpha: 0.3) : Colors.white,
-                      ),
-                      icon: const Icon(Icons.picture_as_pdf_rounded, size: 16),
-                      label: const Text(
-                        'Browse E-books',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ],
-                ),
+              // ── 4-Column Quick Navigation Action Row (Zero Scroll, 100% Visible) ──
+              Row(
+                children: [
+                  _QuickNavCard(
+                    icon: Icons.menu_book_rounded,
+                    label: 'Courses',
+                    accentColor: AppColors.primaryGreen,
+                    onTap: () => context.push(RouteNames.explore),
+                  ),
+                  const SizedBox(width: 8),
+                  _QuickNavCard(
+                    icon: Icons.picture_as_pdf_rounded,
+                    label: 'E-Books',
+                    accentColor: const Color(0xFF059669),
+                    onTap: () => context.push('/farmer/explore?tab=ebooks'),
+                  ),
+                  const SizedBox(width: 8),
+                  _QuickNavCard(
+                    icon: Icons.newspaper_rounded,
+                    label: 'Agri News',
+                    accentColor: const Color(0xFF2563EB),
+                    onTap: () => context.push(RouteNames.news),
+                  ),
+                  const SizedBox(width: 8),
+                  _QuickNavCard(
+                    icon: Icons.headset_mic_rounded,
+                    label: 'Support',
+                    accentColor: const Color(0xFFD97706),
+                    onTap: () => _showHelpSupportModal(context),
+                  ),
+                ],
               ),
               const SizedBox(height: 20),
 
@@ -917,6 +807,10 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                 ),
                 error: (err, _) => const SizedBox.shrink(),
               ),
+
+              // ── Latest Agriculture News Carousel ───────────────────────
+              const HomeNewsCarousel(),
+              const SizedBox(height: 28),
 
               // ── Featured Courses Showcase ──────────────────────────────
               Row(
@@ -2037,6 +1931,82 @@ class _InstructorCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Compact, balanced card for the 4-column quick navigation row.
+class _QuickNavCard extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color accentColor;
+  final VoidCallback onTap;
+
+  const _QuickNavCard({
+    required this.icon,
+    required this.label,
+    required this.accentColor,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.cardDark : Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: isDark ? AppColors.lineDark : const Color(0xFFE2EBE0),
+              width: 1.2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: isDark
+                    ? Colors.black38
+                    : const Color(0xFF0F172A).withValues(alpha: 0.05),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(7),
+                decoration: BoxDecoration(
+                  color: accentColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  icon,
+                  size: 19,
+                  color: accentColor,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : AppColors.inkDark,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

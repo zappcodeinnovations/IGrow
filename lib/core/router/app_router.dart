@@ -43,6 +43,7 @@ import '../../features/cart/screens/orders_screen.dart';
 import '../../features/notifications/screens/notifications_screen.dart';
 import '../../features/wishlist/screens/wishlist_screen.dart';
 import '../../features/certificates/screens/certificates_screen.dart';
+import '../../features/news/screens/agri_news_screen.dart';
 import '../../features/explore/screens/downloads_screen.dart';
 import '../widgets/not_found_screen.dart';
 import '../widgets/shell_scaffold.dart';
@@ -307,6 +308,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: RouteNames.notifications,
         builder: (context, state) => const NotificationsScreen(),
+      ),
+      GoRoute(
+        path: RouteNames.news,
+        builder: (context, state) => const AgriNewsScreen(),
       ),
       GoRoute(
         path: RouteNames.wishlist,
