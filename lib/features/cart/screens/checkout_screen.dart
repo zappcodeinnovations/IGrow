@@ -47,6 +47,27 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   void initState() {
     super.initState();
     _initRazorpay();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ref.read(appliedCouponProvider.notifier).state = null;
+      }
+    });
+  }
+
+  @override
+  void didUpdateWidget(CheckoutScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.directCourseId != widget.directCourseId ||
+        oldWidget.directEbookId != widget.directEbookId) {
+      ref.read(appliedCouponProvider.notifier).state = null;
+      _couponController.clear();
+      _couponError = null;
+      _lastOriginalTotal = 0.0;
+      _lastFinalTotal = 0.0;
+      _lastDiscountAmount = 0.0;
+      _lastItemsSnapshot = [];
+      _lastCouponCode = null;
+    }
   }
 
   void _initRazorpay() {

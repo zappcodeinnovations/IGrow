@@ -228,6 +228,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           final courseId = state.uri.queryParameters['courseId'];
           final ebookId = state.uri.queryParameters['ebookId'];
           return CheckoutScreen(
+            key: ValueKey('checkout_${courseId}_${ebookId}_${state.uri}'),
             directCourseId: courseId,
             directEbookId: ebookId,
           );
