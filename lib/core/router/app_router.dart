@@ -282,7 +282,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/support',
-        builder: (context, state) => const SupportScreen(),
+        builder: (context, state) {
+          final tabParam = state.uri.queryParameters['tab'];
+          final initialIndex = tabParam == 'my-tickets' ? 1 : 0;
+          return SupportScreen(initialTabIndex: initialIndex);
+        },
       ),
       GoRoute(
         path: RouteNames.chat,

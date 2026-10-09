@@ -127,19 +127,53 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
               const SizedBox(height: 20),
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.chat_bubble_outline_rounded, color: AppColors.primaryGreen),
-                title: const Text('Chat with Agri Specialist'),
-                subtitle: const Text('Get instant technical support & advisory'),
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryGreen.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.confirmation_number_outlined, color: AppColors.primaryGreen, size: 20),
+                ),
+                title: const Text('My Support Tickets', style: TextStyle(fontWeight: FontWeight.w600)),
+                subtitle: const Text('View ticket status & admin replies'),
+                trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.inkSoft),
                 onTap: () {
                   Navigator.pop(context);
-                  context.push(RouteNames.chat);
+                  context.push('/support?tab=my-tickets');
                 },
               ),
               const Divider(height: 1),
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.email_outlined, color: AppColors.skyBlue),
-                title: const Text('Email Support'),
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryGreen.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.add_task_rounded, color: AppColors.primaryGreen, size: 20),
+                ),
+                title: const Text('Raise Support Ticket', style: TextStyle(fontWeight: FontWeight.w600)),
+                subtitle: const Text('Submit queries on app, courses or payments'),
+                trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.inkSoft),
+                onTap: () {
+                  Navigator.pop(context);
+                  context.push('/support');
+                },
+              ),
+              const Divider(height: 1),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.skyBlue.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.email_outlined, color: AppColors.skyBlue, size: 20),
+                ),
+                title: const Text('Email Support', style: TextStyle(fontWeight: FontWeight.w600)),
                 subtitle: const Text('support@iagrow.zappcode.in'),
                 trailing: const Icon(Icons.open_in_new_rounded, size: 18, color: AppColors.inkSoft),
                 onTap: () async {
