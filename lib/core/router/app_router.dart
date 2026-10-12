@@ -16,6 +16,8 @@ import '../../features/auth/screens/register_screen.dart';
 import '../../features/auth/screens/splash_screen.dart';
 import '../../features/community/screens/community_screen.dart';
 import '../../features/community/screens/create_post_screen.dart';
+import '../../features/community/screens/hub_detail_screen.dart';
+import '../../features/community/screens/create_hub_screen.dart';
 import '../../features/explore/screens/course_player_screen.dart';
 import '../../features/explore/screens/explore_screen.dart';
 import '../../features/instructor_dashboard/screens/instructor_uploads_screen.dart';
@@ -306,6 +308,17 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const CreatePostScreen(),
       ),
       GoRoute(
+        path: RouteNames.hubDetails,
+        builder: (context, state) {
+          final id = state.pathParameters['id'] ?? '';
+          return HubDetailScreen(hubId: id);
+        },
+      ),
+      GoRoute(
+        path: RouteNames.createHub,
+        builder: (context, state) => const CreateHubScreen(),
+      ),
+      GoRoute(
         path: RouteNames.notifications,
         builder: (context, state) => const NotificationsScreen(),
       ),
@@ -395,7 +408,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: RouteNames.instructorUploads,
-            builder: (context, state) => const InstructorUploadsScreen(),
+            builder: (context, state) {
+              final tab = int.tryParse(state.uri.queryParameters['tab'] ?? '') ?? 0;
+              return InstructorUploadsScreen(initialTabIndex: tab);
+            },
           ),
           GoRoute(
             path: RouteNames.instructorKyc,

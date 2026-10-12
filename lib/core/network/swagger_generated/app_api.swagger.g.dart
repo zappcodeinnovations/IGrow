@@ -445,9 +445,9 @@ CourseDetail _$CourseDetailFromJson(Map<String, dynamic> json) => CourseDetail(
   tags: json['tags'] as String?,
   instructorName: json['instructor_name'] as String?,
   instructorAvatar: json['instructor_avatar'] as String?,
-  enrollmentCount: json['enrollment_count'] as String?,
-  totalLectures: json['total_lectures'] as String?,
-  totalDuration: json['total_duration'] as String?,
+  enrollmentCount: json['enrollment_count']?.toString(),
+  totalLectures: json['total_lectures']?.toString(),
+  totalDuration: json['total_duration']?.toString(),
   status: status76eEnumNullableFromJson(json['status']),
   sections:
       (json['sections'] as List<dynamic>?)
@@ -460,7 +460,7 @@ CourseDetail _$CourseDetailFromJson(Map<String, dynamic> json) => CourseDetail(
   publishedAt: json['published_at'] == null
       ? null
       : DateTime.parse(json['published_at'] as String),
-  isEnrolled: json['is_enrolled'] as String?,
+  isEnrolled: json['is_enrolled']?.toString(),
 );
 
 Map<String, dynamic> _$CourseDetailToJson(CourseDetail instance) =>
@@ -545,9 +545,9 @@ CourseList _$CourseListFromJson(Map<String, dynamic> json) => CourseList(
   price: json['price'] as String?,
   instructorName: json['instructor_name'] as String?,
   instructorAvatar: json['instructor_avatar'] as String?,
-  enrollmentCount: json['enrollment_count'] as String?,
-  totalLectures: json['total_lectures'] as String?,
-  totalDuration: json['total_duration'] as String?,
+  enrollmentCount: json['enrollment_count']?.toString(),
+  totalLectures: json['total_lectures']?.toString(),
+  totalDuration: json['total_duration']?.toString(),
   status: status76eEnumNullableFromJson(json['status']),
   createdAt: json['created_at'] == null
       ? null
@@ -607,7 +607,7 @@ CourseSection _$CourseSectionFromJson(Map<String, dynamic> json) =>
               ?.map((e) => Lecture.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
-      lectureCount: json['lecture_count'] as String?,
+      lectureCount: json['lecture_count']?.toString(),
     );
 
 Map<String, dynamic> _$CourseSectionToJson(CourseSection instance) =>

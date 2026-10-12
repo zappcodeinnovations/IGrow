@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
@@ -152,6 +153,18 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
     if (_descController.text.trim().isEmpty) {
       _showErrorSnackbar('Please enter full course description.');
       return false;
+    }
+    final priceStr = _priceController.text.trim();
+    if (priceStr.isNotEmpty) {
+      final priceNum = double.tryParse(priceStr);
+      if (priceNum == null) {
+        _showErrorSnackbar('Please enter a valid price amount.');
+        return false;
+      }
+      if (priceNum < 0) {
+        _showErrorSnackbar('Course price cannot be negative.');
+        return false;
+      }
     }
     return true;
   }
@@ -620,6 +633,11 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
 
       // 1. Create Base Course Draft
       final priceNum = double.tryParse(_priceController.text.trim()) ?? 0.0;
+      if (priceNum < 0) {
+        setState(() => _isSubmitting = false);
+        _showErrorSnackbar('Course price cannot be negative.');
+        return;
+      }
       final courseRes = await repo.createCourse(
         {
           'title': _titleController.text.trim(),
@@ -1343,6 +1361,9 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
             controller: _priceController,
             focusNode: _priceFocusNode,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+            ],
             decoration: const InputDecoration(
               hintText: 'e.g., 1499 (0 for Free)',
               prefixText: '₹ ',

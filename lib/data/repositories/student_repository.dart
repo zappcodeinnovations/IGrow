@@ -384,6 +384,14 @@ class StudentRepository {
 
   /// Get quiz for a section, checking backend API first with QuizService fallback.
   Future<Map<String, dynamic>?> getSectionQuiz(String sectionId) async {
+    bool hasValidQuestions(dynamic map) {
+      if (map is Map) {
+        final q = map['questions'];
+        return q is List && q.isNotEmpty;
+      }
+      return false;
+    }
+
     try {
       final token = await tokenStorage.getAccessToken();
       final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/quiz/section/$sectionId/');
@@ -396,7 +404,7 @@ class StudentRepository {
       );
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final decoded = jsonDecode(response.body);
-        if (decoded is Map<String, dynamic> && decoded.isNotEmpty) return decoded;
+        if (hasValidQuestions(decoded)) return decoded as Map<String, dynamic>;
       }
     } catch (_) {}
 
@@ -404,19 +412,21 @@ class StudentRepository {
       final response = await appApi.apiV1QuizSectionSectionIdGet(sectionId: sectionId);
       if (response.isSuccessful && response.body != null) {
         final body = response.body;
-        if (body is Map<String, dynamic> && body.isNotEmpty) return body;
-        final decoded = jsonDecode(response.bodyString);
-        if (decoded is Map<String, dynamic> && decoded.isNotEmpty) return decoded;
+        if (hasValidQuestions(body)) return body as Map<String, dynamic>;
+        try {
+          final decoded = jsonDecode(response.bodyString);
+          if (hasValidQuestions(decoded)) return decoded as Map<String, dynamic>;
+        } catch (_) {}
       }
     } catch (_) {}
 
     // Check persistent instructor-configured quiz
     final localQuiz = await QuizService.getSectionQuiz(sectionId);
-    if (localQuiz != null && localQuiz.isNotEmpty) return localQuiz;
+    if (hasValidQuestions(localQuiz)) return localQuiz;
 
     // Client Demo Fallback:
-    // If backend database does not have a quiz configured yet, provide an
-    // interactive quiz so client presentation works seamlessly!
+    // If backend database does not have questions configured yet, provide an
+    // interactive quiz so student can take the section quiz seamlessly!
     return _generateDemoSectionQuiz(sectionId);
   }
 

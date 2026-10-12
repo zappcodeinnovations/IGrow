@@ -47,11 +47,41 @@ class CourseDetailsScreen extends ConsumerStatefulWidget {
           'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
     };
 
-    // 1. If URL is a Bunny iframe embed or mediadelivery link, scrape/resolve the direct stream
-    if (rawUrl.contains('mediadelivery.net') || rawUrl.contains('/play/') || rawUrl.contains('/embed/')) {
+    final trimmed = rawUrl.trim();
+    if (trimmed.isEmpty) {
+      return (primaryUrl: '', fallbackUrl: null, headers: <String, String>{});
+    }
+
+    // Ensure relative paths from Django (/media/...) are normalized to full HTTP URLs with encoding
+    String normalizedUrl = trimmed;
+    if (!normalizedUrl.startsWith('http://') && !normalizedUrl.startsWith('https://')) {
+      final clean = normalizedUrl.startsWith('/') ? normalizedUrl : '/$normalizedUrl';
+      normalizedUrl = 'https://iagrow.zappcode.in$clean';
+    }
+    normalizedUrl = Uri.encodeFull(normalizedUrl);
+
+    // 1. Direct media files (e.g. uploaded .mp4 or Django media) that are not embed pages
+    final isEmbed = normalizedUrl.contains('mediadelivery.net') ||
+        normalizedUrl.contains('/play/') ||
+        normalizedUrl.contains('/embed/');
+
+    if (!isEmbed &&
+        (normalizedUrl.toLowerCase().contains('.mp4') ||
+            normalizedUrl.toLowerCase().contains('/media/') ||
+            normalizedUrl.toLowerCase().contains('.mov') ||
+            normalizedUrl.toLowerCase().contains('.m4v'))) {
+      final Map<String, String> standardHeaders = {};
+      if (normalizedUrl.contains('iagrow.zappcode.in') && authToken != null) {
+        standardHeaders['Authorization'] = 'Bearer $authToken';
+      }
+      return (primaryUrl: normalizedUrl, fallbackUrl: null, headers: standardHeaders);
+    }
+
+    // 2. If URL is a Bunny iframe embed or mediadelivery link, scrape/resolve the direct stream
+    if (isEmbed) {
       try {
         final res = await http.get(
-          Uri.parse(rawUrl),
+          Uri.parse(normalizedUrl),
           headers: {
             'Referer': 'https://iagrow.zappcode.in/',
             'User-Agent':
@@ -84,7 +114,7 @@ class CourseDetailsScreen extends ConsumerStatefulWidget {
       }
 
       // Regex fallback if scraping timed out
-      final playMatch = RegExp(r'/(?:play|embed)/(\d+)/([0-9a-fA-F\-]+)').firstMatch(rawUrl);
+      final playMatch = RegExp(r'/(?:play|embed)/(\d+)/([0-9a-fA-F\-]+)').firstMatch(normalizedUrl);
       final effectiveId = bunnyId ?? playMatch?.group(2);
       if (playMatch != null && effectiveId != null) {
         final libId = playMatch.group(1);
@@ -94,13 +124,13 @@ class CourseDetailsScreen extends ConsumerStatefulWidget {
       }
     }
 
-    // 2. Direct Bunny CDN URLs
-    if (rawUrl.contains('b-cdn.net')) {
-      return (primaryUrl: rawUrl, fallbackUrl: null, headers: defaultHeaders);
+    // 3. Direct Bunny CDN URLs
+    if (normalizedUrl.contains('b-cdn.net')) {
+      return (primaryUrl: normalizedUrl, fallbackUrl: null, headers: defaultHeaders);
     }
 
-    // 3. Fallback for deprecated Google Cloud Storage sample link
-    if (rawUrl.contains('commondatastorage.googleapis.com') && rawUrl.contains('BigBuckBunny.mp4')) {
+    // 4. Fallback for deprecated Google Cloud Storage sample link
+    if (normalizedUrl.contains('commondatastorage.googleapis.com') && normalizedUrl.contains('BigBuckBunny.mp4')) {
       return (
         primaryUrl: 'https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/720/Big_Buck_Bunny_720_10s_1MB.mp4',
         fallbackUrl: null,
@@ -108,13 +138,13 @@ class CourseDetailsScreen extends ConsumerStatefulWidget {
       );
     }
 
-    // 4. Standard Direct or backend server URLs
+    // 5. Standard Direct or backend server URLs
     final Map<String, String> standardHeaders = {};
-    if (rawUrl.contains('iagrow.zappcode.in') && authToken != null) {
+    if (normalizedUrl.contains('iagrow.zappcode.in') && authToken != null) {
       standardHeaders['Authorization'] = 'Bearer $authToken';
     }
 
-    return (primaryUrl: rawUrl, fallbackUrl: null, headers: standardHeaders);
+    return (primaryUrl: normalizedUrl, fallbackUrl: null, headers: standardHeaders);
   }
 
   @override
@@ -1918,6 +1948,67 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                                 color: isDark ? Colors.white70 : AppColors.inkDark,
                                 fontSize: 13,
                                 height: 1.3,
+                              ),
+                            ),
+                          ],
+                          if (review.instructorReply != null && review.instructorReply!.trim().isNotEmpty) ...[
+                            const SizedBox(height: 10),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: isDark ? Colors.white.withValues(alpha: 0.05) : AppColors.primaryGreen.withValues(alpha: 0.07),
+                                borderRadius: BorderRadius.circular(10),
+                                border: const Border(
+                                  left: BorderSide(
+                                    color: AppColors.primaryGreen,
+                                    width: 3.5,
+                                  ),
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.verified_rounded,
+                                        size: 15,
+                                        color: AppColors.primaryGreen,
+                                      ),
+                                      const SizedBox(width: 5),
+                                      Text(
+                                        review.instructorName?.isNotEmpty == true
+                                            ? '${review.instructorName} (Instructor)'
+                                            : "Instructor's Reply",
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                          color: AppColors.primaryGreen,
+                                        ),
+                                      ),
+                                      if (review.instructorReplyCreatedAt != null) ...[
+                                        const Spacer(),
+                                        Text(
+                                          DateFormat.yMMMd().format(review.instructorReplyCreatedAt!),
+                                          style: const TextStyle(
+                                            fontSize: 11,
+                                            color: AppColors.inkSoft,
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    review.instructorReply!,
+                                    style: TextStyle(
+                                      fontSize: 12.5,
+                                      color: isDark ? Colors.white70 : AppColors.inkDark,
+                                      height: 1.35,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
