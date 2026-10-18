@@ -8,6 +8,7 @@ import '../../../core/theme/theme_provider.dart';
 
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/logout_dialog.dart';
+import '../../../core/widgets/delete_account_dialog.dart';
 import '../../../data/models/user_role.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../home_instructor/providers/instructor_home_provider.dart';
@@ -431,6 +432,37 @@ class ProfileScreen extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: 16),
+
+              // Delete Account
+              AppCard(
+                onTap: () => showDeleteAccountDialog(context, ref),
+                padding: const EdgeInsets.all(18),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: AppColors.error.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: const Icon(
+                        Icons.delete_forever_rounded,
+                        color: AppColors.error,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Text(
+                      'Delete Account',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            color: AppColors.error,
+                            fontWeight: FontWeight.w600,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
 
               // Logout
               AppCard(

@@ -183,7 +183,7 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                     scheme: 'mailto',
                     path: 'support@iagrow.zappcode.in',
                     queryParameters: {
-                      'subject': 'Support Request - iGrow Student',
+                      'subject': 'Support Request - iAgrow Student',
                     },
                   );
                   try {
@@ -281,7 +281,7 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        'iGrow',
+                        'iAgrow',
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,

@@ -150,7 +150,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                 ),
                 const SizedBox(height: 24),
                 Text(
-                  'IGrow',
+                  'iAgrow',
                   style: Theme.of(context).textTheme.displayLarge?.copyWith(color: AppColors.greenDark,),
                 ),
                 const SizedBox(height: 8),

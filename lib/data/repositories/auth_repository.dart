@@ -38,6 +38,7 @@ abstract class AuthRepository {
   });
   Future<UserModel> switchRole(UserRole newRole);
   Future<void> logout();
+  Future<void> deleteAccount();
   Future<bool> hasSession();
   
   Future<UserModel> updateProfile(PatchedUserProfileRequest request);
@@ -368,6 +369,32 @@ class ApiAuthRepository implements AuthRepository {
     }
 
     // Unregister / delete FCM token so this device receives no further notifications for this user
+    try {
+      await NotificationService.instance
+          .deleteFcmToken()
+          .timeout(const Duration(seconds: 2), onTimeout: () => null);
+    } catch (_) {}
+
+    await tokenStorage.clearTokens();
+    _currentUser = null;
+  }
+
+  @override
+  Future<void> deleteAccount() async {
+    try {
+      final accessToken = await tokenStorage.getAccessToken();
+      final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/auth/delete-account/');
+      await http.delete(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          if (accessToken != null) 'Authorization': 'Bearer $accessToken',
+        },
+      ).timeout(const Duration(seconds: 5), onTimeout: () => http.Response('{}', 408));
+    } catch (_) {}
+
+    // Unregister / delete FCM token so this device receives no further notifications
     try {
       await NotificationService.instance
           .deleteFcmToken()

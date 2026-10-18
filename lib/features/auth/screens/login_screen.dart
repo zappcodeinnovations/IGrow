@@ -205,6 +205,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   onPressed: _login,
                                   isLoading: authState.isLoading,
                                 ),
+                                // Social login buttons commented out for review compliance
+                                /*
                                 const SizedBox(height: 32),
                                 // Divider
                                 Row(
@@ -249,6 +251,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                     ),
                                   ],
                                 ),
+                                */
                                 const SizedBox(height: 32),
                                 // Register link
                                 Center(
@@ -292,6 +295,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 }
 
+// ignore: unused_element
 class _SocialButton extends StatelessWidget {
   const _SocialButton({
     required this.icon,

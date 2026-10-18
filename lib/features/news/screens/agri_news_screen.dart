@@ -62,7 +62,7 @@ class _AgriNewsScreenState extends ConsumerState<AgriNewsScreen> {
   }
 
   void _shareArticle(AgriNews news) {
-    final text = '${news.title}\n\nRead more on The Hindu Business Line: ${news.link}\n\nShared via iGrow Agriculture App';
+    final text = '${news.title}\n\nRead more on The Hindu Business Line: ${news.link}\n\nShared via iAgrow Agriculture App';
     // ignore: deprecated_member_use
     Share.share(text);
   }

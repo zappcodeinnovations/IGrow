@@ -1727,7 +1727,7 @@ class _CommentItem extends StatelessWidget {
 
 Future<void> _sharePost(BuildContext context, CommunityPost post) async {
   final title = post.title.isNotEmpty ? post.title : 'Agricultural Update';
-  final text = '$title\n\n${post.content}\n\nShared via IGrow App';
+  final text = '$title\n\n${post.content}\n\nShared via iAgrow App';
 
   try {
     await SharePlus.instance.share(

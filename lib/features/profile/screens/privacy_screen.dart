@@ -80,7 +80,7 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
                       const Icon(Icons.shield_outlined, color: AppColors.primaryGreen, size: 28),
                       const SizedBox(width: 10),
                       Text(
-                        'IGrow Privacy Policy',
+                        'iAgrow Privacy Policy',
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
                               fontWeight: FontWeight.bold,
                             ),

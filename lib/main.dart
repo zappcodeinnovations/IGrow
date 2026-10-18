@@ -118,7 +118,7 @@ class _IGrowAppState extends ConsumerState<IGrowApp> {
         systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
       ),
       child: MaterialApp.router(
-        title: 'IGrow',
+        title: 'iAgrow',
         theme: AppTheme.light,
         darkTheme: AppTheme.dark,
         themeMode: themeMode, // Adapts to system preference or user choice
