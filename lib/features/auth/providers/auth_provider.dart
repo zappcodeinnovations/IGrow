@@ -281,6 +281,17 @@ class AuthNotifier extends StateNotifier<AuthState> {
     state = const AuthState(status: AuthStatus.unauthenticated);
   }
 
+  /// Delete Account permanently.
+  Future<void> deleteAccount() async {
+    _stopPeriodicSync();
+    try {
+      await _repo.deleteAccount();
+    } catch (_) {
+      await _repo.logout();
+    }
+    state = const AuthState(status: AuthStatus.unauthenticated);
+  }
+
   /// Update Basic Profile.
   Future<void> updateProfile(PatchedUserProfileRequest request) async {
     state = state.copyWith(status: AuthStatus.loading);

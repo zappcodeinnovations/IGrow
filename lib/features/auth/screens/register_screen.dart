@@ -53,6 +53,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   }
 
   Future<void> _register() async {
+    if (ref.read(authProvider).isLoading) return;
     if (!_formKey.currentState!.validate()) return;
     if (!_agreeTerms) return;
 

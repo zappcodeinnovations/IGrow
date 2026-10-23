@@ -205,6 +205,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   onPressed: _login,
                                   isLoading: authState.isLoading,
                                 ),
+                                /*
+                                // ─── TEMPORARILY COMMENTED OUT FOR APPLE APP STORE REVIEW (Guideline 4.8) ───
+                                // Apple requires "Sign in with Apple" if 3rd-party logins (like Google) are visible.
+                                // Uncomment when Google Sign-In & Apple Sign-In backend OAuth is implemented.
                                 const SizedBox(height: 32),
                                 // Divider
                                 Row(
@@ -249,6 +253,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                     ),
                                   ],
                                 ),
+                                */
                                 const SizedBox(height: 32),
                                 // Register link
                                 Center(
@@ -292,6 +297,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 }
 
+/*
+/// Preserved for future social login integration
 class _SocialButton extends StatelessWidget {
   const _SocialButton({
     required this.icon,
@@ -325,7 +332,9 @@ class _SocialButton extends StatelessWidget {
             const SizedBox(width: 8),
             Text(
               label,
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(color: isDark ? AppColors.white : AppColors.inkDark,),
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: isDark ? AppColors.white : AppColors.inkDark,
+                  ),
             ),
           ],
         ),
@@ -333,3 +342,4 @@ class _SocialButton extends StatelessWidget {
     );
   }
 }
+*/

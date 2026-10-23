@@ -9,6 +9,7 @@ import '../../../core/router/route_names.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/network/swagger_generated/app_api.swagger.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/delete_account_dialog.dart';
 import '../../../data/models/user_role.dart';
 import '../../../data/models/user_model.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -1004,6 +1005,20 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                               ),
                             )
                           : const Text('Save Profile', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Center(
+                    child: TextButton.icon(
+                      onPressed: () => showDeleteAccountConfirmationDialog(context, ref),
+                      icon: const Icon(Icons.delete_forever_outlined, color: AppColors.error, size: 18),
+                      label: const Text(
+                        'Delete Account',
+                        style: TextStyle(
+                          color: AppColors.error,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 40),

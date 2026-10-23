@@ -23,9 +23,7 @@ class DefaultFirebaseOptions {
       case TargetPlatform.android:
         return android;
       case TargetPlatform.iOS:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for macos',
-        );
+        return ios;
       case TargetPlatform.macOS:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for macos',
@@ -51,5 +49,14 @@ class DefaultFirebaseOptions {
     messagingSenderId: '744016784564',
     projectId: 'igrow-efd02',
     storageBucket: 'igrow-efd02.firebasestorage.app',
+  );
+
+  static const FirebaseOptions ios = FirebaseOptions(
+    apiKey: 'AIzaSyBw9I6Qq3n_wOAZXJFZeIJE0hLM5AudxoQ',
+    appId: '1:744016784564:ios:17296ad47ab763a51a7be1',
+    messagingSenderId: '744016784564',
+    projectId: 'igrow-efd02',
+    storageBucket: 'igrow-efd02.firebasestorage.app',
+    iosBundleId: 'com.zappkode.igrow',
   );
 }

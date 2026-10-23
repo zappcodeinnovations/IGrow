@@ -94,7 +94,7 @@ class _IGrowAppState extends ConsumerState<IGrowApp> {
     final themeMode = ref.watch(themeProvider);
 
     return MaterialApp.router(
-      title: 'IGrow',
+      title: 'IAgrow',
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       themeMode: themeMode, // Adapts to system preference or user choice
