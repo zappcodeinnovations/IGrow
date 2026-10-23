@@ -501,6 +501,175 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     );
   }
 
+  void _showSearchableSelectionSheet(
+    String label,
+    TextEditingController controller,
+    List<String> suggestions,
+  ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (bottomSheetContext) {
+        String searchQuery = '';
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final filteredSuggestions = suggestions.where((item) {
+              return item.toLowerCase().contains(searchQuery.toLowerCase().trim());
+            }).toList();
+
+            final hasCustomQuery = searchQuery.trim().isNotEmpty &&
+                !suggestions.any((s) => s.toLowerCase() == searchQuery.trim().toLowerCase());
+
+            return Container(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.75,
+              ),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1E2620) : Colors.white,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+              ),
+              child: SafeArea(
+                top: false,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Handle Bar
+                    Container(
+                      margin: const EdgeInsets.only(top: 12, bottom: 8),
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+
+                    // Header
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Select $label',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: isDark ? Colors.white : AppColors.inkDark,
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close, size: 20),
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Search Input
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                      child: TextField(
+                        autofocus: false,
+                        decoration: InputDecoration(
+                          hintText: 'Search $label...',
+                          prefixIcon: const Icon(Icons.search, size: 20),
+                          suffixIcon: searchQuery.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear, size: 18),
+                                  onPressed: () {
+                                    setModalState(() {
+                                      searchQuery = '';
+                                    });
+                                  },
+                                )
+                              : null,
+                          filled: true,
+                          fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade100,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                        onChanged: (val) {
+                          setModalState(() {
+                            searchQuery = val;
+                          });
+                        },
+                      ),
+                    ),
+
+                    const Divider(height: 16),
+
+                    // Options List
+                    Flexible(
+                      child: ListView(
+                        shrinkWrap: true,
+                        children: [
+                          if (hasCustomQuery)
+                            ListTile(
+                              leading: const Icon(Icons.add_circle_outline, color: AppColors.primaryGreen),
+                              title: Text(
+                                'Use "$searchQuery"',
+                                style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.primaryGreen),
+                              ),
+                              onTap: () {
+                                setState(() {
+                                  controller.text = searchQuery.trim();
+                                });
+                                Navigator.pop(context);
+                              },
+                            ),
+                          if (filteredSuggestions.isEmpty && !hasCustomQuery)
+                            const Padding(
+                              padding: EdgeInsets.all(24.0),
+                              child: Center(
+                                child: Text('No matching options found'),
+                              ),
+                            )
+                          else
+                            ...filteredSuggestions.map((item) {
+                              final isSelected = controller.text.trim().toLowerCase() == item.toLowerCase();
+                              return ListTile(
+                                title: Text(
+                                  item,
+                                  style: TextStyle(
+                                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                    color: isSelected
+                                        ? AppColors.primaryGreen
+                                        : (isDark ? Colors.white : AppColors.inkDark),
+                                  ),
+                                ),
+                                trailing: isSelected
+                                    ? const Icon(Icons.check_circle, color: AppColors.primaryGreen, size: 20)
+                                    : null,
+                                onTap: () {
+                                  setState(() {
+                                    controller.text = item;
+                                  });
+                                  Navigator.pop(context);
+                                },
+                              );
+                            }),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   Widget _buildSelectableTextField(
     String label,
     TextEditingController controller,
@@ -509,31 +678,21 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
-      child: TextFormField(
-        controller: controller,
-        decoration: InputDecoration(
-          labelText: label,
-          hintText: hintText,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          filled: true,
-          suffixIcon: PopupMenuButton<String>(
-            icon: const Icon(Icons.arrow_drop_down, size: 28),
-            tooltip: 'Select $label',
-            onSelected: (val) {
-              setState(() {
-                controller.text = val;
-              });
-            },
-            itemBuilder: (context) => suggestions
-                .map(
-                  (s) => PopupMenuItem<String>(
-                    value: s,
-                    child: Text(s),
-                  ),
-                )
-                .toList(),
+      child: InkWell(
+        onTap: () => _showSearchableSelectionSheet(label, controller, suggestions),
+        borderRadius: BorderRadius.circular(12),
+        child: IgnorePointer(
+          child: TextFormField(
+            controller: controller,
+            decoration: InputDecoration(
+              labelText: label,
+              hintText: hintText,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              filled: true,
+              suffixIcon: const Icon(Icons.arrow_drop_down, size: 28),
+            ),
           ),
         ),
       ),
@@ -630,6 +789,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   }
 
   Widget _buildExperienceSelector() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Column(
@@ -648,9 +808,17 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 label: Text(exp),
                 selected: isSelected,
                 selectedColor: AppColors.primaryGreen,
+                backgroundColor: isDark ? AppColors.cardDark : Colors.grey.shade100,
+                side: BorderSide(
+                  color: isSelected
+                      ? AppColors.primaryGreen
+                      : (isDark ? AppColors.lineDark : Colors.grey.shade300),
+                ),
                 labelStyle: TextStyle(
-                  color: isSelected ? Colors.white : AppColors.inkDark,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  color: isSelected
+                      ? Colors.white
+                      : (isDark ? Colors.white.withValues(alpha: 0.85) : AppColors.inkDark),
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                 ),
                 onSelected: (selected) {
                   if (selected) {
@@ -668,6 +836,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   }
 
   Widget _buildAreasOfInterestSelector() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final currentList = _areasController.text
         .split(',')
         .map((e) => e.trim())
@@ -684,9 +853,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             'Tap tags to add/remove or type custom topics below:',
-            style: TextStyle(fontSize: 12, color: AppColors.inkSoft),
+            style: TextStyle(
+              fontSize: 12,
+              color: isDark ? Colors.white.withValues(alpha: 0.6) : AppColors.inkSoft,
+            ),
           ),
           const SizedBox(height: 8),
           Wrap(
@@ -699,12 +871,20 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   tag,
                   style: TextStyle(
                     fontSize: 12,
-                    color: isSelected ? Colors.white : AppColors.inkDark,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    color: isSelected
+                        ? Colors.white
+                        : (isDark ? Colors.white.withValues(alpha: 0.85) : AppColors.inkDark),
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                   ),
                 ),
                 selected: isSelected,
                 selectedColor: AppColors.primaryGreen,
+                backgroundColor: isDark ? AppColors.cardDark : Colors.grey.shade100,
+                side: BorderSide(
+                  color: isSelected
+                      ? AppColors.primaryGreen
+                      : (isDark ? AppColors.lineDark : Colors.grey.shade300),
+                ),
                 checkmarkColor: Colors.white,
                 onSelected: (selected) {
                   setState(() {

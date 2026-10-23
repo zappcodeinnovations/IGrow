@@ -4,13 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_text_field.dart';
 import '../providers/community_provider.dart';
 
-/// Screen for creating and publishing a community discussion post.
-/// Matches AgriLearn naming conventions and Django backend schema.
 class CreatePostScreen extends ConsumerStatefulWidget {
   const CreatePostScreen({super.key});
 
@@ -22,16 +19,34 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _contentController = TextEditingController();
+  final _venueController = TextEditingController();
+  final _linkController = TextEditingController();
+  final _courseNameController = TextEditingController();
   final _picker = ImagePicker();
 
+  String _selectedPostType = 'GENERAL';
+  String? _selectedHubId;
   String? _selectedTopicId;
+  DateTime? _selectedEventDate;
+  TimeOfDay? _selectedEventTime;
   File? _selectedImage;
   bool _isSubmitting = false;
+
+  final List<Map<String, dynamic>> _postTypes = [
+    {'type': 'GENERAL', 'label': 'General', 'icon': Icons.chat_bubble_outline_rounded, 'color': Color(0xFF475569)},
+    {'type': 'OFFLINE_SEMINAR', 'label': 'Seminar', 'icon': Icons.event_rounded, 'color': Color(0xFF2E7D32)},
+    {'type': 'ONLINE_MEETING', 'label': 'Webinar', 'icon': Icons.videocam_rounded, 'color': Color(0xFF1565C0)},
+    {'type': 'COURSE_LAUNCH', 'label': 'Course', 'icon': Icons.school_rounded, 'color': Color(0xFF7B1FA2)},
+    {'type': 'ADVISORY', 'label': 'Advisory', 'icon': Icons.warning_amber_rounded, 'color': Color(0xFFE65100)},
+  ];
 
   @override
   void dispose() {
     _titleController.dispose();
     _contentController.dispose();
+    _venueController.dispose();
+    _linkController.dispose();
+    _courseNameController.dispose();
     super.dispose();
   }
 
@@ -105,6 +120,27 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
     );
   }
 
+  Future<void> _pickDateTime() async {
+    final pickedDate = await showDatePicker(
+      context: context,
+      initialDate: _selectedEventDate ?? DateTime.now().add(const Duration(days: 1)),
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+
+    if (pickedDate != null && mounted) {
+      final pickedTime = await showTimePicker(
+        context: context,
+        initialTime: _selectedEventTime ?? const TimeOfDay(hour: 10, minute: 0),
+      );
+
+      setState(() {
+        _selectedEventDate = pickedDate;
+        _selectedEventTime = pickedTime;
+      });
+    }
+  }
+
   Future<void> _submitPost() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -115,10 +151,27 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
     });
 
     try {
+      DateTime? fullEventDateTime;
+      if (_selectedEventDate != null) {
+        final time = _selectedEventTime ?? const TimeOfDay(hour: 10, minute: 0);
+        fullEventDateTime = DateTime(
+          _selectedEventDate!.year,
+          _selectedEventDate!.month,
+          _selectedEventDate!.day,
+          time.hour,
+          time.minute,
+        );
+      }
+
       await ref.read(communityPostsProvider.notifier).createPost(
             title: _titleController.text.trim(),
             content: _contentController.text.trim(),
+            hubId: _selectedHubId,
+            postType: _selectedPostType,
             topicId: _selectedTopicId,
+            eventDate: fullEventDateTime,
+            venueAddress: _venueController.text.trim().isNotEmpty ? _venueController.text.trim() : null,
+            link: _linkController.text.trim().isNotEmpty ? _linkController.text.trim() : null,
             imagePath: _selectedImage?.path,
           );
 
@@ -154,10 +207,13 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
   @override
   Widget build(BuildContext context) {
     final topicsAsync = ref.watch(communityTopicsProvider);
+    final hubsAsync = ref.watch(communityHubsProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
+      backgroundColor: isDark ? AppColors.bgDark : const Color(0xFFF7FAF6),
       appBar: AppBar(
-        title: const Text('Create Post'),
+        title: const Text('Create Post', style: TextStyle(fontWeight: FontWeight.bold)),
         elevation: 0,
         centerTitle: true,
       ),
@@ -169,39 +225,144 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Topic selection section
-                topicsAsync.when(
-                  data: (topics) {
-                    if (topics.isEmpty) return const SizedBox.shrink();
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Select Topic (Optional)',
-                          style: AppTypography.labelLarge(
-                            color: AppColors.primaryGreen,
+                // ─── Post Type Chips ───────────────────────────────
+                Text(
+                  'Post Type',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: isDark ? Colors.white : AppColors.inkDark,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: _postTypes.map((item) {
+                      final isSelected = _selectedPostType == item['type'];
+                      final color = item['color'] as Color;
+
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: ChoiceChip(
+                          selected: isSelected,
+                          onSelected: (_) {
+                            setState(() {
+                              _selectedPostType = item['type'] as String;
+                            });
+                          },
+                          label: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(item['icon'] as IconData, size: 16, color: isSelected ? Colors.white : color),
+                              const SizedBox(width: 6),
+                              Text(
+                                item['label'] as String,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12.5,
+                                  color: isSelected ? Colors.white : (isDark ? Colors.white : AppColors.inkDark),
+                                ),
+                              ),
+                            ],
                           ),
+                          selectedColor: color,
+                          backgroundColor: isDark ? AppColors.cardDark : AppColors.white,
+                          side: BorderSide(
+                            color: isSelected ? color : (isDark ? AppColors.lineDark : const Color(0xFFE2EBE0)),
+                            width: 1.2,
+                          ),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                         ),
-                        const SizedBox(height: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).cardColor,
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
-                              color: Theme.of(context).dividerColor.withValues(alpha: 0.15),
-                            ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+                const SizedBox(height: 18),
+
+                // ─── Hub Selector (Optional) ───────────────────────
+                hubsAsync.when(
+                  data: (hubs) {
+                    if (hubs.isEmpty) return const SizedBox.shrink();
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: isDark ? AppColors.cardDark : AppColors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFE2EBE0), width: 1.2),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Row(
+                            children: [
+                              Icon(Icons.hub_rounded, size: 16, color: AppColors.primaryGreen),
+                              SizedBox(width: 6),
+                              Text('Post in Hub (Optional)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                            ],
                           ),
-                          child: DropdownButtonHideUnderline(
+                          const SizedBox(height: 8),
+                          DropdownButtonHideUnderline(
                             child: DropdownButton<String?>(
                               isExpanded: true,
-                              value: _selectedTopicId,
-                              hint: const Text('Choose a topic / category'),
-                              icon: const Icon(Icons.arrow_drop_down_rounded),
+                              value: _selectedHubId,
+                              hint: const Text('Global Feed (No specific hub)', style: TextStyle(fontSize: 13)),
                               items: [
                                 const DropdownMenuItem<String?>(
                                   value: null,
-                                  child: Text('None (General)'),
+                                  child: Text('Global Feed (All Farmers)'),
+                                ),
+                                ...hubs.map(
+                                  (h) => DropdownMenuItem<String?>(
+                                    value: h.id,
+                                    child: Text(h.name),
+                                  ),
+                                ),
+                              ],
+                              onChanged: (val) => setState(() => _selectedHubId = val),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                  loading: () => const SizedBox.shrink(),
+                  error: (_, __) => const SizedBox.shrink(),
+                ),
+
+                // ─── Topic Selector (Optional) ─────────────────────
+                topicsAsync.when(
+                  data: (topics) {
+                    if (topics.isEmpty) return const SizedBox.shrink();
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: isDark ? AppColors.cardDark : AppColors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFE2EBE0), width: 1.2),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Row(
+                            children: [
+                              Icon(Icons.topic_rounded, size: 16, color: AppColors.primaryGreen),
+                              SizedBox(width: 6),
+                              Text('Discussion Topic (Optional)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          DropdownButtonHideUnderline(
+                            child: DropdownButton<String?>(
+                              isExpanded: true,
+                              value: _selectedTopicId,
+                              hint: const Text('General Farming Discussion', style: TextStyle(fontSize: 13)),
+                              items: [
+                                const DropdownMenuItem<String?>(
+                                  value: null,
+                                  child: Text('General Discussion'),
                                 ),
                                 ...topics.map(
                                   (t) => DropdownMenuItem<String?>(
@@ -210,75 +371,172 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                                   ),
                                 ),
                               ],
-                              onChanged: (val) {
-                                setState(() {
-                                  _selectedTopicId = val;
-                                });
-                              },
+                              onChanged: (val) => setState(() => _selectedTopicId = val),
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 18),
-                      ],
+                        ],
+                      ),
                     );
                   },
                   loading: () => const SizedBox.shrink(),
                   error: (_, __) => const SizedBox.shrink(),
                 ),
 
-                // Post Title
+                // ─── Dynamic Post Type Specific Fields ─────────────
+                if (_selectedPostType == 'OFFLINE_SEMINAR' || _selectedPostType == 'ONLINE_MEETING') ...[
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: isDark ? AppColors.cardDark : const Color(0xFFF4F9F1),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFD4E8CF), width: 1.2),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  _selectedPostType == 'OFFLINE_SEMINAR' ? Icons.calendar_today_rounded : Icons.live_tv_rounded,
+                                  color: AppColors.primaryGreen,
+                                  size: 18,
+                                ),
+                                const SizedBox(width: 8),
+                                const Text('Event Schedule', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                              ],
+                            ),
+                            TextButton.icon(
+                              onPressed: _pickDateTime,
+                              icon: const Icon(Icons.edit_calendar_rounded, size: 16),
+                              label: Text(_selectedEventDate == null ? 'Set Date & Time' : 'Change'),
+                            ),
+                          ],
+                        ),
+                        if (_selectedEventDate != null) ...[
+                          const SizedBox(height: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: const Color(0xFFCCE4C5)),
+                            ),
+                            child: Text(
+                              '📅 ${_selectedEventDate!.day}/${_selectedEventDate!.month}/${_selectedEventDate!.year} at ${_selectedEventTime?.format(context) ?? "10:00 AM"}',
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF2E7D32)),
+                            ),
+                          ),
+                        ],
+                        if (_selectedPostType == 'OFFLINE_SEMINAR') ...[
+                          const SizedBox(height: 12),
+                          AppTextField(
+                            controller: _venueController,
+                            hint: 'Venue (e.g. Krishi Vigyan Kendra, Baramati)',
+                          ),
+                          const SizedBox(height: 10),
+                          AppTextField(
+                            controller: _linkController,
+                            hint: 'Google Maps Location Link (URL)',
+                          ),
+                        ],
+                        if (_selectedPostType == 'ONLINE_MEETING') ...[
+                          const SizedBox(height: 12),
+                          AppTextField(
+                            controller: _linkController,
+                            hint: 'Meeting Link (Zoom / Google Meet URL)',
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+
+                if (_selectedPostType == 'COURSE_LAUNCH') ...[
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: isDark ? AppColors.cardDark : const Color(0xFFFAF3FC),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFE9D0F3), width: 1.2),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Row(
+                          children: [
+                            Icon(Icons.school_rounded, color: Color(0xFF7B1FA2), size: 18),
+                            SizedBox(width: 8),
+                            Text('Course Details', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        AppTextField(
+                          controller: _courseNameController,
+                          hint: 'Course Title / Description',
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
+                // ─── Post Title ────────────────────────────────────
                 Text(
                   'Post Title *',
-                  style: AppTypography.labelLarge(
-                    color: AppColors.primaryGreen,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: isDark ? Colors.white : AppColors.inkDark,
                   ),
                 ),
                 const SizedBox(height: 8),
                 AppTextField(
                   controller: _titleController,
-                  hint: 'e.g. Best organic pest control methods',
+                  hint: 'e.g. Smart Irrigation Workshop / Pest alert',
                   textInputAction: TextInputAction.next,
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
                       return 'Please enter a post title';
                     }
-                    if (value.trim().length < 3) {
-                      return 'Title must be at least 3 characters';
-                    }
                     return null;
                   },
                 ),
-                const SizedBox(height: 18),
+                const SizedBox(height: 16),
 
-                // Post Content
+                // ─── Content ───────────────────────────────────────
                 Text(
                   'Content *',
-                  style: AppTypography.labelLarge(
-                    color: AppColors.primaryGreen,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: isDark ? Colors.white : AppColors.inkDark,
                   ),
                 ),
                 const SizedBox(height: 8),
                 AppTextField(
                   controller: _contentController,
-                  hint: 'Write your thoughts, questions, or tips here...',
+                  hint: 'Write your thoughts, seminar agenda, or farming advice here...',
                   maxLines: 5,
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
-                      return 'Please write some content for your post';
-                    }
-                    if (value.trim().length < 5) {
-                      return 'Content must be at least 5 characters';
+                      return 'Please write content for your post';
                     }
                     return null;
                   },
                 ),
-                const SizedBox(height: 18),
+                const SizedBox(height: 16),
 
-                // Attach Image Section
+                // ─── Photo Attachment ──────────────────────────────
                 Text(
                   'Attach Photo (Optional)',
-                  style: AppTypography.labelLarge(
-                    color: AppColors.primaryGreen,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: isDark ? Colors.white : AppColors.inkDark,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -298,22 +556,14 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                         top: 8,
                         right: 8,
                         child: GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _selectedImage = null;
-                            });
-                          },
+                          onTap: () => setState(() => _selectedImage = null),
                           child: Container(
                             padding: const EdgeInsets.all(6),
                             decoration: const BoxDecoration(
                               color: Colors.black54,
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(
-                              Icons.close_rounded,
-                              color: Colors.white,
-                              size: 20,
-                            ),
+                            child: const Icon(Icons.close_rounded, color: Colors.white, size: 20),
                           ),
                         ),
                       ),
@@ -326,54 +576,36 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                     borderRadius: BorderRadius.circular(14),
                     child: Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 24),
+                      padding: const EdgeInsets.symmetric(vertical: 20),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).cardColor,
+                        color: isDark ? AppColors.cardDark : AppColors.white,
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
-                          color: AppColors.primaryGreen.withValues(alpha: 0.3),
-                          style: BorderStyle.solid,
+                          color: const Color(0xFFCEE6C5),
+                          width: 1.2,
                         ),
                       ),
-                      child: Column(
+                      child: const Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(
-                            Icons.add_photo_alternate_outlined,
-                            size: 36,
-                            color: AppColors.primaryGreen,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Tap to upload an image',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  color: AppColors.primaryGreen,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Supports JPG, PNG up to 5MB',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: AppColors.inkSoft,
-                                ),
-                          ),
+                          Icon(Icons.add_photo_alternate_outlined, size: 34, color: AppColors.primaryGreen),
+                          SizedBox(height: 6),
+                          Text('Tap to upload photo (JPG / PNG)', style: TextStyle(color: AppColors.primaryGreen, fontWeight: FontWeight.bold, fontSize: 13)),
                         ],
                       ),
                     ),
                   ),
-                  const SizedBox(height: 24),
                 ],
-
-                const SizedBox(height: 12),
+                const SizedBox(height: 24),
 
                 // Submit Button
                 AppButton(
-                  label: 'Create Post',
+                  label: 'Publish Post',
                   icon: Icons.send_rounded,
                   isLoading: _isSubmitting,
                   onPressed: _isSubmitting ? null : _submitPost,
                 ),
+                const SizedBox(height: 30),
               ],
             ),
           ),

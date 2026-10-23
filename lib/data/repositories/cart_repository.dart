@@ -1,7 +1,10 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../../core/network/api_client.dart';
+import '../../core/network/api_exception.dart';
 import '../../core/network/token_storage.dart';
 import '../models/api_models/order_models.dart';
 
@@ -12,15 +15,51 @@ class CartRepository {
   final AppApi appApi;
   final TokenStorage tokenStorage;
 
-  /// Get the current cart.
+  bool _isNetworkOrAbortError(dynamic e) {
+    if (e is SocketException || e is TimeoutException || e is http.ClientException) {
+      return true;
+    }
+    final s = e.toString().toLowerCase();
+    return s.contains('abort') ||
+        s.contains('connection') ||
+        s.contains('socket') ||
+        s.contains('handshake') ||
+        s.contains('timeout') ||
+        s.contains('clientexception') ||
+        s.contains('failed host lookup') ||
+        s.contains('network is unreachable');
+  }
+
+  /// Get the current cart with automatic single retry for transient connection drops.
   Future<ApiCart> getCart() async {
     debugPrint('🛒 [CartRepository] getCart: fetching user cart');
+    try {
+      return await _fetchCartFromApi();
+    } catch (e) {
+      if (_isNetworkOrAbortError(e)) {
+        debugPrint('🔄 [CartRepository] getCart network/abort failure ($e). Retrying once after 350ms...');
+        await Future.delayed(const Duration(milliseconds: 350));
+        try {
+          return await _fetchCartFromApi();
+        } catch (retryErr) {
+          debugPrint('❌ [CartRepository] getCart retry also failed: $retryErr');
+          throw ApiException.network('Unable to load cart. Please check your internet connection.');
+        }
+      }
+      rethrow;
+    }
+  }
+
+  Future<ApiCart> _fetchCartFromApi() async {
     final response = await appApi.apiV1CartGet();
     if (!response.isSuccessful) {
       if (response.statusCode == 404) {
         return const ApiCart(id: '');
       }
-      throw Exception('Failed to load cart: ${response.statusCode}');
+      throw ApiException(
+        statusCode: response.statusCode,
+        message: 'Failed to load cart (${response.statusCode})',
+      );
     }
 
     final dynamic data = response.body;
@@ -50,83 +89,126 @@ class CartRepository {
     debugPrint('➕ [CartRepository] addToCart: courseId=$courseId');
     final token = await tokenStorage.getAccessToken();
     final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/cart/add/');
-    final response = await http.post(
-      uri,
-      headers: {
-        if (token != null) 'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode({
-        'course_id': courseId,
-        'course': courseId,
-      }),
-    );
+    
+    http.Response response;
+    try {
+      response = await http.post(
+        uri,
+        headers: {
+          if (token != null) 'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'course_id': courseId,
+          'course': courseId,
+        }),
+      ).timeout(const Duration(seconds: 15));
+    } catch (e) {
+      debugPrint('❌ [CartRepository] addToCart network error: $e');
+      if (_isNetworkOrAbortError(e)) {
+        throw ApiException.network('Unable to add course to cart. Please check your internet connection.');
+      }
+      rethrow;
+    }
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       debugPrint('✅ [CartRepository] addToCart SUCCESS');
     } else {
       debugPrint('❌ [CartRepository] addToCart ERROR (${response.statusCode}): ${response.body}');
+      String errorMessage = 'Failed to add to cart (${response.statusCode})';
       try {
         final decoded = jsonDecode(response.body);
-        if (decoded is Map && decoded.containsKey('error')) {
-          throw Exception(decoded['error']);
+        if (decoded is Map) {
+          if (decoded.containsKey('error') && decoded['error'] != null) {
+            errorMessage = decoded['error'].toString();
+          } else if (decoded.containsKey('detail') && decoded['detail'] != null) {
+            errorMessage = decoded['detail'].toString();
+          } else if (decoded.containsKey('message') && decoded['message'] != null) {
+            errorMessage = decoded['message'].toString();
+          }
         }
       } catch (e) {
         if (e is! FormatException) rethrow;
       }
-      throw Exception('Failed to add to cart (${response.statusCode})');
+
+      if (response.statusCode >= 500) {
+        throw ApiException.server('Server error. Please try again later.');
+      }
+      throw ApiException(
+        statusCode: response.statusCode,
+        message: errorMessage,
+      );
     }
   }
 
   /// Remove a course from cart.
   Future<void> removeFromCart(String courseId) async {
     debugPrint('🗑️ [CartRepository] removeFromCart: courseId=$courseId');
-    final token = await tokenStorage.getAccessToken();
-    final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/cart/remove/$courseId/');
-    final response = await http.delete(
-      uri,
-      headers: {
-        if (token != null) 'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      },
-    );
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      debugPrint('✅ [CartRepository] removeFromCart SUCCESS');
-    } else {
-      debugPrint('⚠️ [CartRepository] removeFromCart status: ${response.statusCode}');
+    try {
+      final token = await tokenStorage.getAccessToken();
+      final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/cart/remove/$courseId/');
+      final response = await http.delete(
+        uri,
+        headers: {
+          if (token != null) 'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      ).timeout(const Duration(seconds: 15));
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        debugPrint('✅ [CartRepository] removeFromCart SUCCESS');
+      } else {
+        debugPrint('⚠️ [CartRepository] removeFromCart status: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('⚠️ [CartRepository] removeFromCart network/timeout error: $e');
     }
   }
 
   /// Clear the entire cart.
   Future<void> clearCart() async {
     debugPrint('🧹 [CartRepository] clearCart');
-    final token = await tokenStorage.getAccessToken();
-    final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/cart/clear/');
-    final response = await http.delete(
-      uri,
-      headers: {
-        if (token != null) 'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      },
-    );
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      debugPrint('✅ [CartRepository] clearCart SUCCESS');
+    try {
+      final token = await tokenStorage.getAccessToken();
+      final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/cart/clear/');
+      final response = await http.delete(
+        uri,
+        headers: {
+          if (token != null) 'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      ).timeout(const Duration(seconds: 15));
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        debugPrint('✅ [CartRepository] clearCart SUCCESS');
+      }
+    } catch (e) {
+      debugPrint('⚠️ [CartRepository] clearCart network/timeout error: $e');
     }
   }
 
   /// Validate and apply coupon code via backend API.
-  Future<Map<String, dynamic>> applyCoupon(String code) async {
-    debugPrint('🎟️ [CartRepository] applyCoupon: code=$code');
+  Future<Map<String, dynamic>> applyCoupon(String code, {String? courseId}) async {
+    debugPrint('🎟️ [CartRepository] applyCoupon: code=$code, courseId=$courseId');
     final token = await tokenStorage.getAccessToken();
     final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/apply-coupon/');
-    final response = await http.post(
-      uri,
-      headers: {
-        if (token != null) 'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode({'code': code}),
-    );
+    http.Response response;
+    try {
+      response = await http.post(
+        uri,
+        headers: {
+          if (token != null) 'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'code': code,
+          if (courseId != null) 'course_id': courseId,
+        }),
+      ).timeout(const Duration(seconds: 15));
+    } catch (e) {
+      if (_isNetworkOrAbortError(e)) {
+        throw Exception('No internet connection. Please check your network and try again.');
+      }
+      throw Exception('Unable to reach server. Please try again.');
+    }
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       debugPrint('✅ [CartRepository] applyCoupon SUCCESS: ${response.body}');
@@ -137,14 +219,173 @@ class CartRepository {
       return Map<String, dynamic>.from(decoded as Map);
     } else {
       debugPrint('⚠️ [CartRepository] applyCoupon FAILED (${response.statusCode}): ${response.body}');
+      if (response.statusCode >= 500) {
+        throw Exception('Server is temporarily unavailable. Please try again in a few moments.');
+      }
       String errMsg = 'Invalid or expired coupon code.';
       try {
         final decoded = jsonDecode(response.body);
-        if (decoded is Map && decoded.containsKey('error')) {
-          errMsg = decoded['error'].toString();
+        if (decoded is Map) {
+          if (decoded.containsKey('error') && decoded['error'] != null) {
+            errMsg = decoded['error'].toString();
+          } else if (decoded.containsKey('message') && decoded['message'] != null) {
+            errMsg = decoded['message'].toString();
+          } else if (decoded.containsKey('detail') && decoded['detail'] != null) {
+            errMsg = decoded['detail'].toString();
+          }
         }
       } catch (_) {}
+
+      // Clean up technical backend exceptions if any
+      final lower = errMsg.toLowerCase();
+      if (lower.contains('matching query does not exist') || lower.contains('not found') || lower.contains('doesnotexist')) {
+        errMsg = 'Invalid coupon code. Please verify the code and try again.';
+      } else if (lower.contains('already used') || lower.contains('limit reached')) {
+        errMsg = 'This coupon has already been used or reached its usage limit.';
+      } else if (lower.contains('expired')) {
+        errMsg = 'This coupon code has expired.';
+      }
+
       throw Exception(errMsg);
+    }
+  }
+
+  /// Step 1: Create Razorpay Order
+  /// Calls POST /api/v1/orders/razorpay/create/
+  Future<Map<String, dynamic>> createRazorpayOrder({
+    String? couponCode,
+    String? courseId,
+    String? ebookId,
+  }) async {
+    debugPrint('💳 [CartRepository] createRazorpayOrder START: coupon=$couponCode, courseId=$courseId, ebookId=$ebookId');
+    final token = await tokenStorage.getAccessToken();
+    final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/orders/razorpay/create/');
+
+    final payload = <String, dynamic>{
+      if (couponCode != null && couponCode.trim().isNotEmpty)
+        'coupon_code': couponCode.trim(),
+      if (courseId != null && courseId.trim().isNotEmpty)
+        'course_id': courseId.trim(),
+      if (ebookId != null && ebookId.trim().isNotEmpty)
+        'ebook_id': ebookId.trim(),
+    };
+
+    http.Response response;
+    try {
+      response = await http.post(
+        uri,
+        headers: {
+          if (token != null) 'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(payload),
+      ).timeout(const Duration(seconds: 25));
+    } catch (e) {
+      if (_isNetworkOrAbortError(e)) {
+        throw Exception('No internet connection. Please check your network and try again.');
+      }
+      throw Exception('Payment request timed out. Please check your connection and try again.');
+    }
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      debugPrint('✅ [CartRepository] createRazorpayOrder SUCCESS (${response.statusCode}): ${response.body}');
+      try {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map<String, dynamic>) {
+          return decoded;
+        }
+        return Map<String, dynamic>.from(decoded as Map);
+      } catch (_) {
+        throw Exception('Unexpected response format from payment server.');
+      }
+    } else {
+      debugPrint('❌ [CartRepository] createRazorpayOrder ERROR (${response.statusCode}): ${response.body}');
+      String message = 'Unable to initiate order. Please try again.';
+      try {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map && decoded['error'] != null) {
+          message = decoded['error'].toString();
+        } else if (decoded is Map && decoded['message'] != null) {
+          message = decoded['message'].toString();
+        } else if (decoded is Map && decoded['detail'] != null) {
+          message = decoded['detail'].toString();
+        } else if (response.statusCode >= 500) {
+          message = 'Payment server is temporarily unavailable. Please try again in a few moments.';
+        }
+      } catch (_) {
+        if (response.statusCode >= 500) {
+          message = 'Payment server is temporarily unavailable. Please try again in a few moments.';
+        }
+      }
+      throw Exception(message);
+    }
+  }
+
+  /// Step 3: Verify Razorpay Payment
+  /// Calls POST /api/v1/orders/razorpay/verify/
+  Future<Map<String, dynamic>> verifyRazorpayPayment({
+    required String paymentId,
+    required String orderId,
+    required String signature,
+  }) async {
+    debugPrint('🔐 [CartRepository] verifyRazorpayPayment START: paymentId=$paymentId, orderId=$orderId');
+    final token = await tokenStorage.getAccessToken();
+    final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/orders/razorpay/verify/');
+
+    final payload = <String, dynamic>{
+      'razorpay_payment_id': paymentId,
+      'razorpay_order_id': orderId,
+      'razorpay_signature': signature,
+    };
+
+    http.Response response;
+    try {
+      response = await http.post(
+        uri,
+        headers: {
+          if (token != null) 'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(payload),
+      ).timeout(const Duration(seconds: 25));
+    } catch (e) {
+      if (_isNetworkOrAbortError(e)) {
+        throw Exception('No internet connection. Please check your network and try again.');
+      }
+      throw Exception('Verification request timed out. Please check your connection and try again.');
+    }
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      debugPrint('✅ [CartRepository] verifyRazorpayPayment SUCCESS (${response.statusCode}): ${response.body}');
+      try {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map<String, dynamic>) {
+          return decoded;
+        }
+        return Map<String, dynamic>.from(decoded as Map);
+      } catch (_) {
+        return {'status': 'success', 'message': 'Payment verified and order fulfilled successfully.'};
+      }
+    } else {
+      debugPrint('❌ [CartRepository] verifyRazorpayPayment ERROR (${response.statusCode}): ${response.body}');
+      String message = 'Payment verification failed.';
+      try {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map && decoded['error'] != null) {
+          message = decoded['error'].toString();
+        } else if (decoded is Map && decoded['message'] != null) {
+          message = decoded['message'].toString();
+        } else if (decoded is Map && decoded['detail'] != null) {
+          message = decoded['detail'].toString();
+        } else if (response.statusCode >= 500) {
+          message = 'Payment verification server is temporarily unavailable.';
+        }
+      } catch (_) {
+        if (response.statusCode >= 500) {
+          message = 'Payment verification server is temporarily unavailable.';
+        }
+      }
+      throw Exception(message);
     }
   }
 
@@ -174,14 +415,22 @@ class CartRepository {
       if (couponCode != null) 'coupon_code': couponCode,
     };
 
-    final response = await http.post(
-      uri,
-      headers: {
-        if (token != null) 'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode(payload),
-    );
+    http.Response response;
+    try {
+      response = await http.post(
+        uri,
+        headers: {
+          if (token != null) 'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(payload),
+      ).timeout(const Duration(seconds: 25));
+    } catch (e) {
+      if (_isNetworkOrAbortError(e)) {
+        throw Exception('No internet connection. Please check your network and try again.');
+      }
+      throw Exception('Payment request timed out. Please check your connection and try again.');
+    }
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       debugPrint('✅ [CartRepository] checkout SUCCESS (${response.statusCode}): ${response.body}');
@@ -192,13 +441,18 @@ class CartRepository {
       }
     } else {
       debugPrint('❌ [CartRepository] checkout ERROR (${response.statusCode}): ${response.body}');
+      if (response.statusCode >= 500) {
+        throw Exception('Payment server is temporarily unavailable. Please try again in a few moments.');
+      }
       String message = 'Payment failed. Please try again.';
       try {
         final decoded = jsonDecode(response.body);
-        if (decoded is Map && decoded.containsKey('error')) {
+        if (decoded is Map && decoded.containsKey('error') && decoded['error'] != null) {
           message = decoded['error'].toString();
-        } else if (decoded is Map && decoded.containsKey('message')) {
+        } else if (decoded is Map && decoded.containsKey('message') && decoded['message'] != null) {
           message = decoded['message'].toString();
+        } else if (decoded is Map && decoded.containsKey('detail') && decoded['detail'] != null) {
+          message = decoded['detail'].toString();
         }
       } catch (_) {}
       throw Exception(message);

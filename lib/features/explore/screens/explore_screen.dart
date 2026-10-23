@@ -522,17 +522,25 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
       length: 2,
       initialIndex: widget.initialTab.clamp(0, 1),
       child: Scaffold(
+        backgroundColor: Colors.transparent,
         appBar: AppBar(
           elevation: 0,
           backgroundColor: Colors.transparent,
           title: Container(
             height: 44,
             decoration: BoxDecoration(
-              color: isDark ? AppColors.cardDark : AppColors.white,
-              borderRadius: BorderRadius.circular(12),
+              color: isDark ? AppColors.cardDark : Colors.white,
+              borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                color: isDark ? AppColors.lineDark : AppColors.lineLight,
+                color: isDark ? AppColors.lineDark : const Color(0xFFE2EBE0),
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primaryGreen.withValues(alpha: isDark ? 0.08 : 0.05),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: Row(
               children: [
@@ -1055,15 +1063,21 @@ class _CatalogCourseCard extends ConsumerWidget {
       child: Container(
         decoration: BoxDecoration(
           color: isDark ? AppColors.cardDark : Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color: isDark ? AppColors.lineDark : Colors.grey.shade200,
+            color: isDark ? AppColors.lineDark : const Color(0xFFE2EBE0),
+            width: 1,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
+              color: AppColors.primaryGreen.withValues(alpha: isDark ? 0.08 : 0.06),
+              blurRadius: 18,
+              offset: const Offset(0, 6),
+            ),
+            BoxShadow(
+              color: (isDark ? Colors.black : const Color(0xFF1B2318)).withValues(alpha: isDark ? 0.25 : 0.03),
+              blurRadius: 3,
+              offset: const Offset(0, 1),
             ),
           ],
         ),
@@ -1072,7 +1086,7 @@ class _CatalogCourseCard extends ConsumerWidget {
           children: [
             // Top Media with Category badge & Wishlist Heart
             ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
               child: Stack(
                 children: [
                   Container(
@@ -1239,7 +1253,7 @@ class _CatalogCourseCard extends ConsumerWidget {
                       Icon(Icons.access_time, size: 12, color: Colors.grey.shade500),
                       const SizedBox(width: 3),
                       Text(
-                        course.totalDuration != null ? '${course.totalDuration} hrs' : '0 hrs',
+                        _formatCourseDuration(course.totalDuration),
                         style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
                       ),
                       const SizedBox(width: 8),
@@ -1321,5 +1335,21 @@ class _CatalogCourseCard extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  String _formatCourseDuration(String? totalDuration) {
+    if (totalDuration == null || totalDuration.trim().isEmpty) return '0 mins';
+    final parsed = double.tryParse(totalDuration.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0.0;
+    final totalMinutes = parsed.round();
+    if (totalMinutes <= 0) return '0 mins';
+    if (totalMinutes < 60) {
+      return '$totalMinutes mins';
+    }
+    final hours = totalMinutes ~/ 60;
+    final remainingMinutes = totalMinutes % 60;
+    if (remainingMinutes == 0) {
+      return '$hours ${hours == 1 ? "hr" : "hrs"}';
+    }
+    return '$hours hr $remainingMinutes mins';
   }
 }

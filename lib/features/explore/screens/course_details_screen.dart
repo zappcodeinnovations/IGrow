@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:video_player/video_player.dart';
 
+import '../../../core/network/api_exception.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/shimmer_placeholders.dart';
@@ -46,11 +47,41 @@ class CourseDetailsScreen extends ConsumerStatefulWidget {
           'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
     };
 
-    // 1. If URL is a Bunny iframe embed or mediadelivery link, scrape/resolve the direct stream
-    if (rawUrl.contains('mediadelivery.net') || rawUrl.contains('/play/') || rawUrl.contains('/embed/')) {
+    final trimmed = rawUrl.trim();
+    if (trimmed.isEmpty) {
+      return (primaryUrl: '', fallbackUrl: null, headers: <String, String>{});
+    }
+
+    // Ensure relative paths from Django (/media/...) are normalized to full HTTP URLs with encoding
+    String normalizedUrl = trimmed;
+    if (!normalizedUrl.startsWith('http://') && !normalizedUrl.startsWith('https://')) {
+      final clean = normalizedUrl.startsWith('/') ? normalizedUrl : '/$normalizedUrl';
+      normalizedUrl = 'https://iagrow.zappcode.in$clean';
+    }
+    normalizedUrl = Uri.encodeFull(normalizedUrl);
+
+    // 1. Direct media files (e.g. uploaded .mp4 or Django media) that are not embed pages
+    final isEmbed = normalizedUrl.contains('mediadelivery.net') ||
+        normalizedUrl.contains('/play/') ||
+        normalizedUrl.contains('/embed/');
+
+    if (!isEmbed &&
+        (normalizedUrl.toLowerCase().contains('.mp4') ||
+            normalizedUrl.toLowerCase().contains('/media/') ||
+            normalizedUrl.toLowerCase().contains('.mov') ||
+            normalizedUrl.toLowerCase().contains('.m4v'))) {
+      final Map<String, String> standardHeaders = {};
+      if (normalizedUrl.contains('iagrow.zappcode.in') && authToken != null) {
+        standardHeaders['Authorization'] = 'Bearer $authToken';
+      }
+      return (primaryUrl: normalizedUrl, fallbackUrl: null, headers: standardHeaders);
+    }
+
+    // 2. If URL is a Bunny iframe embed or mediadelivery link, scrape/resolve the direct stream
+    if (isEmbed) {
       try {
         final res = await http.get(
-          Uri.parse(rawUrl),
+          Uri.parse(normalizedUrl),
           headers: {
             'Referer': 'https://iagrow.zappcode.in/',
             'User-Agent':
@@ -83,7 +114,7 @@ class CourseDetailsScreen extends ConsumerStatefulWidget {
       }
 
       // Regex fallback if scraping timed out
-      final playMatch = RegExp(r'/(?:play|embed)/(\d+)/([0-9a-fA-F\-]+)').firstMatch(rawUrl);
+      final playMatch = RegExp(r'/(?:play|embed)/(\d+)/([0-9a-fA-F\-]+)').firstMatch(normalizedUrl);
       final effectiveId = bunnyId ?? playMatch?.group(2);
       if (playMatch != null && effectiveId != null) {
         final libId = playMatch.group(1);
@@ -93,13 +124,13 @@ class CourseDetailsScreen extends ConsumerStatefulWidget {
       }
     }
 
-    // 2. Direct Bunny CDN URLs
-    if (rawUrl.contains('b-cdn.net')) {
-      return (primaryUrl: rawUrl, fallbackUrl: null, headers: defaultHeaders);
+    // 3. Direct Bunny CDN URLs
+    if (normalizedUrl.contains('b-cdn.net')) {
+      return (primaryUrl: normalizedUrl, fallbackUrl: null, headers: defaultHeaders);
     }
 
-    // 3. Fallback for deprecated Google Cloud Storage sample link
-    if (rawUrl.contains('commondatastorage.googleapis.com') && rawUrl.contains('BigBuckBunny.mp4')) {
+    // 4. Fallback for deprecated Google Cloud Storage sample link
+    if (normalizedUrl.contains('commondatastorage.googleapis.com') && normalizedUrl.contains('BigBuckBunny.mp4')) {
       return (
         primaryUrl: 'https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/720/Big_Buck_Bunny_720_10s_1MB.mp4',
         fallbackUrl: null,
@@ -107,13 +138,13 @@ class CourseDetailsScreen extends ConsumerStatefulWidget {
       );
     }
 
-    // 4. Standard Direct or backend server URLs
+    // 5. Standard Direct or backend server URLs
     final Map<String, String> standardHeaders = {};
-    if (rawUrl.contains('iagrow.zappcode.in') && authToken != null) {
+    if (normalizedUrl.contains('iagrow.zappcode.in') && authToken != null) {
       standardHeaders['Authorization'] = 'Bearer $authToken';
     }
 
-    return (primaryUrl: rawUrl, fallbackUrl: null, headers: standardHeaders);
+    return (primaryUrl: normalizedUrl, fallbackUrl: null, headers: standardHeaders);
   }
 
   @override
@@ -136,6 +167,22 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
     _chewieController?.dispose();
     _videoPlayerController?.dispose();
     super.dispose();
+  }
+
+  String _formatCourseDuration(String? totalDuration) {
+    if (totalDuration == null || totalDuration.trim().isEmpty) return '0 mins';
+    final parsed = double.tryParse(totalDuration.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0.0;
+    final totalMinutes = parsed.round();
+    if (totalMinutes <= 0) return '0 mins';
+    if (totalMinutes < 60) {
+      return '$totalMinutes mins';
+    }
+    final hours = totalMinutes ~/ 60;
+    final remainingMinutes = totalMinutes % 60;
+    if (remainingMinutes == 0) {
+      return '$hours ${hours == 1 ? "hr" : "hrs"}';
+    }
+    return '$hours hr $remainingMinutes mins';
   }
 
   Future<void> _initializePlayer(
@@ -433,13 +480,24 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
       }
     } catch (e) {
       debugPrint('❌ [CourseDetails] Add to cart ERROR: $e');
-      final errMsg = e.toString().replaceAll('Exception: ', '');
+      String errMsg = '';
+      if (e is ApiException) {
+        errMsg = e.message;
+      } else {
+        errMsg = e.toString()
+            .replaceAll('Exception: ', '')
+            .replaceAll('ClientException: ', '')
+            .trim();
+      }
+
+      final lower = errMsg.toLowerCase();
       if (context.mounted) {
-        if (errMsg.toLowerCase().contains('already enrolled') ||
-            errMsg.toLowerCase().contains('already purchased')) {
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.clearSnackBars();
+
+        if (lower.contains('already enrolled') ||
+            lower.contains('already purchased')) {
           ref.invalidate(studentEnrollmentsProvider);
-          final messenger = ScaffoldMessenger.of(context);
-          messenger.clearSnackBars();
           messenger.showSnackBar(
             const SnackBar(
               content: Text('You are already enrolled in this course! Tap Start Learning to begin. 🎓'),
@@ -447,14 +505,43 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
               duration: Duration(seconds: 3),
             ),
           );
-        } else if (errMsg.toLowerCase().contains('only student') ||
-            (errMsg.toLowerCase().contains('student') && errMsg.toLowerCase().contains('buy'))) {
+        } else if (lower.contains('already in cart') ||
+                   lower.contains('already added') ||
+                   lower.contains('item already')) {
+          // If already in cart on backend, refresh cart provider so UI updates to "Go to Cart"
+          ref.invalidate(cartProvider);
+          messenger.showSnackBar(
+            const SnackBar(
+              content: Text('Course is already in your cart. 🛒'),
+              backgroundColor: Color(0xFFC88528),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        } else if (lower.contains('only student') ||
+            (lower.contains('student') && lower.contains('buy'))) {
           _showStudentOnlyDialog(context);
         } else {
-          final messenger = ScaffoldMessenger.of(context);
-          messenger.clearSnackBars();
+          // Clean user-friendly message for any network or technical errors
+          String displayMsg = errMsg;
+          if (lower.contains('abort') ||
+              lower.contains('connection') ||
+              lower.contains('socket') ||
+              lower.contains('network') ||
+              lower.contains('failed host lookup') ||
+              lower.contains('timeout') ||
+              lower.contains('uri=') ||
+              lower.contains('http') ||
+              lower.contains('errno') ||
+              lower.contains('clientsoftware')) {
+            displayMsg = 'Unable to add course to cart. Please check your internet connection.';
+          }
+
           messenger.showSnackBar(
-            SnackBar(content: Text(errMsg), backgroundColor: AppColors.error),
+            SnackBar(
+              content: Text(displayMsg),
+              backgroundColor: AppColors.error,
+              duration: const Duration(seconds: 3),
+            ),
           );
         }
       }
@@ -766,8 +853,9 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
             );
           }
 
-          final inCart = ref.watch(isCourseInCartProvider(widget.courseId)) ||
-                         (course.slug != null && ref.watch(isCourseInCartProvider(course.slug!)));
+          final inCart = (course.id.isNotEmpty && ref.watch(isCourseInCartProvider(course.id))) ||
+                         ref.watch(isCourseInCartProvider(widget.courseId)) ||
+                         (course.slug != null && course.slug!.isNotEmpty && ref.watch(isCourseInCartProvider(course.slug!)));
           final priceText = course.price == null || course.price == '0' || course.price == '0.00' ? 'Free' : '₹${course.price}';
 
           return Container(
@@ -826,20 +914,30 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                               Expanded(
                                 child: OutlinedButton(
                                   style: OutlinedButton.styleFrom(
-                                    side: const BorderSide(color: Color(0xFF1B4D2E), width: 1.5),
+                                    side: BorderSide(
+                                      color: isDark ? AppColors.primaryGreen : const Color(0xFF1B4D2E),
+                                      width: 1.5,
+                                    ),
                                     padding: const EdgeInsets.symmetric(vertical: 12),
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                                   ),
                                   onPressed: _isAddingToCart ? null : () => _handleAddToCart(context, course),
                                   child: _isAddingToCart
-                                      ? const SizedBox(
+                                      ? SizedBox(
                                           width: 16,
                                           height: 16,
-                                          child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF1B4D2E)),
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: isDark ? AppColors.primaryGreen : const Color(0xFF1B4D2E),
+                                          ),
                                         )
-                                      : const Text(
+                                      : Text(
                                           'Add to Cart',
-                                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1B4D2E)),
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 13,
+                                            color: isDark ? AppColors.primaryGreen : const Color(0xFF1B4D2E),
+                                          ),
                                         ),
                                 ),
                               ),
@@ -847,14 +945,15 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                               Expanded(
                                 child: FilledButton(
                                   style: FilledButton.styleFrom(
-                                    backgroundColor: const Color(0xFF1B4D2E),
+                                    backgroundColor: AppColors.primaryGreen,
+                                    foregroundColor: Colors.white,
                                     padding: const EdgeInsets.symmetric(vertical: 12),
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                                   ),
                                   onPressed: () => _handleBuyNow(context, course),
                                   child: const Text(
                                     'Buy Now',
-                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white),
                                   ),
                                 ),
                               ),
@@ -975,9 +1074,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                   Icon(Icons.access_time_rounded, color: Colors.white.withValues(alpha: 0.7), size: 15),
                   const SizedBox(width: 4),
                   Text(
-                    course.totalDuration != null && course.totalDuration!.isNotEmpty
-                        ? course.totalDuration!
-                        : '0 Total Hours',
+                    _formatCourseDuration(course.totalDuration),
                     style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 12, fontWeight: FontWeight.w500),
                   ),
                 ],
@@ -1037,8 +1134,9 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
     final isSaved = ref.watch(isWishlistedProvider(course.id)) ||
         (course.slug != null && course.slug!.isNotEmpty && ref.watch(isWishlistedProvider(course.slug!))) ||
         ref.watch(isWishlistedProvider(widget.courseId));
-    final inCart = ref.watch(isCourseInCartProvider(widget.courseId)) ||
-                   (course.slug != null && ref.watch(isCourseInCartProvider(course.slug!)));
+    final inCart = (course.id.isNotEmpty && ref.watch(isCourseInCartProvider(course.id))) ||
+                   ref.watch(isCourseInCartProvider(widget.courseId)) ||
+                   (course.slug != null && course.slug!.isNotEmpty && ref.watch(isCourseInCartProvider(course.slug!)));
 
     return Container(
       decoration: BoxDecoration(
@@ -1279,13 +1377,20 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                     height: 44,
                     child: OutlinedButton(
                       style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Color(0xFF1B4D2E), width: 1.5),
+                        side: BorderSide(
+                          color: isDark ? AppColors.primaryGreen : const Color(0xFF1B4D2E),
+                          width: 1.5,
+                        ),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),
                       onPressed: () => _handleBuyNow(context, course),
-                      child: const Text(
+                      child: Text(
                         'Buy Now',
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF1B4D2E)),
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? AppColors.primaryGreen : const Color(0xFF1B4D2E),
+                        ),
                       ),
                     ),
                   ),
@@ -1843,6 +1948,67 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                                 color: isDark ? Colors.white70 : AppColors.inkDark,
                                 fontSize: 13,
                                 height: 1.3,
+                              ),
+                            ),
+                          ],
+                          if (review.instructorReply != null && review.instructorReply!.trim().isNotEmpty) ...[
+                            const SizedBox(height: 10),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: isDark ? Colors.white.withValues(alpha: 0.05) : AppColors.primaryGreen.withValues(alpha: 0.07),
+                                borderRadius: BorderRadius.circular(10),
+                                border: const Border(
+                                  left: BorderSide(
+                                    color: AppColors.primaryGreen,
+                                    width: 3.5,
+                                  ),
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.verified_rounded,
+                                        size: 15,
+                                        color: AppColors.primaryGreen,
+                                      ),
+                                      const SizedBox(width: 5),
+                                      Text(
+                                        review.instructorName?.isNotEmpty == true
+                                            ? '${review.instructorName} (Instructor)'
+                                            : "Instructor's Reply",
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                          color: AppColors.primaryGreen,
+                                        ),
+                                      ),
+                                      if (review.instructorReplyCreatedAt != null) ...[
+                                        const Spacer(),
+                                        Text(
+                                          DateFormat.yMMMd().format(review.instructorReplyCreatedAt!),
+                                          style: const TextStyle(
+                                            fontSize: 11,
+                                            color: AppColors.inkSoft,
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    review.instructorReply!,
+                                    style: TextStyle(
+                                      fontSize: 12.5,
+                                      color: isDark ? Colors.white70 : AppColors.inkDark,
+                                      height: 1.35,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],

@@ -27,6 +27,7 @@ class ProfileScreen extends ConsumerWidget {
     final isFarmer = user?.activeRole == UserRole.farmer;
 
     return Scaffold(
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),

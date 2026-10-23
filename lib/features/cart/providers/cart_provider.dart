@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/models/api_models/order_models.dart';
@@ -12,17 +13,23 @@ final cartRepositoryProvider = Provider<CartRepository>((ref) {
   return CartRepository(appApi: appApi, tokenStorage: tokenStorage);
 });
 
-/// Model representing an applied discount coupon.
+/// Model representing an applied discount coupon returned dynamically by backend.
 class AppliedCoupon {
   const AppliedCoupon({
     required this.code,
-    required this.discountPercent,
+    this.discountPercent = 0.0,
+    this.discountAmount = 0.0,
+    this.newTotal,
     required this.description,
+    this.rawBackendResponse,
   });
 
   final String code;
   final double discountPercent;
+  final double discountAmount;
+  final double? newTotal;
   final String description;
+  final Map<String, dynamic>? rawBackendResponse;
 }
 
 /// State provider for tracking the currently applied coupon.
@@ -65,12 +72,14 @@ final cartProvider = AsyncNotifierProvider<CartNotifier, ApiCart>(() {
 
 /// Helper family provider to check if a specific course is currently in the cart.
 final isCourseInCartProvider = Provider.family<bool, String>((ref, courseIdOrSlug) {
+  final target = courseIdOrSlug.trim();
+  if (target.isEmpty) return false;
   final cartAsync = ref.watch(cartProvider);
   return cartAsync.maybeWhen(
     data: (cart) => cart.items.any((item) {
-      final matchesCourseId = item.course == courseIdOrSlug || item.id == courseIdOrSlug;
-      final matchesDetailId = item.courseDetail?['id']?.toString() == courseIdOrSlug;
-      final matchesDetailSlug = item.courseDetail?['slug']?.toString() == courseIdOrSlug;
+      final matchesCourseId = item.course == target || item.id == target;
+      final matchesDetailId = item.courseDetail?['id']?.toString() == target;
+      final matchesDetailSlug = item.courseDetail?['slug']?.toString() == target;
       return matchesCourseId || matchesDetailId || matchesDetailSlug;
     }),
     orElse: () => false,
@@ -97,14 +106,54 @@ class CartNotifier extends AsyncNotifier<ApiCart> {
 
   /// Add a course to the cart.
   Future<void> addToCart(String courseId) async {
+    final previousState = state;
     state = const AsyncLoading();
+
     try {
       await _repository.addToCart(courseId);
+    } catch (e) {
+      // POST failed! Revert state to previous cart so UI state is NOT desynced or wiped.
+      state = previousState;
+      rethrow;
+    }
+
+    // POST to add item succeeded on server! Now fetch the updated cart.
+    try {
       final newCart = await _repository.getCart();
       state = AsyncData(newCart);
     } catch (e) {
-      state = await AsyncValue.guard(() => _fetchCart());
-      rethrow;
+      debugPrint('⚠️ [CartNotifier] addToCart: item added on backend, but getCart failed: $e');
+      // If fetching the updated cart failed due to transient connection drop, retry once.
+      try {
+        await Future.delayed(const Duration(milliseconds: 500));
+        final retryCart = await _repository.getCart();
+        state = AsyncData(retryCart);
+      } catch (_) {
+        // Since the course WAS successfully added to the server cart,
+        // synthesize/preserve the cart state so UI reflects it accurately without throwing a false error!
+        if (previousState.hasValue) {
+          final existing = previousState.value!;
+          final alreadyPresent = existing.items.any((it) => it.course == courseId || it.id == courseId);
+          if (!alreadyPresent) {
+            final optimisticItem = ApiCartItem(id: courseId, course: courseId);
+            final updatedItems = [...existing.items, optimisticItem];
+            state = AsyncData(ApiCart(
+              id: existing.id,
+              items: updatedItems,
+              itemCount: updatedItems.length.toString(),
+              total: existing.total,
+            ));
+          } else {
+            state = previousState;
+          }
+        } else {
+          state = AsyncData(ApiCart(
+            id: '',
+            items: [ApiCartItem(id: courseId, course: courseId)],
+            itemCount: '1',
+          ));
+        }
+      }
     }
   }
 
@@ -126,7 +175,48 @@ class CartNotifier extends AsyncNotifier<ApiCart> {
     });
   }
 
-  /// Checkout the cart or direct single course.
+  /// Step 1: Create Razorpay Order
+  Future<Map<String, dynamic>> createRazorpayOrder({
+    String? couponCode,
+    String? courseId,
+    String? ebookId,
+  }) async {
+    return _repository.createRazorpayOrder(
+      couponCode: couponCode,
+      courseId: courseId,
+      ebookId: ebookId,
+    );
+  }
+
+  /// Step 3: Verify Razorpay Payment & fulfill order
+  Future<Map<String, dynamic>> verifyRazorpayPayment({
+    required String paymentId,
+    required String orderId,
+    required String signature,
+  }) async {
+    state = const AsyncLoading();
+    try {
+      final result = await _repository.verifyRazorpayPayment(
+        paymentId: paymentId,
+        orderId: orderId,
+        signature: signature,
+      );
+
+      final newCart = await _fetchCart();
+      state = AsyncData(newCart);
+
+      // Invalidate enrollments & orders so newly purchased courses show immediately!
+      ref.invalidate(studentEnrollmentsProvider);
+      ref.invalidate(ordersProvider);
+
+      return result;
+    } catch (e) {
+      state = await AsyncValue.guard(() => _fetchCart());
+      rethrow;
+    }
+  }
+
+  /// Checkout the cart or direct single course (legacy/sandbox fallback).
   Future<Map<String, dynamic>> checkout({
     String? paymentMethod,
     String? courseId,

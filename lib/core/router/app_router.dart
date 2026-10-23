@@ -16,6 +16,8 @@ import '../../features/auth/screens/register_screen.dart';
 import '../../features/auth/screens/splash_screen.dart';
 import '../../features/community/screens/community_screen.dart';
 import '../../features/community/screens/create_post_screen.dart';
+import '../../features/community/screens/hub_detail_screen.dart';
+import '../../features/community/screens/create_hub_screen.dart';
 import '../../features/explore/screens/course_player_screen.dart';
 import '../../features/explore/screens/explore_screen.dart';
 import '../../features/instructor_dashboard/screens/instructor_uploads_screen.dart';
@@ -43,6 +45,7 @@ import '../../features/cart/screens/orders_screen.dart';
 import '../../features/notifications/screens/notifications_screen.dart';
 import '../../features/wishlist/screens/wishlist_screen.dart';
 import '../../features/certificates/screens/certificates_screen.dart';
+import '../../features/news/screens/agri_news_screen.dart';
 import '../../features/explore/screens/downloads_screen.dart';
 import '../widgets/not_found_screen.dart';
 import '../widgets/shell_scaffold.dart';
@@ -226,23 +229,49 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/checkout',
         builder: (context, state) {
           final courseId = state.uri.queryParameters['courseId'];
-          return CheckoutScreen(directCourseId: courseId);
+          final ebookId = state.uri.queryParameters['ebookId'];
+          return CheckoutScreen(
+            key: ValueKey('checkout_${courseId}_${ebookId}_${state.uri}'),
+            directCourseId: courseId,
+            directEbookId: ebookId,
+          );
         },
       ),
       GoRoute(
         path: RouteNames.paymentSuccess,
         builder: (context, state) {
           final extra = state.extra as Map<String, dynamic>? ?? {};
+          final qp = state.uri.queryParameters;
+
+          final originalTotal = (extra['originalTotal'] as num?)?.toDouble() ??
+              double.tryParse(qp['originalTotal'] ?? '') ??
+              0.0;
+          final finalTotal = (extra['finalTotal'] as num?)?.toDouble() ??
+              double.tryParse(qp['finalTotal'] ?? '') ??
+              0.0;
+          final discountAmount = (extra['discountAmount'] as num?)?.toDouble() ??
+              double.tryParse(qp['discountAmount'] ?? '') ??
+              0.0;
+          final couponCode = extra['couponCode'] as String? ?? qp['couponCode'];
+          final paymentMethod = extra['paymentMethod'] as String? ??
+              qp['paymentMethod'] ??
+              'DUMMY_CARD';
+          final purchasedItems = extra['purchasedItems'] as List<dynamic>? ?? [];
+
           return CheckoutSuccessScreen(
             orderResult: (extra['orderResult'] as Map<String, dynamic>?) ?? {},
-            originalTotal: (extra['originalTotal'] as num?)?.toDouble() ?? 0.0,
-            finalTotal: (extra['finalTotal'] as num?)?.toDouble() ?? 0.0,
-            discountAmount: (extra['discountAmount'] as num?)?.toDouble() ?? 0.0,
-            couponCode: extra['couponCode'] as String?,
-            paymentMethod: extra['paymentMethod'] as String? ?? 'DUMMY_CARD',
-            purchasedItems: extra['purchasedItems'] as List<dynamic>? ?? [],
+            originalTotal: originalTotal,
+            finalTotal: finalTotal,
+            discountAmount: discountAmount,
+            couponCode: couponCode,
+            paymentMethod: paymentMethod,
+            purchasedItems: purchasedItems,
           );
         },
+      ),
+      GoRoute(
+        path: '/payment-success',
+        redirect: (context, state) => state.uri.toString().replaceFirst('/payment-success', RouteNames.paymentSuccess),
       ),
       GoRoute(
         path: '/orders',
@@ -256,7 +285,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/support',
-        builder: (context, state) => const SupportScreen(),
+        builder: (context, state) {
+          final tabParam = state.uri.queryParameters['tab'];
+          final initialIndex = tabParam == 'my-tickets' ? 1 : 0;
+          return SupportScreen(initialTabIndex: initialIndex);
+        },
       ),
       GoRoute(
         path: RouteNames.chat,
@@ -275,8 +308,23 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const CreatePostScreen(),
       ),
       GoRoute(
+        path: RouteNames.hubDetails,
+        builder: (context, state) {
+          final id = state.pathParameters['id'] ?? '';
+          return HubDetailScreen(hubId: id);
+        },
+      ),
+      GoRoute(
+        path: RouteNames.createHub,
+        builder: (context, state) => const CreateHubScreen(),
+      ),
+      GoRoute(
         path: RouteNames.notifications,
         builder: (context, state) => const NotificationsScreen(),
+      ),
+      GoRoute(
+        path: RouteNames.news,
+        builder: (context, state) => const AgriNewsScreen(),
       ),
       GoRoute(
         path: RouteNames.wishlist,
@@ -360,7 +408,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: RouteNames.instructorUploads,
-            builder: (context, state) => const InstructorUploadsScreen(),
+            builder: (context, state) {
+              final tab = int.tryParse(state.uri.queryParameters['tab'] ?? '') ?? 0;
+              return InstructorUploadsScreen(initialTabIndex: tab);
+            },
           ),
           GoRoute(
             path: RouteNames.instructorKyc,

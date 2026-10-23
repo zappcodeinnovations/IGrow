@@ -193,12 +193,14 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
       }
     }
 
-    // Sync with backend API in background
+    // Sync with backend API in background (never revert completed lectures back to incomplete)
     try {
       final repo = ref.read(studentRepositoryProvider);
+      final currentCompleted = ref.read(courseProgressStateProvider(slug)).value ?? <String>{};
+      final isDone = currentCompleted.contains(_currentLecture!.id) || ratio >= 0.90;
       repo.updateLectureProgress(
         _currentLecture!.id,
-        completed: ratio >= 0.90,
+        completed: isDone,
         watchedTime: positionSeconds,
       );
     } catch (_) {}
@@ -292,6 +294,24 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
       String resolvedUrl = '';
       String? effectiveBunnyId = bunnyId;
 
+      // Normalize raw video URL if provided (handles relative /media/ paths and URL encoding)
+      String normalizedVideoUrl = '';
+      if (videoUrl != null && videoUrl.trim().isNotEmpty) {
+        final v = videoUrl.trim();
+        if (v.startsWith('http://') || v.startsWith('https://')) {
+          normalizedVideoUrl = Uri.encodeFull(v);
+        } else {
+          final clean = v.startsWith('/') ? v : '/$v';
+          normalizedVideoUrl = Uri.encodeFull('https://iagrow.zappcode.in$clean');
+        }
+      }
+
+      final isDirectUploadedFile = normalizedVideoUrl.isNotEmpty &&
+          (normalizedVideoUrl.toLowerCase().contains('.mp4') ||
+              normalizedVideoUrl.toLowerCase().contains('/media/') ||
+              normalizedVideoUrl.toLowerCase().contains('.mov') ||
+              normalizedVideoUrl.toLowerCase().contains('.m4v'));
+
       // Extract Bunny video GUID if present in URL and not already provided
       if ((effectiveBunnyId == null || effectiveBunnyId.isEmpty) && videoUrl != null) {
         final match = RegExp(r'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')
@@ -301,12 +321,21 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
         }
       }
 
+      // Determine dynamic Bunny library ID if available in videoUrl
+      String dynamicLibId = '716870';
+      final libMatch = RegExp(r'/(?:play|embed)/(\d+)/').firstMatch(videoUrl ?? '') ??
+          RegExp(r'vz-(\d+)\.b-cdn\.net').firstMatch(videoUrl ?? '');
+      if (libMatch != null) {
+        dynamicLibId = libMatch.group(1)!;
+      }
+
       // 1. Try to fetch authenticated signed HLS stream URL from backend
+      String fetchedStreamUrl = '';
       try {
         final streamData = await ref.read(studentRepositoryProvider).getLectureStream(lecture.id);
-        final fetchedStreamUrl = streamData['stream_url']?.toString();
-        if (fetchedStreamUrl != null && fetchedStreamUrl.isNotEmpty) {
-          resolvedUrl = fetchedStreamUrl;
+        final rawStream = streamData['stream_url']?.toString();
+        if (rawStream != null && rawStream.isNotEmpty) {
+          fetchedStreamUrl = rawStream;
           final backendBunnyId = streamData['bunny_video_id']?.toString();
           if (backendBunnyId != null && backendBunnyId.isNotEmpty) {
             effectiveBunnyId = backendBunnyId;
@@ -316,20 +345,34 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
         debugPrint('⚠️ [CoursePlayer] Could not fetch signed stream URL: $streamErr');
       }
 
-      // 2. Fallback to direct video URL or direct Bunny HLS playlist
-      if (resolvedUrl.isEmpty) {
-        if (videoUrl != null && videoUrl.isNotEmpty) {
-          resolvedUrl = videoUrl;
-        } else if (effectiveBunnyId != null && effectiveBunnyId.isNotEmpty) {
-          resolvedUrl = 'https://vz-716870.b-cdn.net/$effectiveBunnyId/playlist.m3u8';
-        }
+      final isFetchedDummySample = fetchedStreamUrl.contains('sample-video') ||
+          fetchedStreamUrl.contains('BigBuckBunny');
+
+      // 2. Map Media Source correctly:
+      // If student/instructor uploaded an actual custom video file, don't override it with dummy sample stream
+      if (fetchedStreamUrl.isNotEmpty && !isFetchedDummySample) {
+        resolvedUrl = fetchedStreamUrl;
+      } else if (isDirectUploadedFile) {
+        resolvedUrl = normalizedVideoUrl;
+      } else if (fetchedStreamUrl.isNotEmpty) {
+        resolvedUrl = fetchedStreamUrl;
+      } else if (effectiveBunnyId != null && effectiveBunnyId.isNotEmpty) {
+        resolvedUrl = 'https://vz-$dynamicLibId.b-cdn.net/$effectiveBunnyId/playlist.m3u8';
+      } else if (normalizedVideoUrl.isNotEmpty) {
+        resolvedUrl = normalizedVideoUrl;
       }
 
-      // 3. If resolvedUrl is an iframe embed, convert to Bunny direct stream if video ID is known
+      // 3. If resolvedUrl is an iframe embed, convert to Bunny direct stream if library ID and video ID are known
       if (resolvedUrl.contains('iframe.mediadelivery.net') ||
-          resolvedUrl.contains('/play/')) {
-        if (effectiveBunnyId != null && effectiveBunnyId.isNotEmpty) {
-          resolvedUrl = 'https://vz-716870.b-cdn.net/$effectiveBunnyId/playlist.m3u8';
+          resolvedUrl.contains('/play/') ||
+          resolvedUrl.contains('/embed/')) {
+        final embedMatch = RegExp(r'/(?:play|embed)/(\d+)/([0-9a-fA-F\-]+)').firstMatch(resolvedUrl);
+        if (embedMatch != null) {
+          final libId = embedMatch.group(1);
+          final guid = effectiveBunnyId ?? embedMatch.group(2);
+          resolvedUrl = 'https://vz-$libId.b-cdn.net/$guid/playlist.m3u8';
+        } else if (effectiveBunnyId != null && effectiveBunnyId.isNotEmpty) {
+          resolvedUrl = 'https://vz-$dynamicLibId.b-cdn.net/$effectiveBunnyId/playlist.m3u8';
         }
       }
 
@@ -338,6 +381,17 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
           resolvedUrl.contains('BigBuckBunny.mp4')) {
         debugPrint('ℹ️ [CoursePlayer] Replacing blocked GCS sample link with active working sample video');
         resolvedUrl = 'https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/720/Big_Buck_Bunny_720_10s_1MB.mp4';
+      }
+
+      // Ensure relative media paths are converted to absolute HTTP URLs
+      if (resolvedUrl.isNotEmpty &&
+          !resolvedUrl.startsWith('http://') &&
+          !resolvedUrl.startsWith('https://')) {
+        final clean = resolvedUrl.startsWith('/') ? resolvedUrl : '/$resolvedUrl';
+        resolvedUrl = 'https://iagrow.zappcode.in$clean';
+      }
+      if (resolvedUrl.startsWith('http')) {
+        resolvedUrl = Uri.encodeFull(resolvedUrl);
       }
 
       if (resolvedUrl.startsWith('http')) {
@@ -382,8 +436,22 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
             },
           );
         } catch (e) {
-          // If Bunny stream failed with 401/403, try alternative referer (iframe.mediadelivery.net)
-          if (isBunny && (e.toString().contains('401') || e.toString().contains('403'))) {
+          // If stream failed and we have an uploaded media file, fallback to direct video
+          if (isDirectUploadedFile && effectiveStreamUrl != normalizedVideoUrl) {
+            debugPrint('⚠️ [CoursePlayer] Primary stream failed ($e), falling back to uploaded video: $normalizedVideoUrl');
+            await _videoPlayerController?.dispose();
+            _videoPlayerController = VideoPlayerController.networkUrl(
+              Uri.parse(normalizedVideoUrl),
+              httpHeaders: isBackendHost && token != null ? {'Authorization': 'Bearer $token'} : {},
+            );
+            await _videoPlayerController!.initialize().timeout(
+              const Duration(seconds: 12),
+              onTimeout: () {
+                throw Exception('Uploaded video load timed out.');
+              },
+            );
+          } else if (isBunny && (e.toString().contains('401') || e.toString().contains('403'))) {
+            // If Bunny stream failed with 401/403, try alternative referer (iframe.mediadelivery.net)
             debugPrint('⚠️ [CoursePlayer] First referer failed, retrying with iframe.mediadelivery.net referer...');
             await _videoPlayerController?.dispose();
             headers['Referer'] = 'https://iframe.mediadelivery.net/';
@@ -1098,24 +1166,29 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
                             onPressed: () {
                               final isCurrentlyDone =
                                   completedIds.contains(_currentLecture!.id);
+                              if (isCurrentlyDone) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Lecture already marked as completed! ✓'),
+                                    duration: Duration(seconds: 2),
+                                  ),
+                                );
+                                return;
+                              }
                               ref
                                   .read(
                                       courseProgressStateProvider(_activeSlug!)
                                           .notifier)
                                   .markLectureCompletion(
                                     _currentLecture!.id,
-                                    completed: !isCurrentlyDone,
+                                    completed: true,
                                     watchedTime: _videoPlayerController
                                         ?.value.position.inSeconds,
                                   );
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    !isCurrentlyDone
-                                        ? 'Marked as completed! ✓'
-                                        : 'Marked as pending',
-                                  ),
-                                  duration: const Duration(seconds: 2),
+                                const SnackBar(
+                                  content: Text('Marked as completed! ✓'),
+                                  duration: Duration(seconds: 2),
                                 ),
                               );
                             },
@@ -2988,6 +3061,67 @@ class _CourseReviewsTabState extends ConsumerState<_CourseReviewsTab> {
                             fontSize: 13,
                             color: isDark ? Colors.white70 : AppColors.inkDark,
                             height: 1.3,
+                          ),
+                        ),
+                      ],
+                      if (review.instructorReply != null && review.instructorReply!.trim().isNotEmpty) ...[
+                        const SizedBox(height: 10),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.white.withValues(alpha: 0.05) : AppColors.primaryGreen.withValues(alpha: 0.07),
+                            borderRadius: BorderRadius.circular(10),
+                            border: const Border(
+                              left: BorderSide(
+                                color: AppColors.primaryGreen,
+                                width: 3.5,
+                              ),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.verified_rounded,
+                                    size: 15,
+                                    color: AppColors.primaryGreen,
+                                  ),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    review.instructorName?.isNotEmpty == true
+                                        ? '${review.instructorName} (Instructor)'
+                                        : "Instructor's Reply",
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.primaryGreen,
+                                    ),
+                                  ),
+                                  if (review.instructorReplyCreatedAt != null) ...[
+                                    const Spacer(),
+                                    Text(
+                                      DateFormat.yMMMd().format(review.instructorReplyCreatedAt!),
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        color: AppColors.inkSoft,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                review.instructorReply!,
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  color: isDark ? Colors.white70 : AppColors.inkDark,
+                                  height: 1.35,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],

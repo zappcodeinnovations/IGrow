@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/network/swagger_generated/app_api.swagger.dart';
 import '../../../core/router/route_names.dart';
@@ -18,6 +19,7 @@ import '../../wishlist/providers/wishlist_provider.dart';
 import '../../../core/services/quiz_service.dart';
 import '../providers/student_provider.dart';
 import '../providers/weather_provider.dart';
+import '../../news/widgets/home_news_carousel.dart';
 
 /// Upgraded Student / Farmer Dashboard Screen matching the Agrilearn Web UI & UX.
 class FarmerHomeScreen extends ConsumerStatefulWidget {
@@ -126,30 +128,83 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
               const SizedBox(height: 20),
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.chat_bubble_outline_rounded, color: AppColors.primaryGreen),
-                title: const Text('Chat with Agri Specialist'),
-                subtitle: const Text('Get instant technical support & advisory'),
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryGreen.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.confirmation_number_outlined, color: AppColors.primaryGreen, size: 20),
+                ),
+                title: const Text('My Support Tickets', style: TextStyle(fontWeight: FontWeight.w600)),
+                subtitle: const Text('View ticket status & admin replies'),
+                trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.inkSoft),
                 onTap: () {
                   Navigator.pop(context);
-                  context.push(RouteNames.chat);
+                  context.push('/support?tab=my-tickets');
                 },
               ),
               const Divider(height: 1),
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.email_outlined, color: AppColors.skyBlue),
-                title: const Text('Email Support'),
-                subtitle: const Text('support@iagrow.zappcode.in'),
-                trailing: const Icon(Icons.copy_rounded, size: 18, color: AppColors.inkSoft),
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryGreen.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.add_task_rounded, color: AppColors.primaryGreen, size: 20),
+                ),
+                title: const Text('Raise Support Ticket', style: TextStyle(fontWeight: FontWeight.w600)),
+                subtitle: const Text('Submit queries on app, courses or payments'),
+                trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.inkSoft),
                 onTap: () {
                   Navigator.pop(context);
-                  Clipboard.setData(const ClipboardData(text: 'support@iagrow.zappcode.in'));
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Support email copied to clipboard: support@iagrow.zappcode.in'),
-                      duration: Duration(milliseconds: 2000),
-                    ),
+                  context.push('/support');
+                },
+              ),
+              const Divider(height: 1),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.skyBlue.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.email_outlined, color: AppColors.skyBlue, size: 20),
+                ),
+                title: const Text('Email Support', style: TextStyle(fontWeight: FontWeight.w600)),
+                subtitle: const Text('support@iagrow.zappcode.in'),
+                trailing: const Icon(Icons.open_in_new_rounded, size: 18, color: AppColors.inkSoft),
+                onTap: () async {
+                  Navigator.pop(context);
+                  final emailUri = Uri(
+                    scheme: 'mailto',
+                    path: 'support@iagrow.zappcode.in',
+                    queryParameters: {
+                      'subject': 'Support Request - iGrow Student',
+                    },
                   );
+                  try {
+                    final launched = await launchUrl(
+                      emailUri,
+                      mode: LaunchMode.externalApplication,
+                    );
+                    if (!launched) {
+                      throw Exception('Could not launch mail client');
+                    }
+                  } catch (_) {
+                    Clipboard.setData(const ClipboardData(text: 'support@iagrow.zappcode.in'));
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Support email copied to clipboard: support@iagrow.zappcode.in'),
+                          duration: Duration(milliseconds: 2000),
+                        ),
+                      );
+                    }
+                  }
                 },
               ),
               const SizedBox(height: 16),
@@ -189,6 +244,7 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
     );
 
     return Scaffold(
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: _refreshDashboard,
@@ -242,15 +298,23 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                       // Wishlist Heart Badge Button
                       InkWell(
                         onTap: () => context.push(RouteNames.wishlist),
-                        borderRadius: BorderRadius.circular(10),
-                        child: Padding(
-                          padding: const EdgeInsets.all(6),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.all(7),
+                          decoration: BoxDecoration(
+                            color: isDark ? AppColors.cardDark : Colors.white,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: isDark ? AppColors.lineDark : const Color(0xFFE2EBE0),
+                              width: 1,
+                            ),
+                          ),
                           child: Stack(
                             clipBehavior: Clip.none,
                             children: [
                               Icon(
                                 Icons.favorite_border_rounded,
-                                size: 21,
+                                size: 19,
                                 color: isDark ? AppColors.white : AppColors.inkDark,
                               ),
                               if (ref.watch(wishlistCountProvider) > 0)
@@ -279,20 +343,28 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: 6),
 
                       // Shopping Cart Badge Button
                       InkWell(
                         onTap: () => context.push(RouteNames.cart),
-                        borderRadius: BorderRadius.circular(10),
-                        child: Padding(
-                          padding: const EdgeInsets.all(6),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.all(7),
+                          decoration: BoxDecoration(
+                            color: isDark ? AppColors.cardDark : Colors.white,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: isDark ? AppColors.lineDark : const Color(0xFFE2EBE0),
+                              width: 1,
+                            ),
+                          ),
                           child: Stack(
                             clipBehavior: Clip.none,
                             children: [
                               Icon(
                                 Icons.shopping_cart_outlined,
-                                size: 21,
+                                size: 19,
                                 color: isDark ? AppColors.white : AppColors.inkDark,
                               ),
                               if (cartItemCount > 0)
@@ -321,20 +393,28 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: 6),
 
                       // Notification Bell Badge Button
                       InkWell(
                         onTap: () => context.push(RouteNames.notifications),
-                        borderRadius: BorderRadius.circular(10),
-                        child: Padding(
-                          padding: const EdgeInsets.all(6),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.all(7),
+                          decoration: BoxDecoration(
+                            color: isDark ? AppColors.cardDark : Colors.white,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: isDark ? AppColors.lineDark : const Color(0xFFE2EBE0),
+                              width: 1,
+                            ),
+                          ),
                           child: Stack(
                             clipBehavior: Clip.none,
                             children: [
                               Icon(
                                 Icons.notifications_outlined,
-                                size: 21,
+                                size: 19,
                                 color: isDark ? AppColors.white : AppColors.inkDark,
                               ),
                               if (ref.watch(unreadNotificationsCountProvider) > 0)
@@ -361,12 +441,19 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                         onTap: () => context.go(RouteNames.farmerProfile),
                         borderRadius: BorderRadius.circular(16),
                         child: Container(
-                          width: 32,
-                          height: 32,
+                          width: 34,
+                          height: 34,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             color: AppColors.primaryGreen,
-                            border: Border.all(color: isDark ? AppColors.greenLight : AppColors.white, width: 1.5),
+                            border: Border.all(color: isDark ? AppColors.greenLight : AppColors.white, width: 2),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.primaryGreen.withValues(alpha: 0.25),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
                           ),
                           child: Center(
                             child: Text(
@@ -386,261 +473,252 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
               ),
               const SizedBox(height: 14),
 
-              // ── Header Greeting & Weather Row ───────────────────────────
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _getTimeBasedGreeting(),
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: AppColors.accentOrange,
-                                fontWeight: FontWeight.w600,
-                              ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          "$firstName's Dashboard",
-                          style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                              ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Welcome back to your agricultural learning journey!',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: AppColors.inkSoft,
-                                fontSize: 12.5,
-                              ),
-                        ),
-                      ],
-                    ),
+              // ── Header Greeting & Weather Hero Card ───────────────────────────
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.cardDark : Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: isDark ? AppColors.lineDark : const Color(0xFFE2EBE0),
+                    width: 1,
                   ),
-                  // Weather Chip (Dynamic Real-Time Geolocation & Weather API)
-                  Tooltip(
-                    message: 'Live Weather • Tap to refresh',
-                    child: InkWell(
-                      onTap: () => ref.read(weatherProvider.notifier).refresh(),
-                      borderRadius: BorderRadius.circular(14),
-                      child: Container(
-                        margin: const EdgeInsets.only(left: 6),
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: AppColors.skyBlue.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: AppColors.skyBlue.withValues(alpha: 0.25)),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              weatherData?.weatherIcon ?? Icons.wb_sunny_rounded,
-                              color: AppColors.accentOrange,
-                              size: 18,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primaryGreen.withValues(alpha: isDark ? 0.08 : 0.05),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
+                    ),
+                    BoxShadow(
+                      color: (isDark ? Colors.black : const Color(0xFF1B2318)).withValues(alpha: isDark ? 0.25 : 0.02),
+                      blurRadius: 2,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
+                            decoration: BoxDecoration(
+                              color: isDark ? const Color(0xFF3B2405) : const Color(0xFFFFF7ED),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: isDark ? const Color(0xFF92400E) : const Color(0xFFFFEDD5),
+                                width: 0.8,
+                              ),
                             ),
-                            const SizedBox(width: 6),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  weatherData?.temperatureFormatted ?? '28°C',
-                                  style: Theme.of(context).textTheme.titleSmall?.copyWith(height: 1, fontSize: 12),
-                                ),
-                                ConstrainedBox(
-                                  constraints: const BoxConstraints(maxWidth: 80),
-                                  child: Text(
-                                    (weatherData != null && weatherData.locationName.trim().isNotEmpty)
-                                        ? weatherData.locationName
-                                        : (user?.locationDistrict != null && user!.locationDistrict!.trim().isNotEmpty)
-                                            ? user.locationDistrict!
-                                            : (user?.locationState != null && user!.locationState!.trim().isNotEmpty)
-                                                ? user.locationState!
-                                                : (user?.location != null && user!.location!.trim().isNotEmpty)
-                                                    ? user.location!
-                                                    : 'Pune',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: Theme.of(context).textTheme.labelSmall?.copyWith(color: AppColors.inkSoft, fontSize: 9.5),
-                                  ),
-                                ),
-                              ],
+                            child: Text(
+                              _getTimeBasedGreeting(),
+                              style: const TextStyle(
+                                color: Color(0xFFD97706),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 11,
+                              ),
                             ),
-                          ],
-                        ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            "$firstName's Dashboard",
+                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  height: 1.15,
+                                ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            'Track your courses & farm advisory',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: AppColors.inkSoft,
+                                  fontSize: 11.5,
+                                ),
+                          ),
+                        ],
                       ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-
-
-              // ── Quick Navigation Action Buttons (Cart, Support, Browse Courses, Browse E-books) ──
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    // Cart Badge Button
-                    InkWell(
-                      onTap: () => context.push(RouteNames.cart),
-                      borderRadius: BorderRadius.circular(12),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: isDark ? AppColors.cardDark : AppColors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: isDark ? AppColors.lineDark : Colors.grey.shade300,
+                    const SizedBox(width: 10),
+                    // Weather Chip (Dynamic Real-Time Geolocation & Weather API)
+                    Tooltip(
+                      message: 'Live Weather • Tap to refresh',
+                      child: InkWell(
+                        onTap: () => ref.read(weatherProvider.notifier).refresh(),
+                        borderRadius: BorderRadius.circular(14),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: isDark ? const Color(0xFF172B1F) : const Color(0xFFF0FDF4),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: isDark ? const Color(0xFF1E4620) : const Color(0xFFDCFCE7),
+                              width: 1,
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Icon(
+                                weatherData?.weatherIcon ?? Icons.wb_sunny_rounded,
+                                color: AppColors.accentOrange,
+                                size: 22,
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                weatherData?.temperatureFormatted ?? '28°C',
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  height: 1,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              ConstrainedBox(
+                                constraints: const BoxConstraints(maxWidth: 64),
+                                child: Text(
+                                  (weatherData != null && weatherData.locationName.trim().isNotEmpty)
+                                      ? weatherData.locationName
+                                      : (user?.locationDistrict != null && user!.locationDistrict!.trim().isNotEmpty)
+                                          ? user.locationDistrict!
+                                          : (user?.locationState != null && user!.locationState!.trim().isNotEmpty)
+                                              ? user.locationState!
+                                              : (user?.location != null && user!.location!.trim().isNotEmpty)
+                                                  ? user.location!
+                                                  : 'Pune',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: isDark ? const Color(0xFF86EFAC) : const Color(0xFF15803D),
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        child: Row(
-                          children: [
-                            Stack(
-                              clipBehavior: Clip.none,
-                              children: [
-                                Icon(
-                                  Icons.shopping_cart_outlined,
-                                  size: 19,
-                                  color: isDark ? AppColors.white : AppColors.inkDark,
-                                ),
-                                if (cartItemCount > 0)
-                                  Positioned(
-                                    top: -5,
-                                    right: -6,
-                                    child: Container(
-                                      padding: const EdgeInsets.all(3),
-                                      decoration: const BoxDecoration(
-                                        color: AppColors.accentOrange,
-                                        shape: BoxShape.circle,
-                                      ),
-                                      constraints: const BoxConstraints(minWidth: 14, minHeight: 14),
-                                      child: Text(
-                                        '$cartItemCount',
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-
-                    // Help & Support
-                    OutlinedButton.icon(
-                      onPressed: () => _showHelpSupportModal(context),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        side: BorderSide(color: isDark ? AppColors.lineDark : Colors.grey.shade300),
-                        backgroundColor: isDark ? AppColors.cardDark : Colors.white,
-                      ),
-                      icon: Icon(Icons.help_outline_rounded, size: 16, color: isDark ? AppColors.white : AppColors.inkDark),
-                      label: Text(
-                        'Help & Support',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: isDark ? AppColors.white : AppColors.inkDark,
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(width: 8),
-
-                    // Browse Courses Button
-                    ElevatedButton.icon(
-                      onPressed: () => context.push(RouteNames.explore),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFD97706), // Agrilearn Orange Accent
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      icon: const Icon(Icons.menu_book_rounded, size: 16),
-                      label: const Text(
-                        'Browse Courses',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-
-                    // Browse E-books Button
-                    OutlinedButton.icon(
-                      onPressed: () => context.push('/farmer/explore?tab=ebooks'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: isDark ? const Color(0xFF86EFAC) : const Color(0xFF166534),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        side: BorderSide(color: isDark ? const Color(0xFF047857) : const Color(0xFF166534)),
-                        backgroundColor: isDark ? const Color(0xFF064E3B).withValues(alpha: 0.3) : const Color(0xFFF0FDF4),
-                      ),
-                      icon: const Icon(Icons.picture_as_pdf_rounded, size: 16),
-                      label: const Text(
-                        'Browse E-books',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ],
                 ),
               ),
+              const SizedBox(height: 16),
+
+
+              // ── 4-Column Quick Navigation Action Row (Zero Scroll, 100% Visible) ──
+              Row(
+                children: [
+                  _QuickNavCard(
+                    icon: Icons.menu_book_rounded,
+                    label: 'Courses',
+                    accentColor: AppColors.primaryGreen,
+                    onTap: () => context.push(RouteNames.explore),
+                  ),
+                  const SizedBox(width: 8),
+                  _QuickNavCard(
+                    icon: Icons.picture_as_pdf_rounded,
+                    label: 'E-Books',
+                    accentColor: const Color(0xFF059669),
+                    onTap: () => context.push('/farmer/explore?tab=ebooks'),
+                  ),
+                  const SizedBox(width: 8),
+                  _QuickNavCard(
+                    icon: Icons.newspaper_rounded,
+                    label: 'Agri News',
+                    accentColor: const Color(0xFF2563EB),
+                    onTap: () => context.push(RouteNames.news),
+                  ),
+                  const SizedBox(width: 8),
+                  _QuickNavCard(
+                    icon: Icons.headset_mic_rounded,
+                    label: 'Support',
+                    accentColor: const Color(0xFFD97706),
+                    onTap: () => _showHelpSupportModal(context),
+                  ),
+                ],
+              ),
               const SizedBox(height: 20),
 
-              // ── 4 Summary Stat Cards Grid (Fully Responsive Across All Devices) ──
+              // ── 4 Summary Stat Cards Grid (Compact & Distinctively Color-Coded) ──
               LayoutBuilder(
                 builder: (context, constraints) {
                   final double width = constraints.maxWidth;
-                  final double aspectRatio = width < 360 ? 1.32 : (width < 420 ? 1.42 : 1.55);
+                  final double aspectRatio = width < 360 ? 2.05 : (width < 420 ? 2.22 : 2.45);
 
                   return GridView.count(
                     crossAxisCount: 2,
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    mainAxisSpacing: 10,
-                    crossAxisSpacing: 10,
+                    mainAxisSpacing: 8,
+                    crossAxisSpacing: 8,
                     childAspectRatio: aspectRatio,
                     children: [
+                      // 1. Enrolled Courses (Lush Emerald Green Theme)
                       _SummaryStatCard(
                         icon: Icons.auto_stories_rounded,
-                        iconBgColor: const Color(0xFF2E7D32),
+                        iconBgColor: const Color(0xFF16A34A),
+                        lightBgColor: const Color(0xFFF0FDF4),
+                        darkBgColor: const Color(0xFF132E1D),
+                        lightBorderColor: const Color(0xFFBBF7D0),
+                        darkBorderColor: const Color(0xFF1C522B),
+                        textColor: const Color(0xFF15803D),
                         count: '$enrollmentsCount',
-                        label: 'ENROLLED COURSES',
+                        label: 'Enrolled Courses',
+                        onTap: () => setState(() => _selectedTabIndex = 0),
                       ),
+
+                      // 2. Library E-Books (Warm Amber / Harvest Orange Theme)
                       _SummaryStatCard(
                         icon: Icons.menu_book_rounded,
-                        iconBgColor: const Color(0xFFD97706),
+                        iconBgColor: const Color(0xFFEA580C),
+                        lightBgColor: const Color(0xFFFFFBEB),
+                        darkBgColor: const Color(0xFF35200E),
+                        lightBorderColor: const Color(0xFFFDE68A),
+                        darkBorderColor: const Color(0xFF623912),
+                        textColor: const Color(0xFFB45309),
                         count: '$ebooksCount',
-                        label: 'LIBRARY E-BOOKS',
+                        label: 'Library E-Books',
+                        onTap: () => setState(() => _selectedTabIndex = 1),
                       ),
+
+                      // 3. Completed Courses (Fresh Sky / Ocean Blue Theme)
                       _SummaryStatCard(
                         icon: Icons.verified_rounded,
                         iconBgColor: const Color(0xFF0284C7),
+                        lightBgColor: const Color(0xFFF0F9FF),
+                        darkBgColor: const Color(0xFF0E273C),
+                        lightBorderColor: const Color(0xFFBAE6FD),
+                        darkBorderColor: const Color(0xFF164468),
+                        textColor: const Color(0xFF0369A1),
                         count: '$completedCount',
-                        label: 'COMPLETED COURSES',
+                        label: 'Completed',
+                        onTap: () => setState(() => _selectedTabIndex = 0),
                       ),
+
+                      // 4. Quizzes Taken (Royal Violet / Lavender Theme)
                       _SummaryStatCard(
                         icon: Icons.task_alt_rounded,
                         iconBgColor: const Color(0xFF9333EA),
+                        lightBgColor: const Color(0xFFFAF5FF),
+                        darkBgColor: const Color(0xFF28143C),
+                        lightBorderColor: const Color(0xFFE9D5FF),
+                        darkBorderColor: const Color(0xFF4C1E74),
+                        textColor: const Color(0xFF7E22CE),
                         count: '$quizzesTakenCount',
-                        label: 'QUIZZES TAKEN',
+                        label: 'Quizzes Taken',
+                        onTap: () => setState(() => _selectedTabIndex = 2),
                       ),
                     ],
                   );
                 },
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
 
 
               // ── Tabbed Section (My Courses · My E-Books · Quiz History · Wishlist) ──
@@ -729,6 +807,10 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                 ),
                 error: (err, _) => const SizedBox.shrink(),
               ),
+
+              // ── Latest Agriculture News Carousel ───────────────────────
+              const HomeNewsCarousel(),
+              const SizedBox(height: 28),
 
               // ── Featured Courses Showcase ──────────────────────────────
               Row(
@@ -898,14 +980,31 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                               ref.invalidate(studentEnrollmentsProvider);
                             },
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                               decoration: BoxDecoration(
                                 color: AppColors.primaryGreen,
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(10),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppColors.primaryGreen.withValues(alpha: 0.3),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
                               ),
-                              child: Text(
-                                'Continue',
-                                style: Theme.of(context).textTheme.labelSmall?.copyWith(color: AppColors.white, fontWeight: FontWeight.bold),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 16),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Continue',
+                                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                          color: AppColors.white,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                  ),
+                                ],
                               ),
                             ),
                           ),
@@ -1254,86 +1353,99 @@ class _SummaryStatCard extends StatelessWidget {
   const _SummaryStatCard({
     required this.icon,
     required this.iconBgColor,
+    required this.lightBgColor,
+    required this.darkBgColor,
+    required this.lightBorderColor,
+    required this.darkBorderColor,
+    required this.textColor,
     required this.count,
     required this.label,
+    this.onTap,
   });
 
   final IconData icon;
   final Color iconBgColor;
+  final Color lightBgColor;
+  final Color darkBgColor;
+  final Color lightBorderColor;
+  final Color darkBorderColor;
+  final Color textColor;
   final String count;
   final String label;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.cardDark : AppColors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isDark ? AppColors.lineDark : Colors.grey.shade200,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: isDark ? darkBgColor : lightBgColor,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isDark ? darkBorderColor : lightBorderColor,
+            width: 1.2,
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: iconBgColor.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(9),
+          boxShadow: [
+            BoxShadow(
+              color: iconBgColor.withValues(alpha: isDark ? 0.08 : 0.06),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
             ),
-            child: Icon(icon, color: iconBgColor, size: 17),
-          ),
-          const SizedBox(height: 2),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Text(
+          ],
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: iconBgColor.withValues(alpha: isDark ? 0.25 : 0.16),
+                borderRadius: BorderRadius.circular(11),
+                border: Border.all(
+                  color: iconBgColor.withValues(alpha: isDark ? 0.45 : 0.28),
+                  width: 1,
+                ),
+              ),
+              child: Icon(icon, color: iconBgColor, size: 20),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
                     count,
-                    style: const TextStyle(
-                      fontSize: 20,
+                    style: TextStyle(
+                      fontSize: 21,
                       fontWeight: FontWeight.bold,
+                      color: isDark ? lightBorderColor : textColor,
                       height: 1.1,
                     ),
                   ),
-                ),
-                const SizedBox(height: 2),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Text(
+                  const SizedBox(height: 2),
+                  Text(
                     label,
                     style: TextStyle(
-                      fontSize: 9.5,
-                      fontWeight: FontWeight.w700,
-                      color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
-                      letterSpacing: 0.3,
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? AppColors.white.withValues(alpha: 0.75) : AppColors.inkDark.withValues(alpha: 0.8),
+                      letterSpacing: 0.2,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -1363,21 +1475,30 @@ class _TabPill extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected
-              ? (isDark ? const Color(0xFF064E3B) : const Color(0xFFDCFCE7))
-              : (isDark ? AppColors.cardDark : Colors.grey.shade100),
+              ? (isDark ? const Color(0xFF1B4D2B) : const Color(0xFFDCFCE7))
+              : (isDark ? AppColors.cardDark : Colors.white),
           borderRadius: BorderRadius.circular(12),
           border: isSelected
-              ? Border.all(color: isDark ? const Color(0xFF047857) : const Color(0xFF86EFAC))
-              : Border.all(color: Colors.transparent),
+              ? Border.all(color: isDark ? const Color(0xFF047857) : const Color(0xFF86EFAC), width: 1.2)
+              : Border.all(color: isDark ? AppColors.lineDark : const Color(0xFFE2EBE0), width: 1),
+          boxShadow: [
+            BoxShadow(
+              color: isSelected
+                  ? AppColors.primaryGreen.withValues(alpha: isDark ? 0.12 : 0.08)
+                  : Colors.black.withValues(alpha: 0.02),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Text(
           label,
           style: TextStyle(
             fontSize: 12.5,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
             color: isSelected
                 ? (isDark ? const Color(0xFF86EFAC) : const Color(0xFF15803D))
-                : (isDark ? AppColors.white.withValues(alpha: 0.7) : AppColors.inkSoft),
+                : (isDark ? AppColors.white.withValues(alpha: 0.7) : AppColors.inkDark),
           ),
         ),
       ),
@@ -1810,6 +1931,82 @@ class _InstructorCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Compact, balanced card for the 4-column quick navigation row.
+class _QuickNavCard extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color accentColor;
+  final VoidCallback onTap;
+
+  const _QuickNavCard({
+    required this.icon,
+    required this.label,
+    required this.accentColor,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.cardDark : Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: isDark ? AppColors.lineDark : const Color(0xFFE2EBE0),
+              width: 1.2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: isDark
+                    ? Colors.black38
+                    : const Color(0xFF0F172A).withValues(alpha: 0.05),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(7),
+                decoration: BoxDecoration(
+                  color: accentColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  icon,
+                  size: 19,
+                  color: accentColor,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : AppColors.inkDark,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

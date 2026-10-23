@@ -30,7 +30,9 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
   PlatformFile? _selectedFile;
   File? _coverImage;
   final ImagePicker _imagePicker = ImagePicker();
-  bool _isUploading = false;
+  bool _isSavingDraft = false;
+  bool _isSubmittingReview = false;
+  bool get _isUploading => _isSavingDraft || _isSubmittingReview;
 
   @override
   void dispose() {
@@ -153,7 +155,7 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
     }
   }
 
-  Future<void> _uploadEbook() async {
+  Future<void> _uploadEbook({bool submitForReview = true}) async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
@@ -175,16 +177,22 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
       return;
     }
 
-    setState(() => _isUploading = true);
+    setState(() {
+      if (submitForReview) {
+        _isSubmittingReview = true;
+      } else {
+        _isSavingDraft = true;
+      }
+    });
 
     try {
       final repo = ref.read(instructorRepositoryProvider);
 
       final response = await repo.createEBook(
         {
-          'title': _titleController.text,
-          'author_name': _authorController.text,
-          'description': _descriptionController.text,
+          'title': _titleController.text.trim(),
+          'author_name': _authorController.text.trim(),
+          'description': _descriptionController.text.trim(),
           'price': '0.00', // Assuming free for now, can be updated later
         },
         filePath: _selectedFile!.path,
@@ -193,16 +201,26 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
 
       final ebookId = response['id'] as String;
 
-      // Submit E-Book for review
-      await repo.submitEBook(ebookId);
+      if (submitForReview) {
+        // Submit E-Book for admin review
+        await repo.submitEBook(ebookId);
+      }
+
+      // Invalidate instructor ebooks provider so uploads list and home reflect latest state
+      ref.invalidate(instructorEbooksProvider);
 
       if (mounted) {
         final messenger = ScaffoldMessenger.of(context);
         messenger.clearSnackBars();
         messenger.showSnackBar(
-          const SnackBar(
-            content: Text('Ebook uploaded and submitted successfully!'),
-            duration: Duration(milliseconds: 1800),
+          SnackBar(
+            content: Text(
+              submitForReview
+                  ? 'E-Book uploaded and submitted for Admin review!'
+                  : 'E-Book saved as Draft successfully! You can submit it anytime from My Uploads.',
+            ),
+            backgroundColor: AppColors.primaryGreen,
+            duration: const Duration(seconds: 3),
           ),
         );
         context.pop();
@@ -213,14 +231,19 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
         messenger.clearSnackBars();
         messenger.showSnackBar(
           SnackBar(
-            content: Text('Failed to upload ebook: $e'),
+            content: Text('Failed to ${submitForReview ? "submit" : "save"} ebook: $e'),
             backgroundColor: AppColors.error,
             duration: const Duration(seconds: 4),
           ),
         );
       }
     } finally {
-      if (mounted) setState(() => _isUploading = false);
+      if (mounted) {
+        setState(() {
+          _isSavingDraft = false;
+          _isSubmittingReview = false;
+        });
+      }
     }
   }
 
@@ -623,44 +646,119 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
                           ),
                         ),
                         const SizedBox(height: 28),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 52,
-                          child: FilledButton(
-                            onPressed: _isUploading ? null : _uploadEbook,
-                            style: FilledButton.styleFrom(
-                              backgroundColor: AppColors.primaryGreen,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                            ),
-                            child: _isUploading
-                                ? const SizedBox(
-                                    width: 22,
-                                    height: 22,
-                                    child: CircularProgressIndicator(
-                                      color: Colors.white,
-                                      strokeWidth: 2.5,
-                                    ),
-                                  )
-                                : const Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.cloud_upload_rounded,
-                                        size: 20,
-                                      ),
-                                      SizedBox(width: 8),
-                                      Text(
-                                        'Upload & Submit E-Book',
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ],
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            final isNarrow = constraints.maxWidth < 420;
+                            final draftButton = SizedBox(
+                              height: 52,
+                              child: OutlinedButton(
+                                onPressed: _isUploading
+                                    ? null
+                                    : () => _uploadEbook(submitForReview: false),
+                                style: OutlinedButton.styleFrom(
+                                  side: const BorderSide(
+                                    color: AppColors.primaryGreen,
+                                    width: 1.5,
                                   ),
-                          ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                ),
+                                child: _isSavingDraft
+                                    ? const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          color: AppColors.primaryGreen,
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : const Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.bookmark_border_rounded,
+                                            size: 18,
+                                            color: AppColors.primaryGreen,
+                                          ),
+                                          SizedBox(width: 6),
+                                          Text(
+                                            'Save as Draft',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.bold,
+                                              color: AppColors.primaryGreen,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                              ),
+                            );
+
+                            final submitButton = SizedBox(
+                              height: 52,
+                              child: FilledButton(
+                                onPressed: _isUploading
+                                    ? null
+                                    : () => _uploadEbook(submitForReview: true),
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: AppColors.primaryGreen,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                ),
+                                child: _isSubmittingReview
+                                    ? const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          color: Colors.white,
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : const Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.cloud_upload_rounded,
+                                            size: 18,
+                                          ),
+                                          SizedBox(width: 6),
+                                          Flexible(
+                                            child: Text(
+                                              'Upload & Submit E-Book',
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                              ),
+                            );
+
+                            if (isNarrow) {
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  submitButton,
+                                  const SizedBox(height: 12),
+                                  draftButton,
+                                ],
+                              );
+                            }
+
+                            return Row(
+                              children: [
+                                Expanded(child: draftButton),
+                                const SizedBox(width: 12),
+                                Expanded(child: submitButton),
+                              ],
+                            );
+                          },
                         ),
                         const SizedBox(height: 20),
                       ],

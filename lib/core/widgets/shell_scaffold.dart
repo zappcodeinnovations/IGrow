@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'app_background.dart';
+import 'custom_bottom_nav_bar.dart';
 import '../../data/models/user_role.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../router/route_names.dart';
@@ -16,7 +18,6 @@ class ShellScaffold extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authProvider).user;
     final isFarmer = user?.activeRole == UserRole.farmer;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     
     // Determine current index based on route
     final location = GoRouterState.of(context).uri.toString();
@@ -44,68 +45,55 @@ class ShellScaffold extends ConsumerWidget {
       }
     }
 
-    return Scaffold(
-      body: child,
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          border: Border(
-            top: BorderSide(
-              color: isDark ? AppColors.lineDark : AppColors.lineLight,
-            ),
-          ),
-        ),
-        child: BottomNavigationBar(
+    return AppBackground(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: child,
+        bottomNavigationBar: CustomBottomNavBar(
           currentIndex: currentIndex,
           onTap: (index) => _onTap(context, index, isFarmer),
-          backgroundColor: isDark ? AppColors.bgDark : AppColors.bgLight,
-          selectedItemColor: AppColors.primaryGreen,
-          unselectedItemColor: AppColors.inkSoft,
-          showSelectedLabels: true,
-          showUnselectedLabels: true,
-          type: BottomNavigationBarType.fixed,
-          elevation: 0,
           items: isFarmer
               ? const [
-                  BottomNavigationBarItem(
-                    icon: Icon(Icons.home_outlined),
-                    activeIcon: Icon(Icons.home_rounded),
+                  BottomNavItem(
+                    icon: Icons.home_outlined,
+                    activeIcon: Icons.home_rounded,
                     label: 'Home',
                   ),
-                  BottomNavigationBarItem(
-                    icon: Icon(Icons.explore_outlined),
-                    activeIcon: Icon(Icons.explore_rounded),
+                  BottomNavItem(
+                    icon: Icons.explore_outlined,
+                    activeIcon: Icons.explore_rounded,
                     label: 'Explore',
                   ),
-                  BottomNavigationBarItem(
-                    icon: Icon(Icons.people_outline_rounded),
-                    activeIcon: Icon(Icons.people_rounded),
+                  BottomNavItem(
+                    icon: Icons.groups_outlined,
+                    activeIcon: Icons.groups_rounded,
                     label: 'Community',
                   ),
-                  BottomNavigationBarItem(
-                    icon: Icon(Icons.person_outline_rounded),
-                    activeIcon: Icon(Icons.person_rounded),
+                  BottomNavItem(
+                    icon: Icons.person_outline_rounded,
+                    activeIcon: Icons.person_rounded,
                     label: 'Profile',
                   ),
                 ]
               : const [
-                  BottomNavigationBarItem(
-                    icon: Icon(Icons.home_outlined),
-                    activeIcon: Icon(Icons.home_rounded),
+                  BottomNavItem(
+                    icon: Icons.dashboard_outlined,
+                    activeIcon: Icons.dashboard_rounded,
                     label: 'Dashboard',
                   ),
-                  BottomNavigationBarItem(
-                    icon: Icon(Icons.people_outline_rounded),
-                    activeIcon: Icon(Icons.people_rounded),
+                  BottomNavItem(
+                    icon: Icons.groups_outlined,
+                    activeIcon: Icons.groups_rounded,
                     label: 'Community',
                   ),
-                  BottomNavigationBarItem(
-                    icon: Icon(Icons.add_circle_outline_rounded),
-                    activeIcon: Icon(Icons.add_circle_rounded),
+                  BottomNavItem(
+                    icon: Icons.add_circle_outline_rounded,
+                    activeIcon: Icons.add_circle_rounded,
                     label: 'Upload',
                   ),
-                  BottomNavigationBarItem(
-                    icon: Icon(Icons.person_outline_rounded),
-                    activeIcon: Icon(Icons.person_rounded),
+                  BottomNavItem(
+                    icon: Icons.person_outline_rounded,
+                    activeIcon: Icons.person_rounded,
                     label: 'Profile',
                   ),
                 ],

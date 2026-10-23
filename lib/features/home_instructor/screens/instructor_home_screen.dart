@@ -487,6 +487,7 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
     final userName = (user != null && user.fullName.isNotEmpty) ? user.fullName : 'Ravi Kumar';
 
     return Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.transparent,
@@ -708,7 +709,7 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                           onTap: () => _showStudentsBottomSheet(context, stats),
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: _StatCard(
                           icon: Icons.play_lesson_rounded,
@@ -718,7 +719,25 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                           onTap: () => context.push(RouteNames.instructorUploads),
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Consumer(
+                          builder: (context, ref, _) {
+                            final ebooksAsync = ref.watch(instructorEbooksProvider);
+                            final totalEbooks = ebooksAsync.value?.length ??
+                                (stats['total_ebooks'] as num?)?.toInt() ??
+                                0;
+                            return _StatCard(
+                              icon: Icons.menu_book_rounded,
+                              label: 'E-Books',
+                              value: '$totalEbooks',
+                              color: AppColors.accentOrange,
+                              onTap: () => context.push('${RouteNames.instructorUploads}?tab=1'),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: Consumer(
                           builder: (context, ref, _) {
@@ -745,9 +764,11 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                 loading: () => Row(
                   children: [
                     Expanded(child: ShimmerCard(height: 100)),
-                    SizedBox(width: 12),
+                    const SizedBox(width: 8),
                     Expanded(child: ShimmerCard(height: 100)),
-                    SizedBox(width: 12),
+                    const SizedBox(width: 8),
+                    Expanded(child: ShimmerCard(height: 100)),
+                    const SizedBox(width: 8),
                     Expanded(child: ShimmerCard(height: 100)),
                   ],
                 ),
@@ -1090,24 +1111,35 @@ class _StatCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return AppCard(
       onTap: onTap,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
       child: Column(
         children: [
           Container(
-            width: 40,
-            height: 40,
+            width: 38,
+            height: 38,
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(icon, color: color, size: 20),
           ),
-          const SizedBox(height: 10),
-          Text(value, style: Theme.of(context).textTheme.headlineSmall),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
+          ),
           const SizedBox(height: 2),
           Text(
             label,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.inkSoft),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: AppColors.inkSoft,
+                  fontSize: 11,
+                ),
           ),
         ],
       ),

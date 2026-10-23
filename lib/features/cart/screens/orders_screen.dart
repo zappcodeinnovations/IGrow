@@ -1,11 +1,8 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -85,7 +82,7 @@ class OrdersScreen extends ConsumerWidget {
             itemBuilder: (context, index) {
               final order = orders[index];
               final dateStr = order.createdAt != null
-                  ? DateFormat('MMMM dd, yyyy • hh:mm a').format(order.createdAt!)
+                  ? DateFormat('MMMM dd, yyyy • hh:mm a').format(order.createdAt!.toLocal())
                   : 'Recent Purchase';
               final isSuccess = (order.status ?? 'SUCCESS').toUpperCase() == 'SUCCESS';
               final itemSubtotal = order.items.fold<double>(
@@ -174,7 +171,14 @@ class OrdersScreen extends ConsumerWidget {
                         ],
                       ),
                       const SizedBox(height: 4),
-                      Text(dateStr, style: const TextStyle(fontSize: 11, color: AppColors.inkSoft)),
+                      Text(
+                        dateStr,
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w500,
+                          color: isDark ? Colors.white.withValues(alpha: 0.85) : AppColors.inkDark,
+                        ),
+                      ),
                       const Divider(height: 20),
 
                       // Order Items
@@ -289,19 +293,57 @@ class OrdersScreen extends ConsumerWidget {
         loading: () => const Center(
           child: CircularProgressIndicator(color: AppColors.primaryGreen),
         ),
-        error: (err, _) => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text('Error loading orders: $err'),
-              const SizedBox(height: 12),
-              ElevatedButton(
-                onPressed: () => ref.refresh(ordersProvider),
-                child: const Text('Retry'),
+        error: (err, _) {
+          final errStr = err.toString().toLowerCase();
+          final isOffline = errStr.contains('socketexception') ||
+              errStr.contains('clientexception') ||
+              errStr.contains('abort') ||
+              errStr.contains('connection') ||
+              errStr.contains('host lookup') ||
+              errStr.contains('network');
+          final displayMsg = isOffline
+              ? 'No internet connection.\nPlease check your network and try again.'
+              : 'Unable to load orders right now.\nPlease try again in a few moments.';
+
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    isOffline ? Icons.wifi_off_rounded : Icons.receipt_long_outlined,
+                    size: 54,
+                    color: isDark ? Colors.white38 : AppColors.inkSoft,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    displayMsg,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      color: isDark ? Colors.white70 : AppColors.inkDark,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryGreen,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    icon: const Icon(Icons.refresh_rounded, size: 18),
+                    onPressed: () => ref.refresh(ordersProvider),
+                    label: const Text('Retry', style: TextStyle(fontWeight: FontWeight.w600)),
+                  ),
+                ],
               ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -544,214 +586,270 @@ class OrdersScreen extends ConsumerWidget {
 
               const SizedBox(height: 24),
 
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryGreen,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-                icon: const Icon(Icons.download),
-                label: const Text('Download Receipt'),
-                onPressed: () async {
-                  // --- Build the PDF document ---
-                  final pdf = pw.Document();
-                  pdf.addPage(
-                    pw.Page(
-                      pageFormat: PdfPageFormat.a4,
-                      margin: const pw.EdgeInsets.all(32),
-                      build: (pw.Context pCtx) {
-                        return pw.Column(
-                          crossAxisAlignment: pw.CrossAxisAlignment.start,
-                          children: [
-                            // Header
-                            pw.Row(
-                              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                              children: [
-                                pw.Column(
-                                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                                  children: [
-                                    pw.Text(
-                                      'IGROW EDUCATION',
-                                      style: pw.TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: pw.FontWeight.bold,
-                                        color: PdfColors.green800,
-                                      ),
-                                    ),
-                                    pw.Text(
-                                      'Kisan Ki Digital Pathshala',
-                                      style: const pw.TextStyle(
-                                        fontSize: 11,
-                                        color: PdfColors.grey,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                pw.Container(
-                                  padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                  decoration: pw.BoxDecoration(
-                                    color: PdfColors.green100,
-                                    borderRadius: pw.BorderRadius.circular(6),
-                                  ),
-                                  child: pw.Text(
-                                    'TAX INVOICE',
-                                    style: pw.TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: pw.FontWeight.bold,
-                                      color: PdfColors.green800,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            pw.Divider(color: PdfColors.grey300),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primaryGreen,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      icon: const Icon(Icons.picture_as_pdf, size: 18),
+                      label: const Text('Save / Print PDF', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      onPressed: () async {
+                        try {
+                          final pdfBytes = await _buildOrderReceiptPdfBytes(
+                            order: order,
+                            studentName: studentName,
+                            studentEmail: studentEmail,
+                            dateStr: dateStr,
+                            subtotal: subtotal,
+                            discount: discount,
+                            totalPaid: totalPaid,
+                          );
 
-                            // Billed To & Invoice Info
-                            pw.Row(
-                              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                              crossAxisAlignment: pw.CrossAxisAlignment.start,
-                              children: [
-                                pw.Column(
-                                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                                  children: [
-                                    pw.Text('Billed To:', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey)),
-                                    pw.Text(studentName, style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                                    pw.Text(studentEmail, style: const pw.TextStyle(fontSize: 10)),
-                                  ],
-                                ),
-                                pw.Column(
-                                  crossAxisAlignment: pw.CrossAxisAlignment.end,
-                                  children: [
-                                    pw.Text('Invoice No:', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey)),
-                                    pw.Text('INV-${order.id.substring(0, 8).toUpperCase()}',
-                                        style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                                    pw.Text(dateStr, style: const pw.TextStyle(fontSize: 10)),
-                                  ],
-                                ),
-                              ],
-                            ),
-                            pw.SizedBox(height: 16),
-
-                            // Items Table
-                            pw.TableHelper.fromTextArray(
-                              headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11),
-                              headerDecoration: const pw.BoxDecoration(color: PdfColors.green50),
-                              cellStyle: const pw.TextStyle(fontSize: 11),
-                              headers: ['Course / Description', 'SAC', 'Amount'],
-                              data: order.items
-                                  .map((item) => [
-                                        item.courseTitle ?? 'Agriculture Course',
-                                        '998311',
-                                        'Rs. ${item.priceAtPurchase}',
-                                      ])
-                                  .toList(),
-                            ),
-                            pw.Divider(color: PdfColors.grey300),
-
-                            // Subtotal & Discount
-                            pw.Row(
-                              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                              children: [
-                                pw.Text('Subtotal:', style: const pw.TextStyle(fontSize: 11)),
-                                pw.Text('Rs. ${subtotal.toStringAsFixed(2)}', style: const pw.TextStyle(fontSize: 11)),
-                              ],
-                            ),
-                            if (discount > 0) ...[
-                              pw.SizedBox(height: 4),
-                              pw.Row(
-                                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                                children: [
-                                  pw.Text('Discount / Coupon Applied:',
-                                      style: pw.TextStyle(fontSize: 11, color: PdfColors.green800)),
-                                  pw.Text('-Rs. ${discount.toStringAsFixed(2)}',
-                                      style: pw.TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: pw.FontWeight.bold,
-                                        color: PdfColors.green800,
-                                      )),
-                                ],
-                              ),
-                            ],
-
-                            // Taxes
-                            pw.SizedBox(height: 4),
-                            pw.Row(
-                              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                              children: [
-                                pw.Text('CGST (0%):', style: const pw.TextStyle(fontSize: 11)),
-                                pw.Text('Rs. 0.00', style: const pw.TextStyle(fontSize: 11)),
-                              ],
-                            ),
-                            pw.SizedBox(height: 4),
-                            pw.Row(
-                              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                              children: [
-                                pw.Text('SGST (0%):', style: const pw.TextStyle(fontSize: 11)),
-                                pw.Text('Rs. 0.00', style: const pw.TextStyle(fontSize: 11)),
-                              ],
-                            ),
-                            pw.SizedBox(height: 8),
-                            pw.Row(
-                              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                              children: [
-                                pw.Text('Grand Total Paid:',
-                                    style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 13)),
-                                pw.Text('Rs. ${totalPaid.toStringAsFixed(2)}',
-                                    style: pw.TextStyle(
-                                      fontWeight: pw.FontWeight.bold,
-                                      fontSize: 15,
-                                      color: PdfColors.green800,
-                                    )),
-                              ],
-                            ),
-                            pw.SizedBox(height: 24),
-
-                            // Verified Stamp
-                            pw.Center(
-                              child: pw.Container(
-                                padding: const pw.EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                decoration: pw.BoxDecoration(
-                                  border: pw.Border.all(color: PdfColors.green800, width: 2),
-                                  borderRadius: pw.BorderRadius.circular(8),
-                                ),
-                                child: pw.Text(
-                                  'PAID & VERIFIED  •  IGROW',
-                                  style: pw.TextStyle(
-                                    fontWeight: pw.FontWeight.bold,
-                                    color: PdfColors.green800,
-                                    fontSize: 11,
-                                    letterSpacing: 1.5,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        );
+                          final safeShortId = order.id.length >= 8 ? order.id.substring(0, 8) : order.id;
+                          await Printing.layoutPdf(
+                            name: 'IGrow_Receipt_$safeShortId',
+                            onLayout: (PdfPageFormat format) async => pdfBytes,
+                          );
+                        } catch (e) {
+                          debugPrint('Error saving/printing receipt PDF: $e');
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Failed to open PDF: $e'), backgroundColor: AppColors.error),
+                            );
+                          }
+                        }
                       },
                     ),
-                  );
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: AppColors.primaryGreen),
+                        foregroundColor: AppColors.primaryGreen,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      icon: const Icon(Icons.share, size: 18),
+                      label: const Text('Share PDF', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      onPressed: () async {
+                        try {
+                          final pdfBytes = await _buildOrderReceiptPdfBytes(
+                            order: order,
+                            studentName: studentName,
+                            studentEmail: studentEmail,
+                            dateStr: dateStr,
+                            subtotal: subtotal,
+                            discount: discount,
+                            totalPaid: totalPaid,
+                          );
 
-                  // --- Save PDF to documents directory ---
-                  final pdfBytes = await pdf.save();
-                  final dir = await getApplicationDocumentsDirectory();
-                  final filePath = '${dir.path}/receipt_${order.id.substring(0, 8)}.pdf';
-                  final file = File(filePath);
-                  await file.writeAsBytes(pdfBytes);
-
-                  // --- Open OS share sheet ---
-                  await Printing.sharePdf(
-                    bytes: pdfBytes,
-                    filename: 'IGrow_Receipt_${order.id.substring(0, 8)}.pdf',
-                  );
-
-                  // Close the invoice bottom sheet first
-                  if (ctx.mounted) Navigator.pop(ctx);
-                },
+                          final safeShortId = order.id.length >= 8 ? order.id.substring(0, 8) : order.id;
+                          await Printing.sharePdf(
+                            bytes: pdfBytes,
+                            filename: 'IGrow_Receipt_$safeShortId.pdf',
+                          );
+                        } catch (e) {
+                          debugPrint('Error sharing receipt PDF: $e');
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Failed to share receipt: $e'), backgroundColor: AppColors.error),
+                            );
+                          }
+                        }
+                      },
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  Future<Uint8List> _buildOrderReceiptPdfBytes({
+    required ApiOrder order,
+    required String studentName,
+    required String studentEmail,
+    required String dateStr,
+    required double subtotal,
+    required double discount,
+    required double totalPaid,
+  }) async {
+    final pdf = pw.Document();
+    pdf.addPage(
+      pw.Page(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(32),
+        build: (pw.Context pCtx) {
+          final safeShortId = order.id.length >= 8 ? order.id.substring(0, 8).toUpperCase() : order.id.toUpperCase();
+          return pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text(
+                        'IGROW EDUCATION',
+                        style: pw.TextStyle(
+                          fontSize: 18,
+                          fontWeight: pw.FontWeight.bold,
+                          color: PdfColors.green800,
+                        ),
+                      ),
+                      pw.Text(
+                        'Kisan Ki Digital Pathshala',
+                        style: const pw.TextStyle(
+                          fontSize: 11,
+                          color: PdfColors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
+                  pw.Container(
+                    padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: pw.BoxDecoration(
+                      color: PdfColors.green100,
+                      borderRadius: pw.BorderRadius.circular(6),
+                    ),
+                    child: pw.Text(
+                      'TAX INVOICE',
+                      style: pw.TextStyle(
+                        fontSize: 11,
+                        fontWeight: pw.FontWeight.bold,
+                        color: PdfColors.green800,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              pw.Divider(color: PdfColors.grey300),
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text('Billed To:', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey)),
+                      pw.Text(studentName, style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                      pw.Text(studentEmail, style: const pw.TextStyle(fontSize: 10)),
+                    ],
+                  ),
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.end,
+                    children: [
+                      pw.Text('Invoice No:', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey)),
+                      pw.Text('INV-$safeShortId',
+                          style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                      pw.Text(dateStr, style: const pw.TextStyle(fontSize: 10)),
+                    ],
+                  ),
+                ],
+              ),
+              pw.SizedBox(height: 16),
+              pw.TableHelper.fromTextArray(
+                headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11),
+                headerDecoration: const pw.BoxDecoration(color: PdfColors.green50),
+                cellStyle: const pw.TextStyle(fontSize: 11),
+                headers: ['Course / Description', 'SAC', 'Amount'],
+                data: order.items
+                    .map((item) => [
+                          item.courseTitle ?? 'Agriculture Course',
+                          '998311',
+                          'Rs. ${item.priceAtPurchase}',
+                        ])
+                    .toList(),
+              ),
+              pw.Divider(color: PdfColors.grey300),
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text('Subtotal:', style: const pw.TextStyle(fontSize: 11)),
+                  pw.Text('Rs. ${subtotal.toStringAsFixed(2)}', style: const pw.TextStyle(fontSize: 11)),
+                ],
+              ),
+              if (discount > 0) ...[
+                pw.SizedBox(height: 4),
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text('Discount / Coupon Applied:',
+                        style: pw.TextStyle(fontSize: 11, color: PdfColors.green800)),
+                    pw.Text('-Rs. ${discount.toStringAsFixed(2)}',
+                        style: pw.TextStyle(
+                          fontSize: 11,
+                          fontWeight: pw.FontWeight.bold,
+                          color: PdfColors.green800,
+                        )),
+                  ],
+                ),
+              ],
+              pw.SizedBox(height: 4),
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text('CGST (0%):', style: const pw.TextStyle(fontSize: 11)),
+                  pw.Text('Rs. 0.00', style: const pw.TextStyle(fontSize: 11)),
+                ],
+              ),
+              pw.SizedBox(height: 4),
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text('SGST (0%):', style: const pw.TextStyle(fontSize: 11)),
+                  pw.Text('Rs. 0.00', style: const pw.TextStyle(fontSize: 11)),
+                ],
+              ),
+              pw.SizedBox(height: 8),
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text('Grand Total Paid:',
+                      style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 13)),
+                  pw.Text('Rs. ${totalPaid.toStringAsFixed(2)}',
+                      style: pw.TextStyle(
+                        fontWeight: pw.FontWeight.bold,
+                        fontSize: 15,
+                        color: PdfColors.green800,
+                      )),
+                ],
+              ),
+              pw.SizedBox(height: 24),
+              pw.Center(
+                child: pw.Container(
+                  padding: const pw.EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: pw.BoxDecoration(
+                    border: pw.Border.all(color: PdfColors.green800, width: 2),
+                    borderRadius: pw.BorderRadius.circular(8),
+                  ),
+                  child: pw.Text(
+                    'PAID & VERIFIED  •  IGROW',
+                    style: pw.TextStyle(
+                      fontWeight: pw.FontWeight.bold,
+                      color: PdfColors.green800,
+                      fontSize: 11,
+                      letterSpacing: 1.5,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+
+    return await pdf.save();
   }
 }

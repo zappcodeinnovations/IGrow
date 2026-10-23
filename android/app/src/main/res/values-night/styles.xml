@@ -15,5 +15,7 @@
     <color name="app_bg_dark">#14201A</color>
     <style name="NormalTheme" parent="@android:style/Theme.Black.NoTitleBar">
         <item name="android:windowBackground">@color/app_bg_dark</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
     </style>
 </resources>

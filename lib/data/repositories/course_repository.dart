@@ -40,8 +40,29 @@ class CourseRepository {
     );
   }
 
-  /// Fetch full course detail by slug.
+  /// Fetch full course detail by slug or ID with resilient type parsing.
   Future<ApiCourseDetail> getCourseDetail(String slug) async {
+    try {
+      final token = await tokenStorage?.getAccessToken();
+      final uri = Uri.parse('$_baseUrl/courses/$slug/');
+      final response = await http.get(
+        uri,
+        headers: {
+          'Accept': 'application/json',
+          if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+        },
+      );
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map<String, dynamic>) {
+          return ApiCourseDetail.fromJson(decoded);
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ [CourseRepository] direct HTTP getCourseDetail error: $e');
+    }
+
+    // Fallback to appApi
     final response = await appApi.apiV1CoursesSlugGet(slug: slug);
     final dynamic data = response.body;
     return ApiCourseDetail.fromJson(data?.toJson() as Map<String, dynamic>);

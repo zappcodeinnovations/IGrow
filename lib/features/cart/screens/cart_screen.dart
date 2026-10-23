@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/network/api_exception.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_button.dart';
@@ -374,20 +375,41 @@ class CartScreen extends ConsumerWidget {
         loading: () => const Center(
           child: CircularProgressIndicator(color: AppColors.primaryGreen),
         ),
-        error: (error, _) => Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('Error loading cart: $error',
-                  style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 16),
-              AppButton(
-                label: 'Retry',
-                onPressed: () => ref.refresh(cartProvider),
+        error: (error, _) {
+          String displayError = 'Unable to load cart. Please check your internet connection.';
+          if (error is ApiException) {
+            displayError = error.message;
+          } else {
+            final str = error.toString().toLowerCase();
+            if (!str.contains('abort') &&
+                !str.contains('connection') &&
+                !str.contains('socket') &&
+                !str.contains('clientexception') &&
+                !str.contains('uri=')) {
+              displayError = error.toString().replaceAll('Exception: ', '');
+            }
+          }
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    displayError,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 16),
+                  AppButton(
+                    label: 'Retry',
+                    onPressed: () => ref.refresh(cartProvider),
+                  ),
+                ],
               ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }

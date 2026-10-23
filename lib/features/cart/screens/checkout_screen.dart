@@ -1,51 +1,328 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:razorpay_flutter/razorpay_flutter.dart';
 
+import '../../../core/network/swagger_generated/app_api.swagger.dart' show EBook;
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/app_toast.dart';
 import '../../../data/models/api_models/course_models.dart';
 import '../../../data/models/api_models/order_models.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../../explore/providers/explore_provider.dart';
 import '../../home_farmer/providers/student_provider.dart';
 import '../providers/cart_provider.dart';
 
 class CheckoutScreen extends ConsumerStatefulWidget {
-  const CheckoutScreen({super.key, this.directCourseId});
+  const CheckoutScreen({
+    super.key,
+    this.directCourseId,
+    this.directEbookId,
+  });
 
   final String? directCourseId;
+  final String? directEbookId;
 
   @override
   ConsumerState<CheckoutScreen> createState() => _CheckoutScreenState();
 }
 
 class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
-  String _selectedPaymentMethod = 'UPI'; // 'UPI' | 'CARD' | 'NET_BANKING' | 'SANDBOX'
-  String _selectedUpiApp = 'Google Pay';
-  String _selectedBank = 'HDFC Bank';
+  late Razorpay _razorpay;
 
-  final _upiController = TextEditingController();
   final _couponController = TextEditingController();
-  final _cardNumberController = TextEditingController();
-  final _cardExpiryController = TextEditingController();
-  final _cardCvvController = TextEditingController();
-  final _cardHolderController = TextEditingController();
-
   bool _isProcessing = false;
+  bool _isApplyingCoupon = false;
   String? _couponError;
+
+  // Cached order snapshot while payment sheet is open
+  double _lastOriginalTotal = 0.0;
+  double _lastFinalTotal = 0.0;
+  double _lastDiscountAmount = 0.0;
+  List<dynamic> _lastItemsSnapshot = [];
+  String? _lastCouponCode;
+
+  @override
+  void initState() {
+    super.initState();
+    _initRazorpay();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ref.read(appliedCouponProvider.notifier).state = null;
+      }
+    });
+  }
+
+  @override
+  void didUpdateWidget(CheckoutScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.directCourseId != widget.directCourseId ||
+        oldWidget.directEbookId != widget.directEbookId) {
+      ref.read(appliedCouponProvider.notifier).state = null;
+      _couponController.clear();
+      _couponError = null;
+      _lastOriginalTotal = 0.0;
+      _lastFinalTotal = 0.0;
+      _lastDiscountAmount = 0.0;
+      _lastItemsSnapshot = [];
+      _lastCouponCode = null;
+    }
+  }
+
+  void _initRazorpay() {
+    _razorpay = Razorpay();
+    _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
+    _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
+    _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
+  }
 
   @override
   void dispose() {
-    _upiController.dispose();
+    _razorpay.clear();
     _couponController.dispose();
-    _cardNumberController.dispose();
-    _cardExpiryController.dispose();
-    _cardCvvController.dispose();
-    _cardHolderController.dispose();
     super.dispose();
   }
 
-  void _applyCoupon() {
+  // ─── Razorpay Callbacks ───────────────────────────────────────────
+
+  void _handlePaymentSuccess(PaymentSuccessResponse response) async {
+    debugPrint('🎉 [Razorpay] Payment SUCCESS: paymentId=${response.paymentId}, orderId=${response.orderId}');
+    final paymentId = response.paymentId;
+    final orderId = response.orderId;
+    final signature = response.signature;
+
+    if (paymentId == null || orderId == null || signature == null) {
+      if (mounted) {
+        setState(() => _isProcessing = false);
+        AppToast.show(
+          context,
+          'Payment successful, but missing verification details. Please contact support.',
+          isError: true,
+        );
+      }
+      return;
+    }
+
+    try {
+      if (mounted) setState(() => _isProcessing = true);
+
+      // Step 3: Verify payment with backend
+      final verifyResult = await ref.read(cartProvider.notifier).verifyRazorpayPayment(
+            paymentId: paymentId,
+            orderId: orderId,
+            signature: signature,
+          );
+
+      _completeOrderSuccess(
+        result: verifyResult,
+        paymentMethodName: 'Razorpay',
+      );
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isProcessing = false);
+        final friendlyErr = _formatPaymentError(e);
+        AppToast.show(
+          context,
+          'Payment verification failed: $friendlyErr. If money was debited, your enrollment will reflect shortly.',
+          isError: true,
+          duration: const Duration(seconds: 5),
+        );
+      }
+    }
+  }
+
+  void _handlePaymentError(PaymentFailureResponse response) {
+    debugPrint('❌ [Razorpay] Payment ERROR: code=${response.code}, message=${response.message}');
+    if (!mounted) return;
+    setState(() => _isProcessing = false);
+
+    // Code 2 is user cancelled
+    final isCancelled = response.code == Razorpay.PAYMENT_CANCELLED ||
+        (response.message != null && response.message!.toLowerCase().contains('cancelled'));
+
+    if (isCancelled) {
+      AppToast.show(
+        context,
+        'Payment was cancelled. You can retry whenever ready.',
+        isError: false,
+      );
+    } else {
+      String message = 'Payment could not be completed. Please try again.';
+      if (response.code == Razorpay.NETWORK_ERROR) {
+        message = 'Network connection problem during payment. Please check your internet.';
+      } else if (response.message != null && response.message!.trim().isNotEmpty) {
+        message = response.message!.trim();
+      }
+      AppToast.show(
+        context,
+        message,
+        isError: true,
+        duration: const Duration(seconds: 4),
+      );
+    }
+  }
+
+  void _handleExternalWallet(ExternalWalletResponse response) {
+    debugPrint('👛 [Razorpay] External Wallet Selected: ${response.walletName}');
+    if (mounted) {
+      AppToast.show(
+        context,
+        'Redirecting to ${response.walletName ?? "Wallet"}...',
+        isError: false,
+      );
+    }
+  }
+
+  // ─── Payment Initiation Flow ──────────────────────────────────────
+
+  Future<void> _startPaymentFlow({
+    required double originalTotal,
+    required double finalTotal,
+    required double discountAmount,
+    required List<dynamic> items,
+  }) async {
+    setState(() => _isProcessing = true);
+
+    // Snapshot order details
+    _lastOriginalTotal = originalTotal;
+    _lastFinalTotal = finalTotal;
+    _lastDiscountAmount = discountAmount;
+    _lastItemsSnapshot = List<dynamic>.from(items);
+    _lastCouponCode = ref.read(appliedCouponProvider)?.code;
+
+    try {
+      // Step 1: Create Order via Backend
+      final orderData = await ref.read(cartProvider.notifier).createRazorpayOrder(
+            couponCode: _lastCouponCode,
+            courseId: widget.directCourseId,
+            ebookId: widget.directEbookId,
+          );
+
+      debugPrint('📦 [Razorpay] createRazorpayOrder response: $orderData');
+
+      final status = orderData['status']?.toString().toUpperCase();
+
+      // Scenario B: 100% Discount / Free Order
+      if (status == 'FREE_ENROLLED') {
+        ref.invalidate(studentEnrollmentsProvider);
+        ref.invalidate(ordersProvider);
+        if (widget.directCourseId == null) {
+          await ref.read(cartProvider.notifier).clearCart();
+        }
+
+        _completeOrderSuccess(
+          result: orderData,
+          paymentMethodName: '100% Discount Coupon',
+        );
+        return;
+      }
+
+      // Scenario A: Payment Required
+      final razorpayOrderId = orderData['razorpay_order_id']?.toString();
+      final keyId = orderData['key_id']?.toString();
+      final amount = orderData['amount'];
+
+      if (razorpayOrderId == null || keyId == null || amount == null) {
+        throw Exception('Invalid payment order details received from server.');
+      }
+
+      // Prefill user details
+      final user = ref.read(authProvider).user;
+      final phone = user?.phone ?? '';
+      final email = user?.email ?? '';
+      final userName = user?.fullName ?? 'Krishi Learner';
+
+      final descriptionText = items.length == 1
+          ? _getItemTitle(items.first)
+          : '${items.length} Courses/Materials Purchase';
+
+      final options = {
+        'key': keyId,
+        'amount': amount,
+        'name': 'KrishiShiksha (IGrow)',
+        'description': descriptionText,
+        'order_id': razorpayOrderId,
+        'prefill': {
+          'contact': phone,
+          'email': email,
+          'name': userName,
+        },
+        'theme': {
+          'color': '#4B9C0A', // IGrow brand green
+        },
+        'send_sms_hash': true,
+        'retry': {'enabled': true, 'max_count': 2},
+      };
+
+      debugPrint('🚀 [Razorpay] Launching native checkout UI...');
+      _razorpay.open(options);
+
+      // Reset local spinner so screen remains responsive
+      if (mounted) setState(() => _isProcessing = false);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isProcessing = false);
+        final friendlyErr = _formatPaymentError(e);
+        AppToast.show(
+          context,
+          'Unable to initiate payment: $friendlyErr',
+          isError: true,
+          duration: const Duration(seconds: 4),
+        );
+      }
+    }
+  }
+
+  void _completeOrderSuccess({
+    required Map<String, dynamic> result,
+    required String paymentMethodName,
+  }) {
+    ref.read(lastCheckoutDataProvider.notifier).state = LastCheckoutData(
+      orderResult: result,
+      originalTotal: _lastOriginalTotal,
+      finalTotal: _lastFinalTotal,
+      discountAmount: _lastDiscountAmount,
+      couponCode: _lastCouponCode,
+      paymentMethod: paymentMethodName,
+      purchasedItems: _lastItemsSnapshot,
+    );
+
+    // Reset applied coupon for next session
+    ref.read(appliedCouponProvider.notifier).state = null;
+
+    if (mounted) {
+      final queryParams = <String, String>{
+        'originalTotal': _lastOriginalTotal.toStringAsFixed(2),
+        'finalTotal': _lastFinalTotal.toStringAsFixed(2),
+        'discountAmount': _lastDiscountAmount.toStringAsFixed(2),
+        if (_lastCouponCode != null) 'couponCode': _lastCouponCode!,
+        'paymentMethod': paymentMethodName,
+      };
+
+      final uri = Uri(
+        path: RouteNames.paymentSuccess,
+        queryParameters: queryParams,
+      );
+
+      context.pushReplacement(
+        uri.toString(),
+        extra: {
+          'orderResult': result,
+          'originalTotal': _lastOriginalTotal,
+          'finalTotal': _lastFinalTotal,
+          'discountAmount': _lastDiscountAmount,
+          'couponCode': _lastCouponCode,
+          'paymentMethod': paymentMethodName,
+          'purchasedItems': _lastItemsSnapshot,
+        },
+      );
+    }
+  }
+
+  // ─── Coupon Engine ────────────────────────────────────────────────
+
+  Future<void> _applyCoupon() async {
     final code = _couponController.text.trim().toUpperCase();
     if (code.isEmpty) {
       setState(() {
@@ -54,50 +331,55 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       return;
     }
 
-    if (code == 'AGRI10' || code == 'AG10') {
-      ref.read(appliedCouponProvider.notifier).state = AppliedCoupon(
-        code: code == 'AG10' ? 'AG10' : 'AGRI10',
-        discountPercent: 10,
-        description: '10% Agriculture Special Discount',
-      );
-      setState(() => _couponError = null);
-    } else if (code == 'KISAN50') {
-      ref.read(appliedCouponProvider.notifier).state = const AppliedCoupon(
-        code: 'KISAN50',
-        discountPercent: 50,
-        description: '50% Kisan Diwas Discount',
-      );
-      setState(() => _couponError = null);
-    } else if (code == 'FREE100') {
-      ref.read(appliedCouponProvider.notifier).state = const AppliedCoupon(
-        code: 'FREE100',
-        discountPercent: 100,
-        description: '100% Scholarship Discount',
-      );
-      setState(() => _couponError = null);
-    } else {
-      setState(() {
-        _couponError = 'Invalid coupon code. Try AGRI10 or KISAN50';
-      });
+    setState(() {
+      _isApplyingCoupon = true;
+      _couponError = null;
+    });
 
-      // Also attempt backend verification for dynamic admin-created coupons
-      ref.read(cartRepositoryProvider).applyCoupon(code).then((res) {
-        final discountVal = (res['discount_amount'] as num?)?.toDouble() ?? 0.0;
-        final origVal = (res['original_total'] as num?)?.toDouble() ?? 0.0;
-        final percent = (origVal > 0 && discountVal > 0)
-            ? ((discountVal / origVal) * 100).roundToDouble()
-            : (discountVal > 0 ? discountVal : 10.0);
-        if (mounted) {
-          ref.read(appliedCouponProvider.notifier).state = AppliedCoupon(
-            code: res['code']?.toString() ?? code,
-            discountPercent: percent > 0 ? percent : 10,
-            description: res['message']?.toString() ?? '${percent.toInt()}% Special Discount',
+    try {
+      final res = await ref.read(cartRepositoryProvider).applyCoupon(
+            code,
+            courseId: widget.directCourseId,
           );
-          setState(() => _couponError = null);
-        }
-      }).catchError((_) {
-        // Keeps the invalid coupon error
-      });
+
+      final discountAmountVal = (res['discount_amount'] as num?)?.toDouble() ??
+          (res['discount'] as num?)?.toDouble() ??
+          0.0;
+      final discountPercentVal = (res['discount_percent'] as num?)?.toDouble() ??
+          (res['percent'] as num?)?.toDouble() ??
+          0.0;
+      final newTotalVal = (res['new_total'] as num?)?.toDouble() ??
+          (res['payable_amount'] as num?)?.toDouble() ??
+          (res['total'] as num?)?.toDouble();
+      final desc = res['message']?.toString() ??
+          res['description']?.toString() ??
+          res['detail']?.toString() ??
+          'Coupon applied successfully!';
+
+      ref.read(appliedCouponProvider.notifier).state = AppliedCoupon(
+        code: res['code']?.toString() ?? code,
+        discountPercent: discountPercentVal,
+        discountAmount: discountAmountVal,
+        newTotal: newTotalVal,
+        description: desc,
+        rawBackendResponse: res,
+      );
+
+      if (mounted) {
+        setState(() => _couponError = null);
+        AppToast.show(context, desc, isError: false);
+      }
+    } catch (e) {
+      if (mounted) {
+        final friendlyErr = _formatUserFriendlyError(e);
+        setState(() {
+          _couponError = friendlyErr;
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isApplyingCoupon = false);
+      }
     }
   }
 
@@ -107,87 +389,144 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     setState(() => _couponError = null);
   }
 
-  Future<void> _handlePayment({
-    required double originalTotal,
-    required double finalTotal,
-    required List<dynamic> items,
-  }) async {
-    setState(() => _isProcessing = true);
+  String _formatUserFriendlyError(dynamic error) {
+    if (error == null) return 'Something went wrong. Please try again.';
+    final raw = error.toString().replaceAll('Exception: ', '').trim();
+    final lower = raw.toLowerCase();
 
-    try {
-      final coupon = ref.read(appliedCouponProvider);
-      final rawCard = _cardNumberController.text.replaceAll(' ', '');
-      final result = await ref.read(cartProvider.notifier).checkout(
-            paymentMethod: 'DUMMY_CARD',
-            courseId: widget.directCourseId,
-            cardNumber: rawCard.isNotEmpty ? rawCard : '4242424242424242',
-            cardExpiry: _cardExpiryController.text.isNotEmpty ? _cardExpiryController.text : '12/28',
-            cardCvv: _cardCvvController.text.isNotEmpty ? _cardCvvController.text : '123',
-            cardHolder: _cardHolderController.text.isNotEmpty ? _cardHolderController.text : 'Kisan Learner',
-            couponCode: coupon?.code,
-          );
-
-      ref.invalidate(studentEnrollmentsProvider);
-
-      final discountAmount = coupon != null
-          ? (originalTotal * coupon.discountPercent / 100)
-          : (originalTotal - finalTotal).clamp(0.0, double.infinity);
-
-      // Persist checkout state in provider so modal dismissals never reset amounts to 0
-      ref.read(lastCheckoutDataProvider.notifier).state = LastCheckoutData(
-        orderResult: result,
-        originalTotal: originalTotal,
-        finalTotal: finalTotal,
-        discountAmount: discountAmount,
-        couponCode: coupon?.code,
-        paymentMethod: _selectedPaymentMethod,
-        purchasedItems: List.from(items),
-      );
-
-      if (mounted) {
-        context.pushReplacement(
-          RouteNames.paymentSuccess,
-          extra: {
-            'orderResult': result,
-            'originalTotal': originalTotal,
-            'finalTotal': finalTotal,
-            'discountAmount': discountAmount,
-            'couponCode': coupon?.code,
-            'paymentMethod': _selectedPaymentMethod,
-            'purchasedItems': items,
-          },
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Payment failed: ${e.toString().replaceAll("Exception: ", "")}'),
-            backgroundColor: AppColors.error,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isProcessing = false);
+    if (lower.contains('socketexception') ||
+        lower.contains('clientexception') ||
+        lower.contains('failed host lookup') ||
+        lower.contains('connection abort') ||
+        lower.contains('network is unreachable') ||
+        lower.contains('connection refused') ||
+        lower.contains('handshakeexception') ||
+        lower.contains('no internet')) {
+      return 'No internet connection. Please check your network and try again.';
     }
+
+    if (lower.contains('timeout') || lower.contains('timed out')) {
+      return 'Request timed out. Please check your network and try again.';
+    }
+
+    if (lower.contains('matching query does not exist') ||
+        lower.contains('not found') ||
+        lower.contains('invalid code') ||
+        lower.contains('doesnotexist') ||
+        lower.contains('invalid coupon')) {
+      return 'Invalid coupon code. Try AGRI10 or KISAN50';
+    }
+
+    if (lower.contains('expired')) {
+      return 'This coupon code has expired.';
+    }
+
+    if (lower.contains('already used') || lower.contains('limit reached')) {
+      return 'This coupon has already been used or reached its usage limit.';
+    }
+
+    if (lower.contains('500') ||
+        lower.contains('502') ||
+        lower.contains('503') ||
+        lower.contains('504') ||
+        lower.contains('server is temporarily') ||
+        lower.contains('server error') ||
+        lower.contains('internal server')) {
+      return 'Server is temporarily unavailable. Please try again in a few moments.';
+    }
+
+    if (raw.isNotEmpty && raw.length < 100 && !raw.contains('{') && !raw.contains('StackTrace')) {
+      return raw;
+    }
+
+    return 'Unable to process request. Please try again.';
   }
+
+  String _formatPaymentError(dynamic error) {
+    if (error == null) return 'Something went wrong. Please try again.';
+    final raw = error.toString().replaceAll('Exception: ', '').trim();
+    final lower = raw.toLowerCase();
+
+    if (lower.contains('no internet') || lower.contains('socketexception') || lower.contains('failed host lookup')) {
+      return 'No internet connection. Please check your network.';
+    }
+    if (lower.contains('timeout') || lower.contains('timed out')) {
+      return 'Payment request timed out. Please try again.';
+    }
+    if (lower.contains('signature') || lower.contains('tampered')) {
+      return 'Payment verification failed. Please contact support.';
+    }
+    if (lower.contains('api credentials') || lower.contains('verify api credentials')) {
+      return 'Server error: Razorpay API credentials on backend are unverified or missing.';
+    }
+    if (lower.contains('server is temporarily') || lower.contains('500') || lower.contains('502')) {
+      return 'Payment server is busy. Please try again in a moment.';
+    }
+    if (raw.isNotEmpty && raw.length < 150 && !raw.contains('{') && !raw.contains('StackTrace')) {
+      return raw;
+    }
+    return 'Payment could not be processed. Please try again.';
+  }
+
+  String _getItemTitle(dynamic item) {
+    if (item is ApiCourseDetail) return item.title;
+    if (item is EBook) return item.title;
+    if (item is ApiCartItem) {
+      return item.courseDetail?['title']?.toString() ??
+          item.courseDetail?['name']?.toString() ??
+          'Course';
+    }
+    if (item is Map) return item['title']?.toString() ?? 'Item';
+    return 'Course';
+  }
+
+  String _getItemPrice(dynamic item) {
+    if (item is ApiCourseDetail) return item.price ?? '0.00';
+    if (item is EBook) {
+      final json = item.toJson();
+      return json['price']?.toString() ?? json['discount_price']?.toString() ?? '0.00';
+    }
+    if (item is ApiCartItem) {
+      return item.courseDetail?['price']?.toString() ??
+          item.courseDetail?['discount_price']?.toString() ??
+          '0.00';
+    }
+    if (item is Map) return item['price']?.toString() ?? '0.00';
+    return '0.00';
+  }
+
+  String _getItemInstructor(dynamic item) {
+    if (item is ApiCourseDetail) return item.instructorName ?? 'IGrow Faculty';
+    if (item is EBook) return item.instructorName ?? item.authorName;
+    if (item is ApiCartItem) {
+      return item.courseDetail?['instructor_name']?.toString() ?? 'IGrow Faculty';
+    }
+    if (item is Map) return item['instructor_name']?.toString() ?? item['author_name']?.toString() ?? 'IGrow Faculty';
+    return 'IGrow Faculty';
+  }
+
+  // ─── Build UI ─────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final appliedCoupon = ref.watch(appliedCouponProvider);
-
-    // Direct single course buy or cart items
     final isDirectBuy = widget.directCourseId != null && widget.directCourseId!.isNotEmpty;
 
+    // Direct single course buy
     if (isDirectBuy) {
       final courseAsync = ref.watch(courseDetailProvider(widget.directCourseId!));
       return Scaffold(
-        backgroundColor: isDark ? AppColors.bgDark : AppColors.bgLight,
+        backgroundColor: isDark ? AppColors.bgDark : const Color(0xFFF6F9F3),
         appBar: AppBar(
-          title: const Text('Express Checkout'),
+          title: const Text(
+            'Secure Checkout',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
           backgroundColor: isDark ? AppColors.bgDark : Colors.white,
           foregroundColor: isDark ? Colors.white : AppColors.inkDark,
+          elevation: 0,
+          centerTitle: false,
         ),
         body: courseAsync.when(
           data: (course) => _buildCheckoutContent(
@@ -204,7 +543,54 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
             child: Padding(
               padding: const EdgeInsets.all(24),
               child: Text(
-                'Error: $err',
+                'Error loading course: $err',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: isDark ? Colors.white70 : AppColors.inkDark),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Direct single ebook buy
+    final isDirectEbookBuy = widget.directEbookId != null && widget.directEbookId!.isNotEmpty;
+    if (isDirectEbookBuy) {
+      final ebookAsync = ref.watch(ebookDetailProvider(widget.directEbookId!));
+      return Scaffold(
+        backgroundColor: isDark ? AppColors.bgDark : const Color(0xFFF6F9F3),
+        appBar: AppBar(
+          title: const Text(
+            'E-Book Checkout',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          backgroundColor: isDark ? AppColors.bgDark : Colors.white,
+          foregroundColor: isDark ? Colors.white : AppColors.inkDark,
+          elevation: 0,
+          centerTitle: false,
+        ),
+        body: ebookAsync.when(
+          data: (ebook) {
+            final rawPrice = ebook.toJson()['price']?.toString() ??
+                ebook.toJson()['discount_price']?.toString() ??
+                '0.00';
+            final parsedPrice = double.tryParse(rawPrice) ?? 0.0;
+            return _buildCheckoutContent(
+              context,
+              isDark: isDark,
+              appliedCoupon: appliedCoupon,
+              items: [ebook],
+              originalTotal: parsedPrice,
+            );
+          },
+          loading: () => const Center(
+            child: CircularProgressIndicator(color: AppColors.primaryGreen),
+          ),
+          error: (err, _) => Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Text(
+                'Error loading e-book: $err',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: isDark ? Colors.white70 : AppColors.inkDark),
               ),
@@ -217,41 +603,82 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     // Cart items checkout
     final cartState = ref.watch(cartProvider);
     return Scaffold(
-      backgroundColor: isDark ? AppColors.bgDark : AppColors.bgLight,
+      backgroundColor: isDark ? AppColors.bgDark : const Color(0xFFF6F9F3),
       appBar: AppBar(
-        title: const Text('Checkout'),
+        title: const Text(
+          'Checkout',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         backgroundColor: isDark ? AppColors.bgDark : Colors.white,
         foregroundColor: isDark ? Colors.white : AppColors.inkDark,
+        elevation: 0,
+        centerTitle: false,
       ),
       body: cartState.when(
         data: (cart) {
           if (cart.items.isEmpty) {
             return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    'Your cart is empty.',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: isDark ? Colors.white70 : AppColors.inkDark,
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryGreen.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.shopping_cart_outlined,
+                        size: 54,
+                        color: AppColors.primaryGreen,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () => context.pop(),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryGreen,
-                      foregroundColor: Colors.white,
+                    const SizedBox(height: 18),
+                    Text(
+                      'Your cart is empty',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : AppColors.inkDark,
+                      ),
                     ),
-                    child: const Text('Back to Cart'),
-                  ),
-                ],
+                    const SizedBox(height: 8),
+                    Text(
+                      'Explore our wide range of agriculture courses and study materials.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: isDark ? Colors.white70 : AppColors.inkSoft,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    ElevatedButton(
+                      onPressed: () => context.pop(),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primaryGreen,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      child: const Text('Explore Courses'),
+                    ),
+                  ],
+                ),
               ),
             );
           }
 
-          final originalTotal = double.tryParse(cart.total ?? '0') ?? 0.0;
+          final parsedCartTotal = double.tryParse(cart.total ?? '0') ?? 0.0;
+          final calculatedCartTotal = cart.items.fold<double>(0.0, (sum, it) {
+            final p = double.tryParse(it.courseDetail?['price']?.toString() ?? '') ??
+                double.tryParse(it.courseDetail?['discount_price']?.toString() ?? '') ??
+                0.0;
+            return sum + p;
+          });
+          final originalTotal = parsedCartTotal > 0 ? parsedCartTotal : calculatedCartTotal;
+
           return _buildCheckoutContent(
             context,
             isDark: isDark,
@@ -267,7 +694,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
           child: Padding(
             padding: const EdgeInsets.all(24),
             child: Text(
-              'Error: $err',
+              'Error loading cart: $err',
               textAlign: TextAlign.center,
               style: TextStyle(color: isDark ? Colors.white70 : AppColors.inkDark),
             ),
@@ -284,10 +711,29 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     required List<dynamic> items,
     required double originalTotal,
   }) {
-    final discountAmount = appliedCoupon != null
-        ? (originalTotal * appliedCoupon.discountPercent / 100)
-        : 0.0;
-    final finalTotal = (originalTotal - discountAmount).clamp(0.0, double.infinity);
+    final double discountAmount;
+    final double finalTotal;
+
+    if (appliedCoupon != null) {
+      if (appliedCoupon.newTotal != null) {
+        finalTotal = appliedCoupon.newTotal!.clamp(0.0, double.infinity);
+        discountAmount = (originalTotal - finalTotal).clamp(0.0, double.infinity);
+      } else if (appliedCoupon.discountAmount > 0) {
+        discountAmount = appliedCoupon.discountAmount.clamp(0.0, originalTotal);
+        finalTotal = (originalTotal - discountAmount).clamp(0.0, double.infinity);
+      } else if (appliedCoupon.discountPercent > 0) {
+        discountAmount = (originalTotal * appliedCoupon.discountPercent / 100).clamp(0.0, originalTotal);
+        finalTotal = (originalTotal - discountAmount).clamp(0.0, double.infinity);
+      } else {
+        discountAmount = 0.0;
+        finalTotal = originalTotal;
+      }
+    } else {
+      discountAmount = 0.0;
+      finalTotal = originalTotal;
+    }
+
+    final is100PercentFree = finalTotal <= 0.001;
 
     return Column(
       children: [
@@ -295,778 +741,908 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              // ── 1. Sandbox Info Notice ─────────────────────────────
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: AppColors.primaryGreen.withValues(alpha: isDark ? 0.2 : 0.08),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: AppColors.primaryGreen.withValues(alpha: 0.5),
-                    width: 1.2,
-                  ),
+              // ── 1. Highlighted Trust & Security Banner ────────────
+              _buildSecurityHeaderBanner(isDark),
+
+              const SizedBox(height: 16),
+
+              // ── 2. Order Items Review Card ────────────────────────
+              _buildOrderItemsSection(items, isDark),
+
+              const SizedBox(height: 16),
+
+              // ── 3. Coupon & Promo Code Engine ─────────────────────
+              _buildCouponSection(appliedCoupon, discountAmount, isDark),
+
+              const SizedBox(height: 16),
+
+              // ── 4. Payment Gateway Methods Showcase ───────────────
+              _buildPaymentGatewayShowcase(isDark, is100PercentFree),
+
+              const SizedBox(height: 16),
+
+              // ── 5. Detailed Bill Summary ──────────────────────────
+              _buildBillSummaryCard(
+                originalTotal: originalTotal,
+                discountAmount: discountAmount,
+                finalTotal: finalTotal,
+                appliedCoupon: appliedCoupon,
+                isDark: isDark,
+              ),
+
+              const SizedBox(height: 24),
+            ],
+          ),
+        ),
+
+        // ── 6. Bottom Sticky Pay Bar ────────────────────────────────
+        _buildBottomStickyBar(
+          originalTotal: originalTotal,
+          finalTotal: finalTotal,
+          discountAmount: discountAmount,
+          items: items,
+          is100PercentFree: is100PercentFree,
+          isDark: isDark,
+        ),
+      ],
+    );
+  }
+
+  // ─── Sub-widgets ──────────────────────────────────────────────────
+
+  Widget _buildSecurityHeaderBanner(bool isDark) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: isDark
+              ? [const Color(0xFF1E2E23), const Color(0xFF16231A)]
+              : [const Color(0xFFEBF6E4), const Color(0xFFF7FCF4)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: AppColors.primaryGreen.withValues(alpha: isDark ? 0.4 : 0.3),
+          width: 1.2,
+        ),
+        boxShadow: isDark
+            ? []
+            : [
+                BoxShadow(
+                  color: AppColors.primaryGreen.withValues(alpha: 0.08),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
                 ),
-                child: Row(
+              ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.primaryGreen.withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.verified_user_rounded,
+              color: AppColors.primaryGreen,
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    const Icon(Icons.shield_outlined,
-                        color: AppColors.greenLight, size: 24),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        'Razorpay Sandbox Active: This is a secure simulation. Instant course enrollment will be granted upon payment.',
+                    Text(
+                      '100% Secure Checkout',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : AppColors.greenDark,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryGreen,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Text(
+                        'RAZORPAY',
                         style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: isDark ? Colors.white : AppColors.inkDark,
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          letterSpacing: 0.5,
                         ),
                       ),
                     ),
                   ],
                 ),
-              ),
+                const SizedBox(height: 3),
+                Text(
+                  'End-to-end encrypted • Instant course activation upon successful payment.',
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    height: 1.3,
+                    color: isDark ? Colors.white70 : AppColors.inkSoft,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-              const SizedBox(height: 18),
-
-              // ── 2. Order Items Review ──────────────────────────────
+  Widget _buildOrderItemsSection(List<dynamic> items, bool isDark) {
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E2E23) : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? const Color(0xFF2E4334) : const Color(0xFFE2EADF),
+          width: 1.2,
+        ),
+        boxShadow: isDark
+            ? []
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
               Text(
-                'Order Summary (${items.length} ${items.length == 1 ? "Item" : "Items"})',
+                'Order Items (${items.length})',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
-                  fontSize: 16,
+                  fontSize: 15,
                   color: isDark ? Colors.white : AppColors.inkDark,
                 ),
               ),
-              const SizedBox(height: 10),
-
-              ...items.map((item) {
-                String title = 'Course';
-                String price = '0.00';
-                String instructor = 'IGrow Faculty';
-
-                if (item is ApiCourseDetail) {
-                  title = item.title;
-                  price = item.price ?? '0.00';
-                  instructor = item.instructorName ?? 'IGrow Faculty';
-                } else if (item is ApiCartItem) {
-                  title = item.courseDetail?['title']?.toString() ??
-                      item.courseDetail?['name']?.toString() ??
-                      'Course';
-                  price = item.courseDetail?['price']?.toString() ?? '0.00';
-                  instructor = item.courseDetail?['instructor_name']?.toString() ??
-                      'IGrow Faculty';
-                }
-
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 10),
-                  elevation: 0,
-                  color: isDark ? const Color(0xFF1E2E23) : Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(
-                      color: isDark ? const Color(0xFF334A3A) : AppColors.lineLight,
-                      width: 1.2,
-                    ),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: AppColors.primaryGreen.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(Icons.school_rounded,
-                              color: AppColors.greenLight, size: 24),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                title,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 15,
-                                  color: isDark ? Colors.white : AppColors.inkDark,
-                                ),
-                              ),
-                              const SizedBox(height: 3),
-                              Text(
-                                'By $instructor',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: isDark ? Colors.white70 : AppColors.inkSoft,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          '₹$price',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: isDark ? AppColors.greenLight : AppColors.primaryGreen,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }),
-
-              const SizedBox(height: 18),
-
-              // ── 3. Coupon & Promo Code Engine ──────────────────────
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF1E2E23) : Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: isDark ? const Color(0xFF334A3A) : AppColors.lineLight,
-                    width: 1.2,
+                  color: AppColors.primaryGreen.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  items.length == 1 ? 'Single Course' : 'Multiple Courses',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primaryGreen,
                   ),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          const Divider(height: 1, thickness: 1, color: Color(0xFFECEFE8)),
+          const SizedBox(height: 12),
+          ...items.map((item) {
+            final title = _getItemTitle(item);
+            final price = _getItemPrice(item);
+            final instructor = _getItemInstructor(item);
+
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          AppColors.primaryGreen.withValues(alpha: 0.25),
+                          AppColors.greenLight.withValues(alpha: 0.15),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: AppColors.primaryGreen.withValues(alpha: 0.2),
+                      ),
+                    ),
+                    child: const Icon(
+                      Icons.menu_book_rounded,
+                      color: AppColors.primaryGreen,
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(Icons.local_offer_outlined,
-                            size: 18, color: AppColors.accentOrange),
-                        const SizedBox(width: 8),
                         Text(
-                          'Have a Coupon Code?',
+                          title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 14,
                             color: isDark ? Colors.white : AppColors.inkDark,
                           ),
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    if (appliedCoupon == null) ...[
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: _couponController,
-                              textCapitalization: TextCapitalization.characters,
-                              onChanged: (value) {
-                                if (_couponError != null) {
-                                  setState(() => _couponError = null);
-                                }
-                              },
-                              style: TextStyle(
-                                color: isDark ? Colors.white : AppColors.inkDark,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                              ),
-                              decoration: InputDecoration(
-                                hintText: 'Enter code (e.g. AG10, AGRI10)',
-                                hintStyle: TextStyle(
-                                  color: isDark ? Colors.white38 : AppColors.inkSoft,
-                                  fontSize: 13,
-                                ),
-                                filled: true,
-                                fillColor: isDark ? const Color(0xFF14201A) : Colors.grey.shade50,
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                  borderSide: BorderSide(
-                                    color: isDark ? const Color(0xFF334A3A) : AppColors.lineLight,
-                                  ),
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                  borderSide: BorderSide(
-                                    color: isDark ? const Color(0xFF334A3A) : AppColors.lineLight,
-                                  ),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                  borderSide: const BorderSide(color: AppColors.primaryGreen, width: 1.5),
-                                ),
-                                errorBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                  borderSide: const BorderSide(color: Colors.redAccent, width: 1.2),
-                                ),
-                                focusedErrorBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                  borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
-                                ),
-                                contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 14, vertical: 12),
-                                errorText: _couponError,
-                                errorMaxLines: 3,
-                                errorStyle: const TextStyle(
-                                  fontSize: 12,
-                                  height: 1.3,
-                                  color: Colors.redAccent,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primaryGreen,
-                              foregroundColor: Colors.white,
-                              minimumSize: const Size(80, 48),
-                              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                            ),
-                            onPressed: _applyCoupon,
-                            child: const Text('Apply', style: TextStyle(fontWeight: FontWeight.bold)),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        '💡 Try coupon AGRI10 for 10% off or KISAN50 for 50% off!',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: isDark ? Colors.white60 : AppColors.inkSoft,
-                        ),
-                      ),
-                    ] else ...[
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 10),
-                        decoration: BoxDecoration(
-                          color: AppColors.primaryGreen.withValues(alpha: isDark ? 0.2 : 0.1),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                              color: AppColors.primaryGreen.withValues(alpha: 0.4)),
-                        ),
-                        child: Row(
+                        const SizedBox(height: 3),
+                        Row(
                           children: [
-                            const Icon(Icons.check_circle,
-                                color: AppColors.greenLight, size: 20),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Coupon "${appliedCoupon.code}" Applied!',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: isDark ? AppColors.greenLight : AppColors.primaryGreen,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                  Text(
-                                    'Saved ₹${discountAmount.toStringAsFixed(2)} (${appliedCoupon.discountPercent.toInt()}%)',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: isDark ? Colors.white70 : AppColors.inkSoft,
-                                    ),
-                                  ),
-                                ],
-                              ),
+                            const Icon(
+                              Icons.verified_outlined,
+                              size: 13,
+                              color: AppColors.primaryGreen,
                             ),
-                            IconButton(
-                              icon: const Icon(Icons.close,
-                                  size: 18, color: Colors.redAccent),
-                              onPressed: _removeCoupon,
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                instructor,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: isDark ? Colors.white60 : AppColors.inkSoft,
+                                ),
+                              ),
                             ),
                           ],
                         ),
-                      ),
-                    ],
-                  ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '₹$price',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      color: isDark ? AppColors.greenLight : AppColors.primaryGreen,
+                      fontSize: 15,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCouponSection(AppliedCoupon? appliedCoupon, double discountAmount, bool isDark) {
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E2E23) : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? const Color(0xFF2E4334) : const Color(0xFFE2EADF),
+          width: 1.2,
+        ),
+        boxShadow: isDark
+            ? []
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: AppColors.accentOrange.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Icon(
+                  Icons.local_offer_rounded,
+                  size: 16,
+                  color: AppColors.accentOrange,
                 ),
               ),
-
-              const SizedBox(height: 22),
-
-              // ── 4. Payment Method Selector ─────────────────────────
+              const SizedBox(width: 8),
               Text(
-                'Select Payment Method',
+                'Have a Coupon Code?',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
-                  fontSize: 16,
+                  fontSize: 14.5,
                   color: isDark ? Colors.white : AppColors.inkDark,
                 ),
               ),
-              const SizedBox(height: 12),
-
-              _buildPaymentOption(
-                value: 'UPI',
-                title: 'UPI (Instant)',
-                subtitle: 'Google Pay, PhonePe, Paytm, BHIM',
-                icon: Icons.qr_code_2_rounded,
-                isDark: isDark,
-              ),
-              if (_selectedPaymentMethod == 'UPI') ...[
-                Padding(
-                  padding: const EdgeInsets.only(left: 8, right: 8, bottom: 14),
-                  child: Column(
-                    children: [
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: ['Google Pay', 'PhonePe', 'Paytm', 'BHIM']
-                            .map((app) => ChoiceChip(
-                                  label: Text(
-                                    app,
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: _selectedUpiApp == app
-                                          ? Colors.white
-                                          : (isDark ? Colors.white70 : AppColors.inkDark),
-                                    ),
-                                  ),
-                                  selected: _selectedUpiApp == app,
-                                  selectedColor: AppColors.primaryGreen,
-                                  backgroundColor: isDark ? const Color(0xFF14201A) : Colors.grey.shade100,
-                                  onSelected: (val) {
-                                    if (val) setState(() => _selectedUpiApp = app);
-                                  },
-                                ))
-                            .toList(),
-                      ),
-                      const SizedBox(height: 10),
-                      TextField(
-                        controller: _upiController,
-                        style: TextStyle(color: isDark ? Colors.white : AppColors.inkDark),
-                        decoration: InputDecoration(
-                          labelText: 'Virtual Payment Address (VPA / UPI ID)',
-                          hintText: 'e.g. yourname@okaxis',
-                          labelStyle: TextStyle(color: isDark ? Colors.white70 : AppColors.inkSoft),
-                          filled: true,
-                          fillColor: isDark ? const Color(0xFF14201A) : Colors.grey.shade50,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide: BorderSide(
-                              color: isDark ? const Color(0xFF334A3A) : AppColors.lineLight,
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide: const BorderSide(color: AppColors.primaryGreen, width: 1.5),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 12),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-
-              _buildPaymentOption(
-                value: 'CARD',
-                title: 'Credit / Debit Card',
-                subtitle: 'Visa, MasterCard, RuPay',
-                icon: Icons.credit_card_rounded,
-                isDark: isDark,
-              ),
-              if (_selectedPaymentMethod == 'CARD') ...[
-                Padding(
-                  padding: const EdgeInsets.only(left: 8, right: 8, bottom: 14),
-                  child: Column(
-                    children: [
-                      TextField(
-                        controller: _cardNumberController,
-                        keyboardType: TextInputType.number,
-                        style: TextStyle(color: isDark ? Colors.white : AppColors.inkDark),
-                        decoration: InputDecoration(
-                          labelText: 'Card Number',
-                          hintText: '4242 4242 4242 4242',
-                          labelStyle: TextStyle(color: isDark ? Colors.white70 : AppColors.inkSoft),
-                          filled: true,
-                          fillColor: isDark ? const Color(0xFF14201A) : Colors.grey.shade50,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide: BorderSide(
-                              color: isDark ? const Color(0xFF334A3A) : AppColors.lineLight,
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide: const BorderSide(color: AppColors.primaryGreen, width: 1.5),
-                          ),
-                          prefixIcon: const Icon(Icons.credit_card, color: AppColors.primaryGreen),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: _cardExpiryController,
-                              style: TextStyle(color: isDark ? Colors.white : AppColors.inkDark),
-                              decoration: InputDecoration(
-                                labelText: 'Expiry (MM/YY)',
-                                hintText: '12/28',
-                                labelStyle: TextStyle(color: isDark ? Colors.white70 : AppColors.inkSoft),
-                                filled: true,
-                                fillColor: isDark ? const Color(0xFF14201A) : Colors.grey.shade50,
-                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                  borderSide: BorderSide(
-                                    color: isDark ? const Color(0xFF334A3A) : AppColors.lineLight,
-                                  ),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                  borderSide: const BorderSide(color: AppColors.primaryGreen, width: 1.5),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: TextField(
-                              controller: _cardCvvController,
-                              obscureText: true,
-                              style: TextStyle(color: isDark ? Colors.white : AppColors.inkDark),
-                              decoration: InputDecoration(
-                                labelText: 'CVV',
-                                hintText: '123',
-                                labelStyle: TextStyle(color: isDark ? Colors.white70 : AppColors.inkSoft),
-                                filled: true,
-                                fillColor: isDark ? const Color(0xFF14201A) : Colors.grey.shade50,
-                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                  borderSide: BorderSide(
-                                    color: isDark ? const Color(0xFF334A3A) : AppColors.lineLight,
-                                  ),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                  borderSide: const BorderSide(color: AppColors.primaryGreen, width: 1.5),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-
-              _buildPaymentOption(
-                value: 'NET_BANKING',
-                title: 'Net Banking',
-                subtitle: 'SBI, HDFC, ICICI, Axis Bank',
-                icon: Icons.account_balance_rounded,
-                isDark: isDark,
-              ),
-              if (_selectedPaymentMethod == 'NET_BANKING') ...[
-                Padding(
-                  padding: const EdgeInsets.only(left: 8, right: 8, bottom: 14),
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: ['HDFC Bank', 'SBI', 'ICICI Bank', 'Axis Bank', 'PNB']
-                        .map((bank) => ChoiceChip(
-                              label: Text(
-                                bank,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: _selectedBank == bank
-                                      ? Colors.white
-                                      : (isDark ? Colors.white70 : AppColors.inkDark),
-                                ),
-                              ),
-                              selected: _selectedBank == bank,
-                              selectedColor: AppColors.primaryGreen,
-                              backgroundColor: isDark ? const Color(0xFF14201A) : Colors.grey.shade100,
-                              onSelected: (val) {
-                                if (val) setState(() => _selectedBank = bank);
-                              },
-                            ))
-                        .toList(),
-                  ),
-                ),
-              ],
-
-              _buildPaymentOption(
-                value: 'SANDBOX',
-                title: '1-Tap Simulator',
-                subtitle: 'Instant test purchase (100% success)',
-                icon: Icons.bolt_rounded,
-                isDark: isDark,
-              ),
-
-              const SizedBox(height: 20),
             ],
           ),
-        ),
-
-        // ── Bottom Price & Pay Button Bar ────────────────────────────
-        Container(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-          decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF1A271E) : Colors.white,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
-                blurRadius: 16,
-                offset: const Offset(0, -4),
-              ),
-            ],
-            border: Border(
-              top: BorderSide(
-                color: isDark ? const Color(0xFF2E4334) : AppColors.lineLight,
-                width: 1,
-              ),
-            ),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          child: SafeArea(
-            top: false,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+          const SizedBox(height: 12),
+          if (appliedCoupon == null) ...[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Subtotal:',
-                      style: TextStyle(
+                Expanded(
+                  child: TextField(
+                    controller: _couponController,
+                    textCapitalization: TextCapitalization.characters,
+                    onChanged: (value) {
+                      if (_couponError != null) {
+                        setState(() => _couponError = null);
+                      }
+                    },
+                    style: TextStyle(
+                      color: isDark ? Colors.white : AppColors.inkDark,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: 'Enter code (e.g. AG10, AGRI10)',
+                      hintStyle: TextStyle(
+                        color: isDark ? Colors.white38 : AppColors.inkSoft.withValues(alpha: 0.7),
                         fontSize: 13,
-                        color: isDark ? Colors.white70 : AppColors.inkSoft,
                       ),
-                    ),
-                    Text(
-                      '₹${originalTotal.toStringAsFixed(2)}',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: isDark ? Colors.white : AppColors.inkDark,
-                      ),
-                    ),
-                  ],
-                ),
-                if (discountAmount > 0) ...[
-                  const SizedBox(height: 6),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Coupon Discount (${appliedCoupon?.code}):',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: isDark ? AppColors.greenLight : AppColors.primaryGreen,
+                      filled: true,
+                      fillColor: isDark ? const Color(0xFF14201A) : const Color(0xFFF9FBF7),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(
+                          color: isDark ? const Color(0xFF334A3A) : const Color(0xFFD4DFCF),
                         ),
                       ),
-                      Text(
-                        '-₹${discountAmount.toStringAsFixed(2)}',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? AppColors.greenLight : AppColors.primaryGreen,
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(
+                          color: isDark ? const Color(0xFF334A3A) : const Color(0xFFD4DFCF),
                         ),
                       ),
-                    ],
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: const BorderSide(color: AppColors.primaryGreen, width: 1.6),
+                      ),
+                      errorBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: const BorderSide(color: Colors.redAccent, width: 1.2),
+                      ),
+                      focusedErrorBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      errorText: _couponError,
+                      errorMaxLines: 3,
+                      errorStyle: const TextStyle(
+                        fontSize: 12,
+                        height: 1.3,
+                        color: Colors.redAccent,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                   ),
-                ],
-                const SizedBox(height: 6),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Platform & GST (0%):',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: isDark ? Colors.white54 : AppColors.inkSoft,
-                      ),
-                    ),
-                    Text(
-                      '₹0.00',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: isDark ? Colors.white54 : AppColors.inkSoft,
-                      ),
-                    ),
-                  ],
                 ),
-                Divider(
-                  height: 20,
-                  color: isDark ? const Color(0xFF2E4334) : AppColors.lineLight,
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      flex: 4,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            'Grand Total',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: isDark ? Colors.white70 : AppColors.inkSoft,
-                            ),
-                          ),
-                          FittedBox(
-                            alignment: Alignment.centerLeft,
-                            fit: BoxFit.scaleDown,
-                            child: Text(
-                              '₹${finalTotal.toStringAsFixed(2)}',
-                              style: TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.w900,
-                                color: isDark ? AppColors.greenLight : AppColors.primaryGreen,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Flexible(
-                      flex: 6,
-                      child: ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primaryGreen,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          elevation: 2,
-                        ),
-                        icon: _isProcessing
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : const Icon(Icons.lock, color: Colors.white, size: 18),
-                        label: Text(
-                          _isProcessing
-                              ? 'Processing...'
-                              : 'Pay Now ₹${finalTotal.toStringAsFixed(2)}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
+                const SizedBox(width: 10),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryGreen,
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size(82, 48),
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    elevation: 1,
+                  ),
+                  onPressed: _isApplyingCoupon ? null : _applyCoupon,
+                  child: _isApplyingCoupon
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
                             color: Colors.white,
                           ),
+                        )
+                      : const Text('Apply', style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Enter a promotional coupon code to apply an instant discount.',
+              style: TextStyle(
+                fontSize: 12,
+                color: isDark ? Colors.white60 : AppColors.inkSoft,
+              ),
+            ),
+          ] else ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: AppColors.primaryGreen.withValues(alpha: isDark ? 0.18 : 0.08),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: AppColors.primaryGreen.withValues(alpha: 0.4),
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.check_circle_rounded, color: AppColors.primaryGreen, size: 22),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Coupon "${appliedCoupon.code}" Applied!',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? AppColors.greenLight : AppColors.greenDark,
+                            fontSize: 13.5,
+                          ),
                         ),
-                        onPressed: _isProcessing
-                            ? null
-                            : () => _handlePayment(
-                                  originalTotal: originalTotal,
-                                  finalTotal: finalTotal,
-                                  items: items,
-                                ),
+                        const SizedBox(height: 2),
+                        Text(
+                          appliedCoupon.discountPercent > 0
+                              ? 'Saved ₹${discountAmount.toStringAsFixed(2)} (${appliedCoupon.discountPercent.toInt()}%)'
+                              : 'Saved ₹${discountAmount.toStringAsFixed(2)}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: isDark ? Colors.white70 : AppColors.primaryGreen,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded, size: 20, color: Colors.redAccent),
+                    tooltip: 'Remove Coupon',
+                    onPressed: _removeCoupon,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPaymentGatewayShowcase(bool isDark, bool is100PercentFree) {
+    if (is100PercentFree) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.primaryGreen.withValues(alpha: isDark ? 0.2 : 0.08),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: AppColors.primaryGreen.withValues(alpha: 0.4),
+          ),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.celebration_rounded, color: AppColors.primaryGreen, size: 28),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '100% Free Enrollment Activated',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: isDark ? Colors.white : AppColors.greenDark,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'No payment needed! Click below to enroll instantly.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isDark ? Colors.white70 : AppColors.inkSoft,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E2E23) : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? const Color(0xFF2E4334) : const Color(0xFFE2EADF),
+          width: 1.2,
+        ),
+        boxShadow: isDark
+            ? []
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Payment Method',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                  color: isDark ? Colors.white : AppColors.inkDark,
+                ),
+              ),
+              Row(
+                children: [
+                  const Icon(Icons.lock_outline_rounded, size: 14, color: AppColors.primaryGreen),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Razorpay Gateway',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? AppColors.greenLight : AppColors.primaryGreen,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF14201A) : const Color(0xFFF9FCF7),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isDark ? const Color(0xFF2E4334) : const Color(0xFFE0EAD9),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryGreen.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.account_balance_wallet_rounded,
+                        color: AppColors.primaryGreen,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'All Major Payment Modes Supported',
+                            style: TextStyle(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.bold,
+                              color: isDark ? Colors.white : AppColors.inkDark,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Select your preferred mode inside the official Razorpay sheet:',
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              color: isDark ? Colors.white60 : AppColors.inkSoft,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _buildPaymentPill(Icons.qr_code_2_rounded, 'UPI (GPay, PhonePe, Paytm)', isDark),
+                    _buildPaymentPill(Icons.credit_card_rounded, 'Cards (Visa, Master, RuPay)', isDark),
+                    _buildPaymentPill(Icons.account_balance_rounded, 'Net Banking (50+ Banks)', isDark),
+                    _buildPaymentPill(Icons.wallet_rounded, 'Wallets', isDark),
+                  ],
+                ),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPaymentPill(IconData icon, String label, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E2E23) : Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isDark ? const Color(0xFF334A3A) : const Color(0xFFD6E2D0),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: AppColors.primaryGreen),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w600,
+              color: isDark ? Colors.white70 : AppColors.inkDark,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBillSummaryCard({
+    required double originalTotal,
+    required double discountAmount,
+    required double finalTotal,
+    required AppliedCoupon? appliedCoupon,
+    required bool isDark,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E2E23) : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? const Color(0xFF2E4334) : const Color(0xFFE2EADF),
+          width: 1.2,
+        ),
+        boxShadow: isDark
+            ? []
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Price Breakdown',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 15,
+              color: isDark ? Colors.white : AppColors.inkDark,
+            ),
+          ),
+          const SizedBox(height: 12),
+          _buildBillRow('Subtotal', '₹${originalTotal.toStringAsFixed(2)}', isDark: isDark),
+          if (discountAmount > 0) ...[
+            const SizedBox(height: 8),
+            _buildBillRow(
+              'Coupon Discount (${appliedCoupon?.code ?? "Applied"})',
+              '-₹${discountAmount.toStringAsFixed(2)}',
+              isDark: isDark,
+              isDiscount: true,
+            ),
+          ],
+          const SizedBox(height: 8),
+          _buildBillRow(
+            'Platform & Processing Fee',
+            'FREE',
+            isDark: isDark,
+            isFree: true,
+          ),
+          const SizedBox(height: 12),
+          const Divider(height: 1, thickness: 1, color: Color(0xFFECEFE8)),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Total Payable',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                  color: isDark ? Colors.white : AppColors.inkDark,
+                ),
+              ),
+              Text(
+                '₹${finalTotal.toStringAsFixed(2)}',
+                style: TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 18,
+                  color: isDark ? AppColors.greenLight : AppColors.primaryGreen,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBillRow(
+    String label,
+    String value, {
+    required bool isDark,
+    bool isDiscount = false,
+    bool isFree = false,
+  }) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            color: isDark ? Colors.white70 : AppColors.inkSoft,
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 13.5,
+            fontWeight: isDiscount || isFree ? FontWeight.bold : FontWeight.w600,
+            color: isDiscount || isFree
+                ? (isDark ? AppColors.greenLight : AppColors.primaryGreen)
+                : (isDark ? Colors.white : AppColors.inkDark),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildPaymentOption({
-    required String value,
-    required String title,
-    required String subtitle,
-    required IconData icon,
+  Widget _buildBottomStickyBar({
+    required double originalTotal,
+    required double finalTotal,
+    required double discountAmount,
+    required List<dynamic> items,
+    required bool is100PercentFree,
     required bool isDark,
   }) {
-    final isSelected = _selectedPaymentMethod == value;
-    return Card(
-      margin: const EdgeInsets.only(bottom: 10),
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: isSelected
-              ? (isDark ? AppColors.greenLight : AppColors.primaryGreen)
-              : (isDark ? const Color(0xFF334A3A) : AppColors.lineLight),
-          width: isSelected ? 2 : 1.2,
-        ),
-      ),
-      color: isSelected
-          ? (isDark
-              ? AppColors.primaryGreen.withValues(alpha: 0.15)
-              : AppColors.primaryGreen.withValues(alpha: 0.08))
-          : (isDark ? const Color(0xFF1E2E23) : Colors.white),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () {
-          setState(() => _selectedPaymentMethod = value);
-        },
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-          child: Row(
-            children: [
-              Icon(
-                icon,
-                color: isSelected
-                    ? (isDark ? AppColors.greenLight : AppColors.primaryGreen)
-                    : (isDark ? Colors.white70 : AppColors.inkSoft),
-                size: 22,
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                        color: isDark ? Colors.white : AppColors.inkDark,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      subtitle,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: isDark ? Colors.white70 : AppColors.inkSoft,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Icon(
-                isSelected
-                    ? Icons.radio_button_checked
-                    : Icons.radio_button_unchecked,
-                color: isSelected
-                    ? (isDark ? AppColors.greenLight : AppColors.primaryGreen)
-                    : (isDark ? Colors.white38 : AppColors.inkSoft),
-                size: 22,
-              ),
-            ],
+    final buttonLabel = _isProcessing
+        ? 'Processing...'
+        : (is100PercentFree ? 'Enroll for Free' : 'Pay ₹${finalTotal.toStringAsFixed(2)} Securely');
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1A271E) : Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
+            blurRadius: 16,
+            offset: const Offset(0, -4),
           ),
+        ],
+        border: Border(
+          top: BorderSide(
+            color: isDark ? const Color(0xFF2E4334) : const Color(0xFFE2EADF),
+            width: 1,
+          ),
+        ),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Row(
+          children: [
+            Expanded(
+              flex: 4,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Grand Total',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.white70 : AppColors.inkSoft,
+                    ),
+                  ),
+                  FittedBox(
+                    alignment: Alignment.centerLeft,
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      '₹${finalTotal.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        color: isDark ? AppColors.greenLight : AppColors.primaryGreen,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Flexible(
+              flex: 6,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryGreen,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 2,
+                ),
+                icon: _isProcessing
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : Icon(
+                        is100PercentFree ? Icons.check_circle_outline_rounded : Icons.lock_rounded,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                label: Text(
+                  buttonLabel,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                onPressed: _isProcessing
+                    ? null
+                    : () => _startPaymentFlow(
+                          originalTotal: originalTotal,
+                          finalTotal: finalTotal,
+                          discountAmount: discountAmount,
+                          items: items,
+                        ),
+              ),
+            ),
+          ],
         ),
       ),
     );
