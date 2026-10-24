@@ -64,6 +64,9 @@ class WeatherService {
 
   static final WeatherService instance = WeatherService();
 
+  /// Holds the last resolved real-time GPS or reverse-geocoded city name
+  static String? lastResolvedCity;
+
   final http.Client _httpClient;
 
   static const String _prefKeyWeather = 'cached_weather_v1';
@@ -133,6 +136,7 @@ class WeatherService {
 
     // 4. Fetch real-time weather from Open-Meteo API
     final weather = await _fetchOpenMeteoWeather(lat: lat, lon: lon, city: city);
+    lastResolvedCity = city;
 
     // Cache the latest successful result
     await cacheWeather(weather);
@@ -295,7 +299,9 @@ class WeatherService {
       final raw = prefs.getString(_prefKeyWeather);
       if (raw != null && raw.isNotEmpty) {
         final json = jsonDecode(raw) as Map<String, dynamic>;
-        return WeatherData.fromJson(json);
+        final data = WeatherData.fromJson(json);
+        lastResolvedCity = data.locationName;
+        return data;
       }
     } catch (_) {}
     return null;

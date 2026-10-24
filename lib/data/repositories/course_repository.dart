@@ -42,16 +42,16 @@ class CourseRepository {
 
   /// Fetch full course detail by slug or ID with resilient type parsing.
   Future<ApiCourseDetail> getCourseDetail(String slug) async {
+    final token = await tokenStorage?.getAccessToken();
+    final headers = {
+      'Accept': 'application/json',
+      if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+    };
+
+    // 1. Try public courses endpoint
     try {
-      final token = await tokenStorage?.getAccessToken();
       final uri = Uri.parse('$_baseUrl/courses/$slug/');
-      final response = await http.get(
-        uri,
-        headers: {
-          'Accept': 'application/json',
-          if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
-        },
-      );
+      final response = await http.get(uri, headers: headers);
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final decoded = jsonDecode(response.body);
         if (decoded is Map<String, dynamic>) {
@@ -62,10 +62,45 @@ class CourseRepository {
       debugPrint('⚠️ [CourseRepository] direct HTTP getCourseDetail error: $e');
     }
 
-    // Fallback to appApi
-    final response = await appApi.apiV1CoursesSlugGet(slug: slug);
-    final dynamic data = response.body;
-    return ApiCourseDetail.fromJson(data?.toJson() as Map<String, dynamic>);
+    // 2. If not found in public courses, try instructor courses endpoint (if course is draft / creator preview)
+    if (token != null && token.isNotEmpty) {
+      try {
+        final instructorUri = Uri.parse('$_baseUrl/instructor/courses/$slug/');
+        final instructorResponse = await http.get(instructorUri, headers: headers);
+        if (instructorResponse.statusCode >= 200 && instructorResponse.statusCode < 300) {
+          final decoded = jsonDecode(instructorResponse.body);
+          if (decoded is Map<String, dynamic>) {
+            return ApiCourseDetail.fromJson(decoded);
+          }
+        }
+      } catch (e) {
+        debugPrint('⚠️ [CourseRepository] instructor getCourseDetail error: $e');
+      }
+    }
+
+    // 3. Fallback to Chopper appApi safely without unsafe type casting
+    try {
+      final response = await appApi.apiV1CoursesSlugGet(slug: slug);
+      if (response.isSuccessful && response.body != null) {
+        final dynamic data = response.body;
+        Map<String, dynamic>? map;
+        if (data is Map<String, dynamic>) {
+          map = data;
+        } else {
+          try {
+            final json = data.toJson();
+            if (json is Map<String, dynamic>) map = json;
+          } catch (_) {}
+        }
+        if (map != null) {
+          return ApiCourseDetail.fromJson(map);
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ [CourseRepository] appApi fallback error: $e');
+    }
+
+    throw Exception('This course has not been approved or published yet.');
   }
 
   /// Fetch student's enrollment list.

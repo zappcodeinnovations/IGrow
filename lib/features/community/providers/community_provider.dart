@@ -1,12 +1,40 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/services/weather_service.dart';
 import '../../../data/repositories/community_repository.dart';
 import '../../../data/models/api_models/community_models.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../home_farmer/providers/weather_provider.dart';
 
 final communityRepositoryProvider = Provider<CommunityRepository>((ref) {
   final tokenStorage = ref.watch(tokenStorageProvider);
   return CommunityRepository(tokenStorage: tokenStorage);
+});
+
+// ─── Student Discovery Tabs Provider ──────────────────────────────
+final studentCommunityTabProvider = StateProvider<int>((ref) => 0); // 0: Recommended, 1: All, 2: My Communities
+
+// ─── Suggested Hubs Provider (Location-Aware) ──────────────────────
+final suggestedHubsProvider = FutureProvider<List<CommunityHub>>((ref) async {
+  final repo = ref.watch(communityRepositoryProvider);
+  final district = ref.watch(selectedDistrictProvider);
+  return repo.getSuggestedHubs(district: district);
+});
+
+// ─── Instructor Owned Hub Provider (State A vs State B) ────────────
+final myInstructorHubProvider = FutureProvider<CommunityHub?>((ref) async {
+  final authUser = ref.watch(authProvider).user;
+  if (authUser == null || (!authUser.isInstructor && !authUser.isAdmin)) {
+    return null;
+  }
+  final repo = ref.watch(communityRepositoryProvider);
+  final allHubs = await repo.getHubs();
+  final myHub = allHubs.where((h) {
+    if (h.instructorId.isNotEmpty && h.instructorId == authUser.id) return true;
+    if (h.instructorName.trim().toLowerCase() == authUser.fullName.trim().toLowerCase()) return true;
+    return false;
+  }).toList();
+  return myHub.isNotEmpty ? myHub.first : null;
 });
 
 // ─── Location Filter Providers ─────────────────────────────────────
@@ -22,12 +50,26 @@ final selectedStateProvider = StateProvider<String>((ref) {
 });
 
 final selectedDistrictProvider = StateProvider<String>((ref) {
-  // Read once on initial creation so background auth polling timers never reset user's manual filter
+  // 1. Profile saved district
   final authState = ref.read(authProvider);
   final userDistrict = authState.user?.locationDistrict;
   if (userDistrict != null && userDistrict.trim().isNotEmpty) {
     return userDistrict.trim();
   }
+
+  // 2. Real-time GPS location resolved on dashboard by weatherProvider
+  final liveCity = ref.read(weatherProvider).valueOrNull?.locationName;
+  if (liveCity != null && liveCity.trim().isNotEmpty) {
+    return liveCity.trim();
+  }
+
+  // 3. Last resolved GPS city cached by WeatherService
+  final cachedCity = WeatherService.lastResolvedCity;
+  if (cachedCity != null && cachedCity.trim().isNotEmpty) {
+    return cachedCity.trim();
+  }
+
+  // 4. Default fallback
   return 'Pune';
 });
 
@@ -39,16 +81,17 @@ final communityHubsProvider = StateNotifierProvider<CommunityHubsNotifier, Async
   final repo = ref.watch(communityRepositoryProvider);
   final state = ref.watch(selectedStateProvider);
   final district = ref.watch(selectedDistrictProvider);
-  return CommunityHubsNotifier(repo, stateName: state, districtName: district);
+  return CommunityHubsNotifier(repo, ref: ref, stateName: state, districtName: district);
 });
 
 class CommunityHubsNotifier extends StateNotifier<AsyncValue<List<CommunityHub>>> {
-  CommunityHubsNotifier(this._repo, {required this.stateName, required this.districtName})
+  CommunityHubsNotifier(this._repo, {this.ref, required this.stateName, required this.districtName})
       : super(const AsyncValue.loading()) {
     fetchHubs();
   }
 
   final CommunityRepository _repo;
+  final Ref? ref;
   final String stateName;
   final String districtName;
 
@@ -66,53 +109,63 @@ class CommunityHubsNotifier extends StateNotifier<AsyncValue<List<CommunityHub>>
     }
   }
 
-  Future<bool> toggleJoin(String hubId) async {
+  Future<bool> toggleJoin(String hubId, {bool? currentIsMember, int? currentMemberCount}) async {
     final currentList = state.value;
-    if (currentList == null) return false;
+    final index = currentList != null ? currentList.indexWhere((h) => h.id == hubId) : -1;
+    final oldHub = index != -1 ? currentList![index] : null;
 
-    final index = currentList.indexWhere((h) => h.id == hubId);
-    if (index == -1) return false;
+    final isCurrentlyMember = oldHub?.isMember ?? currentIsMember ?? false;
+    final isJoining = !isCurrentlyMember;
+    final oldCount = oldHub?.memberCount ?? currentMemberCount ?? 0;
+    final newCount = isJoining ? oldCount + 1 : (oldCount > 0 ? oldCount - 1 : 0);
 
-    final oldHub = currentList[index];
-    final isJoining = !oldHub.isMember;
-    final newCount = isJoining ? oldHub.memberCount + 1 : (oldHub.memberCount > 0 ? oldHub.memberCount - 1 : 0);
-
-    // Optimistically update
-    final updatedHub = oldHub.copyWith(
-      isMember: isJoining,
-      memberCount: newCount,
-    );
-    final updatedList = List<CommunityHub>.from(currentList);
-    updatedList[index] = updatedHub;
-    state = AsyncValue.data(updatedList);
+    // Optimistically update communityHubsProvider if present
+    if (index != -1 && currentList != null) {
+      final updatedHub = oldHub!.copyWith(
+        isMember: isJoining,
+        memberCount: newCount,
+      );
+      final updatedList = List<CommunityHub>.from(currentList);
+      updatedList[index] = updatedHub;
+      state = AsyncValue.data(updatedList);
+    }
 
     try {
       final res = await _repo.toggleJoinHub(hubId);
-      final serverIsMember = res['is_member'] as bool?;
-      final serverCount = res['member_count'] as int?;
+      final rawIsMember = res['is_member'] ?? res['is_joined'] ?? res['joined'];
+      final serverIsMember = rawIsMember is bool
+          ? rawIsMember
+          : (rawIsMember == 1 || rawIsMember == 'true' || (rawIsMember == null ? isJoining : false));
+      final rawCount = res['member_count'] ?? res['members_count'] ?? res['total_members'];
+      final serverCount = (rawCount is int) ? rawCount : int.tryParse(rawCount?.toString() ?? '');
 
-      if (serverIsMember != null || serverCount != null) {
-        final verifiedHub = updatedHub.copyWith(
-          isMember: serverIsMember ?? isJoining,
-          memberCount: serverCount ?? newCount,
-        );
-        final verifiedList = List<CommunityHub>.from(state.value ?? updatedList);
+      if (index != -1 && state.value != null) {
+        final verifiedList = List<CommunityHub>.from(state.value!);
         final vIdx = verifiedList.indexWhere((h) => h.id == hubId);
         if (vIdx != -1) {
-          verifiedList[vIdx] = verifiedHub;
+          verifiedList[vIdx] = verifiedList[vIdx].copyWith(
+            isMember: serverIsMember,
+            memberCount: serverCount ?? newCount,
+          );
           state = AsyncValue.data(verifiedList);
         }
       }
-      return true;
+
+      // Invalidate dependent providers to synchronize all screens (Recommended, Details, etc.)
+      ref?.invalidate(suggestedHubsProvider);
+      ref?.invalidate(hubDetailsProvider(hubId));
+      return serverIsMember;
     } catch (e) {
-      // Revert on failure
-      final revertedList = List<CommunityHub>.from(state.value ?? currentList);
-      final rIdx = revertedList.indexWhere((h) => h.id == hubId);
-      if (rIdx != -1) {
-        revertedList[rIdx] = oldHub;
-        state = AsyncValue.data(revertedList);
+      // Revert if was present in currentList
+      if (index != -1 && oldHub != null && state.value != null) {
+        final revertedList = List<CommunityHub>.from(state.value!);
+        final rIdx = revertedList.indexWhere((h) => h.id == hubId);
+        if (rIdx != -1) {
+          revertedList[rIdx] = oldHub;
+          state = AsyncValue.data(revertedList);
+        }
       }
-      return false;
+      rethrow;
     }
   }
 }
@@ -138,6 +191,11 @@ final communityPostsProvider = StateNotifierProvider<CommunityPostsNotifier, Asy
   final selectedTopic = ref.watch(selectedTopicIdProvider);
   final selectedHub = ref.watch(selectedHubProvider);
   return CommunityPostsNotifier(repo, ref, topicId: selectedTopic, hubId: selectedHub?.id);
+});
+
+final communityHubPostsProvider = StateNotifierProvider.family<CommunityPostsNotifier, AsyncValue<List<CommunityPost>>, String>((ref, hubId) {
+  final repo = ref.watch(communityRepositoryProvider);
+  return CommunityPostsNotifier(repo, ref, hubId: hubId);
 });
 
 class CommunityPostsNotifier extends StateNotifier<AsyncValue<List<CommunityPost>>> {
@@ -253,49 +311,86 @@ class CommunityPostsNotifier extends StateNotifier<AsyncValue<List<CommunityPost
     state = AsyncValue.data(updatedList);
   }
 
-  Future<bool> toggleLike(String postId) async {
-    if (state.value == null) return false;
+  final Set<String> _viewedPosts = {};
 
-    // Optimistically update the UI
+  Future<void> recordView(String postId) async {
+    if (_viewedPosts.contains(postId)) return;
+    _viewedPosts.add(postId);
+
+    if (state.value != null) {
+      final oldPosts = state.value!;
+      final index = oldPosts.indexWhere((p) => p.id == postId);
+      if (index != -1) {
+        final post = oldPosts[index];
+        final updatedPost = post.copyWith(viewsCount: post.viewsCount + 1);
+        final updatedList = List<CommunityPost>.from(oldPosts);
+        updatedList[index] = updatedPost;
+        state = AsyncValue.data(updatedList);
+      }
+    }
+
+    try {
+      final res = await _repo.incrementPostView(postId);
+      final serverViews = res['views_count'] as int?;
+      if (serverViews != null && state.value != null) {
+        final currentPosts = state.value!;
+        final idx = currentPosts.indexWhere((p) => p.id == postId);
+        if (idx != -1) {
+          final p = currentPosts[idx];
+          final updated = p.copyWith(viewsCount: serverViews);
+          final updatedList = List<CommunityPost>.from(currentPosts);
+          updatedList[idx] = updated;
+          state = AsyncValue.data(updatedList);
+        }
+      }
+    } catch (_) {}
+  }
+
+  Future<bool> reactToPost(String postId, String reaction) async {
+    if (state.value == null) return false;
     final oldPosts = state.value!;
     final index = oldPosts.indexWhere((p) => p.id == postId);
     if (index == -1) return false;
 
     final post = oldPosts[index];
-    final isLikedNow = !post.isLikedByMe;
-    final newLikesCount = isLikedNow ? post.likesCount + 1 : (post.likesCount > 0 ? post.likesCount - 1 : 0);
+    final isUnreacting = post.userReaction == reaction;
+    final newUserReaction = isUnreacting ? null : reaction;
+    int newCount = post.reactionsCount;
+    if (isUnreacting) {
+      newCount = (newCount > 0) ? newCount - 1 : 0;
+    } else if (post.userReaction == null) {
+      newCount += 1;
+    }
 
     final newPost = post.copyWith(
-      isLikedByMe: isLikedNow,
-      likesCount: newLikesCount,
+      userReaction: newUserReaction,
+      reactionsCount: newCount,
     );
 
     final newPosts = List<CommunityPost>.from(oldPosts);
     newPosts[index] = newPost;
     state = AsyncValue.data(newPosts);
 
-    // Call API
     try {
-      final response = await _repo.likePost(postId);
-      final serverLikesCount = (response['upvotes_count'] ?? response['likes_count']) as int?;
-      final serverIsLiked = (response['is_liked'] ?? response['is_liked_by_me']) as bool?;
+      final response = await _repo.reactToPost(postId, reaction);
+      final serverCount = (response['reactions_count'] ?? response['likes_count']) as int?;
+      final serverReaction = response['user_reaction']?.toString();
 
-      if (serverLikesCount != null && serverIsLiked != null) {
+      if (serverCount != null || serverReaction != null) {
         final verifiedPost = newPost.copyWith(
-          likesCount: serverLikesCount,
-          isLikedByMe: serverIsLiked,
+          reactionsCount: serverCount ?? newCount,
+          userReaction: serverReaction ?? newUserReaction,
         );
-        final verifiedPosts = List<CommunityPost>.from(state.value!);
-        final vIndex = verifiedPosts.indexWhere((p) => p.id == postId);
-        if (vIndex != -1) {
-          verifiedPosts[vIndex] = verifiedPost;
+        final verifiedPosts = List<CommunityPost>.from(state.value ?? newPosts);
+        final vIdx = verifiedPosts.indexWhere((p) => p.id == postId);
+        if (vIdx != -1) {
+          verifiedPosts[vIdx] = verifiedPost;
           state = AsyncValue.data(verifiedPosts);
         }
       }
       return true;
     } catch (e) {
-      // Revert on failure
-      final revertedPosts = List<CommunityPost>.from(state.value!);
+      final revertedPosts = List<CommunityPost>.from(state.value ?? oldPosts);
       final rIndex = revertedPosts.indexWhere((p) => p.id == postId);
       if (rIndex != -1) {
         revertedPosts[rIndex] = post;
@@ -303,6 +398,10 @@ class CommunityPostsNotifier extends StateNotifier<AsyncValue<List<CommunityPost
       }
       return false;
     }
+  }
+
+  Future<bool> toggleLike(String postId) async {
+    return reactToPost(postId, 'LIKE');
   }
 }
 

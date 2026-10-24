@@ -45,6 +45,34 @@ class CommunityRepository {
 
   // ─── Community Hubs ──────────────────────────────────────────────
 
+  Future<List<CommunityHub>> getSuggestedHubs({String? district}) async {
+    try {
+      final queryParams = <String, String>{};
+      if (district != null && district.trim().isNotEmpty) {
+        queryParams['district'] = district.trim();
+      }
+      final uri = Uri.parse('$baseUrl/hubs/suggestions/').replace(
+        queryParameters: queryParams.isNotEmpty ? queryParams : null,
+      );
+      final response = await http.get(uri, headers: await _getHeaders());
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body);
+        final results = data is List
+            ? data
+            : (data is Map && data.containsKey('results')
+                ? data['results'] as List? ?? []
+                : (data is Map && data.containsKey('data') ? data['data'] as List? ?? [] : []));
+
+        return results
+            .whereType<Map<String, dynamic>>()
+            .map((json) => CommunityHub.fromJson(json))
+            .toList();
+      }
+    } catch (_) {}
+    // Fallback to district-based hubs query if suggestions endpoint is unavailable
+    return getHubs(district: district);
+  }
+
   Future<List<CommunityHub>> getHubs({
     String? state,
     String? district,
@@ -107,24 +135,48 @@ class CommunityRepository {
     required String state,
     required List<String> districts,
     required List<String> farmingTopics,
-    required String rules,
+    String rules = '',
+    String? logoPath,
   }) async {
     final uri = Uri.parse('$baseUrl/hubs/');
-    final response = await http.post(
-      uri,
-      headers: await _getHeaders(),
-      body: jsonEncode({
-        'name': name,
-        'description': description,
-        'state': state,
-        'districts': districts,
-        'farming_topics': farmingTopics,
-        'rules': rules,
-      }),
-    );
-    _handleError(response);
-    final data = jsonDecode(response.body);
-    return CommunityHub.fromJson(data as Map<String, dynamic>);
+    final token = await tokenStorage.getAccessToken();
+
+    if (logoPath != null && logoPath.isNotEmpty) {
+      final request = http.MultipartRequest('POST', uri);
+      if (token != null) {
+        request.headers['Authorization'] = 'Bearer $token';
+      }
+      request.headers['Accept'] = 'application/json';
+      request.fields['name'] = name;
+      request.fields['description'] = description;
+      request.fields['state'] = state;
+      request.fields['districts'] = jsonEncode(districts);
+      request.fields['farming_topics'] = jsonEncode(farmingTopics);
+      request.fields['rules'] = rules;
+      request.files.add(await http.MultipartFile.fromPath('logo', logoPath));
+
+      final streamed = await request.send();
+      final response = await http.Response.fromStream(streamed);
+      _handleError(response);
+      final data = jsonDecode(response.body);
+      return CommunityHub.fromJson(data as Map<String, dynamic>);
+    } else {
+      final response = await http.post(
+        uri,
+        headers: await _getHeaders(),
+        body: jsonEncode({
+          'name': name,
+          'description': description,
+          'state': state,
+          'districts': districts,
+          'farming_topics': farmingTopics,
+          'rules': rules,
+        }),
+      );
+      _handleError(response);
+      final data = jsonDecode(response.body);
+      return CommunityHub.fromJson(data as Map<String, dynamic>);
+    }
   }
 
   // ─── Topics ──────────────────────────────────────────────────────
@@ -198,7 +250,10 @@ class CommunityRepository {
       if (hubId != null && hubId.isNotEmpty) request.fields['hub_id'] = hubId;
       if (postType != null && postType.isNotEmpty) request.fields['post_type'] = postType;
       if (topicId != null && topicId.isNotEmpty) request.fields['topic_id'] = topicId;
-      if (courseId != null && courseId.isNotEmpty) request.fields['course_id'] = courseId;
+      if (courseId != null && courseId.isNotEmpty) {
+        request.fields['course_id'] = courseId;
+        request.fields['course'] = courseId;
+      }
       if (eventDate != null) request.fields['event_date'] = eventDate.toUtc().toIso8601String();
       if (venueAddress != null && venueAddress.isNotEmpty) request.fields['venue_address'] = venueAddress;
       if (link != null && link.isNotEmpty) request.fields['link'] = link;
@@ -217,7 +272,10 @@ class CommunityRepository {
         if (hubId != null && hubId.isNotEmpty) 'hub_id': hubId,
         if (postType != null && postType.isNotEmpty) 'post_type': postType,
         if (topicId != null && topicId.isNotEmpty) 'topic_id': topicId,
-        if (courseId != null && courseId.isNotEmpty) 'course_id': courseId,
+        if (courseId != null && courseId.isNotEmpty) ...{
+          'course_id': courseId,
+          'course': courseId,
+        },
         if (eventDate != null) 'event_date': eventDate.toUtc().toIso8601String(),
         if (venueAddress != null && venueAddress.isNotEmpty) 'venue_address': venueAddress,
         if (link != null && link.isNotEmpty) 'link': link,
@@ -234,11 +292,41 @@ class CommunityRepository {
     }
   }
 
-  Future<Map<String, dynamic>> likePost(String postId) async {
-    final uri = Uri.parse('$baseUrl/posts/$postId/like/');
-    final response = await http.post(uri, headers: await _getHeaders());
+  Future<Map<String, dynamic>> reactToPost(String postId, String reaction) async {
+    final uri = Uri.parse('$baseUrl/posts/$postId/react/');
+    final response = await http.post(
+      uri,
+      headers: await _getHeaders(),
+      body: jsonEncode({'reaction': reaction}),
+    );
     _handleError(response);
     return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> incrementPostView(String postId) async {
+    try {
+      final uri = Uri.parse('$baseUrl/posts/$postId/view/');
+      final response = await http.post(
+        uri,
+        headers: await _getHeaders(),
+        body: jsonEncode({}),
+      );
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      }
+    } catch (_) {}
+    return {};
+  }
+
+  Future<Map<String, dynamic>> likePost(String postId) async {
+    try {
+      return await reactToPost(postId, 'LIKE');
+    } catch (_) {
+      final uri = Uri.parse('$baseUrl/posts/$postId/like/');
+      final response = await http.post(uri, headers: await _getHeaders());
+      _handleError(response);
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    }
   }
 
   Future<void> deletePost(String postId) async {

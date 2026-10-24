@@ -171,6 +171,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       
       // ─── Player & Details ─────────────────────────────────────────────
       GoRoute(
+        name: RouteNames.courseDetails,
         path: '/farmer/course/:id',
         builder: (context, state) {
           final id = state.pathParameters['id']!;
@@ -186,6 +187,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/farmer/courses/:id',
+        redirect: (context, state) => '/farmer/course/${state.pathParameters['id']}',
+      ),
+      GoRoute(
+        path: '/instructor/course/:id',
         redirect: (context, state) => '/farmer/course/${state.pathParameters['id']}',
       ),
       GoRoute(
@@ -316,6 +321,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const CreatePostScreen(),
       ),
       GoRoute(
+        name: RouteNames.hubDetails,
         path: RouteNames.hubDetails,
         builder: (context, state) {
           final id = state.pathParameters['id'] ?? '';

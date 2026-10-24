@@ -1,6 +1,8 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_text_field.dart';
@@ -20,11 +22,23 @@ class _CreateHubScreenState extends ConsumerState<CreateHubScreen> {
   final _stateController = TextEditingController(text: 'Maharashtra');
   final _districtInputController = TextEditingController();
   final _topicInputController = TextEditingController();
-  final _rulesController = TextEditingController();
+  final _rulesController = TextEditingController(
+    text: '1. Respect all farmers and experts.\n2. No spam or commercial ads.\n3. Share verified agricultural knowledge only.',
+  );
 
-  final List<String> _districts = ['Pune'];
-  final List<String> _topics = ['Precision Farming', 'Organic Cultivation'];
+  final List<String> _districts = ['Nagpur'];
+  final List<String> _topics = ['Cotton', 'Citrus', 'Organic Farming'];
+  File? _selectedLogo;
+  final _picker = ImagePicker();
   bool _isSubmitting = false;
+
+  static const _commonCrops = [
+    'Cotton', 'Citrus', 'Soybean', 'Organic Farming', 'Dairy', 'Sugarcane', 'Wheat', 'Vegetables', 'Pulses'
+  ];
+
+  static const _commonDistricts = [
+    'Nagpur', 'Wardha', 'Amravati', 'Pune', 'Nashik', 'Chhatrapati Sambhajinagar', 'Kolhapur', 'Solapur', 'Akola'
+  ];
 
   static const _states = [
     'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
@@ -184,6 +198,15 @@ class _CreateHubScreenState extends ConsumerState<CreateHubScreen> {
     }
   }
 
+  Future<void> _pickLogo(ImageSource source) async {
+    try {
+      final picked = await _picker.pickImage(source: source, maxWidth: 1000, imageQuality: 85);
+      if (picked != null) {
+        setState(() => _selectedLogo = File(picked.path));
+      }
+    } catch (_) {}
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     if (_districts.isEmpty) {
@@ -203,12 +226,14 @@ class _CreateHubScreenState extends ConsumerState<CreateHubScreen> {
         districts: _districts,
         farmingTopics: _topics,
         rules: _rulesController.text.trim(),
+        logoPath: _selectedLogo?.path,
       );
 
       if (mounted) {
+        ref.invalidate(myInstructorHubProvider);
         ref.invalidate(communityHubsProvider);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Community Hub created successfully!')),
+          const SnackBar(content: Text('Community Hub launched successfully!')),
         );
         context.pop();
       }
@@ -226,6 +251,8 @@ class _CreateHubScreenState extends ConsumerState<CreateHubScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardBorder = isDark ? AppColors.lineDark : const Color(0xFFE2EBE0);
+    final cardBg = isDark ? AppColors.cardDark : AppColors.white;
 
     return Scaffold(
       backgroundColor: isDark ? AppColors.bgDark : const Color(0xFFF7FAF6),
@@ -240,29 +267,131 @@ class _CreateHubScreenState extends ConsumerState<CreateHubScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Logo / Banner Card
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: isDark ? AppColors.cardDark : AppColors.white,
+                  color: cardBg,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFE2EBE0), width: 1.2),
+                  border: Border.all(color: cardBorder, width: 1.2),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Hub Information', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    Text(
+                      'Community Logo / Banner',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: isDark ? Colors.white : AppColors.inkDark,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Add an attractive logo or regional farming photo for your community hub.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDark ? Colors.white70 : AppColors.inkSoft,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    if (_selectedLogo != null)
+                      Stack(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(14),
+                            child: Image.file(
+                              _selectedLogo!,
+                              height: 140,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                          Positioned(
+                            top: 8,
+                            right: 8,
+                            child: GestureDetector(
+                              onTap: () => setState(() => _selectedLogo = null),
+                              child: Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: const BoxDecoration(
+                                  color: Colors.black87,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.close, color: Colors.white, size: 18),
+                              ),
+                            ),
+                          ),
+                        ],
+                      )
+                    else
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: isDark ? Colors.white : AppColors.inkDark,
+                                side: BorderSide(color: cardBorder),
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              onPressed: () => _pickLogo(ImageSource.gallery),
+                              icon: const Icon(Icons.photo_library_outlined, size: 18, color: AppColors.primaryGreen),
+                              label: const Text('From Gallery'),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: isDark ? Colors.white : AppColors.inkDark,
+                                side: BorderSide(color: cardBorder),
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              onPressed: () => _pickLogo(ImageSource.camera),
+                              icon: const Icon(Icons.camera_alt_outlined, size: 18, color: AppColors.primaryGreen),
+                              label: const Text('Take Photo'),
+                            ),
+                          ),
+                        ],
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Hub Information Card
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: cardBg,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: cardBorder, width: 1.2),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Hub Information',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: isDark ? Colors.white : AppColors.inkDark,
+                      ),
+                    ),
                     const SizedBox(height: 14),
                     AppTextField(
                       controller: _nameController,
-                      label: 'Hub Name',
-                      hint: 'e.g. Pune AgriTech Innovators',
-                      validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter hub name' : null,
+                      label: 'Community Name',
+                      hint: 'e.g. Nagpur Citrus & Cotton Farmers',
+                      validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter community name' : null,
                     ),
                     const SizedBox(height: 14),
                     AppTextField(
                       controller: _descController,
                       label: 'Description',
-                      hint: 'Describe the purpose and goals of this hub...',
+                      hint: 'Local agricultural network for Vidarbha & regional farmers...',
                       maxLines: 3,
                       validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter description' : null,
                     ),
@@ -289,22 +418,67 @@ class _CreateHubScreenState extends ConsumerState<CreateHubScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: isDark ? AppColors.cardDark : AppColors.white,
+                  color: cardBg,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFE2EBE0), width: 1.2),
+                  border: Border.all(color: cardBorder, width: 1.2),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Target Districts', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                    const SizedBox(height: 10),
+                    Text(
+                      'Target Districts',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: isDark ? Colors.white : AppColors.inkDark,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Quick Add Districts:',
+                      style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : AppColors.inkSoft),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: _commonDistricts.map((d) {
+                        final isSelected = _districts.contains(d);
+                        return FilterChip(
+                          label: Text(d),
+                          labelStyle: TextStyle(
+                            fontSize: 12,
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                            color: isSelected
+                                ? (isDark ? Colors.white : AppColors.greenDark)
+                                : (isDark ? Colors.white70 : AppColors.inkDark),
+                          ),
+                          selected: isSelected,
+                          onSelected: (selected) {
+                            setState(() {
+                              if (selected) {
+                                if (!_districts.contains(d)) _districts.add(d);
+                              } else {
+                                _districts.remove(d);
+                              }
+                            });
+                          },
+                          backgroundColor: isDark ? Colors.black26 : const Color(0xFFF0FDF4),
+                          selectedColor: isDark ? const Color(0xFF263B2B) : const Color(0xFFDCFCE7),
+                          side: BorderSide(
+                            color: isSelected ? AppColors.primaryGreen : cardBorder,
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 12),
                     Row(
                       children: [
                         Expanded(
                           child: AppTextField(
                             controller: _districtInputController,
-                            label: 'District',
-                            hint: 'e.g. Satara, Nashik',
+                            label: 'Other District',
+                            hint: 'Type custom district...',
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -315,20 +489,29 @@ class _CreateHubScreenState extends ConsumerState<CreateHubScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: _districts.map((d) {
-                        return Chip(
-                          label: Text(d, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
-                          deleteIcon: const Icon(Icons.close, size: 16),
-                          onDeleted: () => setState(() => _districts.remove(d)),
-                          backgroundColor: const Color(0xFFEAF5E7),
-                          side: const BorderSide(color: Color(0xFFCCE4C5)),
-                        );
-                      }).toList(),
-                    ),
+                    if (_districts.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: _districts.map((d) {
+                          return Chip(
+                            label: Text(
+                              d,
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 12,
+                                color: isDark ? Colors.white : AppColors.inkDark,
+                              ),
+                            ),
+                            deleteIcon: Icon(Icons.close, size: 16, color: isDark ? Colors.white70 : AppColors.inkSoft),
+                            onDeleted: () => setState(() => _districts.remove(d)),
+                            backgroundColor: isDark ? const Color(0xFF243629) : const Color(0xFFEAF5E7),
+                            side: BorderSide(color: isDark ? AppColors.lineDark : const Color(0xFFCCE4C5)),
+                          );
+                        }).toList(),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -338,22 +521,67 @@ class _CreateHubScreenState extends ConsumerState<CreateHubScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: isDark ? AppColors.cardDark : AppColors.white,
+                  color: cardBg,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFE2EBE0), width: 1.2),
+                  border: Border.all(color: cardBorder, width: 1.2),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Farming Topics', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                    const SizedBox(height: 10),
+                    Text(
+                      'Farming Topics / Crops',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: isDark ? Colors.white : AppColors.inkDark,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Tap to add key topics & crops:',
+                      style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : AppColors.inkSoft),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: _commonCrops.map((c) {
+                        final isSelected = _topics.contains(c);
+                        return FilterChip(
+                          label: Text(c),
+                          labelStyle: TextStyle(
+                            fontSize: 12,
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                            color: isSelected
+                                ? (isDark ? Colors.white : AppColors.greenDark)
+                                : (isDark ? Colors.white70 : AppColors.inkDark),
+                          ),
+                          selected: isSelected,
+                          onSelected: (selected) {
+                            setState(() {
+                              if (selected) {
+                                if (!_topics.contains(c)) _topics.add(c);
+                              } else {
+                                _topics.remove(c);
+                              }
+                            });
+                          },
+                          backgroundColor: isDark ? Colors.black26 : const Color(0xFFEFF6FF),
+                          selectedColor: isDark ? const Color(0xFF1D324F) : const Color(0xFFDBEAFE),
+                          side: BorderSide(
+                            color: isSelected ? const Color(0xFF2563EB) : cardBorder,
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 12),
                     Row(
                       children: [
                         Expanded(
                           child: AppTextField(
                             controller: _topicInputController,
-                            label: 'Topic',
-                            hint: 'e.g. Drip Irrigation, Sugarcane',
+                            label: 'Other Topic / Crop',
+                            hint: 'e.g. Soil Science, Floriculture',
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -364,20 +592,29 @@ class _CreateHubScreenState extends ConsumerState<CreateHubScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: _topics.map((t) {
-                        return Chip(
-                          label: Text(t, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
-                          deleteIcon: const Icon(Icons.close, size: 16),
-                          onDeleted: () => setState(() => _topics.remove(t)),
-                          backgroundColor: const Color(0xFFE3F2FD),
-                          side: const BorderSide(color: Color(0xFFBBDEFB)),
-                        );
-                      }).toList(),
-                    ),
+                    if (_topics.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: _topics.map((t) {
+                          return Chip(
+                            label: Text(
+                              t,
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 12,
+                                color: isDark ? Colors.white : AppColors.inkDark,
+                              ),
+                            ),
+                            deleteIcon: Icon(Icons.close, size: 16, color: isDark ? Colors.white70 : AppColors.inkSoft),
+                            onDeleted: () => setState(() => _topics.remove(t)),
+                            backgroundColor: isDark ? const Color(0xFF1A3047) : const Color(0xFFE3F2FD),
+                            side: BorderSide(color: isDark ? AppColors.lineDark : const Color(0xFFBBDEFB)),
+                          );
+                        }).toList(),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -387,19 +624,26 @@ class _CreateHubScreenState extends ConsumerState<CreateHubScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: isDark ? AppColors.cardDark : AppColors.white,
+                  color: cardBg,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFE2EBE0), width: 1.2),
+                  border: Border.all(color: cardBorder, width: 1.2),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Community Rules', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    Text(
+                      'Community Rules / Guidelines',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: isDark ? Colors.white : AppColors.inkDark,
+                      ),
+                    ),
                     const SizedBox(height: 10),
                     AppTextField(
                       controller: _rulesController,
-                      label: 'Rules & Guidelines',
-                      hint: '1. Keep discussions respectful.\n2. Share verified practices only.',
+                      label: 'Guidelines for learners',
+                      hint: '1. Respect all farmers.\n2. No spam.\n3. Agricultural queries only.',
                       maxLines: 4,
                       validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter community rules' : null,
                     ),

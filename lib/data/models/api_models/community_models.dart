@@ -114,9 +114,9 @@ class CommunityHub {
     required this.instructorName,
     this.instructorAvatar,
     required this.state,
-    required this.districts,
-    required this.farmingTopics,
-    required this.rules,
+    this.districts = const [],
+    this.farmingTopics = const [],
+    this.rules = '',
     required this.memberCount,
     required this.isMember,
     required this.createdAt,
@@ -130,21 +130,39 @@ class CommunityHub {
       return [];
     }
 
+      String instId = '';
+      String instName = 'Agricultural Expert';
+      String? instAvatar;
+      if (json['instructor'] is Map<String, dynamic>) {
+        final iMap = json['instructor'] as Map<String, dynamic>;
+        instId = (iMap['id'] ?? '').toString();
+        instName = (iMap['full_name'] ?? iMap['name'] ?? 'Agricultural Expert').toString();
+        instAvatar = (iMap['profile_image'] ?? iMap['avatar'])?.toString();
+      } else {
+        instId = (json['instructor'] ?? json['instructor_id'] ?? '').toString();
+        instName = (json['instructor_name'] ?? 'Agricultural Expert').toString();
+        instAvatar = json['instructor_avatar']?.toString();
+      }
+
     return CommunityHub(
       id: (json['id'] ?? '').toString(),
       name: (json['name'] ?? '').toString(),
       description: (json['description'] ?? '').toString(),
       logo: json['logo']?.toString(),
       coverBanner: json['cover_banner']?.toString(),
-      instructorId: (json['instructor'] ?? json['instructor_id'] ?? '').toString(),
-      instructorName: (json['instructor_name'] ?? 'Agricultural Expert').toString(),
-      instructorAvatar: json['instructor_avatar']?.toString(),
+      instructorId: instId,
+      instructorName: instName,
+      instructorAvatar: instAvatar,
       state: (json['state'] ?? '').toString(),
       districts: parseList(json['districts']),
       farmingTopics: parseList(json['farming_topics']),
       rules: (json['rules'] ?? '').toString(),
-      memberCount: json['member_count'] as int? ?? 0,
-      isMember: json['is_member'] as bool? ?? false,
+      memberCount: (json['member_count'] ?? json['members_count'] ?? json['total_members']) is int
+          ? (json['member_count'] ?? json['members_count'] ?? json['total_members']) as int
+          : int.tryParse((json['member_count'] ?? json['members_count'] ?? json['total_members'])?.toString() ?? '') ?? 0,
+      isMember: (json['is_member'] ?? json['is_joined'] ?? json['joined'] ?? json['has_joined']) == true ||
+          (json['is_member'] ?? json['is_joined'] ?? json['joined'] ?? json['has_joined']) == 1 ||
+          (json['is_member'] ?? json['is_joined'] ?? json['joined'] ?? json['has_joined']) == 'true',
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'].toString()) ?? DateTime.now()
           : DateTime.now(),
@@ -188,28 +206,65 @@ class CommunityHub {
   }
 }
 
+class CommunityCourseEmbed {
+  final String id;
+  final String title;
+  final String? price;
+  final String? thumbnail;
+  final String? status;
+
+  CommunityCourseEmbed({
+    required this.id,
+    required this.title,
+    this.price,
+    this.thumbnail,
+    this.status,
+  });
+
+  bool get isApproved =>
+      status == null ||
+      status!.toUpperCase() == 'APPROVED' ||
+      status!.toUpperCase() == 'PUBLISHED';
+
+  factory CommunityCourseEmbed.fromJson(Map<String, dynamic> json) {
+    return CommunityCourseEmbed(
+      id: (json['id'] ?? json['course_id'] ?? json['uuid'] ?? '').toString(),
+      title: (json['title'] ?? json['name'] ?? json['course_name'] ?? '').toString(),
+      price: json['price']?.toString(),
+      thumbnail: (json['thumbnail'] ?? json['image'] ?? json['cover_image'] ?? json['thumbnail_url'])?.toString(),
+      status: (json['status'] ?? json['course_status'])?.toString(),
+    );
+  }
+}
+
 class CommunityPost {
   final String id;
   final CommunityAuthor author;
   final CommunityTopic? topic;
   final String? hubId;
   final String? hubName;
-  final String postType; // 'GENERAL' | 'OFFLINE_SEMINAR' | 'ONLINE_MEETING' | 'COURSE_LAUNCH' | 'ADVISORY'
+  final String postType; // 'POST' | 'ANNOUNCEMENT' | 'WEBINAR' | 'SEMINAR' (or legacy 'GENERAL' etc.)
   final String title;
   final String content;
   final String? image;
   final String? courseId;
   final String? courseName;
+  final CommunityCourseEmbed? courseEmbed;
   final DateTime? eventDate;
   final String? venueAddress;
   final String? link;
   final bool isPinned;
   final String tag;
-  final int likesCount;
+  final int viewsCount;
+  final int reactionsCount;
+  final String? userReaction; // 'LIKE' | 'LOVE' | 'CLAP' | 'IDEA' | 'FARM'
   final int commentsCount;
-  final bool isLikedByMe;
   final DateTime createdAt;
   final DateTime? updatedAt;
+
+  // Backward-compatible getters
+  int get likesCount => reactionsCount;
+  bool get isLikedByMe => userReaction != null;
 
   CommunityPost({
     required this.id,
@@ -217,23 +272,27 @@ class CommunityPost {
     this.topic,
     this.hubId,
     this.hubName,
-    this.postType = 'GENERAL',
+    this.postType = 'POST',
     this.title = '',
     required this.content,
     this.image,
     this.courseId,
     this.courseName,
+    this.courseEmbed,
     this.eventDate,
     this.venueAddress,
     this.link,
     this.isPinned = false,
     required this.tag,
-    required this.likesCount,
+    this.viewsCount = 0,
+    int? reactionsCount,
+    this.userReaction,
+    int? likesCount,
+    bool? isLikedByMe,
     required this.commentsCount,
-    required this.isLikedByMe,
     required this.createdAt,
     this.updatedAt,
-  });
+  })  : reactionsCount = reactionsCount ?? likesCount ?? 0;
 
   factory CommunityPost.fromJson(Map<String, dynamic> json) {
     final authorMap = json['author'] is Map<String, dynamic>
@@ -253,11 +312,49 @@ class CommunityPost {
     }
 
     final rawTag = parsedTopic?.name ?? json['tag'] as String? ?? '';
-    final rawPostType = (json['post_type'] ?? 'GENERAL').toString().toUpperCase();
+    var rawPostType = (json['post_type'] ?? 'POST').toString().toUpperCase();
+    if (rawPostType == 'GENERAL') rawPostType = 'POST';
+    if (rawPostType == 'ONLINE_MEETING') rawPostType = 'WEBINAR';
+    if (rawPostType == 'OFFLINE_SEMINAR') rawPostType = 'SEMINAR';
+    if (rawPostType == 'COURSE_LAUNCH') rawPostType = 'ANNOUNCEMENT';
 
     DateTime? parsedEventDate;
     if (json['event_date'] != null) {
       parsedEventDate = DateTime.tryParse(json['event_date'].toString())?.toLocal();
+    }
+
+    CommunityCourseEmbed? parsedCourse;
+    if (json['course'] is Map<String, dynamic>) {
+      parsedCourse = CommunityCourseEmbed.fromJson(json['course'] as Map<String, dynamic>);
+    }
+
+    String? resolvedCourseId;
+    if (parsedCourse != null && parsedCourse.id.isNotEmpty) {
+      resolvedCourseId = parsedCourse.id;
+    } else if (json['course'] != null && json['course'] is! Map) {
+      resolvedCourseId = json['course'].toString();
+    } else if (json['course_id'] != null) {
+      resolvedCourseId = json['course_id'].toString();
+    }
+
+    String? resolvedCourseName;
+    if (parsedCourse != null && parsedCourse.title.isNotEmpty) {
+      resolvedCourseName = parsedCourse.title;
+    } else if (json['course_name'] != null) {
+      resolvedCourseName = json['course_name'].toString();
+    }
+
+    final parsedReactionsCount = json['reactions_count'] as int? ??
+        json['upvotes_count'] as int? ??
+        json['likes_count'] as int? ??
+        0;
+
+    String? parsedUserReaction = json['user_reaction']?.toString();
+    if (parsedUserReaction == null || parsedUserReaction.isEmpty) {
+      final isLiked = json['is_liked'] as bool? ?? json['is_liked_by_me'] as bool? ?? false;
+      if (isLiked) {
+        parsedUserReaction = 'LIKE';
+      }
     }
 
     return CommunityPost(
@@ -266,20 +363,22 @@ class CommunityPost {
       topic: parsedTopic,
       hubId: json['hub']?.toString() ?? json['hub_id']?.toString(),
       hubName: json['hub_name']?.toString(),
-      postType: rawPostType.isNotEmpty ? rawPostType : 'GENERAL',
+      postType: rawPostType.isNotEmpty ? rawPostType : 'POST',
       title: json['title'] as String? ?? '',
       content: json['content'] as String? ?? '',
       image: json['image'] as String?,
-      courseId: json['course']?.toString() ?? json['course_id']?.toString(),
-      courseName: json['course_name']?.toString(),
+      courseId: resolvedCourseId,
+      courseName: resolvedCourseName,
+      courseEmbed: parsedCourse,
       eventDate: parsedEventDate,
       venueAddress: json['venue_address']?.toString(),
       link: json['link']?.toString(),
       isPinned: json['is_pinned'] as bool? ?? false,
       tag: rawTag,
-      likesCount: json['upvotes_count'] as int? ?? json['likes_count'] as int? ?? 0,
+      viewsCount: json['views_count'] as int? ?? 0,
+      reactionsCount: parsedReactionsCount,
+      userReaction: parsedUserReaction,
       commentsCount: json['comments_count'] as int? ?? 0,
-      isLikedByMe: json['is_liked'] as bool? ?? json['is_liked_by_me'] as bool? ?? false,
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'].toString())?.toLocal() ?? DateTime.now()
           : DateTime.now(),
@@ -314,14 +413,18 @@ class CommunityPost {
     String? image,
     String? courseId,
     String? courseName,
+    CommunityCourseEmbed? courseEmbed,
     DateTime? eventDate,
     String? venueAddress,
     String? link,
     bool? isPinned,
     String? tag,
+    int? viewsCount,
+    int? reactionsCount,
+    String? userReaction,
     int? likesCount,
-    int? commentsCount,
     bool? isLikedByMe,
+    int? commentsCount,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -337,14 +440,16 @@ class CommunityPost {
       image: image ?? this.image,
       courseId: courseId ?? this.courseId,
       courseName: courseName ?? this.courseName,
+      courseEmbed: courseEmbed ?? this.courseEmbed,
       eventDate: eventDate ?? this.eventDate,
       venueAddress: venueAddress ?? this.venueAddress,
       link: link ?? this.link,
       isPinned: isPinned ?? this.isPinned,
       tag: tag ?? this.tag,
-      likesCount: likesCount ?? this.likesCount,
+      viewsCount: viewsCount ?? this.viewsCount,
+      reactionsCount: reactionsCount ?? likesCount ?? this.reactionsCount,
+      userReaction: userReaction ?? (isLikedByMe != null ? (isLikedByMe ? 'LIKE' : null) : this.userReaction),
       commentsCount: commentsCount ?? this.commentsCount,
-      isLikedByMe: isLikedByMe ?? this.isLikedByMe,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

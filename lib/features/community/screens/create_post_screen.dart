@@ -25,7 +25,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
   final _courseNameController = TextEditingController();
   final _picker = ImagePicker();
 
-  String _selectedPostType = 'GENERAL';
+  String _selectedPostType = 'POST';
   String? _selectedHubId;
   String? _selectedTopicId;
   DateTime? _selectedEventDate;
@@ -34,11 +34,10 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
   bool _isSubmitting = false;
 
   final List<Map<String, dynamic>> _postTypes = [
-    {'type': 'GENERAL', 'label': 'General', 'icon': Icons.chat_bubble_outline_rounded, 'color': Color(0xFF475569)},
-    {'type': 'OFFLINE_SEMINAR', 'label': 'Seminar', 'icon': Icons.event_rounded, 'color': Color(0xFF2E7D32)},
-    {'type': 'ONLINE_MEETING', 'label': 'Webinar', 'icon': Icons.videocam_rounded, 'color': Color(0xFF1565C0)},
-    {'type': 'COURSE_LAUNCH', 'label': 'Course', 'icon': Icons.school_rounded, 'color': Color(0xFF7B1FA2)},
-    {'type': 'ADVISORY', 'label': 'Advisory', 'icon': Icons.warning_amber_rounded, 'color': Color(0xFFE65100)},
+    {'type': 'POST', 'label': 'General Post', 'icon': Icons.edit_note_rounded, 'color': Color(0xFF16A34A)},
+    {'type': 'ANNOUNCEMENT', 'label': 'Announcement', 'icon': Icons.campaign_rounded, 'color': Color(0xFF9333EA)},
+    {'type': 'WEBINAR', 'label': 'Webinar', 'icon': Icons.videocam_rounded, 'color': Color(0xFF2563EB)},
+    {'type': 'SEMINAR', 'label': 'Seminar', 'icon': Icons.groups_rounded, 'color': Color(0xFFD97706)},
   ];
 
   @override

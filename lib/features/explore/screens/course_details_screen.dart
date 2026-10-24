@@ -804,25 +804,76 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
             ShimmerContainer(width: double.infinity, height: 120, borderRadius: 12),
           ],
         ),
-        error: (err, _) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.error_outline, size: 48, color: AppColors.error),
-                const SizedBox(height: 12),
-                Text('Failed to load course details: $err', textAlign: TextAlign.center),
-                const SizedBox(height: 16),
-                FilledButton(
-                  style: FilledButton.styleFrom(backgroundColor: AppColors.primaryGreen),
-                  onPressed: () => ref.invalidate(courseDetailProvider(widget.courseId)),
-                  child: const Text('Retry'),
-                ),
-              ],
+        error: (err, _) {
+          final cleanErr = err.toString().replaceFirst('Exception: ', '');
+          final isNotApproved = cleanErr.toLowerCase().contains('not approved') ||
+              cleanErr.toLowerCase().contains('not published') ||
+              cleanErr.toLowerCase().contains('not found');
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(28),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: isNotApproved
+                          ? Colors.amber.withValues(alpha: 0.12)
+                          : AppColors.error.withValues(alpha: 0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      isNotApproved ? Icons.hourglass_empty_rounded : Icons.error_outline_rounded,
+                      size: 48,
+                      color: isNotApproved ? Colors.amber[800] : AppColors.error,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    isNotApproved ? 'Course Not Available Yet' : 'Unable to Load Course',
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    isNotApproved
+                        ? 'This course has been announced by the instructor but is currently under draft review or awaiting admin approval.'
+                        : cleanErr,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 13, color: AppColors.inkSoft, height: 1.4),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        onPressed: () => context.pop(),
+                        icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                        label: const Text('Go Back'),
+                      ),
+                      const SizedBox(width: 12),
+                      FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.primaryGreen,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        onPressed: () => ref.invalidate(courseDetailProvider(widget.courseId)),
+                        icon: const Icon(Icons.refresh_rounded, size: 18),
+                        label: const Text('Retry'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        ),
+          );
+        },
       ),
       bottomNavigationBar: courseAsync.maybeWhen(
         data: (course) {
