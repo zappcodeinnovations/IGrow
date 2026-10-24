@@ -101,26 +101,26 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
                               onPressed: () => context.push(RouteNames.createHub),
                             ),
                             const SizedBox(width: 8),
-                          ],
-                          GestureDetector(
-                            onTap: () => context.push(RouteNames.createPost),
-                            child: Container(
-                              width: 44,
-                              height: 44,
-                              decoration: BoxDecoration(
-                                color: AppColors.primaryGreen,
-                                borderRadius: BorderRadius.circular(14),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: AppColors.primaryGreen.withValues(alpha: 0.35),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
+                            GestureDetector(
+                              onTap: () => context.push(RouteNames.createPost),
+                              child: Container(
+                                width: 44,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  color: AppColors.primaryGreen,
+                                  borderRadius: BorderRadius.circular(14),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: AppColors.primaryGreen.withValues(alpha: 0.35),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: const Icon(Icons.add_rounded, color: Colors.white, size: 26),
                               ),
-                              child: const Icon(Icons.add_rounded, color: Colors.white, size: 26),
                             ),
-                          ),
+                          ],
                         ],
                       ),
                     ],
@@ -371,10 +371,12 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
                                 ),
                               ),
                               const SizedBox(height: 4),
-                              const Text(
-                                'Tap the + button to share updates with the community!',
+                              Text(
+                                isInstructor
+                                    ? 'Tap the + button to share updates with the community!'
+                                    : 'Check back later for new updates from agricultural experts!',
                                 textAlign: TextAlign.center,
-                                style: TextStyle(color: AppColors.inkSoft, fontSize: 13),
+                                style: const TextStyle(color: AppColors.inkSoft, fontSize: 13),
                               ),
                             ],
                           ),
@@ -864,7 +866,9 @@ class _PostCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final currentUser = ref.watch(authProvider).user;
-    final isAuthor = (currentUser != null && currentUser.id == post.author.id) ||
+    final isAuthor = (currentUser != null &&
+            (currentUser.id == post.author.id ||
+                (post.author.id.isEmpty && post.author.fullName == currentUser.fullName))) ||
         currentUser?.isAdmin == true ||
         currentUser?.isInstructor == true;
 
@@ -1191,7 +1195,7 @@ class _SeminarBanner extends StatelessWidget {
                 const Icon(Icons.calendar_month_rounded, size: 16, color: Color(0xFF2E7D32)),
                 const SizedBox(width: 6),
                 Text(
-                  '${post.eventDate!.day}/${post.eventDate!.month}/${post.eventDate!.year} • ${post.eventDate!.hour}:${post.eventDate!.minute.toString().padLeft(2, '0')}',
+                  post.formattedEventDateTime ?? '${post.eventDate!.day}/${post.eventDate!.month}/${post.eventDate!.year}',
                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: Color(0xFF2E7D32)),
                 ),
               ],
@@ -1726,18 +1730,64 @@ class _CommentItem extends StatelessWidget {
 }
 
 Future<void> _sharePost(BuildContext context, CommunityPost post) async {
-  final title = post.title.isNotEmpty ? post.title : 'Agricultural Update';
-  final text = '$title\n\n${post.content}\n\nShared via iAgrow App';
+  final buffer = StringBuffer();
+
+  if (post.postType == 'OFFLINE_SEMINAR') {
+    buffer.writeln('🌾 [iAgrow Seminar Invitation]');
+  } else if (post.postType == 'ONLINE_MEETING') {
+    buffer.writeln('🎥 [iAgrow Online Meeting / Webinar]');
+  } else if (post.postType == 'COURSE_LAUNCH') {
+    buffer.writeln('🎓 [New Course Launch - iAgrow]');
+  } else if (post.postType == 'ADVISORY') {
+    buffer.writeln('⚠️ [Agri Advisory Alert - iAgrow]');
+  }
+
+  if (post.title.trim().isNotEmpty) {
+    buffer.writeln(post.title.trim());
+    buffer.writeln();
+  }
+
+  if (post.content.trim().isNotEmpty) {
+    buffer.writeln(post.content.trim());
+    buffer.writeln();
+  }
+
+  final formattedDate = post.formattedEventDateTime;
+  if (formattedDate != null) {
+    buffer.writeln('📅 Date & Time: $formattedDate');
+  }
+
+  if (post.venueAddress != null && post.venueAddress!.trim().isNotEmpty) {
+    buffer.writeln('📍 Location / Venue: ${post.venueAddress!.trim()}');
+  }
+
+  if (post.link != null && post.link!.trim().isNotEmpty) {
+    if (post.postType == 'OFFLINE_SEMINAR') {
+      buffer.writeln('🗺️ Directions / Map: ${post.link!.trim()}');
+    } else {
+      buffer.writeln('🔗 Link: ${post.link!.trim()}');
+    }
+  }
+
+  if (post.courseName != null && post.courseName!.trim().isNotEmpty) {
+    buffer.writeln('📚 Course: ${post.courseName!.trim()}');
+  }
+
+  buffer.writeln();
+  buffer.writeln('Shared via iAgrow App 🌱');
+
+  final text = buffer.toString().trim();
+  final subject = post.title.isNotEmpty ? post.title : 'Agricultural Update';
 
   try {
     await SharePlus.instance.share(
-      ShareParams(text: text, subject: title),
+      ShareParams(text: text, subject: subject),
     );
   } catch (_) {
     await Clipboard.setData(ClipboardData(text: text));
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Copied post to clipboard!')),
+        const SnackBar(content: Text('Copied post details to clipboard!')),
       );
     }
   }

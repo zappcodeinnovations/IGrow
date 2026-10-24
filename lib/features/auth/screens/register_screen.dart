@@ -3,11 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_layout.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_text_field.dart';
 import '../../../core/router/route_names.dart';
+import '../../../core/utils/app_toast.dart';
 import '../../../data/models/user_role.dart';
 import '../providers/auth_provider.dart';
 
@@ -68,13 +68,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     if (mounted) {
       final authState = ref.read(authProvider);
       if (authState.status != AuthStatus.error) {
-        final messenger = ScaffoldMessenger.of(context);
-        messenger.clearSnackBars();
-        messenger.showSnackBar(
-          const SnackBar(
-            content: Text('Registration successful! Please login.'),
-            duration: Duration(milliseconds: 1800),
-          ),
+        AppToast.show(
+          context,
+          'Registration successful! Please login.',
+          isError: false,
         );
         context.go('${RouteNames.login}?role=${widget.selectedRole ?? 'farmer'}');
       }
@@ -85,16 +82,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   Widget build(BuildContext context) {
     ref.listen<AuthState>(authProvider, (previous, next) {
       if (next.status == AuthStatus.error && next.error != null) {
-        ScaffoldMessenger.of(context)
-          ..clearSnackBars()
-          ..showSnackBar(
-            SnackBar(
-              content: Text(next.error!),
-              backgroundColor: AppColors.error,
-              behavior: SnackBarBehavior.floating,
-              duration: const Duration(milliseconds: 1800),
-            ),
-          );
+        AppToast.show(context, next.error!, isError: true);
         ref.read(authProvider.notifier).clearError();
       }
     });

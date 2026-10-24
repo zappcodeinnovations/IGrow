@@ -42,7 +42,9 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
   }
 
   Future<void> _loadQuizHistory() async {
-    final history = await QuizService.getQuizHistory();
+    final user = ref.read(authProvider).user;
+    final userId = user?.id ?? user?.email;
+    final history = await QuizService.getQuizHistory(userId: userId);
     if (mounted) {
       setState(() {
         _quizHistory.clear();

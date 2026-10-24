@@ -829,7 +829,7 @@ class _SeminarBanner extends StatelessWidget {
                 const Icon(Icons.calendar_month_rounded, size: 16, color: Color(0xFF2E7D32)),
                 const SizedBox(width: 6),
                 Text(
-                  '${post.eventDate!.day}/${post.eventDate!.month}/${post.eventDate!.year} • ${post.eventDate!.hour}:${post.eventDate!.minute.toString().padLeft(2, '0')}',
+                  post.formattedEventDateTime ?? '${post.eventDate!.day}/${post.eventDate!.month}/${post.eventDate!.year}',
                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: Color(0xFF2E7D32)),
                 ),
               ],

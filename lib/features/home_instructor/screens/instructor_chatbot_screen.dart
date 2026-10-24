@@ -19,9 +19,9 @@ class _InstructorChatbotScreenState extends State<InstructorChatbotScreen> {
 
   // Localized Greetings
   final Map<String, String> _greetings = {
-    'English': 'Hi! I am your IGrow Assistant. How can I help you upload your courses and ebooks today?',
-    'हिन्दी': 'नमस्ते! मैं आपका IGrow सहायक हूँ। मैं आज आपके कोर्स और ई-बुक अपलोड करने में कैसे मदद कर सकता हूँ?',
-    'मराठी': 'नमस्कार! मी तुमचा IGrow सहाय्यक आहे. आज तुमचे कोर्सेस आणि ई-बुक्स अपलोड करण्यासाठी मी तुम्हाला कशी मदत करू शकेन?',
+    'English': 'Hi! I am your iAgrow Assistant. How can I help you upload your courses and ebooks today?',
+    'हिन्दी': 'नमस्ते! मैं आपका iAgrow सहायक हूँ। मैं आज आपके कोर्स और ई-बुक अपलोड करने में कैसे मदद कर सकता हूँ?',
+    'मराठी': 'नमस्कार! मी तुमचा iAgrow सहाय्यक आहे. आज तुमचे कोर्सेस आणि ई-बुक्स अपलोड करण्यासाठी मी तुम्हाला कशी मदत करू शकेन?',
   };
 
   // Localized FAQs
@@ -49,7 +49,7 @@ class _InstructorChatbotScreenState extends State<InstructorChatbotScreen> {
       },
       {
         'q': 'What topics should I teach?',
-        'a': 'Since IGrow focuses on Krushi Siksha (Agriculture Education), students love topics like Organic Farming, modern irrigation techniques, crop disease management, and dairy farming business strategies.',
+        'a': 'Since iAgrow focuses on Krushi Siksha (Agriculture Education), students love topics like Organic Farming, modern irrigation techniques, crop disease management, and dairy farming business strategies.',
       },
       {
         'q': 'Can I offer free courses?',
@@ -57,7 +57,7 @@ class _InstructorChatbotScreenState extends State<InstructorChatbotScreen> {
       },
       {
         'q': 'How do I answer student doubts?',
-        'a': 'You can interact with students in the IGrow Community tab! Students can ask questions on your course, and you can reply to them directly to build trust and increase ratings.',
+        'a': 'You can interact with students in the iAgrow Community tab! Students can ask questions on your course, and you can reply to them directly to build trust and increase ratings.',
       },
       {
         'q': 'How to update my Instructor Profile?',
@@ -87,7 +87,7 @@ class _InstructorChatbotScreenState extends State<InstructorChatbotScreen> {
       },
       {
         'q': 'मुझे कौन से विषय पढ़ाने चाहिए?',
-        'a': 'चूंकि IGrow कृषि शिक्षा पर केंद्रित है, छात्र जैविक खेती, आधुनिक सिंचाई तकनीक, फसल रोग प्रबंधन और डेयरी फार्मिंग व्यवसाय रणनीतियों जैसे विषयों को पसंद करते हैं।',
+        'a': 'चूंकि iAgrow कृषि शिक्षा पर केंद्रित है, छात्र जैविक खेती, आधुनिक सिंचाई तकनीक, फसल रोग प्रबंधन और डेयरी फार्मिंग व्यवसाय रणनीतियों जैसे विषयों को पसंद करते हैं।',
       },
       {
         'q': 'क्या मैं मुफ्त कोर्स दे सकता हूँ?',
@@ -95,7 +95,7 @@ class _InstructorChatbotScreenState extends State<InstructorChatbotScreen> {
       },
       {
         'q': 'मैं छात्रों के संदेहों का उत्तर कैसे दूँ?',
-        'a': 'आप IGrow कम्युनिटी टैब में छात्रों के साथ बातचीत कर सकते हैं! छात्र आपके कोर्स पर सवाल पूछ सकते हैं, और आप विश्वास बनाने और रेटिंग बढ़ाने के लिए उन्हें सीधे जवाब दे सकते हैं।',
+        'a': 'आप iAgrow कम्युनिटी टैब में छात्रों के साथ बातचीत कर सकते हैं! छात्र आपके कोर्स पर सवाल पूछ सकते हैं, और आप विश्वास बनाने और रेटिंग बढ़ाने के लिए उन्हें सीधे जवाब दे सकते हैं।',
       },
       {
         'q': 'अपनी प्रशिक्षक प्रोफ़ाइल कैसे अपडेट करें?',
@@ -125,7 +125,7 @@ class _InstructorChatbotScreenState extends State<InstructorChatbotScreen> {
       },
       {
         'q': 'मी कोणते विषय शिकवावे?',
-        'a': 'IGrow कृषी शिक्षणावर लक्ष केंद्रित करत असल्याने, विद्यार्थ्यांना सेंद्रिय शेती, आधुनिक सिंचन तंत्र, पीक रोग व्यवस्थापन आणि दुग्धव्यवसाय धोरणे यासारखे विषय आवडतात.',
+        'a': 'iAgrow कृषी शिक्षणावर लक्ष केंद्रित करत असल्याने, विद्यार्थ्यांना सेंद्रिय शेती, आधुनिक सिंचन तंत्र, पीक रोग व्यवस्थापन आणि दुग्धव्यवसाय धोरणे यासारखे विषय आवडतात.',
       },
       {
         'q': 'मी मोफत कोर्सेस देऊ शकतो का?',
@@ -133,7 +133,7 @@ class _InstructorChatbotScreenState extends State<InstructorChatbotScreen> {
       },
       {
         'q': 'विद्यार्थ्यांच्या शंकांचे निरसन कसे करू?',
-        'a': 'तुम्ही IGrow कम्युनिटी टॅबमध्ये विद्यार्थ्यांशी संवाद साधू शकता! विद्यार्थी तुमच्या कोर्सवर प्रश्न विचारू शकतात आणि विश्वास निर्माण करण्यासाठी आणि रेटिंग वाढवण्यासाठी तुम्ही त्यांना थेट उत्तर देऊ शकता.',
+        'a': 'तुम्ही iAgrow कम्युनिटी टॅबमध्ये विद्यार्थ्यांशी संवाद साधू शकता! विद्यार्थी तुमच्या कोर्सवर प्रश्न विचारू शकतात आणि विश्वास निर्माण करण्यासाठी आणि रेटिंग वाढवण्यासाठी तुम्ही त्यांना थेट उत्तर देऊ शकता.',
       },
       {
         'q': 'माझी इन्स्ट्रक्टर प्रोफाइल कशी अपडेट करावी?',

@@ -108,16 +108,30 @@ class CourseRepository {
   Future<List<ApiCourseReview>> getCourseReviews(String slugOrId) async {
     debugPrint('⭐ [CourseRepository] getCourseReviews: slug=$slugOrId');
     try {
+      final token = await tokenStorage?.getAccessToken();
+      final headers = {
+        'Accept': 'application/json',
+        if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+      };
+
       final response = await http.get(
         Uri.parse('$_baseUrl/courses/$slugOrId/reviews/'),
-        headers: {'Accept': 'application/json'},
+        headers: headers,
       );
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final decoded = jsonDecode(response.body);
+        List? list;
         if (decoded is List) {
-          final reviews = decoded
-              .map((e) => ApiCourseReview.fromJson(e as Map<String, dynamic>))
+          list = decoded;
+        } else if (decoded is Map && decoded['results'] is List) {
+          list = decoded['results'] as List;
+        }
+
+        if (list != null) {
+          final reviews = list
+              .whereType<Map<String, dynamic>>()
+              .map(ApiCourseReview.fromJson)
               .toList();
           debugPrint('✅ [CourseRepository] getCourseReviews: loaded ${reviews.length} reviews');
           return reviews;

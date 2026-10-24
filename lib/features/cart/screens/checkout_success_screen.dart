@@ -210,7 +210,7 @@ class _CheckoutSuccessScreenState extends ConsumerState<CheckoutSuccessScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final user = ref.watch(authProvider).user;
     final studentName = user?.fullName ?? 'Valued Student';
-    final studentEmail = user?.email ?? 'student@igrow.com';
+    final studentEmail = user?.email ?? 'student@iagrow.com';
 
     final ordersAsync = ref.watch(ordersProvider);
     final orderData = _orderResult['order'] is Map
@@ -646,22 +646,28 @@ class _CheckoutSuccessScreenState extends ConsumerState<CheckoutSuccessScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'IGROW EDUCATION',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primaryGreen,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: const [
+                        Text(
+                          'iAGROW EDUCATION',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primaryGreen,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                      Text(
-                        'Kisan Ki Digital Pathshala',
-                        style: TextStyle(fontSize: 11, color: AppColors.inkSoft),
-                      ),
-                    ],
+                        Text(
+                          'Kisan Ki Digital Pathshala',
+                          style: TextStyle(fontSize: 11, color: AppColors.inkSoft),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
                   ),
                   Container(
                     padding: const EdgeInsets.symmetric(
@@ -854,7 +860,7 @@ class _CheckoutSuccessScreenState extends ConsumerState<CheckoutSuccessScreen> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Text(
-                    'PAID & VERIFIED • IGROW',
+                    'PAID & VERIFIED • iAGROW',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       color: AppColors.primaryGreen,
@@ -895,7 +901,7 @@ class _CheckoutSuccessScreenState extends ConsumerState<CheckoutSuccessScreen> {
 
                           final safeShortId = orderId.length >= 8 ? orderId.substring(0, 8) : orderId;
                           await Printing.layoutPdf(
-                            name: 'IGrow_Receipt_$safeShortId',
+                            name: 'iAgrow_Receipt_$safeShortId',
                             onLayout: (PdfPageFormat format) async => pdfBytes,
                           );
                         } catch (e) {
@@ -937,7 +943,7 @@ class _CheckoutSuccessScreenState extends ConsumerState<CheckoutSuccessScreen> {
                           final safeShortId = orderId.length >= 8 ? orderId.substring(0, 8) : orderId;
                           await Printing.sharePdf(
                             bytes: pdfBytes,
-                            filename: 'IGrow_Receipt_$safeShortId.pdf',
+                            filename: 'iAgrow_Receipt_$safeShortId.pdf',
                           );
                         } catch (e) {
                           debugPrint('Error sharing receipt PDF: $e');
@@ -987,7 +993,7 @@ class _CheckoutSuccessScreenState extends ConsumerState<CheckoutSuccessScreen> {
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
                       pw.Text(
-                        'IGROW EDUCATION',
+                        'iAGROW EDUCATION',
                         style: pw.TextStyle(
                           fontSize: 18,
                           fontWeight: pw.FontWeight.bold,
@@ -1118,7 +1124,7 @@ class _CheckoutSuccessScreenState extends ConsumerState<CheckoutSuccessScreen> {
                     borderRadius: pw.BorderRadius.circular(8),
                   ),
                   child: pw.Text(
-                    'PAID & VERIFIED  •  IGROW',
+                    'PAID & VERIFIED  •  iAGROW',
                     style: pw.TextStyle(
                       fontWeight: pw.FontWeight.bold,
                       color: PdfColors.green800,

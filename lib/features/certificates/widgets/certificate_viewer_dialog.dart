@@ -369,7 +369,7 @@ class CertificateViewerDialog extends StatelessWidget {
                                       borderRadius: pw.BorderRadius.circular(6),
                                     ),
                                     child: pw.Text(
-                                      'VERIFIED  •  IGROW',
+                                      'VERIFIED  •  iAGROW',
                                       style: pw.TextStyle(
                                         fontSize: 10,
                                         fontWeight: pw.FontWeight.bold,
@@ -389,7 +389,7 @@ class CertificateViewerDialog extends StatelessWidget {
                   // --- Save PDF to documents directory ---
                   final pdfBytes = await pdf.save();
                   final dir = await getApplicationDocumentsDirectory();
-                  final fileName = 'IGrow_Certificate_$certId.pdf';
+                  final fileName = 'iAgrow_Certificate_$certId.pdf';
                   final file = File('${dir.path}/$fileName');
                   await file.writeAsBytes(pdfBytes);
 

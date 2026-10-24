@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/network/api_exception.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_text_field.dart';
 import '../providers/community_provider.dart';
@@ -141,7 +142,21 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
     }
   }
 
+  String? _validateUrl(String? val) {
+    if (val == null || val.trim().isEmpty) return null;
+    final text = val.trim();
+    final uri = Uri.tryParse(text);
+    final hasValidScheme = uri != null && (uri.scheme == 'http' || uri.scheme == 'https');
+    final hasHost = uri != null && uri.host.isNotEmpty && uri.host.contains('.');
+    if (!hasValidScheme || !hasHost) {
+      return 'Please enter a valid URL (e.g. https://maps.google.com/...)';
+    }
+    return null;
+  }
+
   Future<void> _submitPost() async {
+    FocusScope.of(context).unfocus();
+
     if (!_formKey.currentState!.validate()) {
       return;
     }
@@ -176,22 +191,59 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
           );
 
       if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Post published successfully!'),
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                SizedBox(width: 10),
+                Text('Post published successfully!', style: TextStyle(fontWeight: FontWeight.bold)),
+              ],
+            ),
             backgroundColor: AppColors.primaryGreen,
-            duration: Duration(milliseconds: 2000),
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.only(left: 16, right: 16, bottom: 20),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            duration: const Duration(milliseconds: 2000),
           ),
         );
         Navigator.pop(context, true);
       }
     } catch (e) {
       if (mounted) {
+        String message = e.toString();
+        if (e is ApiException) {
+          message = e.message;
+        }
+        message = message
+            .replaceAll(RegExp(r'^Exception:\s*'), '')
+            .replaceAll(RegExp(r'^ApiException\(\d+\):\s*'), '')
+            .trim();
+        if (message.isEmpty) {
+          message = 'Failed to publish post. Please check your inputs and try again.';
+        }
+
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to publish post: $e'),
+            content: Row(
+              children: [
+                const Icon(Icons.error_outline_rounded, color: Colors.white, size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    message,
+                    style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ],
+            ),
             backgroundColor: AppColors.error,
-            duration: const Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.only(left: 16, right: 16, bottom: 20),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            duration: const Duration(seconds: 4),
           ),
         );
       }
@@ -441,6 +493,8 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                           AppTextField(
                             controller: _linkController,
                             hint: 'Google Maps Location Link (URL)',
+                            keyboardType: TextInputType.url,
+                            validator: _validateUrl,
                           ),
                         ],
                         if (_selectedPostType == 'ONLINE_MEETING') ...[
@@ -448,6 +502,8 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                           AppTextField(
                             controller: _linkController,
                             hint: 'Meeting Link (Zoom / Google Meet URL)',
+                            keyboardType: TextInputType.url,
+                            validator: _validateUrl,
                           ),
                         ],
                       ],

@@ -89,6 +89,24 @@ class ProfileScreen extends ConsumerWidget {
                         ],
                       ),
                     ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      height: 36,
+                      child: OutlinedButton.icon(
+                        onPressed: () => context.push('/edit-profile'),
+                        icon: const Icon(Icons.edit_outlined, size: 16),
+                        label: const Text(
+                          'Edit Profile',
+                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.primaryGreen,
+                          side: const BorderSide(color: AppColors.primaryGreen, width: 1.2),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -98,7 +116,9 @@ class ProfileScreen extends ConsumerWidget {
               if (!isFarmer) ...[
                 ref.watch(instructorStatsProvider).when(
                   data: (stats) {
-                    final earnings = stats['total_earnings'] ?? '0';
+                    final rawEarnings = stats['total_earnings'];
+                    final earningsDouble = double.tryParse(rawEarnings?.toString() ?? '0') ?? 0.0;
+                    final earnings = earningsDouble.toStringAsFixed(2);
                     return AppCard(
                       onTap: () => context.push(RouteNames.instructorAnalytics),
                       padding: EdgeInsets.zero,

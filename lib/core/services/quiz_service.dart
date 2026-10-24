@@ -61,16 +61,25 @@ class QuizService {
     }
   }
 
+  static String _resolveHistoryKey(String? userId) {
+    if (userId != null && userId.trim().isNotEmpty) {
+      return '${_historyKey}_${userId.trim()}';
+    }
+    return _historyKey;
+  }
+
   /// Record a completed quiz in the student's quiz history.
   static Future<void> recordQuizCompletion({
     required String topic,
     required String scoreText,
     required int score,
     required int total,
+    String? userId,
   }) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final history = await getQuizHistory();
+      final key = _resolveHistoryKey(userId);
+      final history = await getQuizHistory(userId: userId);
       final now = DateTime.now();
       final dateStr = '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}';
 
@@ -83,15 +92,16 @@ class QuizService {
         'timestamp': now.millisecondsSinceEpoch,
       });
 
-      await prefs.setString(_historyKey, jsonEncode(history));
+      await prefs.setString(key, jsonEncode(history));
     } catch (_) {}
   }
 
   /// Retrieve the student's quiz history list.
-  static Future<List<Map<String, dynamic>>> getQuizHistory() async {
+  static Future<List<Map<String, dynamic>>> getQuizHistory({String? userId}) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final raw = prefs.getString(_historyKey);
+      final key = _resolveHistoryKey(userId);
+      final raw = prefs.getString(key);
       if (raw == null || raw.isEmpty) return [];
       final decoded = jsonDecode(raw);
       if (decoded is List) {

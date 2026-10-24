@@ -240,7 +240,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       final options = {
         'key': keyId,
         'amount': amount,
-        'name': 'KrishiShiksha (IGrow)',
+        'name': 'KrishiShiksha (iAgrow)',
         'description': descriptionText,
         'order_id': razorpayOrderId,
         'prefill': {
@@ -249,7 +249,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
           'name': userName,
         },
         'theme': {
-          'color': '#4B9C0A', // IGrow brand green
+          'color': '#4B9C0A', // iAgrow brand green
         },
         'send_sms_hash': true,
         'retry': {'enabled': true, 'max_count': 2},
@@ -496,13 +496,13 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   }
 
   String _getItemInstructor(dynamic item) {
-    if (item is ApiCourseDetail) return item.instructorName ?? 'IGrow Faculty';
+    if (item is ApiCourseDetail) return item.instructorName ?? 'iAgrow Faculty';
     if (item is EBook) return item.instructorName ?? item.authorName;
     if (item is ApiCartItem) {
-      return item.courseDetail?['instructor_name']?.toString() ?? 'IGrow Faculty';
+      return item.courseDetail?['instructor_name']?.toString() ?? 'iAgrow Faculty';
     }
-    if (item is Map) return item['instructor_name']?.toString() ?? item['author_name']?.toString() ?? 'IGrow Faculty';
-    return 'IGrow Faculty';
+    if (item is Map) return item['instructor_name']?.toString() ?? item['author_name']?.toString() ?? 'iAgrow Faculty';
+    return 'iAgrow Faculty';
   }
 
   // ─── Build UI ─────────────────────────────────────────────────────

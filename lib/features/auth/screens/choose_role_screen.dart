@@ -35,7 +35,7 @@ class _ChooseRoleScreenState extends State<ChooseRoleScreen> {
               children: [
                 const SizedBox(height: 24),
                 Text(
-                  'How will you\nuse IGrow?',
+                  'How will you\nuse iAgrow?',
                   style: Theme.of(context).textTheme.displayMedium,
                 ),
                 const SizedBox(height: 8),

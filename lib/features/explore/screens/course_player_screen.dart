@@ -536,10 +536,26 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
     } catch (e) {
       debugPrint('❌ [CoursePlayer] Video initialization failed: $e');
       if (mounted) {
+        final errStr = e.toString().toLowerCase();
+        final String friendlyMessage;
+        if (errStr.contains('source error') ||
+            errStr.contains('c0.k') ||
+            errStr.contains('videoerror') ||
+            errStr.contains('403') ||
+            errStr.contains('404')) {
+          friendlyMessage =
+              'Unable to stream this video right now. The video may still be processing or temporarily unavailable. Please retry in a moment.';
+        } else if (errStr.contains('time out') || errStr.contains('timeout')) {
+          friendlyMessage =
+              'Video loading timed out. Please check your internet connection and try again.';
+        } else {
+          friendlyMessage =
+              'Unable to stream this video right now. Please check your connection and tap Retry.';
+        }
+
         setState(() {
           _isLoadingVideo = false;
-          _videoErrorMessage =
-              'Unable to stream this video right now. (${e.toString().replaceAll("Exception: ", "")})';
+          _videoErrorMessage = friendlyMessage;
         });
       }
     }
@@ -2043,18 +2059,71 @@ class _CourseQaTabState extends ConsumerState<_CourseQaTab> {
                                 ),
                               ),
                               if (questionId != null)
-                                IconButton(
-                                  icon: const Icon(Icons.delete_outline,
-                                      size: 18, color: AppColors.inkSoft),
-                                  onPressed: () async {
-                                    try {
-                                      await ref
-                                          .read(studentRepositoryProvider)
-                                          .deleteQaQuestion(questionId);
-                                      ref.invalidate(
-                                          courseQaProvider(widget.courseSlug));
-                                    } catch (_) {}
-                                  },
+                                Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    onTap: () async {
+                                      final confirmed = await showDialog<bool>(
+                                        context: context,
+                                        builder: (ctx) => AlertDialog(
+                                          title: const Text('Delete Question'),
+                                          content: const Text(
+                                              'Are you sure you want to delete this question?'),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () =>
+                                                  Navigator.of(ctx).pop(false),
+                                              child: const Text('Cancel'),
+                                            ),
+                                            TextButton(
+                                              onPressed: () =>
+                                                  Navigator.of(ctx).pop(true),
+                                              style: TextButton.styleFrom(
+                                                foregroundColor: AppColors.error,
+                                              ),
+                                              child: const Text('Delete'),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                      if (confirmed == true) {
+                                        try {
+                                          await ref
+                                              .read(studentRepositoryProvider)
+                                              .deleteQaQuestion(questionId);
+                                          ref.invalidate(
+                                              courseQaProvider(widget.courseSlug));
+                                        } catch (_) {}
+                                      }
+                                    },
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: Container(
+                                      padding: const EdgeInsets.all(7),
+                                      decoration: BoxDecoration(
+                                        color: isDark
+                                            ? const Color(0xFFEF4444)
+                                                .withValues(alpha: 0.16)
+                                            : AppColors.error
+                                                .withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                          color: isDark
+                                              ? const Color(0xFFEF4444)
+                                                  .withValues(alpha: 0.4)
+                                              : AppColors.error
+                                                  .withValues(alpha: 0.25),
+                                          width: 0.8,
+                                        ),
+                                      ),
+                                      child: Icon(
+                                        Icons.delete_outline_rounded,
+                                        size: 17,
+                                        color: isDark
+                                            ? const Color(0xFFF87171)
+                                            : AppColors.error,
+                                      ),
+                                    ),
+                                  ),
                                 ),
                             ],
                           ),
@@ -3084,16 +3153,19 @@ class _CourseReviewsTabState extends ConsumerState<_CourseReviewsTab> {
                             children: [
                               Row(
                                 children: [
-                                  const Icon(
-                                    Icons.verified_rounded,
-                                    size: 15,
-                                    color: AppColors.primaryGreen,
+                                  Container(
+                                    width: 7,
+                                    height: 7,
+                                    decoration: const BoxDecoration(
+                                      color: AppColors.skyBlue,
+                                      shape: BoxShape.circle,
+                                    ),
                                   ),
-                                  const SizedBox(width: 5),
+                                  const SizedBox(width: 6),
                                   Text(
-                                    review.instructorName?.isNotEmpty == true
-                                        ? '${review.instructorName} (Instructor)'
-                                        : "Instructor's Reply",
+                                    review.instructorName?.isNotEmpty == true && review.instructorName != 'Instructor'
+                                        ? '${review.instructorName} (Instructor):'
+                                        : 'Instructor Reply:',
                                     style: const TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.bold,

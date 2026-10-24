@@ -99,7 +99,7 @@ class WeatherService {
       debugPrint('ℹ️ [WeatherService] GPS resolution skipped: $e');
     }
 
-    // 2. If GPS coordinates were not obtained, use IP Geolocation
+    // 2. If GPS coordinates were not obtained, use HTTPS IP Geolocation
     if (!foundCoords) {
       try {
         final ipGeo = await _fetchIpGeolocation();
@@ -116,7 +116,22 @@ class WeatherService {
       }
     }
 
-    // 3. Fetch real-time weather from Open-Meteo API
+    // 3. If still no coordinates and preferredCity is provided, geocode preferred city
+    if (!foundCoords && preferredCity != null && preferredCity.trim().isNotEmpty) {
+      try {
+        final geo = await _geocodeCityName(preferredCity.trim());
+        if (geo != null) {
+          lat = geo['lat']!;
+          lon = geo['lon']!;
+          city = preferredCity.trim();
+          foundCoords = true;
+        }
+      } catch (e) {
+        debugPrint('ℹ️ [WeatherService] City geocoding skipped: $e');
+      }
+    }
+
+    // 4. Fetch real-time weather from Open-Meteo API
     final weather = await _fetchOpenMeteoWeather(lat: lat, lon: lon, city: city);
 
     // Cache the latest successful result
@@ -167,10 +182,17 @@ class WeatherService {
       }
       if (permission == LocationPermission.deniedForever) return null;
 
+      // 1. Instantly check last known position (0ms latency, eliminates cold-start delay)
+      final lastKnown = await Geolocator.getLastKnownPosition();
+      if (lastKnown != null) {
+        return lastKnown;
+      }
+
+      // 2. Fetch fresh position with sufficient 8-second timeout for indoors/mobile networks
       return await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.low,
-          timeLimit: Duration(seconds: 4),
+          accuracy: LocationAccuracy.medium,
+          timeLimit: Duration(seconds: 8),
         ),
       );
     } catch (_) {
@@ -200,22 +222,69 @@ class WeatherService {
     return null;
   }
 
-  /// IP-based geolocation fallback (requires no device permissions)
-  Future<Map<String, dynamic>?> _fetchIpGeolocation() async {
+  /// Geocodes a district / city name to latitude and longitude using Open-Meteo free geocoding
+  Future<Map<String, double>?> _geocodeCityName(String cityName) async {
     try {
-      final uri = Uri.parse('http://ip-api.com/json');
+      final uri = Uri.parse(
+        'https://geocoding-api.open-meteo.com/v1/search?name=${Uri.encodeComponent(cityName)}&count=1&language=en&format=json',
+      );
       final res = await _httpClient.get(uri).timeout(const Duration(seconds: 4));
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body) as Map<String, dynamic>;
-        if (data['status'] == 'success') {
+        final results = data['results'] as List?;
+        if (results != null && results.isNotEmpty) {
+          final first = results.first as Map<String, dynamic>;
+          final lat = (first['latitude'] as num?)?.toDouble();
+          final lon = (first['longitude'] as num?)?.toDouble();
+          if (lat != null && lon != null) {
+            return {'lat': lat, 'lon': lon};
+          }
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// IP-based geolocation fallback using HTTPS (requires no device permissions)
+  Future<Map<String, dynamic>?> _fetchIpGeolocation() async {
+    // 1. Try ipapi.co via HTTPS
+    try {
+      final uri = Uri.parse('https://ipapi.co/json/');
+      final res = await _httpClient.get(uri).timeout(const Duration(seconds: 4));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body) as Map<String, dynamic>;
+        final lat = (data['latitude'] as num?)?.toDouble();
+        final lon = (data['longitude'] as num?)?.toDouble();
+        final city = (data['city'] as String?)?.trim();
+        if (lat != null && lon != null) {
           return {
-            'lat': (data['lat'] as num).toDouble(),
-            'lon': (data['lon'] as num).toDouble(),
-            'city': data['city'] as String?,
+            'lat': lat,
+            'lon': lon,
+            if (city != null && city.isNotEmpty) 'city': city,
           };
         }
       }
     } catch (_) {}
+
+    // 2. Backup to freeipapi.com via HTTPS
+    try {
+      final uri = Uri.parse('https://freeipapi.com/api/json');
+      final res = await _httpClient.get(uri).timeout(const Duration(seconds: 4));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body) as Map<String, dynamic>;
+        final lat = (data['latitude'] as num?)?.toDouble();
+        final lon = (data['longitude'] as num?)?.toDouble();
+        final city = (data['cityName'] as String?)?.trim();
+        if (lat != null && lon != null) {
+          return {
+            'lat': lat,
+            'lon': lon,
+            if (city != null && city.isNotEmpty) 'city': city,
+          };
+        }
+      }
+    } catch (_) {}
+
     return null;
   }
 

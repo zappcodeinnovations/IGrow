@@ -46,6 +46,7 @@ class WishlistNotifier extends StateNotifier<AsyncValue<List<ApiWishlistItem>>> 
     );
 
     final isCurrentlyInWishlist = existingIndex >= 0;
+    final existingItem = isCurrentlyInWishlist ? currentList[existingIndex] : null;
 
     // Optimistic local state update
     if (isCurrentlyInWishlist) {
@@ -58,6 +59,39 @@ class WishlistNotifier extends StateNotifier<AsyncValue<List<ApiWishlistItem>>> 
 
     try {
       final repo = ref.read(wishlistRepositoryProvider);
+
+      if (isCurrentlyInWishlist) {
+        // Prefer dedicated DELETE endpoint for clean removal without 500 server crashes
+        final removeKey = (existingItem?.id.isNotEmpty == true)
+            ? existingItem!.id
+            : (existingItem?.targetId.isNotEmpty == true ? existingItem!.targetId : courseId);
+
+        bool removed = false;
+        try {
+          removed = await repo.removeFromWishlist(removeKey);
+        } catch (_) {}
+
+        if (!removed && existingItem?.targetId.isNotEmpty == true && existingItem!.targetId != removeKey) {
+          try {
+            removed = await repo.removeFromWishlist(existingItem.targetId);
+          } catch (_) {}
+        }
+
+        if (!removed) {
+          final result = await repo.toggleWishlist(courseId: courseId);
+          if (result.inWishlist) {
+            await loadWishlist();
+            return true;
+          }
+        }
+
+        currentList.removeWhere(
+          (item) => item.targetId == courseId || item.id == courseId || item.slug == courseId,
+        );
+        state = AsyncValue.data(currentList);
+        return false;
+      }
+
       final result = await repo.toggleWishlist(courseId: courseId);
       
       // If server confirmed addition and returned an ID, update the local item's ID
@@ -117,6 +151,7 @@ class WishlistNotifier extends StateNotifier<AsyncValue<List<ApiWishlistItem>>> 
     );
 
     final isCurrentlyInWishlist = existingIndex >= 0;
+    final existingItem = isCurrentlyInWishlist ? currentList[existingIndex] : null;
 
     // Optimistic local update
     if (isCurrentlyInWishlist) {
@@ -129,6 +164,38 @@ class WishlistNotifier extends StateNotifier<AsyncValue<List<ApiWishlistItem>>> 
 
     try {
       final repo = ref.read(wishlistRepositoryProvider);
+
+      if (isCurrentlyInWishlist) {
+        final removeKey = (existingItem?.id.isNotEmpty == true)
+            ? existingItem!.id
+            : (existingItem?.targetId.isNotEmpty == true ? existingItem!.targetId : ebookId);
+
+        bool removed = false;
+        try {
+          removed = await repo.removeFromWishlist(removeKey);
+        } catch (_) {}
+
+        if (!removed && existingItem?.targetId.isNotEmpty == true && existingItem!.targetId != removeKey) {
+          try {
+            removed = await repo.removeFromWishlist(existingItem.targetId);
+          } catch (_) {}
+        }
+
+        if (!removed) {
+          final result = await repo.toggleWishlist(ebookId: ebookId);
+          if (result.inWishlist) {
+            await loadWishlist();
+            return true;
+          }
+        }
+
+        currentList.removeWhere(
+          (item) => item.targetId == ebookId || item.id == ebookId || item.slug == ebookId,
+        );
+        state = AsyncValue.data(currentList);
+        return false;
+      }
+
       final result = await repo.toggleWishlist(ebookId: ebookId);
 
       if (result.inWishlist) {

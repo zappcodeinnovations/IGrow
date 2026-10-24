@@ -11,6 +11,7 @@ import 'package:video_player/video_player.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/app_toast.dart';
 import '../../../core/widgets/shimmer_placeholders.dart';
 import '../../../data/models/api_models/course_models.dart';
 import '../../../data/models/api_models/wishlist_model.dart';
@@ -582,21 +583,18 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
           .read(wishlistProvider.notifier)
           .toggleCourse(effectiveId, previewItem: preview);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(inWishlist ? 'Added to wishlist! ❤️' : 'Removed from wishlist'),
-            duration: const Duration(milliseconds: 1800),
-            backgroundColor: inWishlist ? AppColors.primaryGreen : AppColors.inkDark,
-          ),
+        AppToast.show(
+          context,
+          inWishlist ? 'Added to wishlist! ❤️' : 'Removed from wishlist',
+          isError: false,
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString().replaceAll('Exception: ', '')),
-            backgroundColor: AppColors.error,
-          ),
+        AppToast.show(
+          context,
+          e.toString().replaceAll('Exception: ', ''),
+          isError: true,
         );
       }
     }
@@ -1971,16 +1969,19 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                                 children: [
                                   Row(
                                     children: [
-                                      const Icon(
-                                        Icons.verified_rounded,
-                                        size: 15,
-                                        color: AppColors.primaryGreen,
+                                      Container(
+                                        width: 7,
+                                        height: 7,
+                                        decoration: const BoxDecoration(
+                                          color: AppColors.skyBlue,
+                                          shape: BoxShape.circle,
+                                        ),
                                       ),
-                                      const SizedBox(width: 5),
+                                      const SizedBox(width: 6),
                                       Text(
-                                        review.instructorName?.isNotEmpty == true
-                                            ? '${review.instructorName} (Instructor)'
-                                            : "Instructor's Reply",
+                                        review.instructorName?.isNotEmpty == true && review.instructorName != 'Instructor'
+                                            ? '${review.instructorName} (Instructor):'
+                                            : 'Instructor Reply:',
                                         style: const TextStyle(
                                           fontSize: 12,
                                           fontWeight: FontWeight.bold,

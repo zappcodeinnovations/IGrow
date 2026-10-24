@@ -27,6 +27,22 @@ class CommunityAuthor {
       role: rawRole,
     );
   }
+
+  CommunityAuthor copyWith({
+    String? id,
+    String? fullName,
+    bool? isExpert,
+    String? avatarUrl,
+    String? role,
+  }) {
+    return CommunityAuthor(
+      id: id ?? this.id,
+      fullName: fullName ?? this.fullName,
+      isExpert: isExpert ?? this.isExpert,
+      avatarUrl: avatarUrl ?? this.avatarUrl,
+      role: role ?? this.role,
+    );
+  }
 }
 
 class CommunityTopic {
@@ -223,10 +239,12 @@ class CommunityPost {
     final authorMap = json['author'] is Map<String, dynamic>
         ? json['author'] as Map<String, dynamic>
         : {
-            'id': json['author_id'],
-            'full_name': json['author_name'],
-            'author_role': json['author_role'],
-            'avatar_url': json['author_avatar'],
+            'id': (json['author'] != null && json['author'] is! Map)
+                ? json['author']
+                : (json['author_id'] ?? json['user_id']),
+            'full_name': json['author_name'] ?? json['user_name'] ?? json['name'],
+            'author_role': json['author_role'] ?? json['role'],
+            'avatar_url': json['author_avatar'] ?? json['avatar'],
           };
 
     CommunityTopic? parsedTopic;
@@ -239,7 +257,7 @@ class CommunityPost {
 
     DateTime? parsedEventDate;
     if (json['event_date'] != null) {
-      parsedEventDate = DateTime.tryParse(json['event_date'].toString());
+      parsedEventDate = DateTime.tryParse(json['event_date'].toString())?.toLocal();
     }
 
     return CommunityPost(
@@ -263,12 +281,25 @@ class CommunityPost {
       commentsCount: json['comments_count'] as int? ?? 0,
       isLikedByMe: json['is_liked'] as bool? ?? json['is_liked_by_me'] as bool? ?? false,
       createdAt: json['created_at'] != null
-          ? DateTime.tryParse(json['created_at'] as String) ?? DateTime.now()
+          ? DateTime.tryParse(json['created_at'].toString())?.toLocal() ?? DateTime.now()
           : DateTime.now(),
       updatedAt: json['updated_at'] != null
-          ? DateTime.tryParse(json['updated_at'] as String)
+          ? DateTime.tryParse(json['updated_at'].toString())?.toLocal()
           : null,
     );
+  }
+
+  String? get formattedEventDateTime {
+    if (eventDate == null) return null;
+    final local = eventDate!.toLocal();
+    final day = local.day.toString().padLeft(2, '0');
+    final month = local.month.toString().padLeft(2, '0');
+    final year = local.year;
+    final hour24 = local.hour;
+    final hour12 = hour24 == 0 ? 12 : (hour24 > 12 ? hour24 - 12 : hour24);
+    final minute = local.minute.toString().padLeft(2, '0');
+    final period = hour24 >= 12 ? 'PM' : 'AM';
+    return '$day/$month/$year • $hour12:$minute $period';
   }
 
   CommunityPost copyWith({

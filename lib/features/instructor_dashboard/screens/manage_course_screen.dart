@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -7,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../../../core/network/swagger_generated/app_api.swagger.dart'
     show CertificateTemplate;
@@ -129,6 +131,12 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
 
     if (raw.contains('Bunny Stream') || raw.contains('Failed to initialize video')) {
       return 'Video service notice: Bunny Stream CDN is currently inactive or under maintenance. You can attach video later via ⚙️ Settings.';
+    }
+    if (raw.contains('PathNotFound') ||
+        raw.contains('FileSystemException') ||
+        raw.contains('No such file or directory') ||
+        raw.contains('Cannot open file')) {
+      return 'Selected video file could not be accessed. Please re-select the video from your gallery.';
     }
     if (raw.contains('TimeoutException') || raw.contains('timed out')) {
       return 'Upload timed out. Please check your internet connection and try again.';
@@ -658,13 +666,35 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                               await Future.delayed(const Duration(milliseconds: 120));
                               final video = await _picker.pickVideo(source: ImageSource.gallery);
                               if (video != null) {
-                                final length = await video.length();
+                                XFile safeVideo = video;
+                                try {
+                                  final originalFile = File(video.path);
+                                  if (await originalFile.exists()) {
+                                    final appDir = await getApplicationDocumentsDirectory();
+                                    final mediaDir = Directory('${appDir.path}/lecture_uploads');
+                                    if (!await mediaDir.exists()) {
+                                      await mediaDir.create(recursive: true);
+                                    }
+                                    final ext = video.path.contains('.')
+                                        ? video.path.substring(video.path.lastIndexOf('.'))
+                                        : '.mp4';
+                                    final persistentPath =
+                                        '${mediaDir.path}/lec_${DateTime.now().millisecondsSinceEpoch}$ext';
+                                    await originalFile.copy(persistentPath);
+                                    safeVideo = XFile(persistentPath, name: video.name);
+                                    debugPrint('💾 [CURRICULUM BUILDER] Preserved video to persistent path: $persistentPath');
+                                  }
+                                } catch (copyErr) {
+                                  debugPrint('⚠️ [CURRICULUM BUILDER] Could not copy video to persistent storage: $copyErr');
+                                }
+
+                                final length = await safeVideo.length();
                                 final sizeMb = (length / (1024 * 1024)).toStringAsFixed(1);
                                 setModalState(() {
-                                  pickedVideo = video;
+                                  pickedVideo = safeVideo;
                                   pickedVideoSize = '$sizeMb MB';
                                 });
-                                debugPrint('🎬 [CURRICULUM BUILDER] Picked video: ${video.name} ($sizeMb MB), path=${video.path}');
+                                debugPrint('🎬 [CURRICULUM BUILDER] Picked video: ${safeVideo.name} ($sizeMb MB), path=${safeVideo.path}');
                               }
                             },
                             icon: const Icon(Icons.video_collection_outlined),
@@ -885,6 +915,10 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
         debugPrint('📤 [CURRICULUM BUILDER] Uploading video for lecture: $lectureId');
         _updateLoadingMessage('Uploading video to Bunny Stream CDN... (Please wait)');
         try {
+          final videoFile = File(pickedVideo.path);
+          if (!await videoFile.exists()) {
+            throw FileSystemException('Selected video file could not be found or opened on device.', pickedVideo.path);
+          }
           await ref.read(instructorRepositoryProvider).uploadVideo(
             lectureId,
             pickedVideo.path,

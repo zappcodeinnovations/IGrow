@@ -15,6 +15,7 @@ import '../../../core/widgets/kyc_restricted_view.dart';
 import '../../../data/models/user_model.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../home_instructor/providers/instructor_home_provider.dart';
+import '../../../core/services/notification_service.dart';
 
 /// Module: 3-Step Course Creation Wizard
 /// Matching AgriLearn Web (CourseUploadWizard.jsx):
@@ -622,6 +623,8 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
       return;
     }
 
+    NotificationService.markCourseUploadStarted();
+
     setState(() {
       _isSubmitting = true;
       _submissionPercent = 0.05;
@@ -751,6 +754,20 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
         }
       }
 
+      // 6. Notify backend that all draft data and media assets have finished uploading completely
+      setState(() {
+        _submissionPercent = 0.98;
+        _submissionProgressText = 'Finalizing Course Draft...';
+      });
+      try {
+        await repo.markDraftComplete(courseId);
+      } catch (fErr) {
+        debugPrint('⚠️ Course finalize notification call warning: $fErr');
+      }
+
+      // Flush and display any deferred course creation notification now that upload is 100% complete
+      await NotificationService.markCourseUploadFinished();
+
       setState(() {
         _submissionPercent = 1.0;
         _submissionProgressText = 'Course Draft Created Successfully!';
@@ -804,6 +821,7 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
         context.go(RouteNames.instructorHome);
       }
     } catch (e) {
+      NotificationService.isCourseDraftUploading = false;
       if (mounted) {
         setState(() => _isSubmitting = false);
         final isOffline = _isNetworkError(e);

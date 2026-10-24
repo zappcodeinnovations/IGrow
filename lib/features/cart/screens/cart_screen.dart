@@ -165,7 +165,7 @@ class CartScreen extends ConsumerWidget {
                         item.courseDetail?['price']?.toString() ?? '0.00';
                     final instructor =
                         item.courseDetail?['instructor_name']?.toString() ??
-                            'IGrow Expert';
+                            'iAgrow Expert';
                     final thumbnail =
                         item.courseDetail?['thumbnail']?.toString();
 
@@ -233,6 +233,8 @@ class CartScreen extends ConsumerWidget {
                                   const SizedBox(height: 4),
                                   Text(
                                     'By $instructor',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
                                       fontSize: 12,
                                       color: isDark

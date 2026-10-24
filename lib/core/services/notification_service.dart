@@ -38,7 +38,7 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
   final title = (rawTitle != null && rawTitle.toString().trim().isNotEmpty)
       ? rawTitle.toString().trim()
-      : (message.data.isNotEmpty ? 'iGrow Notification' : null);
+      : (message.data.isNotEmpty ? 'iAgrow Notification' : null);
   final body  = (rawBody != null && rawBody.toString().trim().isNotEmpty)
       ? rawBody.toString().trim()
       : '';
@@ -98,6 +98,24 @@ class NotificationService {
   );
 
   bool _isInitialized = false;
+
+  /// When true, course draft creation notifications are deferred until all media uploads reach 100%.
+  static bool isCourseDraftUploading = false;
+  static RemoteMessage? pendingCourseDraftNotification;
+
+  static void markCourseUploadStarted() {
+    isCourseDraftUploading = true;
+    pendingCourseDraftNotification = null;
+  }
+
+  static Future<void> markCourseUploadFinished() async {
+    isCourseDraftUploading = false;
+    final pending = pendingCourseDraftNotification;
+    pendingCourseDraftNotification = null;
+    if (pending != null) {
+      await instance._showForegroundNotification(pending);
+    }
+  }
 
   /// Initialize Firebase Messaging and Local Notifications
   Future<void> initialize({
@@ -259,10 +277,23 @@ class NotificationService {
 
     final title = (rawTitle != null && rawTitle.toString().trim().isNotEmpty)
         ? rawTitle.toString().trim()
-        : 'iGrow Notification';
+        : 'iAgrow Notification';
     final body = (rawBody != null && rawBody.toString().trim().isNotEmpty)
         ? rawBody.toString().trim()
         : '';
+
+    // Defer premature course creation push notification while video/media upload is active
+    final lowerTitle = title.toLowerCase();
+    final lowerBody = body.toLowerCase();
+    final isCourseCreationNotification = lowerTitle.contains('course created') ||
+        lowerBody.contains('saved as a draft');
+    if (isCourseCreationNotification && isCourseDraftUploading) {
+      if (kDebugMode) {
+        print('⏳ [NotificationService] Deferring premature "$title" notification until course assets reach 100% upload.');
+      }
+      pendingCourseDraftNotification = message;
+      return;
+    }
 
     try {
       // Safe positive 32-bit integer ID to prevent overflow and duplicate collision

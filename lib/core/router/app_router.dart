@@ -305,6 +305,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: RouteNames.createPost,
+        redirect: (context, state) {
+          final authState = ref.read(authProvider);
+          final role = authState.user?.activeRole;
+          if (role != UserRole.instructor && role != UserRole.admin) {
+            return RouteNames.farmerCommunity;
+          }
+          return null;
+        },
         builder: (context, state) => const CreatePostScreen(),
       ),
       GoRoute(
@@ -316,6 +324,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: RouteNames.createHub,
+        redirect: (context, state) {
+          final authState = ref.read(authProvider);
+          final role = authState.user?.activeRole;
+          if (role != UserRole.instructor && role != UserRole.admin) {
+            return RouteNames.farmerCommunity;
+          }
+          return null;
+        },
         builder: (context, state) => const CreateHubScreen(),
       ),
       GoRoute(

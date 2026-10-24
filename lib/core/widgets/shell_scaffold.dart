@@ -17,7 +17,8 @@ class ShellScaffold extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authProvider).user;
-    final isFarmer = user?.activeRole == UserRole.farmer;
+    final isInstructor = user?.activeRole == UserRole.instructor || user?.activeRole == UserRole.admin;
+    final isFarmer = !isInstructor;
     
     // Determine current index based on route
     final location = GoRouterState.of(context).uri.toString();

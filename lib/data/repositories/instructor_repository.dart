@@ -304,6 +304,27 @@ class InstructorRepository {
     return jsonDecode(response.bodyString) as Map<String, dynamic>;
   }
 
+  /// Notify backend that course draft creation and all media asset uploads are 100% complete.
+  Future<void> markDraftComplete(String courseId) async {
+    try {
+      final token = await tokenStorage.getAccessToken();
+      final uri = Uri.parse(
+        'https://iagrow.zappcode.in/api/v1/instructor/courses/$courseId/draft-complete/',
+      );
+      debugPrint('📤 [InstructorRepository] markDraftComplete: POST $uri');
+      final rawResponse = await http.post(
+        uri,
+        headers: {
+          if (token != null) 'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+      debugPrint('✅ [InstructorRepository] markDraftComplete SUCCESS (${rawResponse.statusCode}): ${rawResponse.body}');
+    } catch (e) {
+      debugPrint('⚠️ [InstructorRepository] markDraftComplete non-blocking error: $e');
+    }
+  }
+
   // ── Sections ──────────────────────────────────────────────────
 
   /// List sections for a course.
@@ -662,6 +683,10 @@ class InstructorRepository {
     final token = await tokenStorage.getAccessToken();
     final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/lectures/$lectureId/upload-video/');
     
+    final file = File(filePath);
+    if (!await file.exists()) {
+      throw FileSystemException('Selected video file is missing or inaccessible on device.', filePath);
+    }
     final request = http.MultipartRequest('POST', uri);
     request.headers['Authorization'] = 'Bearer $token';
     request.files.add(await http.MultipartFile.fromPath('video', filePath));
@@ -729,6 +754,10 @@ class InstructorRepository {
     final request = http.MultipartRequest('POST', uri);
     request.headers['Authorization'] = 'Bearer $token';
     request.fields['file_name'] = name;
+    final file = File(filePath);
+    if (!await file.exists()) {
+      throw FileSystemException('Selected resource file is missing or inaccessible on device.', filePath);
+    }
     request.files.add(await http.MultipartFile.fromPath('file', filePath, filename: name));
     
     final httpClient = client ?? http.Client();

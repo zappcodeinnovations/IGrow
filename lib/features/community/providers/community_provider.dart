@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/repositories/community_repository.dart';
 import '../../../data/models/api_models/community_models.dart';
@@ -11,7 +12,8 @@ final communityRepositoryProvider = Provider<CommunityRepository>((ref) {
 // ─── Location Filter Providers ─────────────────────────────────────
 
 final selectedStateProvider = StateProvider<String>((ref) {
-  final authState = ref.watch(authProvider);
+  // Read once on initial creation so background auth polling timers never reset user's manual filter
+  final authState = ref.read(authProvider);
   final userState = authState.user?.locationState;
   if (userState != null && userState.trim().isNotEmpty) {
     return userState.trim();
@@ -20,7 +22,8 @@ final selectedStateProvider = StateProvider<String>((ref) {
 });
 
 final selectedDistrictProvider = StateProvider<String>((ref) {
-  final authState = ref.watch(authProvider);
+  // Read once on initial creation so background auth polling timers never reset user's manual filter
+  final authState = ref.read(authProvider);
   final userDistrict = authState.user?.locationDistrict;
   if (userDistrict != null && userDistrict.trim().isNotEmpty) {
     return userDistrict.trim();
@@ -134,15 +137,16 @@ final communityPostsProvider = StateNotifierProvider<CommunityPostsNotifier, Asy
   final repo = ref.watch(communityRepositoryProvider);
   final selectedTopic = ref.watch(selectedTopicIdProvider);
   final selectedHub = ref.watch(selectedHubProvider);
-  return CommunityPostsNotifier(repo, topicId: selectedTopic, hubId: selectedHub?.id);
+  return CommunityPostsNotifier(repo, ref, topicId: selectedTopic, hubId: selectedHub?.id);
 });
 
 class CommunityPostsNotifier extends StateNotifier<AsyncValue<List<CommunityPost>>> {
-  CommunityPostsNotifier(this._repo, {this.topicId, this.hubId}) : super(const AsyncValue.loading()) {
+  CommunityPostsNotifier(this._repo, this._ref, {this.topicId, this.hubId}) : super(const AsyncValue.loading()) {
     fetchPosts();
   }
 
   final CommunityRepository _repo;
+  final Ref _ref;
   final String? topicId;
   final String? hubId;
 
@@ -186,13 +190,32 @@ class CommunityPostsNotifier extends StateNotifier<AsyncValue<List<CommunityPost
       imagePath: imagePath,
     );
 
-    if (state.hasValue && state.value != null) {
-      state = AsyncValue.data([newPost, ...state.value!]);
-    } else {
-      state = AsyncValue.data([newPost]);
+    final currentUser = _ref.read(authProvider).user;
+    var postToInsert = newPost;
+    if (currentUser != null) {
+      if (postToInsert.author.id.isEmpty || postToInsert.author.id != currentUser.id) {
+        postToInsert = postToInsert.copyWith(
+          author: postToInsert.author.copyWith(
+            id: currentUser.id,
+            fullName: currentUser.fullName.isNotEmpty ? currentUser.fullName : postToInsert.author.fullName,
+            avatarUrl: currentUser.avatarUrl ?? postToInsert.author.avatarUrl,
+            role: currentUser.activeRole.apiValue,
+            isExpert: currentUser.isInstructor || currentUser.isAdmin,
+          ),
+        );
+      }
     }
 
-    return newPost;
+    if (state.hasValue && state.value != null) {
+      state = AsyncValue.data([postToInsert, ...state.value!]);
+    } else {
+      state = AsyncValue.data([postToInsert]);
+    }
+
+    // Silently sync latest posts from backend in background to guarantee full consistency
+    unawaited(refreshPosts());
+
+    return postToInsert;
   }
 
   Future<bool> deletePost(String postId) async {

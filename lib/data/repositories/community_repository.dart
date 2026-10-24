@@ -199,7 +199,7 @@ class CommunityRepository {
       if (postType != null && postType.isNotEmpty) request.fields['post_type'] = postType;
       if (topicId != null && topicId.isNotEmpty) request.fields['topic_id'] = topicId;
       if (courseId != null && courseId.isNotEmpty) request.fields['course_id'] = courseId;
-      if (eventDate != null) request.fields['event_date'] = eventDate.toIso8601String();
+      if (eventDate != null) request.fields['event_date'] = eventDate.toUtc().toIso8601String();
       if (venueAddress != null && venueAddress.isNotEmpty) request.fields['venue_address'] = venueAddress;
       if (link != null && link.isNotEmpty) request.fields['link'] = link;
 
@@ -218,7 +218,7 @@ class CommunityRepository {
         if (postType != null && postType.isNotEmpty) 'post_type': postType,
         if (topicId != null && topicId.isNotEmpty) 'topic_id': topicId,
         if (courseId != null && courseId.isNotEmpty) 'course_id': courseId,
-        if (eventDate != null) 'event_date': eventDate.toIso8601String(),
+        if (eventDate != null) 'event_date': eventDate.toUtc().toIso8601String(),
         if (venueAddress != null && venueAddress.isNotEmpty) 'venue_address': venueAddress,
         if (link != null && link.isNotEmpty) 'link': link,
       };

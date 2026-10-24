@@ -411,7 +411,7 @@ class CartRepository {
       'card_number': cardNumber ?? '4242424242424242',
       'card_expiry': cardExpiry ?? '12/28',
       'card_cvv': cardCvv ?? '123',
-      'card_holder': cardHolder ?? 'IGrow Student',
+      'card_holder': cardHolder ?? 'iAgrow Student',
       if (couponCode != null) 'coupon_code': couponCode,
     };
 

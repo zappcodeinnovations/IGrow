@@ -78,6 +78,20 @@ class WishlistRepository {
         final result = WishlistToggleResult.fromJson(decoded);
         debugPrint('✅ [WishlistRepository] toggle result: inWishlist=${result.inWishlist}');
         return result;
+      } else if (response.statusCode == 500) {
+        debugPrint('⚠️ [WishlistRepository] toggle returned HTTP 500. Attempting fallback removal...');
+        final targetId = courseId ?? ebookId;
+        if (targetId != null && targetId.isNotEmpty) {
+          final removed = await removeFromWishlist(targetId);
+          if (removed) {
+            debugPrint('✅ [WishlistRepository] Fallback removeFromWishlist succeeded after 500');
+            return const WishlistToggleResult(
+              inWishlist: false,
+              message: 'Removed from wishlist',
+            );
+          }
+        }
+        throw Exception('Failed to update wishlist (HTTP 500)');
       } else {
         debugPrint('⚠️ [WishlistRepository] toggle failed HTTP ${response.statusCode}: ${response.body}');
         throw Exception('Failed to update wishlist (HTTP ${response.statusCode})');

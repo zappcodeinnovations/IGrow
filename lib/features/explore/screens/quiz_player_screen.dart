@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/services/quiz_service.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../../home_farmer/providers/student_provider.dart';
 
 class QuizPlayerScreen extends ConsumerStatefulWidget {
@@ -76,11 +77,14 @@ class _QuizPlayerScreenState extends ConsumerState<QuizPlayerScreen> {
           ? '${scoreVal.toStringAsFixed(1).replaceAll('.0', '')}%'
           : '$numScore / $numTotal';
 
+      final user = ref.read(authProvider).user;
+      final userId = user?.id ?? user?.email;
       await QuizService.recordQuizCompletion(
         topic: title,
         scoreText: scoreDisplay,
         score: numScore,
         total: numTotal,
+        userId: userId,
       );
     } catch (e) {
       if (mounted) {
