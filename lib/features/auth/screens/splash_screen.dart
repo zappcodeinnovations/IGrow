@@ -4,9 +4,10 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/canopy_gradient.dart';
 import '../../../core/router/route_names.dart';
+import '../../../core/services/version_service.dart';
+import '../../../core/widgets/app_update_dialog.dart';
 import '../providers/auth_provider.dart';
 
 /// Splash screen with canopy gradient and auto-navigation.
@@ -25,6 +26,11 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   late AnimationController _controller;
   late Animation<double> _fadeAnimation;
   late Animation<double> _scaleAnimation;
+
+  bool _minDelayPassed = false;
+  bool _versionCheckDone = false;
+  bool _isUpdateDialogShowing = false;
+  VersionCheckResult? _versionResult;
 
   @override
   void initState() {
@@ -50,9 +56,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
     _controller.forward();
 
-    // Trigger session check after first frame to avoid build phase conflicts.
+    // Trigger session check and version check after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(authProvider.notifier).checkSession();
+      _checkAppVersion();
     });
 
     // Minimum delay for the splash screen animation.
@@ -64,10 +71,42 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     });
   }
 
-  bool _minDelayPassed = false;
+  Future<void> _checkAppVersion() async {
+    try {
+      _versionResult = await VersionService.checkVersion();
+    } catch (e) {
+      debugPrint('⚠️ [SplashScreen] Version check error: $e');
+    } finally {
+      if (mounted) {
+        _versionCheckDone = true;
+        _navigateIfNeeded();
+      }
+    }
+  }
 
   Future<void> _navigateIfNeeded() async {
-    if (!_minDelayPassed) return;
+    if (!_minDelayPassed || !_versionCheckDone) return;
+    if (_isUpdateDialogShowing) return;
+
+    // If update is required, show the mandatory update dialog and stop navigation
+    if (_versionResult != null && _versionResult!.isUpdateRequired) {
+      _isUpdateDialogShowing = true;
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          barrierColor: Colors.black.withValues(alpha: 0.75),
+          builder: (_) => AppUpdateDialog(
+            currentVersion: _versionResult!.currentVersion,
+            newVersion: _versionResult!.config?.latestVersion ?? '',
+            storeUrl: _versionResult!.config?.storeUrl ?? '',
+            title: _versionResult!.config?.updateTitle,
+            message: _versionResult!.config?.updateMessage,
+          ),
+        );
+      }
+      return;
+    }
 
     final authState = ref.read(authProvider);
     
@@ -78,8 +117,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
     if (authState.isAuthenticated) {
       // Go to the correct home based on role (router handles this via redirect).
-      // We don't necessarily need to call context.go('/') here if the router does it, 
-      // but doing it explicitly guarantees the transition if the router didn't catch the splash location.
       context.go('/');
     } else {
       final prefs = await SharedPreferences.getInstance();
