@@ -13,6 +13,8 @@ import '../../../core/services/course_progress_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/models/api_models/course_models.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../certificates/providers/certificates_provider.dart';
+import '../../certificates/widgets/certificate_viewer_dialog.dart';
 import '../../home_farmer/providers/student_provider.dart';
 import '../providers/explore_provider.dart';
 import '../../../core/router/route_names.dart';
@@ -232,6 +234,115 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
           duration: const Duration(seconds: 3),
         ),
       );
+
+      // Check course 100% completion and trigger celebration modal
+      if (_currentCourse != null) {
+        _checkCourseCompletionAndShowCelebration(_currentCourse!, lecture.id);
+      }
+    }
+  }
+
+  Future<void> _checkCourseCompletionAndShowCelebration(
+    ApiCourseDetail course,
+    String justCompletedLectureId,
+  ) async {
+    final allLectures = course.sections.expand((s) => s.lectures).toList();
+    if (allLectures.isEmpty || _activeSlug == null) return;
+
+    final currentCompleted = ref.read(courseProgressStateProvider(_activeSlug!)).value ?? <String>{};
+    final updatedCompleted = {...currentCompleted, justCompletedLectureId};
+
+    final isAllDone = allLectures.every((l) => updatedCompleted.contains(l.id));
+
+    if (isAllDone) {
+      try {
+        final repo = ref.read(certificateRepositoryProvider);
+        final status = await repo.getCourseCertificate(course.id);
+
+        ref.invalidate(myCertificatesProvider);
+        ref.invalidate(studentEnrollmentsProvider);
+
+        if (!mounted) return;
+
+        showDialog(
+          context: context,
+          barrierDismissible: true,
+          builder: (dialogCtx) {
+            return Dialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFF9E6),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: const Color(0xFFD4AF37), width: 2),
+                      ),
+                      child: const Icon(
+                        Icons.workspace_premium_rounded,
+                        color: Color(0xFFD4AF37),
+                        size: 48,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Congratulations! 🎉',
+                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'You have completed 100% of "${course.title}". Your official certificate has been generated!',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 13, color: AppColors.inkSoft),
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                            onPressed: () => Navigator.pop(dialogCtx),
+                            child: const Text('Close'),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primaryGreen,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                            onPressed: () {
+                              Navigator.pop(dialogCtx);
+                              if (status.certificate != null) {
+                                CertificateViewerDialog.show(context, certificate: status.certificate);
+                              } else {
+                                context.push(RouteNames.certificates);
+                              }
+                            },
+                            child: const Text('View Certificate', style: TextStyle(fontWeight: FontWeight.bold)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      } catch (e) {
+        debugPrint('⚠️ [CoursePlayer] Completion celebration check failed: $e');
+      }
     }
   }
 
@@ -1207,6 +1318,7 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
                                   duration: Duration(seconds: 2),
                                 ),
                               );
+                              _checkCourseCompletionAndShowCelebration(course, _currentLecture!.id);
                             },
                           ),
                           const SizedBox(width: 2),
@@ -1501,6 +1613,38 @@ class _CurriculumTab extends ConsumerWidget {
                   ),
                 ),
               ),
+              if (completionPercent >= 100 || (totalLectures > 0 && completedCount >= totalLectures)) ...[
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFD4AF37),
+                      foregroundColor: Colors.black87,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                    ),
+                    icon: const Icon(Icons.workspace_premium_rounded, size: 20),
+                    label: const Text('View Official Certificate', style: TextStyle(fontWeight: FontWeight.bold)),
+                    onPressed: () async {
+                      try {
+                        final repo = ref.read(certificateRepositoryProvider);
+                        final status = await repo.getCourseCertificate(course.id);
+                        if (!context.mounted) return;
+                        if (status.certificate != null) {
+                          CertificateViewerDialog.show(context, certificate: status.certificate);
+                        } else {
+                          context.push(RouteNames.certificates);
+                        }
+                      } catch (_) {
+                        if (context.mounted) {
+                          context.push(RouteNames.certificates);
+                        }
+                      }
+                    },
+                  ),
+                ),
+              ],
             ],
           ),
         ),

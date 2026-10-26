@@ -7,6 +7,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:http/http.dart' as http;
+import 'package:printing/printing.dart';
 import '../network/token_storage.dart';
 
 /// Top-level background message handler for FCM.
@@ -92,6 +93,15 @@ class NotificationService {
     'high_importance_channel', // id
     'High Importance Notifications', // title
     description: 'This channel is used for important real-time notifications.',
+    importance: Importance.max,
+    playSound: true,
+    enableVibration: true,
+  );
+
+  static const AndroidNotificationChannel _downloadChannel = AndroidNotificationChannel(
+    'download_channel', // id
+    'File Downloads', // title
+    description: 'This channel is used for certificate and file download status alerts.',
     importance: Importance.max,
     playSound: true,
     enableVibration: true,
@@ -215,20 +225,37 @@ class NotificationService {
 
     await _localNotifications.initialize(
       settings: initSettings,
-      onDidReceiveNotificationResponse: (NotificationResponse response) {
+      onDidReceiveNotificationResponse: (NotificationResponse response) async {
         if (kDebugMode) {
           print('🔔 Local notification clicked with payload: ${response.payload}');
         }
-        // Handle payload / click navigation here if needed
+        final payload = response.payload;
+        if (payload != null && payload.isNotEmpty && payload.endsWith('.pdf')) {
+          try {
+            final file = File(payload);
+            if (await file.exists()) {
+              final bytes = await file.readAsBytes();
+              await Printing.layoutPdf(
+                onLayout: (_) async => bytes,
+                name: file.uri.pathSegments.last,
+              );
+            }
+          } catch (e) {
+            if (kDebugMode) {
+              print('⚠️ Could not open downloaded PDF from notification: $e');
+            }
+          }
+        }
       },
     );
   }
 
-  /// Create Android Notification Channel
+  /// Create Android Notification Channels
   Future<void> _createNotificationChannel() async {
-    await _localNotifications
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-        ?.createNotificationChannel(_androidChannel);
+    final androidPlugin = _localNotifications
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    await androidPlugin?.createNotificationChannel(_androidChannel);
+    await androidPlugin?.createNotificationChannel(_downloadChannel);
   }
 
   /// Setup foreground, background, and terminated message listeners
@@ -331,6 +358,47 @@ class NotificationService {
     } catch (e, st) {
       if (kDebugMode) {
         print('❌ [_showForegroundNotification] Failed to show notification: $e\n$st');
+      }
+    }
+  }
+
+  /// Displays a system download notification in the Android status bar when a certificate PDF is saved
+  Future<void> showDownloadNotification({
+    required String fileName,
+    required String filePath,
+  }) async {
+    try {
+      final notificationId = DateTime.now().millisecondsSinceEpoch.remainder(100000);
+      await _localNotifications.show(
+        id: notificationId,
+        title: '📥 Certificate Downloaded',
+        body: '$fileName has been saved to Downloads. Tap to open.',
+        notificationDetails: const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'download_channel',
+            'File Downloads',
+            channelDescription: 'This channel is used for certificate and file download status alerts.',
+            icon: '@mipmap/launcher_icon',
+            importance: Importance.max,
+            priority: Priority.high,
+            playSound: true,
+            enableVibration: true,
+            visibility: NotificationVisibility.public,
+          ),
+          iOS: DarwinNotificationDetails(
+            presentAlert: true,
+            presentBadge: true,
+            presentSound: true,
+          ),
+        ),
+        payload: filePath,
+      );
+      if (kDebugMode) {
+        print('✅ [showDownloadNotification] Displayed notification #$notificationId for $fileName');
+      }
+    } catch (e, st) {
+      if (kDebugMode) {
+        print('❌ [showDownloadNotification] Error: $e\n$st');
       }
     }
   }

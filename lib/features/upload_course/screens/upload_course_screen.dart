@@ -7,13 +7,16 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
 
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/kyc_restricted_view.dart';
+import '../../../data/models/api_models/certificate_model.dart';
 import '../../../data/models/user_model.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../certificates/widgets/certificate_viewer_dialog.dart';
 import '../../home_instructor/providers/instructor_home_provider.dart';
 import '../../../core/services/notification_service.dart';
 
@@ -86,6 +89,8 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
   bool _issueCertificate = true;
   File? _signatureImage;
   String _selectedTemplate = 'modern'; // 'modern' or 'classic'
+  final _instructorTitleController =
+      TextEditingController(text: 'Lead Instructor & Agricultural Specialist');
 
   // ── Submission State ──────────────────────────────────────────────────────
   bool _isSubmitting = false;
@@ -118,6 +123,7 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
     _descController.dispose();
     _priceController.dispose();
     _priceFocusNode.dispose();
+    _instructorTitleController.dispose();
     for (final m in _curriculum) {
       for (final l in m.lectures) {
         l.dispose();
@@ -748,7 +754,15 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
           _submissionProgressText = 'Attaching Certificate Digital Signature...';
         });
         try {
-          await repo.uploadCertificateTemplate(courseId, _signatureImage!.path);
+          await repo.uploadCertificateTemplate(
+            courseId,
+            _signatureImage!.path,
+            title: 'Certificate of Completion',
+            instructorTitle: _instructorTitleController.text.trim().isNotEmpty
+                ? _instructorTitleController.text.trim()
+                : 'Lead Instructor & Agricultural Specialist',
+            templateStyle: _selectedTemplate,
+          );
         } catch (cErr) {
           debugPrint('⚠️ Certificate signature upload warning: $cErr');
         }
@@ -1319,21 +1333,21 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                   ),
                   const SizedBox(height: 10),
                 ],
-                Row(
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 8,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     OutlinedButton.icon(
                       onPressed: _pickCoverImage,
                       icon: const Icon(Icons.cloud_upload_outlined, size: 18),
                       label: Text(_coverImage != null ? 'Change Thumbnail' : 'Upload Thumbnail'),
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        '16:9 (1280x720), JPG/PNG',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: isDark ? Colors.grey.shade400 : AppColors.inkSoft,
-                        ),
+                    Text(
+                      '16:9 (1280x720), JPG/PNG',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: isDark ? Colors.grey.shade400 : AppColors.inkSoft,
                       ),
                     ),
                   ],
@@ -2085,6 +2099,37 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
               ),
             ],
           ),
+          const SizedBox(height: 24),
+
+          // Instructor Title / Designation
+          _buildFieldLabel('Instructor Title / Designation'),
+          TextField(
+            controller: _instructorTitleController,
+            onChanged: (_) => setState(() {}),
+            decoration: InputDecoration(
+              hintText: 'e.g. Lead Instructor & Agricultural Specialist',
+              filled: true,
+              fillColor: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.grey.shade50,
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: isDark ? AppColors.lineDark : Colors.grey.shade300),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: isDark ? AppColors.lineDark : Colors.grey.shade300),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: AppColors.primaryGreen, width: 1.5),
+              ),
+            ),
+          ),
+          const SizedBox(height: 28),
+
+          // Live Certificate Demo Preview
+          _buildLiveCertificateDemoPreview(isDark),
           const SizedBox(height: 32),
 
           // Actions
@@ -2129,7 +2174,7 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
       onTap: () => setState(() => _selectedTemplate = templateKey),
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
@@ -2140,34 +2185,457 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
         ),
         child: Column(
           children: [
+            // Mini Certificate Representation
             Container(
-              height: 70,
+              height: 72,
               width: double.infinity,
+              padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: isDark ? Colors.black38 : Colors.grey.shade100,
+                color: isDark ? Colors.black45 : Colors.white,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.grey.shade300),
+                border: Border.all(
+                  color: templateKey == 'modern'
+                      ? AppColors.primaryGreen.withValues(alpha: 0.5)
+                      : const Color(0xFFD97706).withValues(alpha: 0.5),
+                  width: 1.2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
-              child: Icon(
-                templateKey == 'modern' ? Icons.workspace_premium_outlined : Icons.military_tech_outlined,
-                color: isSelected ? AppColors.primaryGreen : Colors.grey,
-                size: 32,
+              child: Column(
+                children: [
+                  // Top mini banner
+                  Container(
+                    height: 5,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: templateKey == 'modern' ? AppColors.primaryGreen : const Color(0xFFD97706),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const Spacer(),
+                  Icon(
+                    templateKey == 'modern'
+                        ? Icons.workspace_premium_rounded
+                        : Icons.military_tech_rounded,
+                    color: isSelected
+                        ? (templateKey == 'modern' ? AppColors.primaryGreen : const Color(0xFFD97706))
+                        : Colors.grey.shade400,
+                    size: 26,
+                  ),
+                  const Spacer(),
+                  // Mini placeholder lines
+                  Container(
+                    height: 2,
+                    width: 38,
+                    color: Colors.grey.shade300,
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 8),
             Text(
               title,
               textAlign: TextAlign.center,
-              maxLines: 2,
+              maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: 12,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: isSelected ? AppColors.primaryGreen : null,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                color: isSelected ? AppColors.primaryGreen : (isDark ? Colors.grey.shade300 : AppColors.inkDark),
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildLiveCertificateDemoPreview(bool isDark) {
+    final courseTitle = _titleController.text.trim().isNotEmpty
+        ? _titleController.text.trim()
+        : 'Advance course';
+    final instructorDesignation = _instructorTitleController.text.trim().isNotEmpty
+        ? _instructorTitleController.text.trim()
+        : 'Lead Instructor & Agricultural Specialist';
+    final isModern = _selectedTemplate == 'modern';
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1B231B) : const Color(0xFFF9FBF8),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? AppColors.lineDark : Colors.grey.shade200,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
+            child: Row(
+              children: [
+                const Icon(Icons.bolt_rounded, color: Colors.amber, size: 22),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'Live Certificate Demo Preview',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+                InkWell(
+                  onTap: () {
+                    // Open full interactive popup dialog
+                    CertificateViewerDialog.show(
+                      context,
+                      certificate: CertificateModel(
+                        id: 'demo',
+                        certificateCode: 'IG-DEMO-SAMPLE',
+                        studentName: '[Student Full Name]',
+                        courseTitle: courseTitle,
+                        instructorName: ref.read(authProvider).user?.fullName ?? 'Instructor',
+                        instructorTitle: instructorDesignation,
+                        templateStyle: _selectedTemplate,
+                        issuedAt: DateTime.now(),
+                        verificationUrl: 'https://iagrow.zappcode.in/verify/IG-DEMO-SAMPLE',
+                      ),
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryGreen.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: AppColors.primaryGreen.withValues(alpha: 0.3)),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Interactive Demo',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primaryGreen,
+                          ),
+                        ),
+                        SizedBox(width: 4),
+                        Icon(Icons.open_in_new_rounded, size: 12, color: AppColors.primaryGreen),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Text(
+              'This is a live preview of the certificate awarded to students who complete 100% of this course.',
+              style: TextStyle(
+                fontSize: 12,
+                color: isDark ? Colors.grey.shade400 : AppColors.inkSoft,
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // Embedded Interactive Certificate Mockup
+          GestureDetector(
+            onTap: () {
+              CertificateViewerDialog.show(
+                context,
+                certificate: CertificateModel(
+                  id: 'demo',
+                  certificateCode: 'IG-DEMO-SAMPLE',
+                  studentName: '[Student Full Name]',
+                  courseTitle: courseTitle,
+                  instructorName: ref.read(authProvider).user?.fullName ?? 'Instructor',
+                  instructorTitle: instructorDesignation,
+                  templateStyle: _selectedTemplate,
+                  issuedAt: DateTime.now(),
+                  verificationUrl: 'https://iagrow.zappcode.in/verify/IG-DEMO-SAMPLE',
+                ),
+              );
+            },
+            child: Container(
+              margin: const EdgeInsets.fromLTRB(14, 0, 14, 16),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF121712) : const Color(0xFFFCFDF9),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isModern
+                      ? AppColors.primaryGreen.withValues(alpha: 0.5)
+                      : const Color(0xFFD97706).withValues(alpha: 0.5),
+                  width: 2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: isModern
+                        ? const Color(0xFF22C55E).withValues(alpha: 0.3)
+                        : const Color(0xFFF59E0B).withValues(alpha: 0.3),
+                    width: 1,
+                  ),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Top Logo & Krishishiksha Header
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 22,
+                          height: 22,
+                          decoration: BoxDecoration(
+                            color: AppColors.primaryGreen.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Icon(
+                            Icons.eco_rounded,
+                            color: AppColors.primaryGreen,
+                            size: 14,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'IAGROW',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 1.5,
+                                color: isDark ? Colors.white : AppColors.inkDark,
+                              ),
+                            ),
+                            Text(
+                              'KRISHISHIKSHA E-LEARNING',
+                              style: TextStyle(
+                                fontSize: 7,
+                                letterSpacing: 1.2,
+                                fontWeight: FontWeight.bold,
+                                color: isDark ? Colors.grey.shade400 : AppColors.inkSoft,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+
+                    // Title
+                    Text(
+                      'CERTIFICATE OF COMPLETION',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontFamily: 'serif',
+                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.2,
+                        color: isDark ? const Color(0xFFFDE68A) : const Color(0xFF1E3A1E),
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      'This is proudly conferred and awarded to',
+                      style: TextStyle(
+                        fontSize: 9.5,
+                        fontStyle: FontStyle.italic,
+                        color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+
+                    // Student Name Placeholder
+                    const Text(
+                      '[Student Full Name]',
+                      style: TextStyle(
+                        fontFamily: 'serif',
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primaryGreen,
+                      ),
+                    ),
+                    Container(
+                      margin: const EdgeInsets.symmetric(vertical: 4),
+                      height: 1,
+                      width: 140,
+                      color: isModern
+                          ? AppColors.primaryGreen.withValues(alpha: 0.4)
+                          : const Color(0xFFD97706).withValues(alpha: 0.4),
+                    ),
+                    const SizedBox(height: 2),
+
+                    Text(
+                      'for successfully completing all curriculum lectures, practical coursework, and demonstrating mastery in',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 9,
+                        color: isDark ? Colors.grey.shade400 : Colors.grey.shade700,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+
+                    // Course Title Pill
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFEF3C7),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: const Color(0xFFFDE68A)),
+                      ),
+                      child: Text(
+                        courseTitle,
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF92400E),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Footer: Date & ID, Seal, Signature
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        // Left: Date & Code
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'DATE OF ISSUE',
+                                style: TextStyle(
+                                  fontSize: 7,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.grey.shade500,
+                                ),
+                              ),
+                              Text(
+                                DateFormat('MMMM d, yyyy').format(DateTime.now()),
+                                style: TextStyle(
+                                  fontSize: 8.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: isDark ? Colors.grey.shade300 : AppColors.inkDark,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade100,
+                                  borderRadius: BorderRadius.circular(3),
+                                ),
+                                child: Text(
+                                  'ID: IG-DEMO-SAMPLE',
+                                  style: TextStyle(
+                                    fontSize: 7,
+                                    fontFamily: 'monospace',
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // Center: Seal Icon
+                        Container(
+                          padding: const EdgeInsets.all(5),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: const Color(0xFFFEF3C7),
+                            border: Border.all(color: const Color(0xFFF59E0B), width: 1.5),
+                          ),
+                          child: const Icon(
+                            Icons.verified_rounded,
+                            size: 20,
+                            color: Color(0xFFD97706),
+                          ),
+                        ),
+
+                        // Right: Signature
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (_signatureImage != null)
+                                Image.file(
+                                  _signatureImage!,
+                                  height: 22,
+                                  fit: BoxFit.contain,
+                                )
+                              else
+                                const Text(
+                                  'Instructor',
+                                  style: TextStyle(
+                                    fontFamily: 'serif',
+                                    fontSize: 12,
+                                    fontStyle: FontStyle.italic,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.primaryGreen,
+                                  ),
+                                ),
+                              Container(
+                                height: 0.8,
+                                width: 80,
+                                color: Colors.grey.shade400,
+                                margin: const EdgeInsets.symmetric(vertical: 2),
+                              ),
+                              Text(
+                                instructorDesignation,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.right,
+                                style: TextStyle(
+                                  fontSize: 7.5,
+                                  fontWeight: FontWeight.w500,
+                                  color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

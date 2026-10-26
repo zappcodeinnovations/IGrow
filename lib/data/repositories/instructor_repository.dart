@@ -803,20 +803,32 @@ class InstructorRepository {
     }
   }
 
-  /// Upload a certificate template (image or PDF) for a course.
+  /// Upload a certificate template or signature for a course.
   Future<Map<String, dynamic>> uploadCertificateTemplate(
     String coursePk,
     String filePath, {
     String title = 'Certificate of Completion',
+    String? instructorTitle,
+    String? templateStyle,
   }) async {
-    debugPrint('🎓 [InstructorRepository] uploadCertificateTemplate START: coursePk=$coursePk, path=$filePath');
+    debugPrint('🎓 [InstructorRepository] uploadCertificateTemplate START: coursePk=$coursePk, path=$filePath, style=$templateStyle, title=$instructorTitle');
     final token = await tokenStorage.getAccessToken();
     final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/instructor/courses/$coursePk/certificate/');
     
     final request = http.MultipartRequest('POST', uri);
     request.headers['Authorization'] = 'Bearer $token';
     request.fields['title'] = title;
+    if (instructorTitle != null && instructorTitle.isNotEmpty) {
+      request.fields['instructor_title'] = instructorTitle;
+      request.fields['designation'] = instructorTitle;
+    }
+    if (templateStyle != null && templateStyle.isNotEmpty) {
+      request.fields['template_style'] = templateStyle;
+    }
+    
+    // Attach file under standard multipart field names
     request.files.add(await http.MultipartFile.fromPath('template_image', filePath));
+    request.files.add(await http.MultipartFile.fromPath('signature_image', filePath));
     
     final streamedResponse = await request.send();
     final response = await http.Response.fromStream(streamedResponse);

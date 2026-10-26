@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:iconly/iconly.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../../core/theme/app_colors.dart';
-import '../../../core/utils/responsive_layout.dart';
-import '../../../core/widgets/app_button.dart';
-import '../../../core/widgets/app_text_field.dart';
 import '../../../core/router/route_names.dart';
-import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/app_toast.dart';
+import '../../../core/utils/responsive_layout.dart';
+import '../../../core/widgets/app_elevated_back_button.dart';
+import '../../../core/widgets/app_gradient_button.dart';
+import '../../../core/widgets/app_pill_text_field.dart';
+import '../../../core/widgets/organic_background.dart';
 import '../providers/auth_provider.dart';
-import 'package:iconly/iconly.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key, this.selectedRole});
@@ -38,7 +40,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<void> _login() async {
-    // Immediately dismiss keyboard and clear focus to prevent blank insets
+    // Dismiss keyboard immediately to prevent layout jumps
     FocusScope.of(context).unfocus();
     FocusManager.instance.primaryFocus?.unfocus();
 
@@ -50,28 +52,31 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       );
     }
 
-    final email = _emailController.text.trim();
-    final password = _passwordController.text;
-
     if (!_formKey.currentState!.validate()) {
       return;
     }
+
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
 
     await ref.read(authProvider.notifier).login(
           email: email,
           password: password,
         );
 
-    if (mounted) {
-      final authState = ref.read(authProvider);
-      if (authState.isAuthenticated) {
-        final prefs = await SharedPreferences.getInstance();
-        final hasSelectedLanguage = prefs.getBool('has_selected_language') ?? false;
-        if (hasSelectedLanguage) {
-          context.go(RouteNames.authSuccess);
-        } else {
-          context.go(RouteNames.languageSelection);
-        }
+    if (!mounted) return;
+
+    final authState = ref.read(authProvider);
+    if (authState.isAuthenticated) {
+      final prefs = await SharedPreferences.getInstance();
+      if (!mounted) return;
+
+      final hasSelectedLanguage =
+          prefs.getBool('has_selected_language') ?? false;
+      if (hasSelectedLanguage) {
+        context.go(RouteNames.authSuccess);
+      } else {
+        context.go(RouteNames.languageSelection);
       }
     }
   }
@@ -87,251 +92,248 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     final authState = ref.watch(authProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final inkSoft = Theme.of(context).extension<AppThemeExtension>()?.inkSoft ?? AppColors.inkSoft;
 
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
       behavior: HitTestBehavior.opaque,
-      child: Scaffold(
-        backgroundColor: isDark ? AppColors.bgDark : AppColors.bgLight,
-        resizeToAvoidBottomInset: true,
-        body: SafeArea(
+      child: OrganicBackground(
+        child: SafeArea(
           child: ResponsiveContentConstraint(
-            maxWidth: 520,
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return SingleChildScrollView(
-                  controller: _scrollController,
-                  physics: const ClampingScrollPhysics(),
-                  keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      minHeight: constraints.maxHeight,
-                    ),
-                    child: IntrinsicHeight(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24),
-                        child: Form(
-                          key: _formKey,
-                          child: AutofillGroup(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+            maxWidth: 500,
+            child: SingleChildScrollView(
+              controller: _scrollController,
+              physics: const ClampingScrollPhysics(),
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Form(
+                  key: _formKey,
+                  child: AutofillGroup(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 16),
+
+                        // Reusable Elevated Back Button
+                        const AppElevatedBackButton(
+                          fallbackRoute: RouteNames.onboarding,
+                        ),
+
+                        const SizedBox(height: 28),
+
+                        // Headline: "Welcome"
+                        Text(
+                          'Welcome',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 40,
+                            fontWeight: FontWeight.w800,
+                            color: isDark
+                                ? AppColors.organicHeadingDark
+                                : AppColors.organicHeadingGreen,
+                            height: 1.12,
+                            letterSpacing: -0.6,
+                          ),
+                        ),
+
+                        // Headline: "Back! 👏" with celebratory accents
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Text(
+                              'Back!',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 40,
+                                fontWeight: FontWeight.w800,
+                                color: isDark
+                                    ? AppColors.organicOliveDark
+                                    : AppColors.organicOliveGreen,
+                                height: 1.15,
+                                letterSpacing: -0.6,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Stack(
+                              clipBehavior: Clip.none,
+                              alignment: Alignment.center,
                               children: [
-                                const SizedBox(height: 24),
-                                // Back button
-                                GestureDetector(
-                                  onTap: () {
-                                    if (context.canPop()) {
-                                      context.pop();
-                                    } else {
-                                      context.go(RouteNames.onboarding);
-                                    }
-                                  },
-                                  child: Container(
-                                    width: 44,
-                                    height: 44,
-                                    decoration: BoxDecoration(
-                                      color: isDark ? AppColors.cardDark : AppColors.white,
-                                      borderRadius: BorderRadius.circular(14),
-                                      border: Border.all(
-                                        color: isDark ? AppColors.lineDark : AppColors.lineLight,
-                                      ),
-                                    ),
-                                    child: Icon(
-                                      IconlyLight.arrow_left,
-                                      color: isDark ? AppColors.white : AppColors.inkDark,
-                                    ),
+                                const Text(
+                                  '👏',
+                                  style: TextStyle(fontSize: 34),
+                                ),
+                                Positioned(
+                                  top: -6,
+                                  right: -7,
+                                  child: CustomPaint(
+                                    size: const Size(20, 20),
+                                    painter: EmojiCelebrationPainter(isDark: isDark),
                                   ),
                                 ),
-                                const SizedBox(height: 32),
-                                Text(
-                                  'Welcome Back! 👋',
-                                  style: Theme.of(context).textTheme.displayMedium?.copyWith(color: inkSoft),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'Sign in to continue your learning journey.',
-                                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: inkSoft),
-                                ),
-                                const SizedBox(height: 40),
-                                // Email / Phone field
-                                AppTextField(
-                                  controller: _emailController,
-                                  label: 'Email or Phone',
-                                  hint: 'Enter your email or phone number',
-                                  prefixIcon: const Icon(IconlyLight.profile),
-                                  keyboardType: TextInputType.emailAddress,
-                                  textInputAction: TextInputAction.next,
-                                  autofillHints: const [AutofillHints.email, AutofillHints.username],
-                                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Email or Phone is required' : null,
-                                ),
-                                const SizedBox(height: 16),
-                                // Password field
-                                AppTextField(
-                                  controller: _passwordController,
-                                  label: 'Password',
-                                  hint: 'Enter your password',
-                                  obscureText: _obscurePassword,
-                                  prefixIcon: const Icon(IconlyLight.lock),
-                                  autofillHints: const [AutofillHints.password],
-                                  suffixIcon: GestureDetector(
-                                    onTap: () => setState(() => _obscurePassword = !_obscurePassword),
-                                    child: Icon(
-                                      _obscurePassword ? IconlyLight.hide : IconlyLight.show,
-                                    ),
-                                  ),
-                                  textInputAction: TextInputAction.done,
-                                  onSubmitted: (_) => _login(),
-                                  validator: (v) => (v == null || v.isEmpty) ? 'Password is required' : null,
-                                ),
-                                const SizedBox(height: 12),
-                                // Forgot password
-                                Align(
-                                  alignment: Alignment.centerRight,
-                                  child: TextButton(
-                                    onPressed: () => context.push(RouteNames.forgotPassword),
-                                    child: Text(
-                                      'Forgot Password?',
-                                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                                            color: AppColors.primaryGreen,
-                                          ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 24),
-                                // Login button
-                                AppButton(
-                                  label: 'Sign In',
-                                  onPressed: _login,
-                                  isLoading: authState.isLoading,
-                                ),
-                                // Social login buttons commented out for review compliance
-                                /*
-                                const SizedBox(height: 32),
-                                // Divider
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Divider(
-                                        color: isDark ? AppColors.lineDark : AppColors.lineLight,
-                                      ),
-                                    ),
-                                    Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                                      child: Text(
-                                        'Or continue with',
-                                        style: Theme.of(context).textTheme.bodySmall?.copyWith(color: inkSoft),
-                                      ),
-                                    ),
-                                    Expanded(
-                                      child: Divider(
-                                        color: isDark ? AppColors.lineDark : AppColors.lineLight,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 24),
-                                // Social login buttons
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: _SocialButton(
-                                        icon: Icons.g_mobiledata_rounded,
-                                        label: 'Google',
-                                        onTap: () {}, // Placeholder
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: _SocialButton(
-                                        icon: IconlyLight.call,
-                                        label: 'Phone',
-                                        onTap: () => context.push(RouteNames.otp),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                */
-                                const SizedBox(height: 32),
-                                // Register link
-                                Center(
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        "Don't have an account? ",
-                                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: inkSoft),
-                                      ),
-                                      GestureDetector(
-                                        onTap: () => context.push(
-                                          '${RouteNames.register}?role=${widget.selectedRole ?? 'farmer'}',
-                                        ),
-                                        child: Text(
-                                          'Sign Up',
-                                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                                color: AppColors.primaryGreen,
-                                              ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(height: 24),
                               ],
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 10),
+
+                        // Subtitle
+                        Text(
+                          'Sign in to continue your learning journey.',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 15.5,
+                            fontWeight: FontWeight.w400,
+                            color: isDark
+                                ? AppColors.organicSubtitleDark
+                                : AppColors.organicSubtitleGreen,
+                            height: 1.35,
+                          ),
+                        ),
+
+                        const SizedBox(height: 36),
+
+                        // Input Card: Email or Phone (Reusable AppPillTextField)
+                        AppPillTextField(
+                          controller: _emailController,
+                          hintText: 'Email or Phone',
+                          prefixIcon: IconlyLight.profile,
+                          keyboardType: TextInputType.emailAddress,
+                          textInputAction: TextInputAction.next,
+                          autofillHints: const [
+                            AutofillHints.email,
+                            AutofillHints.username,
+                          ],
+                          validator: (v) {
+                            if (v == null || v.trim().isEmpty) {
+                              return 'Email or Phone is required';
+                            }
+                            return null;
+                          },
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        // Input Card: Password (Reusable AppPillTextField)
+                        AppPillTextField(
+                          controller: _passwordController,
+                          hintText: 'Password',
+                          prefixIcon: IconlyLight.lock,
+                          obscureText: _obscurePassword,
+                          textInputAction: TextInputAction.done,
+                          autofillHints: const [AutofillHints.password],
+                          onSubmitted: (_) => _login(),
+                          suffixIcon: GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _obscurePassword = !_obscurePassword;
+                              });
+                            },
+                            behavior: HitTestBehavior.opaque,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              child: Icon(
+                                _obscurePassword
+                                    ? IconlyLight.hide
+                                    : IconlyLight.show,
+                                size: 21,
+                                color: isDark
+                                    ? AppColors.organicIconDark
+                                    : AppColors.organicIconLight,
+                              ),
+                            ),
+                          ),
+                          validator: (v) {
+                            if (v == null || v.isEmpty) {
+                              return 'Password is required';
+                            }
+                            return null;
+                          },
+                        ),
+
+                        const SizedBox(height: 14),
+
+                        // Right-aligned "Forgot Password?" with clean green underline
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: GestureDetector(
+                            onTap: () => context.push(RouteNames.forgotPassword),
+                            behavior: HitTestBehavior.opaque,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 4,
+                                horizontal: 2,
+                              ),
+                              child: Text(
+                                'Forgot Password?',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 14.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: isDark
+                                      ? AppColors.organicActionLinkDark
+                                      : AppColors.organicActionLink,
+                                  decoration: TextDecoration.underline,
+                                  decorationColor: isDark
+                                      ? AppColors.organicActionLinkDark
+                                      : AppColors.organicActionLink,
+                                ),
+                              ),
                             ),
                           ),
                         ),
-                      ),
+
+                        const SizedBox(height: 32),
+
+                        // Reusable HD Green Gradient Pill Sign In Button
+                        AppGradientButton(
+                          label: 'Sign In',
+                          isLoading: authState.isLoading,
+                          onPressed: _login,
+                        ),
+
+                        const SizedBox(height: 36),
+
+                        // Bottom Sign Up Link
+                        Center(
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                "Don't have an account? ",
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: isDark
+                                      ? const Color(0xFFB0C4AF)
+                                      : const Color(0xFF1E2B1F),
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () => context.push(
+                                  '${RouteNames.register}?role=${widget.selectedRole ?? 'farmer'}',
+                                ),
+                                behavior: HitTestBehavior.opaque,
+                                child: Text(
+                                  'Sign Up',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    color: isDark
+                                        ? AppColors.organicActionLinkDark
+                                        : const Color(0xFF0F5B24),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 32),
+                      ],
                     ),
                   ),
-                );
-              },
+                ),
+              ),
             ),
           ),
-        ),
-      ),
-    );
-    
-  }
-}
-
-// ignore: unused_element
-class _SocialButton extends StatelessWidget {
-  const _SocialButton({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 54,
-        decoration: BoxDecoration(
-          color: isDark ? AppColors.cardDark : AppColors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isDark ? AppColors.lineDark : AppColors.lineLight,
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 24,
-                color: isDark ? AppColors.white : AppColors.inkDark),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(color: isDark ? AppColors.white : AppColors.inkDark,),
-            ),
-          ],
         ),
       ),
     );

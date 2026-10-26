@@ -16,6 +16,8 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/shimmer_placeholders.dart';
 import '../../../core/services/quiz_service.dart';
 import '../../../data/models/api_models/course_models.dart';
+import '../../certificates/providers/certificates_provider.dart';
+import '../../certificates/widgets/certificate_viewer_dialog.dart';
 import '../../home_instructor/providers/instructor_home_provider.dart';
 
 /// Module 1: Instructor Course Management (Curriculum Builder)
@@ -2187,8 +2189,77 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
           ),
           error: (err, _) => Center(child: Text('Error: $err')),
         ),
+        const SizedBox(height: 24),
+        // Live Demo Preview Card
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFF9E6),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFD4AF37).withValues(alpha: 0.5)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.remove_red_eye_rounded, color: Color(0xFF8B6508), size: 22),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Live Demo Certificate Preview',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF8B6508)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'See exactly how the official certificate will appear to students with instructor signature and verification link.',
+                style: TextStyle(fontSize: 12, color: Colors.black87),
+              ),
+              const SizedBox(height: 14),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFD4AF37),
+                    foregroundColor: Colors.black87,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  icon: const Icon(Icons.workspace_premium_rounded, size: 18),
+                  label: const Text('Preview Certificate Demo', style: TextStyle(fontWeight: FontWeight.bold)),
+                  onPressed: () => _previewCertificateDemo(),
+                ),
+              ),
+            ],
+          ),
+        ),
       ],
     );
+  }
+
+  Future<void> _previewCertificateDemo() async {
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(child: CircularProgressIndicator(color: AppColors.primaryGreen)),
+      );
+
+      final repo = ref.read(certificateRepositoryProvider);
+      final preview = await repo.getPreviewCertificate(widget.courseId);
+
+      if (mounted) Navigator.pop(context); // Dismiss loading
+      if (!mounted) return;
+
+      CertificateViewerDialog.show(context, certificate: preview);
+    } catch (e) {
+      if (mounted) Navigator.pop(context); // Dismiss loading
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load certificate preview: $e')),
+        );
+      }
+    }
   }
 
   // ── Settings Tab ────────────────────────────────────────────────────────────

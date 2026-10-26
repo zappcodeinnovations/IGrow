@@ -208,7 +208,7 @@ void main() {
 
       final post = CommunityPost.fromJson(json);
       final buffer = StringBuffer();
-      if (post.postType == 'OFFLINE_SEMINAR') {
+      if (post.postType == 'OFFLINE_SEMINAR' || post.postType == 'SEMINAR') {
         buffer.writeln('🌾 [iAgrow Seminar Invitation]');
       }
       buffer.writeln(post.title);
