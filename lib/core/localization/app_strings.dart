@@ -172,6 +172,7 @@ class AppStrings {
       'Sign In': 'Sign In',
       "Don't have an account? ": "Don't have an account? ",
       'Sign Up': 'Sign Up',
+      'Press back again to exit': 'Press back again to exit',
     },
 
     'hi': {
@@ -318,6 +319,7 @@ class AppStrings {
       'Sign In': 'साइन इन करें',
       "Don't have an account? ": "खाता नहीं है? ",
       'Sign Up': 'साइन अप करें',
+      'Press back again to exit': 'बाहर निकलने के लिए फिर से बैक दबाएं',
     },
 
     'mr': {
@@ -464,6 +466,7 @@ class AppStrings {
       'Sign In': 'साइन इन करा',
       "Don't have an account? ": "खाते नाही का? ",
       'Sign Up': 'साइन अप करा',
+      'Press back again to exit': 'बाहेर पडण्यासाठी पुन्हा मागे दाबा',
     },
   };
 

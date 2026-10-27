@@ -8,6 +8,7 @@ import '../../../core/localization/app_strings.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/responsive_layout.dart';
+import '../../../core/widgets/app_elevated_back_button.dart';
 import '../../../core/widgets/app_gradient_button.dart';
 import '../../../core/widgets/organic_background.dart';
 import '../../../data/models/user_role.dart';
@@ -42,6 +43,13 @@ class _ChooseRoleScreenState extends ConsumerState<ChooseRoleScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                const SizedBox(height: 16),
+
+                // Elevated Back Button to Language Selection
+                const AppElevatedBackButton(
+                  fallbackRoute: RouteNames.languageSelection,
+                ),
+
                 const SizedBox(height: 24),
 
                 // Headline
