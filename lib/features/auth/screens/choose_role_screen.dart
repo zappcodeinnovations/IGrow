@@ -123,7 +123,7 @@ class _ChooseRoleScreenState extends ConsumerState<ChooseRoleScreen> {
                       await prefs.setString('selected_auth_role', _selectedRole.name);
                       if (context.mounted) {
                         context.go(
-                          '${RouteNames.languageSelection}?role=${_selectedRole.name}',
+                          '${RouteNames.login}?role=${_selectedRole.name}',
                         );
                       }
                     },

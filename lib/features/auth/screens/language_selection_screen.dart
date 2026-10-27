@@ -99,8 +99,7 @@ class _LanguageSelectionScreenState extends ConsumerState<LanguageSelectionScree
                       final prefs = await SharedPreferences.getInstance();
                       await prefs.setBool('has_selected_language', true);
                       if (context.mounted) {
-                        final role = widget.selectedRole ?? prefs.getString('selected_auth_role') ?? 'farmer';
-                        context.go('${RouteNames.login}?role=$role');
+                        context.go(RouteNames.chooseRole);
                       }
                     },
                   ),
