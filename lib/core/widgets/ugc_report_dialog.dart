@@ -40,7 +40,6 @@ class UgcReportDialog extends StatefulWidget {
 class _UgcReportDialogState extends State<UgcReportDialog> {
   String _selectedReason = 'INAPPROPRIATE';
   final _detailsController = TextEditingController();
-  bool _isSubmitting = false;
 
   final List<Map<String, String>> _reasons = const [
     {'value': 'INAPPROPRIATE', 'label': 'Inappropriate Content'},
