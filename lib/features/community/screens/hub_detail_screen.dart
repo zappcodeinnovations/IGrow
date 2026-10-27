@@ -432,9 +432,11 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                           ElevatedButton(
                             style: ElevatedButton.styleFrom(
                               backgroundColor: hub.isMember
-                                  ? (isDark ? const Color(0xFF263B2B) : const Color(0xFFEAF5E7))
-                                  : AppColors.primaryGreen,
-                              foregroundColor: hub.isMember ? AppColors.primaryGreen : Colors.white,
+                                  ? (isDark ? const Color(0xFF24242A) : AppColors.editorialSurfaceContainerLow)
+                                  : AppColors.editorialSecondary,
+                              foregroundColor: hub.isMember
+                                  ? (isDark ? Colors.white70 : AppColors.editorialOnSurface)
+                                  : Colors.white,
                               elevation: hub.isMember ? 0 : 1,
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -722,14 +724,14 @@ class _DefaultCoverBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Color(0xFF1B5E20),
-            Color(0xFF2E7D32),
-            Color(0xFF388E3C),
+            const Color(0xFF1E2124),
+            const Color(0xFF2B2F33),
+            AppColors.editorialSecondary.withValues(alpha: 0.6),
           ],
         ),
       ),

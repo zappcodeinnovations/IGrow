@@ -80,14 +80,14 @@ class EmptyState extends StatelessWidget {
               height: 88,
               decoration: BoxDecoration(
                 color: isDark
-                    ? AppColors.greenDark.withValues(alpha: 0.3)
-                    : AppColors.canopyStart,
+                    ? AppColors.editorialSecondaryFixedDim.withValues(alpha: 0.18)
+                    : AppColors.editorialSecondaryFixed.withValues(alpha: 0.45),
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 icon,
                 size: 40,
-                color: AppColors.primaryGreen,
+                color: isDark ? AppColors.editorialSecondaryFixedDim : AppColors.editorialSecondary,
               ),
             ),
             const SizedBox(height: 24),

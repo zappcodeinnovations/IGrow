@@ -10,6 +10,8 @@ import '../../../data/models/api_models/wishlist_model.dart';
 import '../../../core/network/swagger_generated/app_api.swagger.dart';
 import 'ebooks_tab.dart';
 import '../../../core/widgets/shimmer_placeholders.dart';
+import '../../../core/router/route_names.dart';
+import '../../../core/utils/app_toast.dart';
 
 /// Explore screen for courses.
 class ExploreScreen extends ConsumerStatefulWidget {
@@ -130,10 +132,10 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                               Container(
                                 padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
-                                  color: AppColors.primaryGreen.withValues(alpha: 0.12),
+                                  color: AppColors.editorialSecondary.withValues(alpha: 0.12),
                                   borderRadius: BorderRadius.circular(10),
                                 ),
-                                child: const Icon(Icons.tune_rounded, color: AppColors.primaryGreen, size: 20),
+                                child: const Icon(Icons.tune_rounded, color: AppColors.editorialSecondary, size: 20),
                               ),
                               const SizedBox(width: 10),
                               Text(
@@ -149,7 +151,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                               decoration: BoxDecoration(
-                                color: AppColors.primaryGreen,
+                                color: AppColors.editorialSecondary,
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text(
@@ -181,9 +183,9 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                           ChoiceChip(
                             label: const Text('All Ratings'),
                             selected: tempMinRating == null,
-                            selectedColor: AppColors.primaryGreen.withValues(alpha: 0.15),
+                            selectedColor: AppColors.editorialSecondary.withValues(alpha: 0.15),
                             labelStyle: TextStyle(
-                              color: tempMinRating == null ? AppColors.primaryGreen : null,
+                              color: tempMinRating == null ? AppColors.editorialSecondary : null,
                               fontWeight: tempMinRating == null ? FontWeight.bold : FontWeight.normal,
                             ),
                             onSelected: (val) {
@@ -204,9 +206,9 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                                 ],
                               ),
                               selected: isSelected,
-                              selectedColor: AppColors.primaryGreen.withValues(alpha: 0.15),
+                              selectedColor: AppColors.editorialSecondary.withValues(alpha: 0.15),
                               labelStyle: TextStyle(
-                                color: isSelected ? AppColors.primaryGreen : null,
+                                color: isSelected ? AppColors.editorialSecondary : null,
                                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                               ),
                               onSelected: (val) {
@@ -221,7 +223,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                       // 2. Price Range Presets
                       Row(
                         children: [
-                          const Icon(Icons.payments_outlined, size: 18, color: AppColors.primaryGreen),
+                          const Icon(Icons.payments_outlined, size: 18, color: AppColors.editorialSecondary),
                           const SizedBox(width: 6),
                           Text('Price Range', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, fontSize: 14)),
                         ],
@@ -234,9 +236,9 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                           ChoiceChip(
                             label: const Text('All Prices'),
                             selected: tempPricePreset == 'all',
-                            selectedColor: AppColors.primaryGreen.withValues(alpha: 0.15),
+                            selectedColor: AppColors.editorialSecondary.withValues(alpha: 0.15),
                             labelStyle: TextStyle(
-                              color: tempPricePreset == 'all' ? AppColors.primaryGreen : null,
+                              color: tempPricePreset == 'all' ? AppColors.editorialSecondary : null,
                               fontWeight: tempPricePreset == 'all' ? FontWeight.bold : FontWeight.normal,
                             ),
                             onSelected: (val) {
@@ -252,9 +254,9 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                           ChoiceChip(
                             label: const Text('Free (₹0)'),
                             selected: tempPricePreset == 'free',
-                            selectedColor: AppColors.primaryGreen.withValues(alpha: 0.15),
+                            selectedColor: AppColors.editorialSecondary.withValues(alpha: 0.15),
                             labelStyle: TextStyle(
-                              color: tempPricePreset == 'free' ? AppColors.primaryGreen : null,
+                              color: tempPricePreset == 'free' ? AppColors.editorialSecondary : null,
                               fontWeight: tempPricePreset == 'free' ? FontWeight.bold : FontWeight.normal,
                             ),
                             onSelected: (val) {
@@ -268,9 +270,9 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                           ChoiceChip(
                             label: const Text('Under ₹500'),
                             selected: tempPricePreset == 'under_500',
-                            selectedColor: AppColors.primaryGreen.withValues(alpha: 0.15),
+                            selectedColor: AppColors.editorialSecondary.withValues(alpha: 0.15),
                             labelStyle: TextStyle(
-                              color: tempPricePreset == 'under_500' ? AppColors.primaryGreen : null,
+                              color: tempPricePreset == 'under_500' ? AppColors.editorialSecondary : null,
                               fontWeight: tempPricePreset == 'under_500' ? FontWeight.bold : FontWeight.normal,
                             ),
                             onSelected: (val) {
@@ -284,9 +286,9 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                           ChoiceChip(
                             label: const Text('₹500 - ₹1,000'),
                             selected: tempPricePreset == '500_1000',
-                            selectedColor: AppColors.primaryGreen.withValues(alpha: 0.15),
+                            selectedColor: AppColors.editorialSecondary.withValues(alpha: 0.15),
                             labelStyle: TextStyle(
-                              color: tempPricePreset == '500_1000' ? AppColors.primaryGreen : null,
+                              color: tempPricePreset == '500_1000' ? AppColors.editorialSecondary : null,
                               fontWeight: tempPricePreset == '500_1000' ? FontWeight.bold : FontWeight.normal,
                             ),
                             onSelected: (val) {
@@ -300,9 +302,9 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                           ChoiceChip(
                             label: const Text('Above ₹1,000'),
                             selected: tempPricePreset == 'above_1000',
-                            selectedColor: AppColors.primaryGreen.withValues(alpha: 0.15),
+                            selectedColor: AppColors.editorialSecondary.withValues(alpha: 0.15),
                             labelStyle: TextStyle(
-                              color: tempPricePreset == 'above_1000' ? AppColors.primaryGreen : null,
+                              color: tempPricePreset == 'above_1000' ? AppColors.editorialSecondary : null,
                               fontWeight: tempPricePreset == 'above_1000' ? FontWeight.bold : FontWeight.normal,
                             ),
                             onSelected: (val) {
@@ -320,7 +322,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                       // 3. Difficulty Level
                       Row(
                         children: [
-                          const Icon(Icons.signal_cellular_alt_rounded, size: 18, color: AppColors.primaryGreen),
+                          const Icon(Icons.signal_cellular_alt_rounded, size: 18, color: AppColors.editorialSecondary),
                           const SizedBox(width: 6),
                           Text('Difficulty Level', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, fontSize: 14)),
                         ],
@@ -333,9 +335,9 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                           ChoiceChip(
                             label: const Text('All Levels'),
                             selected: tempLevel.isEmpty,
-                            selectedColor: AppColors.primaryGreen.withValues(alpha: 0.15),
+                            selectedColor: AppColors.editorialSecondary.withValues(alpha: 0.15),
                             labelStyle: TextStyle(
-                              color: tempLevel.isEmpty ? AppColors.primaryGreen : null,
+                              color: tempLevel.isEmpty ? AppColors.editorialSecondary : null,
                               fontWeight: tempLevel.isEmpty ? FontWeight.bold : FontWeight.normal,
                             ),
                             onSelected: (val) {
@@ -347,9 +349,9 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                           ChoiceChip(
                             label: const Text('Beginner'),
                             selected: tempLevel == 'beginner',
-                            selectedColor: AppColors.primaryGreen.withValues(alpha: 0.15),
+                            selectedColor: AppColors.editorialSecondary.withValues(alpha: 0.15),
                             labelStyle: TextStyle(
-                              color: tempLevel == 'beginner' ? AppColors.primaryGreen : null,
+                              color: tempLevel == 'beginner' ? AppColors.editorialSecondary : null,
                               fontWeight: tempLevel == 'beginner' ? FontWeight.bold : FontWeight.normal,
                             ),
                             onSelected: (val) {
@@ -359,9 +361,9 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                           ChoiceChip(
                             label: const Text('Intermediate'),
                             selected: tempLevel == 'intermediate',
-                            selectedColor: AppColors.primaryGreen.withValues(alpha: 0.15),
+                            selectedColor: AppColors.editorialSecondary.withValues(alpha: 0.15),
                             labelStyle: TextStyle(
-                              color: tempLevel == 'intermediate' ? AppColors.primaryGreen : null,
+                              color: tempLevel == 'intermediate' ? AppColors.editorialSecondary : null,
                               fontWeight: tempLevel == 'intermediate' ? FontWeight.bold : FontWeight.normal,
                             ),
                             onSelected: (val) {
@@ -371,9 +373,9 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                           ChoiceChip(
                             label: const Text('Advanced'),
                             selected: tempLevel == 'advanced',
-                            selectedColor: AppColors.primaryGreen.withValues(alpha: 0.15),
+                            selectedColor: AppColors.editorialSecondary.withValues(alpha: 0.15),
                             labelStyle: TextStyle(
-                              color: tempLevel == 'advanced' ? AppColors.primaryGreen : null,
+                              color: tempLevel == 'advanced' ? AppColors.editorialSecondary : null,
                               fontWeight: tempLevel == 'advanced' ? FontWeight.bold : FontWeight.normal,
                             ),
                             onSelected: (val) {
@@ -387,7 +389,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                       // 4. Sort By Ordering
                       Row(
                         children: [
-                          const Icon(Icons.sort_rounded, size: 18, color: AppColors.primaryGreen),
+                          const Icon(Icons.sort_rounded, size: 18, color: AppColors.editorialSecondary),
                           const SizedBox(width: 6),
                           Text('Sort by', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, fontSize: 14)),
                         ],
@@ -400,9 +402,9 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                           ChoiceChip(
                             label: const Text('Newest'),
                             selected: tempOrdering == '-created_at' || tempOrdering == '',
-                            selectedColor: AppColors.primaryGreen.withValues(alpha: 0.15),
+                            selectedColor: AppColors.editorialSecondary.withValues(alpha: 0.15),
                             labelStyle: TextStyle(
-                              color: (tempOrdering == '-created_at' || tempOrdering == '') ? AppColors.primaryGreen : null,
+                              color: (tempOrdering == '-created_at' || tempOrdering == '') ? AppColors.editorialSecondary : null,
                               fontWeight: (tempOrdering == '-created_at' || tempOrdering == '') ? FontWeight.bold : FontWeight.normal,
                             ),
                             onSelected: (val) {
@@ -414,9 +416,9 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                           ChoiceChip(
                             label: const Text('Most Popular'),
                             selected: tempOrdering == '-views_count',
-                            selectedColor: AppColors.primaryGreen.withValues(alpha: 0.15),
+                            selectedColor: AppColors.editorialSecondary.withValues(alpha: 0.15),
                             labelStyle: TextStyle(
-                              color: tempOrdering == '-views_count' ? AppColors.primaryGreen : null,
+                              color: tempOrdering == '-views_count' ? AppColors.editorialSecondary : null,
                               fontWeight: tempOrdering == '-views_count' ? FontWeight.bold : FontWeight.normal,
                             ),
                             onSelected: (val) {
@@ -426,9 +428,9 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                           ChoiceChip(
                             label: const Text('Price: Low to High'),
                             selected: tempOrdering == 'price',
-                            selectedColor: AppColors.primaryGreen.withValues(alpha: 0.15),
+                            selectedColor: AppColors.editorialSecondary.withValues(alpha: 0.15),
                             labelStyle: TextStyle(
-                              color: tempOrdering == 'price' ? AppColors.primaryGreen : null,
+                              color: tempOrdering == 'price' ? AppColors.editorialSecondary : null,
                               fontWeight: tempOrdering == 'price' ? FontWeight.bold : FontWeight.normal,
                             ),
                             onSelected: (val) {
@@ -438,9 +440,9 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                           ChoiceChip(
                             label: const Text('Price: High to Low'),
                             selected: tempOrdering == '-price',
-                            selectedColor: AppColors.primaryGreen.withValues(alpha: 0.15),
+                            selectedColor: AppColors.editorialSecondary.withValues(alpha: 0.15),
                             labelStyle: TextStyle(
-                              color: tempOrdering == '-price' ? AppColors.primaryGreen : null,
+                              color: tempOrdering == '-price' ? AppColors.editorialSecondary : null,
                               fontWeight: tempOrdering == '-price' ? FontWeight.bold : FontWeight.normal,
                             ),
                             onSelected: (val) {
@@ -480,7 +482,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                             flex: 2,
                             child: ElevatedButton(
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.primaryGreen,
+                                backgroundColor: AppColors.editorialSecondary,
                                 foregroundColor: AppColors.white,
                                 padding: const EdgeInsets.symmetric(vertical: 14),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -536,7 +538,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
               ),
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.primaryGreen.withValues(alpha: isDark ? 0.08 : 0.05),
+                  color: AppColors.editorialSecondary.withValues(alpha: isDark ? 0.08 : 0.05),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
@@ -596,7 +598,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
               children: [
                 IconButton(
                   icon: const Icon(Icons.tune_rounded),
-                  color: _activeFilterCount > 0 ? AppColors.accentOrange : AppColors.primaryGreen,
+                  color: _activeFilterCount > 0 ? AppColors.accentOrange : AppColors.editorialSecondary,
                   tooltip: 'Filter Courses',
                   onPressed: _showFilterBottomSheet,
                 ),
@@ -678,7 +680,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                 const SizedBox(height: 16),
                 Row(
                   children: [
-                    const Icon(Icons.menu_book_rounded, color: AppColors.primaryGreen, size: 22),
+                    const Icon(Icons.menu_book_rounded, color: AppColors.editorialSecondary, size: 22),
                     const SizedBox(width: 8),
                     Text(
                       'Agricultural Course Catalog',
@@ -773,16 +775,16 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                                       padding: const EdgeInsets.only(right: 6),
                                       child: InputChip(
                                         label: Text('Search: "$_searchQuery"'),
-                                        avatar: const Icon(Icons.search_rounded, size: 14, color: AppColors.primaryGreen),
+                                        avatar: const Icon(Icons.search_rounded, size: 14, color: AppColors.editorialSecondary),
                                         onDeleted: () {
                                           _searchController.clear();
                                           setState(() {
                                             _searchQuery = '';
                                           });
                                         },
-                                        deleteIconColor: AppColors.primaryGreen,
-                                        backgroundColor: AppColors.primaryGreen.withValues(alpha: 0.1),
-                                        labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primaryGreen),
+                                        deleteIconColor: AppColors.editorialSecondary,
+                                        backgroundColor: AppColors.editorialSecondary.withValues(alpha: 0.1),
+                                        labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.editorialSecondary),
                                       ),
                                     ),
                                   if (_selectedLevel.isNotEmpty)
@@ -792,9 +794,9 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                                         label: Text(_selectedLevel[0].toUpperCase() + _selectedLevel.substring(1)),
                                         avatar: const Icon(Icons.signal_cellular_alt_rounded, size: 14),
                                         onDeleted: () => setState(() => _selectedLevel = ''),
-                                        deleteIconColor: AppColors.primaryGreen,
-                                        backgroundColor: AppColors.primaryGreen.withValues(alpha: 0.1),
-                                        labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primaryGreen),
+                                        deleteIconColor: AppColors.editorialSecondary,
+                                        backgroundColor: AppColors.editorialSecondary.withValues(alpha: 0.1),
+                                        labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.editorialSecondary),
                                       ),
                                     ),
                                   if (_selectedPricePreset != 'all')
@@ -814,9 +816,9 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                                           _minPrice = null;
                                           _maxPrice = null;
                                         }),
-                                        deleteIconColor: AppColors.primaryGreen,
-                                        backgroundColor: AppColors.primaryGreen.withValues(alpha: 0.1),
-                                        labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primaryGreen),
+                                        deleteIconColor: AppColors.editorialSecondary,
+                                        backgroundColor: AppColors.editorialSecondary.withValues(alpha: 0.1),
+                                        labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.editorialSecondary),
                                       ),
                                     ),
                                   if (_minRating != null && _minRating! > 0)
@@ -826,9 +828,9 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                                         label: Text('$_minRating+ ★'),
                                         avatar: const Icon(Icons.star_rounded, size: 14, color: Colors.amber),
                                         onDeleted: () => setState(() => _minRating = null),
-                                        deleteIconColor: AppColors.primaryGreen,
-                                        backgroundColor: AppColors.primaryGreen.withValues(alpha: 0.1),
-                                        labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primaryGreen),
+                                        deleteIconColor: AppColors.editorialSecondary,
+                                        backgroundColor: AppColors.editorialSecondary.withValues(alpha: 0.1),
+                                        labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.editorialSecondary),
                                       ),
                                     ),
                                   if (_selectedOrdering.isNotEmpty && _selectedOrdering != '-created_at')
@@ -842,9 +844,9 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                                                 : 'Price: High to Low'),
                                         avatar: const Icon(Icons.sort_rounded, size: 14),
                                         onDeleted: () => setState(() => _selectedOrdering = ''),
-                                        deleteIconColor: AppColors.primaryGreen,
-                                        backgroundColor: AppColors.primaryGreen.withValues(alpha: 0.1),
-                                        labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primaryGreen),
+                                        deleteIconColor: AppColors.editorialSecondary,
+                                        backgroundColor: AppColors.editorialSecondary.withValues(alpha: 0.1),
+                                        labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.editorialSecondary),
                                       ),
                                     ),
                                   TextButton(
@@ -882,7 +884,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                               data: (courses) {
                                 if (courses.isEmpty) {
                                   return RefreshIndicator(
-                                    color: AppColors.primaryGreen,
+                                    color: AppColors.editorialSecondary,
                                     onRefresh: () async {
                                       ref.invalidate(studentCatalogProvider);
                                       ref.invalidate(studentCategoriesProvider);
@@ -936,7 +938,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                                   );
                                 }
                                 return RefreshIndicator(
-                                  color: AppColors.primaryGreen,
+                                  color: AppColors.editorialSecondary,
                                   onRefresh: () async {
                                     ref.invalidate(studentCatalogProvider);
                                     ref.invalidate(studentCategoriesProvider);
@@ -1017,7 +1019,7 @@ class _Tab extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
-          color: isActive ? AppColors.primaryGreen : Colors.transparent,
+          color: isActive ? AppColors.editorialSecondary : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
           border: isActive
               ? null
@@ -1070,7 +1072,7 @@ class _CatalogCourseCard extends ConsumerWidget {
           ),
           boxShadow: [
             BoxShadow(
-              color: AppColors.primaryGreen.withValues(alpha: isDark ? 0.08 : 0.06),
+              color: AppColors.editorialSecondary.withValues(alpha: isDark ? 0.08 : 0.06),
               blurRadius: 18,
               offset: const Offset(0, 6),
             ),
@@ -1098,11 +1100,11 @@ class _CatalogCourseCard extends ConsumerWidget {
                             course.thumbnail!,
                             fit: BoxFit.cover,
                             errorBuilder: (_, __, ___) => const Center(
-                              child: Icon(Icons.school, size: 40, color: AppColors.primaryGreen),
+                              child: Icon(Icons.school, size: 40, color: AppColors.editorialSecondary),
                             ),
                           )
                         : const Center(
-                            child: Icon(Icons.school, size: 40, color: AppColors.primaryGreen),
+                            child: Icon(Icons.school, size: 40, color: AppColors.editorialSecondary),
                           ),
                   ),
                   // Category Tag & Enrolled badge top-left
@@ -1132,7 +1134,7 @@ class _CatalogCourseCard extends ConsumerWidget {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
-                              color: AppColors.primaryGreen,
+                              color: AppColors.editorialSecondary,
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: const Row(
@@ -1178,16 +1180,18 @@ class _CatalogCourseCard extends ConsumerWidget {
                               .read(wishlistProvider.notifier)
                               .toggleCourse(course.id ?? '', previewItem: preview);
                           if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(inWishlist
-                                    ? 'Added to wishlist! ❤️'
-                                    : 'Removed from wishlist'),
-                                duration: const Duration(milliseconds: 1400),
-                                backgroundColor: inWishlist
-                                    ? AppColors.primaryGreen
-                                    : AppColors.inkDark,
-                              ),
+                            AppToast.show(
+                              context,
+                              inWishlist ? 'Added to wishlist! ❤️' : 'Removed from wishlist',
+                              isError: false,
+                              duration: const Duration(milliseconds: 3000),
+                              action: inWishlist
+                                  ? SnackBarAction(
+                                      label: 'View Wishlist',
+                                      textColor: const Color(0xFF1B5E20),
+                                      onPressed: () => context.push(RouteNames.wishlist),
+                                    )
+                                  : null,
                             );
                           }
                         },
@@ -1279,7 +1283,7 @@ class _CatalogCourseCard extends ConsumerWidget {
                         children: [
                           CircleAvatar(
                             radius: 10,
-                            backgroundColor: const Color(0xFF166534),
+                            backgroundColor: isDark ? AppColors.editorialSecondaryFixedDim : AppColors.editorialSecondary,
                             child: Text(
                               instructorName.isNotEmpty ? instructorName[0].toUpperCase() : 'I',
                               style: const TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.bold),
@@ -1305,7 +1309,7 @@ class _CatalogCourseCard extends ConsumerWidget {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
-                            color: AppColors.primaryGreen.withValues(alpha: 0.15),
+                            color: AppColors.editorialSecondary.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: const Text(
@@ -1313,7 +1317,7 @@ class _CatalogCourseCard extends ConsumerWidget {
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
-                              color: AppColors.primaryGreen,
+                              color: AppColors.editorialSecondary,
                             ),
                           ),
                         )
@@ -1323,7 +1327,7 @@ class _CatalogCourseCard extends ConsumerWidget {
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: AppColors.primaryGreen,
+                            color: AppColors.editorialSecondary,
                           ),
                         ),
                     ],

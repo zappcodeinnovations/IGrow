@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
 
 /// Navigation item model for customizable bottom tabs.
 class BottomNavItem {
@@ -41,45 +42,38 @@ class CustomBottomNavBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Palette tokens
-    final Color dockBackground = isDark ? const Color(0xFF14241A) : Colors.white;
-    final Color dockBorder = isDark ? const Color(0xFF223A2B) : const Color(0xFFE2EBE0);
+    // Palette tokens (Editorial EdTech Dock)
+    final Color dockBackground = isDark ? const Color(0xFF141416) : Colors.white.withValues(alpha: 0.95);
+    final Color dockBorder = isDark ? const Color(0xFF2A2A2D) : const Color(0xFFE9E8E7);
 
-    final Color activePodBg = isDark ? const Color(0xFF1E3F29) : const Color(0xFFDCFCE7);
-    final Color activePodBorder = isDark ? const Color(0xFF34D399).withValues(alpha: 0.4) : const Color(0xFF86EFAC);
-    final Color activeTextColor = isDark ? const Color(0xFF86EFAC) : const Color(0xFF15803D);
+    // Active pod is sculpted primary black in light mode (with crisp white icon/text) and secondary-fixed in dark mode
+    final Color activePodBg = isDark ? const Color(0xFF26262B) : const Color(0xFF000000);
+    final Color activePodBorder = isDark ? AppColors.editorialSecondary.withValues(alpha: 0.5) : Colors.transparent;
+    final Color activeTextColor = isDark ? AppColors.editorialSecondaryFixed : Colors.white;
 
-    final Color inactiveColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final Color inactiveColor = isDark ? const Color(0xFF858383) : const Color(0xFF747878);
 
     return SafeArea(
       top: false,
       bottom: true,
       child: Padding(
-        padding: const EdgeInsets.only(left: 16, right: 16, bottom: 10, top: 4),
+        padding: const EdgeInsets.only(left: 16, right: 16, bottom: 8, top: 2),
         child: Container(
-          height: 64,
+          height: 66,
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
           decoration: BoxDecoration(
             color: dockBackground,
-            borderRadius: BorderRadius.circular(28),
+            borderRadius: BorderRadius.circular(9999),
             border: Border.all(
               color: dockBorder,
-              width: 1.2,
+              width: 1.0,
             ),
             boxShadow: [
-              // Contact shadow
               BoxShadow(
-                color: (isDark ? Colors.black : const Color(0xFF1B2318)).withValues(alpha: isDark ? 0.45 : 0.08),
-                blurRadius: 20,
+                color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.08),
+                blurRadius: 24,
                 spreadRadius: 0,
-                offset: const Offset(0, 6),
-              ),
-              // Subtle green ambient glow
-              BoxShadow(
-                color: const Color(0xFF16A34A).withValues(alpha: isDark ? 0.14 : 0.06),
-                blurRadius: 10,
-                spreadRadius: 0,
-                offset: const Offset(0, 2),
+                offset: const Offset(0, 8),
               ),
             ],
           ),
@@ -111,7 +105,7 @@ class CustomBottomNavBar extends StatelessWidget {
                       ),
                       decoration: BoxDecoration(
                         color: isActive ? activePodBg : Colors.transparent,
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(9999),
                         border: isActive
                             ? Border.all(color: activePodBorder, width: 0.9)
                             : null,

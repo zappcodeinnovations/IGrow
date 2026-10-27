@@ -78,10 +78,16 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                         Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: AppColors.primaryGreen.withValues(alpha: 0.12),
+                            color: isDark
+                                ? AppColors.editorialSecondary.withValues(alpha: 0.25)
+                                : AppColors.editorialSecondaryFixed,
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(Icons.verified_user_rounded, color: AppColors.primaryGreen, size: 24),
+                          child: Icon(
+                            Icons.verified_user_rounded, 
+                            color: isDark ? AppColors.editorialSecondaryFixedDim : AppColors.editorialSecondary, 
+                            size: 24,
+                          ),
                         ),
                         const SizedBox(width: 12),
                         const Expanded(
@@ -110,7 +116,10 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                       decoration: InputDecoration(
                         labelText: 'Certificate Code',
                         hintText: 'e.g. IAG-2026-A8F4C2',
-                        prefixIcon: const Icon(Icons.qr_code_rounded, color: AppColors.primaryGreen),
+                        prefixIcon: Icon(
+                          Icons.qr_code_rounded, 
+                          color: isDark ? AppColors.editorialSecondaryFixedDim : AppColors.editorialSecondary,
+                        ),
                         suffixIcon: IconButton(
                           icon: const Icon(Icons.paste_rounded),
                           tooltip: 'Paste from clipboard',
@@ -124,7 +133,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: AppColors.primaryGreen, width: 2),
+                          borderSide: const BorderSide(color: AppColors.editorialSecondary, width: 2),
                         ),
                       ),
                     ),
@@ -133,7 +142,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                     // Verify Button
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primaryGreen,
+                        backgroundColor: AppColors.editorialSecondary,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -182,11 +191,13 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
                           color: result!.isValid
-                              ? AppColors.primaryGreen.withValues(alpha: 0.08)
+                              ? (isDark ? AppColors.editorialSecondary.withValues(alpha: 0.15) : AppColors.editorialSecondaryFixed.withValues(alpha: 0.4))
                               : AppColors.error.withValues(alpha: 0.08),
                           borderRadius: BorderRadius.circular(14),
                           border: Border.all(
-                            color: result!.isValid ? AppColors.primaryGreen : AppColors.error,
+                            color: result!.isValid 
+                                ? (isDark ? AppColors.editorialSecondaryFixedDim : AppColors.editorialSecondary) 
+                                : AppColors.error,
                             width: 1.5,
                           ),
                         ),
@@ -197,7 +208,9 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                               children: [
                                 Icon(
                                   result!.isValid ? Icons.check_circle_rounded : Icons.cancel_rounded,
-                                  color: result!.isValid ? AppColors.primaryGreen : AppColors.error,
+                                  color: result!.isValid 
+                                      ? (isDark ? AppColors.editorialSecondaryFixedDim : AppColors.editorialSecondary) 
+                                      : AppColors.error,
                                   size: 24,
                                 ),
                                 const SizedBox(width: 10),
@@ -206,7 +219,9 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
                                     fontSize: 15,
-                                    color: result!.isValid ? AppColors.primaryGreen : AppColors.error,
+                                    color: result!.isValid 
+                                        ? (isDark ? AppColors.editorialSecondaryFixedDim : AppColors.editorialSecondary) 
+                                        : AppColors.error,
                                   ),
                                 ),
                               ],
@@ -275,78 +290,148 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
     final inProgress = ref.watch(inProgressEnrollmentsProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('My Certificates', style: TextStyle(fontWeight: FontWeight.bold)),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.qr_code_scanner_rounded),
-            tooltip: 'Verify Certificate',
-            onPressed: _showVerifyCertificateDialog,
-          ),
-        ],
-        bottom: TabBar(
-          controller: _tabController,
-          labelColor: AppColors.primaryGreen,
-          unselectedLabelColor: AppColors.inkSoft,
-          indicatorColor: AppColors.primaryGreen,
-          indicatorWeight: 3,
-          labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-          tabs: [
-            Tab(
-              text: certificatesAsync.maybeWhen(
-                data: (list) => 'Earned (${list.length})',
-                orElse: () => 'Earned',
-              ),
-            ),
-            Tab(text: 'In Progress (${inProgress.length})'),
-          ],
-        ),
-      ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          // ── Tab 1: Official Earned Certificates ───────────────────
-          certificatesAsync.when(
-            loading: () => const Center(
-              child: CircularProgressIndicator(color: AppColors.primaryGreen),
-            ),
-            error: (err, _) => Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 48),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'Failed to load certificates',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      err.toString().replaceAll('Exception: ', ''),
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: AppColors.inkSoft, fontSize: 13),
-                    ),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primaryGreen,
-                        foregroundColor: Colors.white,
+      backgroundColor: isDark ? AppColors.editorialSurfaceDark : AppColors.editorialSurface,
+      body: NestedScrollView(
+        headerSliverBuilder: (context, innerBoxIsScrolled) {
+          return [
+            SliverAppBar(
+              floating: false,
+              pinned: true,
+              elevation: 0,
+              scrolledUnderElevation: 0.5,
+              backgroundColor: isDark ? AppColors.editorialSurfaceDark : AppColors.editorialSurface,
+              leading: Padding(
+                padding: const EdgeInsets.only(left: 12),
+                child: Center(
+                  child: InkWell(
+                    onTap: () {
+                      if (Navigator.canPop(context)) {
+                        Navigator.pop(context);
+                      } else {
+                        context.go('/farmer/profile');
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(9999),
+                    child: Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: isDark ? AppColors.cardDark : AppColors.editorialSurfaceContainerLow,
                       ),
-                      onPressed: () => ref.invalidate(myCertificatesProvider),
-                      child: const Text('Retry'),
+                      child: Icon(
+                        Icons.arrow_back,
+                        size: 20,
+                        color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                      ),
                     ),
-                  ],
+                  ),
+                ),
+              ),
+              actions: [
+                IconButton(
+                  icon: Icon(
+                    Icons.qr_code_scanner_rounded,
+                    color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                  ),
+                  tooltip: 'Verify Certificate',
+                  onPressed: _showVerifyCertificateDialog,
+                ),
+              ],
+              title: Text(
+                'My Certificates',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                  letterSpacing: -0.4,
+                ),
+              ),
+              centerTitle: true,
+              bottom: PreferredSize(
+                preferredSize: const Size.fromHeight(48),
+                child: Container(
+                  decoration: BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(
+                        color: isDark ? AppColors.lineDark : AppColors.lineLight,
+                        width: 1,
+                      ),
+                    ),
+                  ),
+                  child: TabBar(
+                    controller: _tabController,
+                    labelColor: isDark ? Colors.white : AppColors.editorialSecondary,
+                    unselectedLabelColor: isDark ? Colors.white54 : AppColors.inkSoft,
+                    indicatorColor: isDark ? AppColors.editorialSecondaryFixedDim : AppColors.editorialSecondary,
+                    indicatorWeight: 3,
+                    labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    tabs: [
+                      Tab(
+                        text: certificatesAsync.maybeWhen(
+                          data: (list) => 'Earned (${list.length})',
+                          orElse: () => 'Earned',
+                        ),
+                      ),
+                      Tab(text: 'In Progress (${inProgress.length})'),
+                    ],
+                  ),
                 ),
               ),
             ),
-            data: (certificates) => _buildCompletedTab(context, certificates, isDark),
-          ),
+          ];
+        },
+        body: TabBarView(
+          controller: _tabController,
+          children: [
+            // ── Tab 1: Official Earned Certificates ───────────────────
+            certificatesAsync.when(
+              loading: () => Center(
+                child: CircularProgressIndicator(
+                  color: isDark ? AppColors.editorialSecondaryFixedDim : AppColors.editorialSecondary,
+                ),
+              ),
+              error: (err, _) => Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 48),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Failed to load certificates',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        err.toString().replaceAll('Exception: ', ''),
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: isDark ? Colors.white60 : AppColors.inkSoft,
+                          fontSize: 13,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.editorialSecondary,
+                          foregroundColor: Colors.white,
+                        ),
+                        onPressed: () => ref.invalidate(myCertificatesProvider),
+                        child: const Text('Retry'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              data: (certificates) => _buildCompletedTab(context, certificates, isDark),
+            ),
 
-          // ── Tab 2: In Progress Courses ────────────────────────────
-          _buildInProgressTab(context, inProgress, isDark),
-        ],
+            // ── Tab 2: In Progress Courses ────────────────────────────
+            _buildInProgressTab(context, inProgress, isDark),
+          ],
+        ),
       ),
     );
   }
@@ -427,15 +512,19 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                                   decoration: BoxDecoration(
-                                    color: AppColors.primaryGreen.withValues(alpha: 0.12),
+                                    color: isDark
+                                        ? AppColors.editorialSecondary.withValues(alpha: 0.25)
+                                        : AppColors.editorialSecondaryFixed,
                                     borderRadius: BorderRadius.circular(6),
                                   ),
-                                  child: const Text(
+                                  child: Text(
                                     'OFFICIAL CERTIFICATE',
                                     style: TextStyle(
                                       fontSize: 10,
                                       fontWeight: FontWeight.bold,
-                                      color: AppColors.primaryGreen,
+                                      color: isDark
+                                          ? AppColors.editorialSecondaryFixedDim
+                                          : AppColors.editorialSecondary,
                                       letterSpacing: 0.5,
                                     ),
                                   ),
@@ -456,7 +545,11 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                               cert.courseTitle,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold, 
+                                fontSize: 15,
+                                color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                              ),
                             ),
                           ],
                         ),
@@ -471,12 +564,12 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                       Expanded(
                         child: Text(
                           'Recipient: ${cert.studentName}',
-                          style: const TextStyle(color: AppColors.inkSoft, fontSize: 12),
+                          style: TextStyle(color: isDark ? Colors.white70 : AppColors.inkSoft, fontSize: 12),
                         ),
                       ),
                       Text(
                         issuedDate,
-                        style: const TextStyle(color: AppColors.inkSoft, fontSize: 12),
+                        style: TextStyle(color: isDark ? Colors.white70 : AppColors.inkSoft, fontSize: 12),
                       ),
                     ],
                   ),
@@ -488,7 +581,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                         const SizedBox(width: 4),
                         Text(
                           'Instructor: ${cert.instructorName}',
-                          style: const TextStyle(color: AppColors.inkSoft, fontSize: 12),
+                          style: TextStyle(color: isDark ? Colors.white70 : AppColors.inkSoft, fontSize: 12),
                         ),
                       ],
                     ),
@@ -499,7 +592,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                       Expanded(
                         child: ElevatedButton.icon(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primaryGreen,
+                            backgroundColor: AppColors.editorialSecondary,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             shape: RoundedRectangleBorder(
@@ -517,8 +610,10 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                       const SizedBox(width: 8),
                       OutlinedButton(
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.primaryGreen,
-                          side: const BorderSide(color: AppColors.primaryGreen),
+                          foregroundColor: isDark ? Colors.white : AppColors.editorialSecondary,
+                          side: BorderSide(
+                            color: isDark ? AppColors.lineDark : AppColors.editorialSecondary.withValues(alpha: 0.5),
+                          ),
                           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
@@ -607,11 +702,15 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                   children: [
                     Text(
                       '${item.completionPercentage.toInt()}% Completed',
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primaryGreen),
+                      style: TextStyle(
+                        fontSize: 12, 
+                        fontWeight: FontWeight.bold, 
+                        color: isDark ? AppColors.editorialSecondaryFixedDim : AppColors.editorialSecondary,
+                      ),
                     ),
-                    const Text(
+                    Text(
                       'Reach 100% to unlock Certificate',
-                      style: TextStyle(fontSize: 11, color: AppColors.inkSoft),
+                      style: TextStyle(fontSize: 11, color: isDark ? Colors.white60 : AppColors.inkSoft),
                     ),
                   ],
                 ),
@@ -621,7 +720,9 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                   child: LinearProgressIndicator(
                     value: progress.clamp(0.0, 1.0),
                     backgroundColor: isDark ? Colors.white10 : Colors.grey.shade200,
-                    valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primaryGreen),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      isDark ? AppColors.editorialSecondaryFixedDim : AppColors.editorialSecondary,
+                    ),
                     minHeight: 6,
                   ),
                 ),
@@ -630,8 +731,10 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                   width: double.infinity,
                   child: OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.primaryGreen,
-                      side: const BorderSide(color: AppColors.primaryGreen),
+                      foregroundColor: isDark ? Colors.white : AppColors.editorialSecondary,
+                      side: BorderSide(
+                        color: isDark ? AppColors.lineDark : AppColors.editorialSecondary.withValues(alpha: 0.5),
+                      ),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     ),
                     icon: const Icon(Icons.play_arrow_rounded, size: 18),

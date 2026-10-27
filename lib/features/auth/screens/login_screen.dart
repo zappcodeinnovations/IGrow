@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:iconly/iconly.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/localization/app_strings.dart';
 import '../../../core/utils/app_toast.dart';
 import '../../../core/utils/responsive_layout.dart';
 import '../../../core/widgets/app_elevated_back_button.dart';
@@ -117,14 +117,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                         // Reusable Elevated Back Button
                         const AppElevatedBackButton(
-                          fallbackRoute: RouteNames.onboarding,
+                          fallbackRoute: RouteNames.chooseRole,
                         ),
 
                         const SizedBox(height: 28),
 
                         // Headline: "Welcome"
                         Text(
-                          'Welcome',
+                          tr(ref, 'Welcome'),
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 40,
                             fontWeight: FontWeight.w800,
@@ -142,7 +142,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             Text(
-                              'Back!',
+                              tr(ref, 'Back!'),
                               style: GoogleFonts.plusJakartaSans(
                                 fontSize: 40,
                                 fontWeight: FontWeight.w800,
@@ -179,7 +179,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                         // Subtitle
                         Text(
-                          'Sign in to continue your learning journey.',
+                          tr(ref, 'Sign in to continue your learning journey.'),
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 15.5,
                             fontWeight: FontWeight.w400,
@@ -195,8 +195,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         // Input Card: Email or Phone (Reusable AppPillTextField)
                         AppPillTextField(
                           controller: _emailController,
-                          hintText: 'Email or Phone',
-                          prefixIcon: IconlyLight.profile,
+                          hintText: tr(ref, 'Email or Phone'),
+                          prefixIcon: Icons.person_outline_rounded,
                           keyboardType: TextInputType.emailAddress,
                           textInputAction: TextInputAction.next,
                           autofillHints: const [
@@ -205,7 +205,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ],
                           validator: (v) {
                             if (v == null || v.trim().isEmpty) {
-                              return 'Email or Phone is required';
+                              return tr(ref, 'Email or Phone is required');
                             }
                             return null;
                           },
@@ -216,8 +216,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         // Input Card: Password (Reusable AppPillTextField)
                         AppPillTextField(
                           controller: _passwordController,
-                          hintText: 'Password',
-                          prefixIcon: IconlyLight.lock,
+                          hintText: tr(ref, 'Password'),
+                          prefixIcon: Icons.lock_outline_rounded,
                           obscureText: _obscurePassword,
                           textInputAction: TextInputAction.done,
                           autofillHints: const [AutofillHints.password],
@@ -233,8 +233,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               padding: const EdgeInsets.symmetric(horizontal: 16),
                               child: Icon(
                                 _obscurePassword
-                                    ? IconlyLight.hide
-                                    : IconlyLight.show,
+                                    ? Icons.visibility_off_outlined
+                                    : Icons.visibility_outlined,
                                 size: 21,
                                 color: isDark
                                     ? AppColors.organicIconDark
@@ -244,7 +244,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ),
                           validator: (v) {
                             if (v == null || v.isEmpty) {
-                              return 'Password is required';
+                              return tr(ref, 'Password is required');
                             }
                             return null;
                           },
@@ -264,7 +264,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 horizontal: 2,
                               ),
                               child: Text(
-                                'Forgot Password?',
+                                tr(ref, 'Forgot Password?'),
                                 style: GoogleFonts.plusJakartaSans(
                                   fontSize: 14.5,
                                   fontWeight: FontWeight.w600,
@@ -322,7 +322,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                         // Reusable HD Green Gradient Pill Sign In Button
                         AppGradientButton(
-                          label: 'Sign In',
+                          label: tr(ref, 'Sign In'),
                           isLoading: authState.isLoading,
                           onPressed: _login,
                         ),
@@ -335,7 +335,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
-                                "Don't have an account? ",
+                                tr(ref, "Don't have an account? "),
                                 style: GoogleFonts.plusJakartaSans(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w500,
@@ -350,7 +350,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 ),
                                 behavior: HitTestBehavior.opaque,
                                 child: Text(
-                                  'Sign Up',
+                                  tr(ref, 'Sign Up'),
                                   style: GoogleFonts.plusJakartaSans(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w700,

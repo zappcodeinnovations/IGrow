@@ -13,6 +13,7 @@ import '../../../core/services/app_config_service.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../explore/providers/explore_provider.dart';
 import '../../home_farmer/providers/student_provider.dart';
+import '../../../core/services/app_feature_flags.dart';
 import '../providers/cart_provider.dart';
 
 class CheckoutScreen extends ConsumerStatefulWidget {

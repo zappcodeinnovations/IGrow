@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../localization/app_strings.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 
@@ -7,7 +9,7 @@ import '../theme/app_typography.dart';
 ///
 /// Tabs: Home · Community · [Upload FAB] · Analytics · Profile
 /// The center tab slot is a raised FAB for the "Upload Course" flow.
-class InstructorShell extends StatelessWidget {
+class InstructorShell extends ConsumerWidget {
   const InstructorShell({
     super.key,
     required this.currentIndex,
@@ -22,7 +24,7 @@ class InstructorShell extends StatelessWidget {
   final Widget child;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
@@ -46,14 +48,14 @@ class InstructorShell extends StatelessWidget {
               children: [
                 _NavItem(
                   icon: Icons.dashboard_rounded,
-                  label: 'Home',
+                  label: tr(ref, 'Home'),
                   isSelected: currentIndex == 0,
                   onTap: () => onTabSelected(0),
                   isDark: isDark,
                 ),
                 _NavItem(
                   icon: Icons.forum_rounded,
-                  label: 'Community',
+                  label: tr(ref, 'Community'),
                   isSelected: currentIndex == 1,
                   onTap: () => onTabSelected(1),
                   isDark: isDark,
@@ -65,14 +67,14 @@ class InstructorShell extends StatelessWidget {
                 ),
                 _NavItem(
                   icon: Icons.analytics_rounded,
-                  label: 'Analytics',
+                  label: tr(ref, 'Analytics'),
                   isSelected: currentIndex == 2,
                   onTap: () => onTabSelected(2),
                   isDark: isDark,
                 ),
                 _NavItem(
                   icon: Icons.person_rounded,
-                  label: 'Profile',
+                  label: tr(ref, 'Profile'),
                   isSelected: currentIndex == 3,
                   onTap: () => onTabSelected(3),
                   isDark: isDark,

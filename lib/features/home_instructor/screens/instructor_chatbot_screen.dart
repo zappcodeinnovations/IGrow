@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:iconly/iconly.dart';
 
 import '../../../core/theme/app_colors.dart';
 
@@ -213,7 +212,7 @@ class _InstructorChatbotScreenState extends State<InstructorChatbotScreen> {
         backgroundColor: isDark ? AppColors.bgDark : AppColors.bgLight,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(IconlyLight.arrow_left),
+          icon: const Icon(Icons.arrow_back),
           onPressed: () => context.pop(),
         ),
         actions: [

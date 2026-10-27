@@ -25,10 +25,58 @@ class OrdersScreen extends ConsumerWidget {
     final studentEmail = user?.email ?? 'student@iagrow.com';
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('My Orders & Receipts'),
-      ),
-      body: ordersAsync.when(
+      backgroundColor: isDark ? AppColors.editorialSurfaceDark : AppColors.editorialSurface,
+      body: NestedScrollView(
+        headerSliverBuilder: (context, innerBoxIsScrolled) {
+          return [
+            SliverAppBar(
+              floating: false,
+              pinned: true,
+              elevation: 0,
+              scrolledUnderElevation: 0.5,
+              backgroundColor: isDark ? AppColors.editorialSurfaceDark : AppColors.editorialSurface,
+              leading: Padding(
+                padding: const EdgeInsets.only(left: 12),
+                child: Center(
+                  child: InkWell(
+                    onTap: () {
+                      if (Navigator.canPop(context)) {
+                        Navigator.pop(context);
+                      } else {
+                        context.go('/farmer/profile');
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(9999),
+                    child: Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: isDark ? AppColors.cardDark : AppColors.editorialSurfaceContainerLow,
+                      ),
+                      child: Icon(
+                        Icons.arrow_back,
+                        size: 20,
+                        color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              title: Text(
+                'My Orders',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                  letterSpacing: -0.4,
+                ),
+              ),
+              centerTitle: true,
+            ),
+          ];
+        },
+        body: ordersAsync.when(
         data: (orders) {
           if (orders.isEmpty) {
             return Center(
@@ -41,19 +89,25 @@ class OrdersScreen extends ConsumerWidget {
                       width: 90,
                       height: 90,
                       decoration: BoxDecoration(
-                        color: AppColors.primaryGreen.withValues(alpha: 0.12),
+                        color: isDark
+                            ? AppColors.editorialSecondary.withValues(alpha: 0.2)
+                            : AppColors.editorialSecondaryFixed,
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.receipt_long_outlined,
                         size: 44,
-                        color: AppColors.primaryGreen,
+                        color: isDark ? AppColors.editorialSecondaryFixedDim : AppColors.editorialSecondary,
                       ),
                     ),
                     const SizedBox(height: 20),
-                    const Text(
+                    Text(
                       'No Orders Found',
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 20, 
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -68,7 +122,13 @@ class OrdersScreen extends ConsumerWidget {
                     const SizedBox(height: 24),
                     TextButton(
                       onPressed: () => context.go(RouteNames.explore),
-                      child: const Text('Browse Courses'),
+                      child: Text(
+                        'Browse Courses',
+                        style: TextStyle(
+                          color: isDark ? AppColors.editorialSecondaryFixedDim : AppColors.editorialSecondary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -119,10 +179,10 @@ class OrdersScreen extends ConsumerWidget {
                                     order.gatewayReference ?? 'REF-${order.id.substring(0, 8)}',
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontWeight: FontWeight.bold,
                                       fontSize: 13,
-                                      color: AppColors.primaryGreen,
+                                      color: isDark ? AppColors.editorialSecondaryFixedDim : AppColors.editorialSecondary,
                                     ),
                                   ),
                                 ),
@@ -153,7 +213,7 @@ class OrdersScreen extends ConsumerWidget {
                                 horizontal: 10, vertical: 4),
                             decoration: BoxDecoration(
                               color: isSuccess
-                                  ? AppColors.primaryGreen.withValues(alpha: 0.12)
+                                  ? (isDark ? AppColors.editorialSecondary.withValues(alpha: 0.25) : AppColors.editorialSecondaryFixed)
                                   : Colors.redAccent.withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(20),
                             ),
@@ -163,7 +223,7 @@ class OrdersScreen extends ConsumerWidget {
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,
                                 color: isSuccess
-                                    ? AppColors.primaryGreen
+                                    ? (isDark ? AppColors.editorialSecondaryFixedDim : AppColors.editorialSecondary)
                                     : Colors.redAccent,
                               ),
                             ),
@@ -191,21 +251,36 @@ class OrdersScreen extends ConsumerWidget {
                               Expanded(
                                 child: Row(
                                   children: [
-                                    const Icon(Icons.school, size: 16, color: AppColors.primaryGreen),
+                                    Icon(
+                                      Icons.school, 
+                                      size: 16, 
+                                      color: isDark ? AppColors.editorialSecondaryFixedDim : AppColors.editorialSecondary,
+                                    ),
                                     const SizedBox(width: 8),
                                     Expanded(
                                       child: Text(
                                         item.courseTitle ?? 'Agriculture Course',
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w600, 
+                                          fontSize: 13,
+                                          color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                                        ),
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              Text('₹${item.priceAtPurchase}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                              Text(
+                                '₹${item.priceAtPurchase}', 
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold, 
+                                  fontSize: 13,
+                                  color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                                ),
+                              ),
                             ],
                           ),
                         );
@@ -229,10 +304,10 @@ class OrdersScreen extends ConsumerWidget {
                                   alignment: Alignment.centerLeft,
                                   child: Text(
                                     '₹${displayAmount.toStringAsFixed(2)}',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 18,
                                       fontWeight: FontWeight.w900,
-                                      color: AppColors.primaryGreen,
+                                      color: isDark ? Colors.white : AppColors.editorialOnSurface,
                                     ),
                                   ),
                                 ),
@@ -248,8 +323,10 @@ class OrdersScreen extends ConsumerWidget {
                               OutlinedButton.icon(
                                 style: OutlinedButton.styleFrom(
                                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                  side: const BorderSide(color: AppColors.primaryGreen),
-                                  foregroundColor: AppColors.primaryGreen,
+                                  side: BorderSide(
+                                    color: isDark ? AppColors.lineDark : AppColors.lineLight,
+                                  ),
+                                  foregroundColor: isDark ? Colors.white : AppColors.editorialOnSurface,
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                                   visualDensity: VisualDensity.compact,
                                 ),
@@ -267,7 +344,7 @@ class OrdersScreen extends ConsumerWidget {
                               if (order.items.isNotEmpty && order.items.first.course != null)
                                 ElevatedButton.icon(
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppColors.primaryGreen,
+                                    backgroundColor: AppColors.editorialSecondary,
                                     foregroundColor: Colors.white,
                                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -290,8 +367,10 @@ class OrdersScreen extends ConsumerWidget {
             },
           );
         },
-        loading: () => const Center(
-          child: CircularProgressIndicator(color: AppColors.primaryGreen),
+        loading: () => Center(
+          child: CircularProgressIndicator(
+            color: isDark ? AppColors.editorialSecondaryFixedDim : AppColors.editorialSecondary,
+          ),
         ),
         error: (err, _) {
           final errStr = err.toString().toLowerCase();
@@ -330,7 +409,7 @@ class OrdersScreen extends ConsumerWidget {
                   const SizedBox(height: 20),
                   ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryGreen,
+                      backgroundColor: AppColors.editorialSecondary,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -345,7 +424,8 @@ class OrdersScreen extends ConsumerWidget {
           );
         },
       ),
-    );
+    ),
+  );
   }
 
   void _showOrderInvoice(

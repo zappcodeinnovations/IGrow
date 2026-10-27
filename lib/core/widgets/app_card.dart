@@ -27,10 +27,10 @@ class AppCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark ? AppColors.cardDark : AppColors.white;
+    final bgColor = isDark ? AppColors.cardDark : AppColors.editorialSurfaceContainerLowest;
 
     final defaultBorder = Border.all(
-      color: isDark ? AppColors.lineDark : const Color(0xFFE2EBE0),
+      color: isDark ? AppColors.lineDark : AppColors.editorialSurfaceContainerHigh,
       width: 1.0,
     );
 
@@ -46,15 +46,9 @@ class AppCard extends StatelessWidget {
         boxShadow: hasShadow
             ? [
                 BoxShadow(
-                  color: AppColors.primaryGreen.withValues(alpha: isDark ? 0.12 : 0.08),
-                  blurRadius: 22,
-                  offset: const Offset(0, 8),
-                ),
-                BoxShadow(
-                  color: (isDark ? Colors.black : const Color(0xFF1B2318))
-                      .withValues(alpha: isDark ? 0.3 : 0.03),
-                  blurRadius: 3,
-                  offset: const Offset(0, 1),
+                  color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.03),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
                 ),
               ]
             : null,

@@ -13,7 +13,7 @@ class EbooksTab extends ConsumerWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     
     return RefreshIndicator(
-      color: AppColors.primaryGreen,
+      color: AppColors.editorialSecondary,
       onRefresh: () async {
         ref.invalidate(studentEbooksProvider(''));
       },
@@ -86,7 +86,7 @@ class EbooksTab extends ConsumerWidget {
                       width: 80,
                       height: 110,
                       decoration: BoxDecoration(
-                        color: AppColors.primaryGreen.withValues(alpha: 0.15),
+                        color: AppColors.editorialSecondary.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(8),
                         image: ebook.coverImage != null
                             ? DecorationImage(
@@ -96,7 +96,7 @@ class EbooksTab extends ConsumerWidget {
                             : null,
                       ),
                       child: ebook.coverImage == null
-                          ? const Icon(Icons.picture_as_pdf, color: AppColors.primaryGreen, size: 40)
+                          ? const Icon(Icons.picture_as_pdf, color: AppColors.editorialSecondary, size: 40)
                           : null,
                     ),
                     const SizedBox(width: 16),
@@ -116,7 +116,7 @@ class EbooksTab extends ConsumerWidget {
                           Text(
                             ebook.authorName.isNotEmpty ? ebook.authorName : 'Unknown Author',
                             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: AppColors.primaryGreen,
+                                  color: AppColors.editorialSecondary,
                                   fontWeight: FontWeight.w600,
                                 ),
                           ),

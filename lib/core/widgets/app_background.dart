@@ -35,22 +35,19 @@ class AppBackground extends StatelessWidget {
       value: systemOverlay,
       child: DecoratedBox(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: isDark
-                ? const [
-                    Color(0xFF0F1B14),
-                    Color(0xFF14201A),
-                    Color(0xFF101913),
-                  ]
-                : const [
-                    Color(0xFFEAF4E7), // Gentle pale-mint canopy at very top
-                    Color(0xFFF5F8F3), // Smooth gradual transition
-                    Color(0xFFF7FAF5), // Spotless, uniform clean surface
+          color: isDark ? Colors.black : const Color(0xFFFBF9F9),
+          gradient: isDark
+              ? null
+              : const LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Color(0xFFFFFFFF),
+                    Color(0xFFFBF9F9),
+                    Color(0xFFFBF9F9),
                   ],
-            stops: const [0.0, 0.20, 1.0],
-          ),
+                  stops: [0.0, 0.20, 1.0],
+                ),
         ),
         child: child,
       ),

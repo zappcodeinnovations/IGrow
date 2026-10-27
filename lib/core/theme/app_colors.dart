@@ -24,16 +24,49 @@ class AppColors {
   static const inkSoft = Color(0xFF5B6B57);
   static const lineLight = Color(0xFFE4EBE0);
 
-  // ─── Dark Mode Surfaces ──────────────────────────────────────────
-  static const bgDark = Color(0xFF14201A);
-  static const cardDark = Color(0xFF1D2B22);
-  static const lineDark = Color(0xFF2B3B30);
+  // ─── Dark Mode Surfaces (Pure Black AMOLED Theme) ───────────────
+  static const bgDark = Color(0xFF000000);
+  static const cardDark = Color(0xFF121212);
+  static const lineDark = Color(0xFF242424);
 
   // ─── Semantic Colors ─────────────────────────────────────────────
   static const success = Color(0xFF4CAF50);
-  static const error = Color(0xFFE53935);
+  static const error = Color(0xFFBA1A1A);
   static const warning = Color(0xFFFFA726);
   static const info = Color(0xFF29B6F6);
+
+  // ─── Editorial EdTech Palette Tokens (Stitch AI) ─────────────────
+  static const editorialSurface = Color(0xFFFBF9F9);
+  static const editorialSurfaceDark = Color(0xFF000000);
+  static const editorialSurfaceDim = Color(0xFFDBDAD9);
+  static const editorialSurfaceBright = Color(0xFFFBF9F9);
+  static const editorialSurfaceContainerLowest = Color(0xFFFFFFFF);
+  static const editorialSurfaceContainerLow = Color(0xFFF5F3F3);
+  static const editorialSurfaceContainerLowDark = Color(0xFF121212);
+  static const surfaceContainerLowDark = Color(0xFF121212);
+  static const editorialSurfaceContainer = Color(0xFFEFEDED);
+  static const editorialSurfaceContainerHigh = Color(0xFFE9E8E7);
+  static const surfaceContainerHighDark = Color(0xFF1E1E1E);
+  static const editorialSurfaceContainerHighest = Color(0xFFE3E2E2);
+
+  static const editorialOnSurface = Color(0xFF1B1C1C);
+  static const editorialOnSurfaceVariant = Color(0xFF444748);
+  static const editorialOutline = Color(0xFF747878);
+  static const editorialOutlineVariant = Color(0xFFC4C7C7);
+
+  static const editorialPrimary = Color(0xFF000000);
+  static const editorialOnPrimary = Color(0xFFFFFFFF);
+  static const editorialPrimaryContainer = Color(0xFF1C1B1B);
+  static const editorialOnPrimaryContainer = Color(0xFF858383);
+
+  static const editorialSecondary = Color(0xFF2E7D32); // Fresh vibrant agricultural green
+  static const editorialOnSecondary = Color(0xFFFFFFFF);
+  static const editorialSecondaryContainer = Color(0xFF43A047);
+  static const editorialOnSecondaryContainer = Color(0xFFE8F5E9);
+  static const editorialSecondaryFixed = Color(0xFFDCEFD8); // Light green background badge
+  static const editorialSecondaryFixedDim = Color(0xFF81C784); // Light green accent
+  static const editorialOnSecondaryFixed = Color(0xFF1B5E20);
+  static const editorialOnSecondaryFixedVariant = Color(0xFF2E7D32);
 
   // ─── Canopy Gradient Stops ───────────────────────────────────────
   static const canopyStart = Color(0xFFE9F5E4);

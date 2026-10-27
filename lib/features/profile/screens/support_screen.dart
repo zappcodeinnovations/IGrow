@@ -305,9 +305,9 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
             ),
             child: TabBar(
               controller: _tabController,
-              indicatorColor: AppColors.primaryGreen,
+              indicatorColor: AppColors.editorialSecondary,
               indicatorWeight: 3,
-              labelColor: AppColors.primaryGreen,
+              labelColor: AppColors.editorialSecondary,
               unselectedLabelColor: isDark ? Colors.white60 : AppColors.inkSoft,
               labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
               unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
@@ -372,12 +372,12 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: AppColors.primaryGreen.withValues(alpha: 0.12),
+                        color: AppColors.editorialSecondary.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Icon(
                         Icons.support_agent_rounded,
-                        color: AppColors.primaryGreen,
+                        color: AppColors.editorialSecondary,
                         size: 26,
                       ),
                     ),
@@ -586,7 +586,7 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: const BorderSide(
-                      color: AppColors.primaryGreen,
+                      color: AppColors.editorialSecondary,
                       width: 1.8,
                     ),
                   ),
@@ -602,7 +602,7 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
                 child: ElevatedButton.icon(
                   onPressed: _isSubmitting ? null : _submitTicket,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryGreen,
+                    backgroundColor: AppColors.editorialSecondary,
                     foregroundColor: Colors.white,
                     elevation: 1,
                     shape: RoundedRectangleBorder(

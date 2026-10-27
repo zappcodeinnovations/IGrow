@@ -588,6 +588,14 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
           context,
           inWishlist ? 'Added to wishlist! ❤️' : 'Removed from wishlist',
           isError: false,
+          duration: const Duration(milliseconds: 3000),
+          action: inWishlist
+              ? SnackBarAction(
+                  label: 'View Wishlist',
+                  textColor: const Color(0xFF1B5E20),
+                  onPressed: () => context.push(RouteNames.wishlist),
+                )
+              : null,
         );
       }
     } catch (e) {
@@ -617,7 +625,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
       child: Scaffold(
         backgroundColor: isDark ? AppColors.bgDark : const Color(0xFFF9FBF8),
         appBar: AppBar(
-          backgroundColor: isDark ? AppColors.bgDark : const Color(0xFF0F3D1F),
+          backgroundColor: isDark ? AppColors.bgDark : const Color(0xFF1E2124),
           foregroundColor: Colors.white,
           elevation: 0,
           leading: IconButton(
@@ -887,7 +895,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                 padding: const EdgeInsets.all(16),
                 child: FilledButton.icon(
                   style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primaryGreen,
+                    backgroundColor: isDark ? AppColors.editorialSecondary : AppColors.editorialPrimary,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -959,7 +967,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                         : inCart
                             ? FilledButton.icon(
                                 style: FilledButton.styleFrom(
-                                  backgroundColor: const Color(0xFFC88528), // Golden-orange matching Screenshot 5
+                                  backgroundColor: const Color(0xFFC88528), // Golden-orange matching Cart
                                   foregroundColor: Colors.white,
                                   padding: const EdgeInsets.symmetric(vertical: 13),
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -977,7 +985,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                                     child: OutlinedButton(
                                       style: OutlinedButton.styleFrom(
                                         side: BorderSide(
-                                          color: isDark ? AppColors.primaryGreen : const Color(0xFF1B4D2E),
+                                          color: isDark ? AppColors.editorialSecondary : AppColors.editorialPrimary,
                                           width: 1.5,
                                         ),
                                         padding: const EdgeInsets.symmetric(vertical: 12),
@@ -990,7 +998,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                                               height: 16,
                                               child: CircularProgressIndicator(
                                                 strokeWidth: 2,
-                                                color: isDark ? AppColors.primaryGreen : const Color(0xFF1B4D2E),
+                                                color: isDark ? AppColors.editorialSecondary : AppColors.editorialPrimary,
                                               ),
                                             )
                                           : Text(
@@ -998,7 +1006,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                                               style: TextStyle(
                                                 fontWeight: FontWeight.bold,
                                                 fontSize: 13,
-                                                color: isDark ? AppColors.primaryGreen : const Color(0xFF1B4D2E),
+                                                color: isDark ? AppColors.editorialSecondary : AppColors.editorialPrimary,
                                               ),
                                             ),
                                     ),
@@ -1007,7 +1015,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                                   Expanded(
                                     child: FilledButton(
                                       style: FilledButton.styleFrom(
-                                        backgroundColor: AppColors.primaryGreen,
+                                        backgroundColor: AppColors.editorialSecondary,
                                         foregroundColor: Colors.white,
                                         padding: const EdgeInsets.symmetric(vertical: 12),
                                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -1043,7 +1051,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
       decoration: const BoxDecoration(
-        color: Color(0xFF0F3D1F), // Deep forest green matching Agrilearn header
+        color: Color(0xFF1E2124), // Modern charcoal editorial dark header
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1052,14 +1060,14 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: AppColors.primaryGreen.withValues(alpha: 0.25),
+              color: AppColors.editorialSecondary.withValues(alpha: 0.25),
               borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: AppColors.primaryGreen.withValues(alpha: 0.5)),
+              border: Border.all(color: AppColors.editorialSecondary.withValues(alpha: 0.6)),
             ),
             child: Text(
               categoryText.toUpperCase(),
               style: const TextStyle(
-                color: Color(0xFF99E256),
+                color: Color(0xFFC3C0FF),
                 fontSize: 11,
                 fontWeight: FontWeight.bold,
                 letterSpacing: 0.8,
@@ -1350,7 +1358,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                     height: 48,
                     child: FilledButton.icon(
                       style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.primaryGreen,
+                        backgroundColor: isDark ? AppColors.editorialSecondary : AppColors.editorialPrimary,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                       onPressed: () => context.push('/player/${course.slug ?? widget.courseId}'),
@@ -1365,7 +1373,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                     height: 48,
                     child: FilledButton.icon(
                       style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFFC88528), // Golden-orange matching Screenshot 5
+                        backgroundColor: AppColors.editorialSecondary,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         elevation: 2,
@@ -1409,7 +1417,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                           height: 48,
                           child: FilledButton(
                             style: FilledButton.styleFrom(
-                              backgroundColor: const Color(0xFF1B4D2E), // Deep forest green matching Screenshot 4
+                              backgroundColor: isDark ? AppColors.editorialSecondary : AppColors.editorialPrimary,
                               foregroundColor: Colors.white,
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                               elevation: 2,

@@ -3,129 +3,136 @@ import 'package:google_fonts/google_fonts.dart';
 
 import 'app_colors.dart';
 
-/// IGrow typography system.
+/// IGrow typography system — Editorial EdTech.
 ///
-/// - **Display / Headline**: Inter (400, 700)
-/// - **Body / UI**: Inter (400, 700)
+/// - **Display / Headline**: Epilogue (600, 700)
+/// - **Body / UI**: Hanken Grotesk (400, 600, 700)
 class AppTypography {
   AppTypography._();
 
-  // ─── Display / Headline ────────────────────────────────────────
+  // ─── Display / Headline (Epilogue) ────────────────────────────────
 
-  static TextStyle displayLarge({Color? color}) => GoogleFonts.inter(
-    fontSize: 30,
+  static TextStyle displayLarge({Color? color}) => GoogleFonts.epilogue(
+    fontSize: 34,
+    fontWeight: FontWeight.w700,
+    color: color ?? AppColors.inkDark,
+    height: 1.15,
+    letterSpacing: -0.035,
+  );
+
+  static TextStyle displayMedium({Color? color}) => GoogleFonts.epilogue(
+    fontSize: 26,
     fontWeight: FontWeight.w700,
     color: color ?? AppColors.inkDark,
     height: 1.2,
-    letterSpacing: -0.5,
+    letterSpacing: -0.025,
   );
 
-  static TextStyle displayMedium({Color? color}) => GoogleFonts.inter(
-    fontSize: 24,
-    fontWeight: FontWeight.w700,
+  static TextStyle displaySmall({Color? color}) => GoogleFonts.epilogue(
+    fontSize: 22,
+    fontWeight: FontWeight.w600,
     color: color ?? AppColors.inkDark,
     height: 1.25,
-    letterSpacing: -0.3,
+    letterSpacing: -0.02,
   );
 
-  static TextStyle displaySmall({Color? color}) => GoogleFonts.inter(
+  static TextStyle headlineLarge({Color? color}) => GoogleFonts.epilogue(
     fontSize: 22,
-    fontWeight: FontWeight.w700,
+    fontWeight: FontWeight.w600,
     color: color ?? AppColors.inkDark,
-    height: 1.3,
+    height: 1.25,
+    letterSpacing: -0.02,
   );
 
-  static TextStyle headlineLarge({Color? color}) => GoogleFonts.inter(
-    fontSize: 20,
-    fontWeight: FontWeight.w700,
+  static TextStyle headlineMedium({Color? color}) => GoogleFonts.epilogue(
+    fontSize: 18,
+    fontWeight: FontWeight.w600,
     color: color ?? AppColors.inkDark,
     height: 1.3,
+    letterSpacing: -0.015,
   );
 
-  static TextStyle headlineMedium({Color? color}) => GoogleFonts.inter(
+  static TextStyle headlineSmall({Color? color}) => GoogleFonts.epilogue(
+    fontSize: 16,
+    fontWeight: FontWeight.w600,
+    color: color ?? AppColors.inkDark,
+    height: 1.35,
+    letterSpacing: -0.01,
+  );
+
+  // ─── Title (Epilogue / Hanken Grotesk) ───────────────────────────
+
+  static TextStyle titleLarge({Color? color}) => GoogleFonts.epilogue(
     fontSize: 18,
     fontWeight: FontWeight.w700,
+    color: color ?? AppColors.inkDark,
+    height: 1.3,
+  );
+
+  static TextStyle titleMedium({Color? color}) => GoogleFonts.epilogue(
+    fontSize: 15,
+    fontWeight: FontWeight.w600,
     color: color ?? AppColors.inkDark,
     height: 1.35,
   );
 
-  static TextStyle headlineSmall({Color? color}) => GoogleFonts.inter(
+  static TextStyle titleSmall({Color? color}) => GoogleFonts.hankenGrotesk(
+    fontSize: 13,
+    fontWeight: FontWeight.w600,
+    color: color ?? AppColors.inkDark,
+    height: 1.35,
+  );
+
+  // ─── Body (Hanken Grotesk) ────────────────────────────────────────
+
+  static TextStyle bodyLarge({Color? color}) => GoogleFonts.hankenGrotesk(
     fontSize: 16,
-    fontWeight: FontWeight.w700,
-    color: color ?? AppColors.inkDark,
-    height: 1.4,
-  );
-
-  // ─── Title ───────────────────────────────────────────────────────
-
-  static TextStyle titleLarge({Color? color}) => GoogleFonts.inter(
-    fontSize: 16,
-    fontWeight: FontWeight.w700,
-    color: color ?? AppColors.inkDark,
-    height: 1.4,
-  );
-
-  static TextStyle titleMedium({Color? color}) => GoogleFonts.inter(
-    fontSize: 14,
-    fontWeight: FontWeight.w700,
-    color: color ?? AppColors.inkDark,
-    height: 1.4,
-  );
-
-  static TextStyle titleSmall({Color? color}) => GoogleFonts.inter(
-    fontSize: 12,
-    fontWeight: FontWeight.w700,
-    color: color ?? AppColors.inkDark,
-    height: 1.4,
-  );
-
-  // ─── Body ────────────────────────────────────────────────────────
-
-  static TextStyle bodyLarge({Color? color}) => GoogleFonts.inter(
-    fontSize: 14,
     fontWeight: FontWeight.w400,
     color: color ?? AppColors.inkDark,
     height: 1.5,
+    letterSpacing: -0.01,
   );
 
-  static TextStyle bodyMedium({Color? color}) => GoogleFonts.inter(
-    fontSize: 12,
+  static TextStyle bodyMedium({Color? color}) => GoogleFonts.hankenGrotesk(
+    fontSize: 14,
     fontWeight: FontWeight.w400,
     color: color ?? AppColors.inkDark,
-    height: 1.5,
+    height: 1.45,
+    letterSpacing: 0,
   );
 
-  static TextStyle bodySmall({Color? color}) => GoogleFonts.inter(
-    fontSize: 10,
+  static TextStyle bodySmall({Color? color}) => GoogleFonts.hankenGrotesk(
+    fontSize: 12,
     fontWeight: FontWeight.w400,
     color: color ?? AppColors.inkSoft,
-    height: 1.5,
+    height: 1.4,
+    letterSpacing: 0,
   );
 
-  // ─── Label / Button ──────────────────────────────────────────────
+  // ─── Label / Button (Hanken Grotesk) ──────────────────────────────
 
-  static TextStyle labelLarge({Color? color}) => GoogleFonts.inter(
+  static TextStyle labelLarge({Color? color}) => GoogleFonts.hankenGrotesk(
     fontSize: 14,
-    fontWeight: FontWeight.w700,
+    fontWeight: FontWeight.w600,
     color: color ?? AppColors.inkDark,
-    height: 1.4,
-    letterSpacing: 0.1,
+    height: 1.3,
+    letterSpacing: -0.005,
   );
 
-  static TextStyle labelMedium({Color? color}) => GoogleFonts.inter(
+  static TextStyle labelMedium({Color? color}) => GoogleFonts.hankenGrotesk(
     fontSize: 12,
-    fontWeight: FontWeight.w700,
+    fontWeight: FontWeight.w600,
     color: color ?? AppColors.inkDark,
-    height: 1.4,
-    letterSpacing: 0.1,
+    height: 1.3,
+    letterSpacing: 0.01,
   );
 
-  static TextStyle labelSmall({Color? color}) => GoogleFonts.inter(
+  static TextStyle labelSmall({Color? color}) => GoogleFonts.hankenGrotesk(
     fontSize: 10,
     fontWeight: FontWeight.w700,
     color: color ?? AppColors.inkSoft,
-    height: 1.4,
-    letterSpacing: 0.2,
+    height: 1.2,
+    letterSpacing: 0.04,
   );
 
   /// Builds a complete [TextTheme] for use in [ThemeData].

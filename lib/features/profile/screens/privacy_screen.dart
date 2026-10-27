@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/theme/app_colors.dart';
@@ -172,8 +173,8 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
                 ),
               );
             },
-            activeThumbColor: AppColors.primaryGreen,
-            activeTrackColor: AppColors.primaryGreen.withValues(alpha: 0.5),
+            activeThumbColor: AppColors.editorialSecondary,
+            activeTrackColor: AppColors.editorialSecondary.withValues(alpha: 0.45),
           ),
         ],
       ),
@@ -182,14 +183,62 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Privacy Settings'),
-      ),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(20),
-          children: [
+      backgroundColor: isDark ? AppColors.editorialSurfaceDark : AppColors.editorialSurface,
+      body: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          SliverAppBar(
+            floating: false,
+            pinned: true,
+            elevation: 0,
+            scrolledUnderElevation: 0.5,
+            backgroundColor: isDark ? AppColors.editorialSurfaceDark : AppColors.editorialSurface,
+            leading: Padding(
+              padding: const EdgeInsets.only(left: 12),
+              child: Center(
+                child: InkWell(
+                  onTap: () {
+                    if (Navigator.canPop(context)) {
+                      Navigator.pop(context);
+                    } else {
+                      context.go('/farmer/profile');
+                    }
+                  },
+                  borderRadius: BorderRadius.circular(9999),
+                  child: Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: isDark ? AppColors.cardDark : AppColors.editorialSurfaceContainerLow,
+                    ),
+                    child: Icon(
+                      Icons.arrow_back,
+                      size: 20,
+                      color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            title: Text(
+              'Privacy Settings',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+                color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                letterSpacing: -0.4,
+              ),
+            ),
+            centerTitle: true,
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.all(20),
+            sliver: SliverList(
+              delegate: SliverChildListDelegate([
             Text(
               'Manage Your Privacy',
               style: Theme.of(context).textTheme.headlineSmall,
@@ -338,15 +387,24 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
             Center(
               child: TextButton.icon(
                 onPressed: () => _showPrivacyPolicyModal(context),
-                icon: const Icon(Icons.description_outlined, size: 18, color: AppColors.primaryGreen),
-                label: const Text(
+                icon: Icon(
+                  Icons.description_outlined, 
+                  size: 18, 
+                  color: isDark ? AppColors.editorialSecondaryFixedDim : AppColors.editorialSecondary,
+                ),
+                label: Text(
                   'Read our full Privacy Policy',
-                  style: TextStyle(color: AppColors.primaryGreen, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    color: isDark ? AppColors.editorialSecondaryFixedDim : AppColors.editorialSecondary, 
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ),
-          ],
-        ),
+              ]),
+            ),
+          ),
+        ],
       ),
     );
   }

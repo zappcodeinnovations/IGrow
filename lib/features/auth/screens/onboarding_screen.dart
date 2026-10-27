@@ -4,7 +4,6 @@ import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/canopy_gradient.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/router/route_names.dart';
@@ -49,7 +48,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('has_completed_onboarding', true);
     if (mounted) {
-      context.go(RouteNames.login);
+      context.go(RouteNames.languageSelection);
     }
   }
 

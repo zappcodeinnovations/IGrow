@@ -48,9 +48,10 @@ class AppButton extends StatelessWidget {
           style: ElevatedButton.styleFrom(
             minimumSize: minSize,
             shape: shape,
-            backgroundColor: AppColors.primaryGreen,
-            foregroundColor: AppColors.white,
-            disabledBackgroundColor: AppColors.primaryGreen.withValues(alpha: 0.5),
+            backgroundColor: AppColors.editorialPrimary,
+            foregroundColor: AppColors.editorialOnPrimary,
+            disabledBackgroundColor: AppColors.editorialPrimary.withValues(alpha: 0.5),
+            elevation: 0,
           ),
           child: child,
         );
@@ -60,8 +61,8 @@ class AppButton extends StatelessWidget {
           style: ElevatedButton.styleFrom(
             minimumSize: minSize,
             shape: shape,
-            backgroundColor: AppColors.canopyStart,
-            foregroundColor: AppColors.primaryGreen,
+            backgroundColor: AppColors.editorialSecondaryFixed,
+            foregroundColor: AppColors.editorialOnSecondaryFixed,
             elevation: 0,
           ),
           child: child,
@@ -72,8 +73,8 @@ class AppButton extends StatelessWidget {
           style: OutlinedButton.styleFrom(
             minimumSize: minSize,
             shape: shape,
-            side: const BorderSide(color: AppColors.primaryGreen, width: 1.5),
-            foregroundColor: AppColors.primaryGreen,
+            side: const BorderSide(color: AppColors.editorialPrimary, width: 1.5),
+            foregroundColor: AppColors.editorialPrimary,
           ),
           child: child,
         );
@@ -83,7 +84,7 @@ class AppButton extends StatelessWidget {
           style: TextButton.styleFrom(
             minimumSize: minSize,
             shape: shape,
-            foregroundColor: AppColors.primaryGreen,
+            foregroundColor: AppColors.editorialSecondary,
           ),
           child: child,
         );
@@ -93,8 +94,10 @@ class AppButton extends StatelessWidget {
   Widget _buildChild(BuildContext context) {
     final textStyle = AppTypography.labelLarge(
       color: variant == AppButtonVariant.primary
-          ? AppColors.white
-          : AppColors.primaryGreen,
+          ? AppColors.editorialOnPrimary
+          : (variant == AppButtonVariant.secondary 
+              ? AppColors.editorialOnSecondaryFixed 
+              : AppColors.editorialPrimary),
     );
 
     if (isLoading) {
@@ -108,8 +111,8 @@ class AppButton extends StatelessWidget {
               strokeWidth: 2.5,
               valueColor: AlwaysStoppedAnimation(
                 variant == AppButtonVariant.primary
-                    ? AppColors.white
-                    : AppColors.primaryGreen,
+                    ? AppColors.editorialOnPrimary
+                    : AppColors.editorialSecondary,
               ),
             ),
           ),
