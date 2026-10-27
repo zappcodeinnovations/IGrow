@@ -21,20 +21,13 @@ class LanguageSelectionScreen extends ConsumerStatefulWidget {
   ConsumerState<LanguageSelectionScreen> createState() =>
       _LanguageSelectionScreenState();
 }
-
 class _LanguageSelectionScreenState extends ConsumerState<LanguageSelectionScreen> {
   String _selected = 'English';
 
   static const _languages = [
-    _Language('English', 'A', '🇬🇧'),
-    _Language('हिन्दी', 'अ', '🇮🇳'),
-    _Language('मराठी', 'अ', '🇮🇳'),
-    _Language('தமிழ்', 'அ', '🇮🇳'),
-    _Language('తెలుగు', 'అ', '🇮🇳'),
-    _Language('ಕನ್ನಡ', 'ಅ', '🇮🇳'),
-    _Language('বাংলা', 'অ', '🇮🇳'),
-    _Language('ગુજરાતી', 'અ', '🇮🇳'),
-    _Language('ਪੰਜਾਬੀ', 'ਅ', '🇮🇳'),
+    _Language('English', 'English', 'A', 'Universal / Official'),
+    _Language('Hindi', 'हिन्दी', 'अ', 'राष्ट्रीय भाषा'),
+    _Language('Marathi', 'मराठी', 'म', 'प्रादेशिक भाषा'),
   ];
 
   @override
@@ -75,31 +68,28 @@ class _LanguageSelectionScreenState extends ConsumerState<LanguageSelectionScree
                     height: 1.35,
                   ),
                 ),
-                const SizedBox(height: 28),
-                Expanded(
-                  child: GridView.builder(
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 3,
-                      mainAxisSpacing: 14,
-                      crossAxisSpacing: 14,
-                      childAspectRatio: 1,
+                const SizedBox(height: 32),
+                
+                // 3 Exclusive Language Cards
+                ..._languages.map((lang) {
+                  final isSelected = lang.codeName.toLowerCase() == _selected.toLowerCase() ||
+                      lang.nativeName == _selected;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: _LanguageCard(
+                      language: lang,
+                      isSelected: isSelected,
+                      isDark: isDark,
+                      onTap: () async {
+                        setState(() => _selected = lang.codeName);
+                        await ref.read(languageProvider.notifier).setLanguage(lang.codeName);
+                      },
                     ),
-                    itemCount: _languages.length,
-                    itemBuilder: (context, index) {
-                      final lang = _languages[index];
-                      final isSelected = lang.name == _selected;
-                      return _LanguageCard(
-                        language: lang,
-                        isSelected: isSelected,
-                        onTap: () async {
-                          setState(() => _selected = lang.name);
-                          await ref.read(languageProvider.notifier).setLanguage(lang.name);
-                        },
-                      );
-                    },
-                  ),
-                ),
+                  );
+                }),
+
+                const Spacer(),
+
                 Padding(
                   padding: const EdgeInsets.only(bottom: 28),
                   child: AppGradientButton(
@@ -125,76 +115,140 @@ class _LanguageSelectionScreenState extends ConsumerState<LanguageSelectionScree
 }
 
 class _Language {
-  const _Language(this.name, this.script, this.flag);
-  final String name;
-  final String script;
-  final String flag;
+  const _Language(this.codeName, this.nativeName, this.glyph, this.subtitle);
+  final String codeName;
+  final String nativeName;
+  final String glyph;
+  final String subtitle;
 }
 
 class _LanguageCard extends StatelessWidget {
   const _LanguageCard({
     required this.language,
     required this.isSelected,
+    required this.isDark,
     required this.onTap,
   });
 
   final _Language language;
   final bool isSelected;
+  final bool isDark;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
+        duration: const Duration(milliseconds: 220),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
         decoration: BoxDecoration(
           color: isSelected
               ? (isDark ? const Color(0xFF16251A) : const Color(0xFFE8F5E9))
               : (isDark ? AppColors.cardDark : Colors.white),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(22),
           border: Border.all(
             color: isSelected
                 ? AppColors.primaryGreen
                 : (isDark ? AppColors.lineDark : AppColors.lineLight),
-            width: isSelected ? 2 : 1,
+            width: isSelected ? 2.0 : 1.0,
           ),
           boxShadow: [
             BoxShadow(
               color: isSelected
                   ? AppColors.primaryGreen.withValues(alpha: isDark ? 0.25 : 0.15)
                   : Colors.black.withValues(alpha: isDark ? 0.3 : 0.04),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
+              blurRadius: 18,
+              offset: const Offset(0, 6),
             ),
           ],
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+        child: Row(
           children: [
-            Text(
-              language.script,
-              style: TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.w700,
+            Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
                 color: isSelected
                     ? AppColors.primaryGreen
-                    : (isDark ? Colors.white : AppColors.inkDark),
+                    : (isDark ? const Color(0xFF202026) : const Color(0xFFEBF3E8)),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Center(
+                child: Text(
+                  language.glyph,
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                    color: isSelected
+                        ? Colors.white
+                        : (isDark ? Colors.white70 : AppColors.primaryGreen),
+                  ),
+                ),
               ),
             ),
-            const SizedBox(height: 6),
-            Text(
-              language.name,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 12.5,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                color: isSelected
-                    ? AppColors.primaryGreen
-                    : (isDark ? Colors.white70 : AppColors.inkSoft),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        language.nativeName,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 16.5,
+                          fontWeight: FontWeight.w700,
+                          color: isDark ? Colors.white : AppColors.inkDark,
+                        ),
+                      ),
+                      if (language.codeName != language.nativeName) ...[
+                        const SizedBox(width: 8),
+                        Text(
+                          '(${language.codeName})',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: isDark ? Colors.white60 : AppColors.inkSoft,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    language.subtitle,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w400,
+                      color: isDark ? Colors.white70 : AppColors.inkSoft,
+                    ),
+                  ),
+                ],
               ),
-              textAlign: TextAlign.center,
+            ),
+            const SizedBox(width: 10),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isSelected ? AppColors.primaryGreen : Colors.transparent,
+                border: Border.all(
+                  color: isSelected
+                      ? AppColors.primaryGreen
+                      : (isDark ? AppColors.lineDark : AppColors.lineLight),
+                  width: 2,
+                ),
+              ),
+              child: isSelected
+                  ? const Icon(
+                      Icons.check,
+                      size: 15,
+                      color: Colors.white,
+                    )
+                  : null,
             ),
           ],
         ),
