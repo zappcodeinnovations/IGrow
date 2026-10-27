@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/delete_account_dialog.dart';
 
 class PrivacyScreen extends ConsumerStatefulWidget {
   const PrivacyScreen({super.key});
@@ -269,6 +270,65 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
                     value: _shareDataForAnalytics,
                     prefKey: 'privacy_share_analytics',
                     onChanged: (val) => _shareDataForAnalytics = val,
+                  ),
+                ],
+              ),
+            ),
+            AppCard(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.delete_forever_outlined,
+                        color: AppColors.error,
+                        size: 22,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Account & Data Deletion',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              color: AppColors.error,
+                            ),
+                      ),
+                    ],
+                  ),
+                  const Divider(height: 24),
+                  Text(
+                    'You have full control over your personal data. Deleting your account will immediately and permanently erase all your personal information, profile records, enrolled courses, certificates, and app progress from IGrow.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppColors.inkSoft,
+                          height: 1.45,
+                        ),
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () =>
+                          showDeleteAccountConfirmationDialog(context, ref),
+                      icon: const Icon(
+                        Icons.delete_forever_rounded,
+                        color: AppColors.error,
+                        size: 20,
+                      ),
+                      label: const Text(
+                        'Delete My Account',
+                        style: TextStyle(
+                          color: AppColors.error,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: AppColors.error, width: 1.2),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ),

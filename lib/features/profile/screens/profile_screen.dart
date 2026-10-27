@@ -7,8 +7,8 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/theme_provider.dart';
 
 import '../../../core/widgets/app_card.dart';
-import '../../../core/widgets/logout_dialog.dart';
 import '../../../core/widgets/delete_account_dialog.dart';
+import '../../../core/widgets/logout_dialog.dart';
 import '../../../data/models/user_role.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../home_instructor/providers/instructor_home_provider.dart';
@@ -449,13 +449,18 @@ class ProfileScreen extends ConsumerWidget {
                     label: 'Help & Support',
                     onTap: () => context.push('/support'),
                   ),
+                  _MenuItem(
+                    icon: Icons.delete_outline_rounded,
+                    label: 'Delete Account',
+                    onTap: () => showDeleteAccountConfirmationDialog(context, ref),
+                  ),
                 ],
               ),
               const SizedBox(height: 16),
 
-              // Delete Account
+              // Danger Zone: Delete Account
               AppCard(
-                onTap: () => showDeleteAccountDialog(context, ref),
+                onTap: () => showDeleteAccountConfirmationDialog(context, ref),
                 padding: const EdgeInsets.all(18),
                 child: Row(
                   children: [
@@ -472,12 +477,32 @@ class ProfileScreen extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(width: 14),
-                    Text(
-                      'Delete Account',
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            color: AppColors.error,
-                            fontWeight: FontWeight.w600,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Delete Account',
+                            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                  color: AppColors.error,
+                                  fontWeight: FontWeight.bold,
+                                ),
                           ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Permanently remove account and data',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: AppColors.inkSoft,
+                                  fontSize: 11.5,
+                                ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(
+                      Icons.chevron_right_rounded,
+                      color: AppColors.error,
+                      size: 20,
                     ),
                   ],
                 ),

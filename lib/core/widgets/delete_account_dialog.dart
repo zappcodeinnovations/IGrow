@@ -5,22 +5,19 @@ import 'package:go_router/go_router.dart';
 import '../theme/app_colors.dart';
 import '../../features/auth/providers/auth_provider.dart';
 
-/// Shows a confirmation dialog before permanently deleting the account.
-///
-/// Requires the user to explicitly type 'DELETE' to confirm.
-/// If confirmed:
-/// - Unregisters the FCM device token on the server and deletes the local FCM token.
-/// - Calls the account deletion routine and clears local auth tokens.
-/// - Shows feedback SnackBar and routes to '/login'.
-///
-/// If cancelled:
-/// - Closes dialog with zero side effects.
-Future<void> showDeleteAccountDialog(BuildContext context, WidgetRef ref) async {
+/// Shows a comprehensive, Apple-compliant confirmation dialog before permanently
+/// deleting the user's account and all associated data.
+Future<void> showDeleteAccountConfirmationDialog(BuildContext context, WidgetRef ref) async {
   return showDialog<void>(
     context: context,
-    barrierDismissible: true,
+    barrierDismissible: false,
     builder: (dialogContext) => DeleteAccountConfirmationDialog(ref: ref),
   );
+}
+
+/// Backwards-compatible alias for [showDeleteAccountConfirmationDialog].
+Future<void> showDeleteAccountDialog(BuildContext context, WidgetRef ref) async {
+  return showDeleteAccountConfirmationDialog(context, ref);
 }
 
 class DeleteAccountConfirmationDialog extends StatefulWidget {
@@ -35,17 +32,20 @@ class DeleteAccountConfirmationDialog extends StatefulWidget {
 
 class _DeleteAccountConfirmationDialogState
     extends State<DeleteAccountConfirmationDialog> {
-  final _confirmController = TextEditingController();
+  final TextEditingController _confirmController = TextEditingController();
   bool _isLoading = false;
-  String _typedText = '';
+  bool _hasConfirmed = false;
 
   @override
   void initState() {
     super.initState();
     _confirmController.addListener(() {
-      setState(() {
-        _typedText = _confirmController.text.trim();
-      });
+      final isMatch = _confirmController.text.trim().toUpperCase() == 'DELETE';
+      if (isMatch != _hasConfirmed) {
+        setState(() {
+          _hasConfirmed = isMatch;
+        });
+      }
     });
   }
 
@@ -55,15 +55,12 @@ class _DeleteAccountConfirmationDialogState
     super.dispose();
   }
 
-  bool get _canDelete => _typedText == 'DELETE';
-
-  Future<void> _handleDelete() async {
-    if (!_canDelete || _isLoading) return;
+  Future<void> _handleDeleteAccount() async {
+    if (!_hasConfirmed || _isLoading) return;
+    setState(() => _isLoading = true);
 
     final nav = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
-
-    setState(() => _isLoading = true);
 
     try {
       await widget.ref.read(authProvider.notifier).deleteAccount();
@@ -75,9 +72,11 @@ class _DeleteAccountConfirmationDialogState
       messenger.clearSnackBars();
       messenger.showSnackBar(
         const SnackBar(
-          content: Text('Your account has been deleted successfully.'),
-          duration: Duration(milliseconds: 2500),
-          backgroundColor: AppColors.error,
+          content: Text(
+            'Your account and associated data have been permanently deleted.',
+          ),
+          duration: Duration(milliseconds: 3000),
+          backgroundColor: AppColors.inkDark,
         ),
       );
 
@@ -90,7 +89,7 @@ class _DeleteAccountConfirmationDialogState
       messenger.clearSnackBars();
       messenger.showSnackBar(
         SnackBar(
-          content: Text('Failed to delete account: $e'),
+          content: Text('Account deletion error: $e'),
           backgroundColor: AppColors.error,
         ),
       );
@@ -109,91 +108,99 @@ class _DeleteAccountConfirmationDialogState
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                color: AppColors.error.withValues(alpha: 0.12),
-                shape: BoxShape.circle,
+            Center(
+              child: Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: AppColors.error.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.delete_forever_rounded,
+                  color: AppColors.error,
+                  size: 32,
+                ),
               ),
-              child: const Icon(
-                Icons.delete_forever_rounded,
-                color: AppColors.error,
-                size: 30,
+            ),
+            const SizedBox(height: 16),
+            Center(
+              child: Text(
+                'Delete Account',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.error,
+                    ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Are you sure you want to permanently delete your account? This action cannot be undone.',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    height: 1.4,
+                  ),
+            ),
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.bgDark : AppColors.bgLight,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isDark ? AppColors.lineDark : AppColors.lineLight,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'The following will be permanently erased:',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white70 : AppColors.inkDark,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  _bulletPoint('Personal profile and contact information'),
+                  _bulletPoint('Course enrollments, progress & certificates'),
+                  _bulletPoint('Instructor media, uploads & earnings history'),
+                  _bulletPoint('All stored session tokens and credentials'),
+                ],
               ),
             ),
             const SizedBox(height: 16),
             Text(
-              'Delete Account',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? AppColors.white : AppColors.inkDark,
+              'Type "DELETE" below to confirm:',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: isDark ? Colors.white70 : AppColors.inkSoft,
                   ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              'This action is permanent and cannot be undone. All your personal data, enrolled courses, and certificates will be permanently deleted.',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: isDark ? AppColors.lineLight : AppColors.inkSoft,
-                    height: 1.4,
-                  ),
-            ),
-            const SizedBox(height: 18),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'Type DELETE to confirm:',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: isDark ? AppColors.white : AppColors.inkDark,
-                      fontWeight: FontWeight.w600,
-                    ),
-              ),
             ),
             const SizedBox(height: 8),
             TextField(
               controller: _confirmController,
-              autocorrect: false,
-              enableSuggestions: false,
-              textCapitalization: TextCapitalization.characters,
               enabled: !_isLoading,
-              style: TextStyle(
-                color: isDark ? AppColors.white : AppColors.inkDark,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 1.2,
-              ),
+              autocorrect: false,
+              textCapitalization: TextCapitalization.characters,
               decoration: InputDecoration(
                 hintText: 'DELETE',
                 hintStyle: TextStyle(
-                  color: (isDark ? AppColors.lineLight : AppColors.inkSoft)
-                      .withValues(alpha: 0.5),
-                  letterSpacing: 1.2,
+                  color: (isDark ? Colors.white38 : Colors.grey.shade400),
                 ),
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                filled: true,
-                fillColor: isDark
-                    ? AppColors.bgDark
-                    : AppColors.bgLight,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: isDark ? AppColors.lineDark : AppColors.lineLight,
-                  ),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: isDark ? AppColors.lineDark : AppColors.lineLight,
-                  ),
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: AppColors.lineLight),
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(
-                    color: AppColors.error,
-                    width: 1.5,
-                  ),
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: AppColors.error, width: 1.5),
                 ),
               ),
             ),
@@ -228,11 +235,12 @@ class _DeleteAccountConfirmationDialogState
             const SizedBox(width: 12),
             Expanded(
               child: FilledButton(
-                onPressed: (_canDelete && !_isLoading) ? _handleDelete : null,
+                onPressed: (!_hasConfirmed || _isLoading)
+                    ? null
+                    : _handleDeleteAccount,
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.error,
-                  disabledBackgroundColor:
-                      AppColors.error.withValues(alpha: 0.35),
+                  disabledBackgroundColor: AppColors.error.withValues(alpha: 0.35),
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -248,7 +256,7 @@ class _DeleteAccountConfirmationDialogState
                         ),
                       )
                     : const Text(
-                        'Delete',
+                        'Delete Account',
                         style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
@@ -259,6 +267,24 @@ class _DeleteAccountConfirmationDialogState
           ],
         ),
       ],
+    );
+  }
+
+  Widget _bulletPoint(String text) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('• ', style: TextStyle(color: AppColors.error, fontSize: 13, fontWeight: FontWeight.bold)),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(fontSize: 12, height: 1.3),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

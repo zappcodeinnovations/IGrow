@@ -272,7 +272,12 @@ class NotificationService {
       }
 
       // Show foreground notification heads-up banner
-      _showForegroundNotification(message);
+      // On iOS, setForegroundNotificationPresentationOptions(alert: true) already
+      // displays notifications with a 'notification' payload. Only show local notification
+      // on Android, or on iOS for data-only messages to prevent duplicate/double banners.
+      if (Platform.isAndroid || message.notification == null) {
+        _showForegroundNotification(message);
+      }
     });
 
     // 2. Background Message Click Listener (App in background, opened via tap)

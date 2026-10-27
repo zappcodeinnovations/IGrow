@@ -391,18 +391,10 @@ class ApiAuthRepository implements AuthRepository {
           'Accept': 'application/json',
           if (accessToken != null) 'Authorization': 'Bearer $accessToken',
         },
-      ).timeout(const Duration(seconds: 5), onTimeout: () => http.Response('{}', 408));
+      ).timeout(const Duration(seconds: 6), onTimeout: () => http.Response('{}', 408));
     } catch (_) {}
 
-    // Unregister / delete FCM token so this device receives no further notifications
-    try {
-      await NotificationService.instance
-          .deleteFcmToken()
-          .timeout(const Duration(seconds: 2), onTimeout: () => null);
-    } catch (_) {}
-
-    await tokenStorage.clearTokens();
-    _currentUser = null;
+    await logout();
   }
 
   @override
