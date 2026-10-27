@@ -132,7 +132,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: RouteNames.languageSelection,
-        builder: (context, state) => const LanguageSelectionScreen(),
+        builder: (context, state) {
+          final role = state.uri.queryParameters['role'];
+          return LanguageSelectionScreen(selectedRole: role);
+        },
       ),
       GoRoute(
         path: RouteNames.chooseRole,
@@ -144,7 +147,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: RouteNames.login,
-        builder: (context, state) => const LoginScreen(),
+        builder: (context, state) {
+          final role = state.uri.queryParameters['role'];
+          return LoginScreen(selectedRole: role);
+        },
       ),
       GoRoute(
         path: RouteNames.register,

@@ -1,18 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/localization/app_strings.dart';
-import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_typography.dart';
-import '../../../core/theme/canopy_gradient.dart';
-import '../../../core/widgets/app_button.dart';
 import '../../../core/router/route_names.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/responsive_layout.dart';
+import '../../../core/widgets/app_gradient_button.dart';
+import '../../../core/widgets/organic_background.dart';
 
 /// Language selection screen — grid of language options.
 class LanguageSelectionScreen extends ConsumerStatefulWidget {
-  const LanguageSelectionScreen({super.key});
+  const LanguageSelectionScreen({super.key, this.selectedRole});
+
+  final String? selectedRole;
 
   @override
   ConsumerState<LanguageSelectionScreen> createState() =>
@@ -36,9 +39,12 @@ class _LanguageSelectionScreenState extends ConsumerState<LanguageSelectionScree
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: CanopyGradient(
-        child: SafeArea(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return OrganicBackground(
+      child: SafeArea(
+        child: ResponsiveContentConstraint(
+          maxWidth: 500,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Column(
@@ -46,22 +52,37 @@ class _LanguageSelectionScreenState extends ConsumerState<LanguageSelectionScree
               children: [
                 const SizedBox(height: 24),
                 Text(
-                  'Choose Your\nLanguage',
-                  style: Theme.of(context).textTheme.displayMedium,
+                  tr(ref, 'Choose Your\nLanguage'),
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w800,
+                    color: isDark
+                        ? AppColors.organicHeadingDark
+                        : AppColors.organicHeadingGreen,
+                    height: 1.15,
+                    letterSpacing: -0.6,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Select the language you\'re most comfortable with.',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.inkSoft),
+                  tr(ref, 'Select the language you\'re most comfortable with.'),
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w400,
+                    color: isDark
+                        ? AppColors.organicSubtitleDark
+                        : AppColors.organicSubtitleGreen,
+                    height: 1.35,
+                  ),
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 28),
                 Expanded(
                   child: GridView.builder(
                     gridDelegate:
                         const SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 3,
-                      mainAxisSpacing: 12,
-                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 14,
+                      crossAxisSpacing: 14,
                       childAspectRatio: 1,
                     ),
                     itemCount: _languages.length,
@@ -71,21 +92,25 @@ class _LanguageSelectionScreenState extends ConsumerState<LanguageSelectionScree
                       return _LanguageCard(
                         language: lang,
                         isSelected: isSelected,
-                        onTap: () => setState(() => _selected = lang.name),
+                        onTap: () async {
+                          setState(() => _selected = lang.name);
+                          await ref.read(languageProvider.notifier).setLanguage(lang.name);
+                        },
                       );
                     },
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 32),
-                  child: AppButton(
-                    label: 'Continue',
+                  padding: const EdgeInsets.only(bottom: 28),
+                  child: AppGradientButton(
+                    label: tr(ref, 'Continue'),
                     onPressed: () async {
                       await ref.read(languageProvider.notifier).setLanguage(_selected);
                       final prefs = await SharedPreferences.getInstance();
                       await prefs.setBool('has_selected_language', true);
                       if (context.mounted) {
-                        context.go(RouteNames.authSuccess);
+                        final role = widget.selectedRole ?? prefs.getString('selected_auth_role') ?? 'farmer';
+                        context.go('${RouteNames.login}?role=$role');
                       }
                     },
                   ),
@@ -127,22 +152,24 @@ class _LanguageCard extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         decoration: BoxDecoration(
           color: isSelected
-              ? AppColors.primaryGreen
-              : (isDark ? AppColors.cardDark : AppColors.white),
-          borderRadius: BorderRadius.circular(18),
+              ? (isDark ? const Color(0xFF16251A) : const Color(0xFFE8F5E9))
+              : (isDark ? AppColors.cardDark : Colors.white),
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: isSelected
                 ? AppColors.primaryGreen
                 : (isDark ? AppColors.lineDark : AppColors.lineLight),
             width: isSelected ? 2 : 1,
           ),
-          boxShadow: isSelected
-              ? AppColors.greenShadow(
-                  blurRadius: 16,
-                  offset: const Offset(0, 4),
-                  opacity: 0.2,
-                )
-              : null,
+          boxShadow: [
+            BoxShadow(
+              color: isSelected
+                  ? AppColors.primaryGreen.withValues(alpha: isDark ? 0.25 : 0.15)
+                  : Colors.black.withValues(alpha: isDark ? 0.3 : 0.04),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -150,19 +177,22 @@ class _LanguageCard extends StatelessWidget {
             Text(
               language.script,
               style: TextStyle(
-                fontSize: 24,
+                fontSize: 26,
                 fontWeight: FontWeight.w700,
                 color: isSelected
-                    ? AppColors.white
-                    : (isDark ? AppColors.white : AppColors.inkDark),
+                    ? AppColors.primaryGreen
+                    : (isDark ? Colors.white : AppColors.inkDark),
               ),
             ),
             const SizedBox(height: 6),
             Text(
               language.name,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(color: isSelected
-                    ? AppColors.white.withValues(alpha: 0.9)
-                    : (isDark ? AppColors.white.withValues(alpha: 0.7) : AppColors.inkSoft),
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 12.5,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                color: isSelected
+                    ? AppColors.primaryGreen
+                    : (isDark ? Colors.white70 : AppColors.inkSoft),
               ),
               textAlign: TextAlign.center,
             ),

@@ -1,77 +1,132 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_typography.dart';
-import '../../../core/theme/canopy_gradient.dart';
-import '../../../core/widgets/app_button.dart';
+import '../../../core/localization/app_strings.dart';
 import '../../../core/router/route_names.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/responsive_layout.dart';
+import '../../../core/widgets/app_gradient_button.dart';
+import '../../../core/widgets/organic_background.dart';
 import '../../../data/models/user_role.dart';
 
-/// Role picker screen — Farmer vs Instructor selection cards.
+/// Role picker screen — Choice between Student / Farmer vs Instructor / Educator.
 ///
-/// The chosen role is passed as a query parameter to the login/register screen
-/// and used to set the initial `activeRole` on the account.
-class ChooseRoleScreen extends StatefulWidget {
+/// Features:
+/// - Organic nature background with soft watercolor waves and botanical accents.
+/// - Matches login screen styling with AMOLED pure black dark mode support.
+/// - Translates dynamically using [tr(ref, ...)].
+/// - Continues directly to LanguageSelectionScreen with the chosen role.
+class ChooseRoleScreen extends ConsumerStatefulWidget {
   const ChooseRoleScreen({super.key});
 
   @override
-  State<ChooseRoleScreen> createState() => _ChooseRoleScreenState();
+  ConsumerState<ChooseRoleScreen> createState() => _ChooseRoleScreenState();
 }
 
-class _ChooseRoleScreenState extends State<ChooseRoleScreen> {
-  UserRole? _selectedRole;
+class _ChooseRoleScreenState extends ConsumerState<ChooseRoleScreen> {
+  UserRole _selectedRole = UserRole.farmer;
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: CanopyGradient(
-        child: SafeArea(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return OrganicBackground(
+      child: SafeArea(
+        child: ResponsiveContentConstraint(
+          maxWidth: 500,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SizedBox(height: 24),
+
+                // Headline
                 Text(
-                  'How will you\nuse iAgrow?',
-                  style: Theme.of(context).textTheme.displayMedium,
+                  tr(ref, 'Choose Your Role'),
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w800,
+                    color: isDark
+                        ? AppColors.organicHeadingDark
+                        : AppColors.organicHeadingGreen,
+                    height: 1.15,
+                    letterSpacing: -0.6,
+                  ),
                 ),
                 const SizedBox(height: 8),
+
+                // Subtitle
                 Text(
-                  'You can switch roles anytime from your profile.',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.inkSoft),
+                  tr(ref, 'Select whether you want to learn or teach on iAgrow.'),
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w400,
+                    color: isDark
+                        ? AppColors.organicSubtitleDark
+                        : AppColors.organicSubtitleGreen,
+                    height: 1.35,
+                  ),
                 ),
-                const SizedBox(height: 40),
+                const SizedBox(height: 32),
+
+                // 1. Student / Learner Card
                 _RoleCard(
-                  role: UserRole.farmer,
+                  title: tr(ref, 'Student / Learner'),
+                  description: tr(
+                    ref,
+                    'Access agricultural courses, ebooks, community hubs, and expert guidance.',
+                  ),
+                  icon: Icons.school_rounded,
                   isSelected: _selectedRole == UserRole.farmer,
+                  isDark: isDark,
                   onTap: () => setState(() => _selectedRole = UserRole.farmer),
                 ),
+
                 const SizedBox(height: 16),
+
+                // 2. Instructor / Educator Card
                 _RoleCard(
-                  role: UserRole.instructor,
+                  title: tr(ref, 'Instructor / Educator'),
+                  description: tr(
+                    ref,
+                    'Publish courses, manage student communities, upload guides, and track analytics.',
+                  ),
+                  icon: Icons.psychology_rounded,
                   isSelected: _selectedRole == UserRole.instructor,
-                  onTap: () =>
-                      setState(() => _selectedRole = UserRole.instructor),
+                  isDark: isDark,
+                  onTap: () => setState(() => _selectedRole = UserRole.instructor),
                 ),
+
+                const SizedBox(height: 14),
+
+                Text(
+                  tr(ref, 'You can switch roles anytime from your profile.'),
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: isDark ? Colors.white54 : AppColors.inkSoft,
+                  ),
+                ),
+
                 const Spacer(),
+
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 32),
-                  child: AppButton(
-                    label: 'Continue',
-                    onPressed: _selectedRole != null
-                        ? () async {
-                            final prefs = await SharedPreferences.getInstance();
-                            await prefs.setBool('has_completed_onboarding', true);
-                            if (context.mounted) {
-                              context.go(
-                                '${RouteNames.login}?role=${_selectedRole!.name}',
-                              );
-                            }
-                          }
-                        : null,
+                  padding: const EdgeInsets.only(bottom: 28),
+                  child: AppGradientButton(
+                    label: tr(ref, 'Continue'),
+                    onPressed: () async {
+                      final prefs = await SharedPreferences.getInstance();
+                      await prefs.setString('selected_auth_role', _selectedRole.name);
+                      if (context.mounted) {
+                        context.go(
+                          '${RouteNames.languageSelection}?role=${_selectedRole.name}',
+                        );
+                      }
+                    },
                   ),
                 ),
               ],
@@ -85,107 +140,115 @@ class _ChooseRoleScreenState extends State<ChooseRoleScreen> {
 
 class _RoleCard extends StatelessWidget {
   const _RoleCard({
-    required this.role,
+    required this.title,
+    required this.description,
+    required this.icon,
     required this.isSelected,
+    required this.isDark,
     required this.onTap,
   });
 
-  final UserRole role;
+  final String title;
+  final String description;
+  final IconData icon;
   final bool isSelected;
+  final bool isDark;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
-        padding: const EdgeInsets.all(24),
+        duration: const Duration(milliseconds: 220),
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: isSelected
-              ? AppColors.primaryGreen
-              : (isDark ? AppColors.cardDark : AppColors.white),
+              ? (isDark ? const Color(0xFF16251A) : const Color(0xFFE8F5E9))
+              : (isDark ? AppColors.cardDark : Colors.white),
           borderRadius: BorderRadius.circular(22),
           border: Border.all(
             color: isSelected
                 ? AppColors.primaryGreen
                 : (isDark ? AppColors.lineDark : AppColors.lineLight),
-            width: isSelected ? 2 : 1,
+            width: isSelected ? 2.0 : 1.0,
           ),
-          boxShadow: isSelected
-              ? AppColors.greenShadow(
-                  blurRadius: 24,
-                  offset: const Offset(0, 8),
-                  opacity: 0.25,
-                )
-              : null,
+          boxShadow: [
+            BoxShadow(
+              color: isSelected
+                  ? AppColors.primaryGreen.withValues(alpha: isDark ? 0.25 : 0.15)
+                  : Colors.black.withValues(alpha: isDark ? 0.3 : 0.04),
+              blurRadius: 18,
+              offset: const Offset(0, 6),
+            ),
+          ],
         ),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              width: 64,
-              height: 64,
+              width: 52,
+              height: 52,
               decoration: BoxDecoration(
                 color: isSelected
-                    ? AppColors.white.withValues(alpha: 0.2)
-                    : AppColors.canopyStart,
-                borderRadius: BorderRadius.circular(18),
+                    ? AppColors.primaryGreen
+                    : (isDark ? const Color(0xFF202026) : const Color(0xFFEBF3E8)),
+                borderRadius: BorderRadius.circular(16),
               ),
               child: Icon(
-                role.icon,
-                size: 32,
-                color: isSelected ? AppColors.white : AppColors.primaryGreen,
+                icon,
+                size: 26,
+                color: isSelected
+                    ? Colors.white
+                    : (isDark ? Colors.white70 : AppColors.primaryGreen),
               ),
             ),
-            const SizedBox(width: 18),
+            const SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    role.label,
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(color: isSelected
-                          ? AppColors.white
-                          : (isDark ? AppColors.white : AppColors.inkDark),
+                    title,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: isDark ? Colors.white : AppColors.inkDark,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    role.description,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: isSelected
-                          ? AppColors.white.withValues(alpha: 0.85)
-                          : AppColors.inkSoft,
+                    description,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w400,
+                      color: isDark ? Colors.white70 : AppColors.inkSoft,
+                      height: 1.35,
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 10),
             AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              width: 28,
-              height: 28,
+              width: 24,
+              height: 24,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: isSelected
-                    ? AppColors.white
-                    : Colors.transparent,
+                color: isSelected ? AppColors.primaryGreen : Colors.transparent,
                 border: Border.all(
                   color: isSelected
-                      ? AppColors.white
+                      ? AppColors.primaryGreen
                       : (isDark ? AppColors.lineDark : AppColors.lineLight),
                   width: 2,
                 ),
               ),
               child: isSelected
                   ? const Icon(
-                      Icons.check_rounded,
-                      size: 18,
-                      color: AppColors.primaryGreen,
+                      Icons.check,
+                      size: 15,
+                      color: Colors.white,
                     )
                   : null,
             ),
