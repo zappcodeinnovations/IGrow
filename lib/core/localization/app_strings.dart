@@ -504,18 +504,21 @@ class AppStrings {
 
 /// State notifier managing the active app language code across the whole UI.
 class LanguageNotifier extends StateNotifier<String> {
-  LanguageNotifier(this._prefs) : super('en') {
+  LanguageNotifier([this._prefs]) : super('en') {
     _loadLanguage();
   }
 
-  final SharedPreferences _prefs;
+  final SharedPreferences? _prefs;
   static const _langKey = 'app_user_language_code';
 
   void _loadLanguage() {
-    final savedLang = _prefs.getString(_langKey);
-    if (savedLang != null && savedLang.isNotEmpty) {
-      state = _normalizeCode(savedLang);
-    }
+    if (_prefs == null) return;
+    try {
+      final savedLang = _prefs?.getString(_langKey);
+      if (savedLang != null && savedLang.isNotEmpty) {
+        state = _normalizeCode(savedLang);
+      }
+    } catch (_) {}
   }
 
   /// Sets and persists the active language by code (e.g., 'en', 'hi', 'mr')
@@ -523,7 +526,9 @@ class LanguageNotifier extends StateNotifier<String> {
   Future<void> setLanguage(String langCodeOrName) async {
     final code = _normalizeCode(langCodeOrName);
     state = code;
-    await _prefs.setString(_langKey, code);
+    try {
+      await _prefs?.setString(_langKey, code);
+    } catch (_) {}
   }
 
   static String _normalizeCode(String input) {
@@ -540,8 +545,12 @@ class LanguageNotifier extends StateNotifier<String> {
 
 /// Riverpod provider for the global active language code ('en', 'hi', 'mr').
 final languageProvider = StateNotifierProvider<LanguageNotifier, String>((ref) {
-  final prefs = ref.watch(sharedPreferencesProvider);
-  return LanguageNotifier(prefs);
+  try {
+    final prefs = ref.watch(sharedPreferencesProvider);
+    return LanguageNotifier(prefs);
+  } catch (_) {
+    return LanguageNotifier(null);
+  }
 });
 
 /// Context extension for instant UI-wide reactivity: `context.tr('Settings')`

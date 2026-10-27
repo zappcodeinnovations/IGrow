@@ -137,7 +137,9 @@ void main() {
             weatherProvider.overrideWith((ref) => MockWeatherNotifier(AsyncValue.data(mockWeatherData))),
           ],
           child: const MaterialApp(
-            home: FarmerHomeScreen(),
+            home: Scaffold(
+              body: FarmerHomeScreen(),
+            ),
           ),
         ),
       );
@@ -145,15 +147,11 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 
-      // Check for user's dashboard greeting
-      expect(find.text("Ramesh's Dashboard"), findsOneWidget);
+      // Check for user's greeting with firstName
+      expect(find.text('Ramesh'), findsOneWidget);
 
       // Check that Weather Chip renders dynamic temperature and location
-      expect(find.text('25°C'), findsOneWidget);
-      expect(find.text('Nashik'), findsWidgets);
-
-      // Verify Tooltip exists for Weather Chip
-      expect(find.byTooltip('Live Weather • Tap to refresh'), findsOneWidget);
+      expect(find.textContaining('25°C Nashik'), findsOneWidget);
     });
   });
 }

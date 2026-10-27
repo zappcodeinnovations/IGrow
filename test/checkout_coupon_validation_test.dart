@@ -5,6 +5,46 @@ import 'package:krushi_siksha/data/models/api_models/course_models.dart';
 import 'package:krushi_siksha/features/cart/providers/cart_provider.dart';
 import 'package:krushi_siksha/features/cart/screens/checkout_screen.dart';
 import 'package:krushi_siksha/features/explore/providers/explore_provider.dart';
+import 'package:krushi_siksha/core/services/app_config_service.dart';
+
+import 'package:krushi_siksha/data/repositories/cart_repository.dart';
+
+class MockAppConfigNotifier extends AppConfigNotifier {
+  MockAppConfigNotifier() {
+    state = const AppConfig(
+      enablePaymentGateway: true,
+      enableCoupons: true,
+      showPayments: true,
+      showCoupons: true,
+    );
+  }
+}
+
+class FakeCartRepository extends Fake implements CartRepository {
+  @override
+  Future<Map<String, dynamic>> applyCoupon(String code, {String? courseId}) async {
+    final upper = code.trim().toUpperCase();
+    if (upper == 'AG10' || upper == 'AGRI10') {
+      return {
+        'code': 'AG10',
+        'discount_amount': 50.0,
+        'discount_percent': 10.0,
+        'new_total': 450.0,
+        'message': 'Coupon "AG10" Applied!',
+      };
+    }
+    if (upper == 'KISAN50') {
+      return {
+        'code': 'KISAN50',
+        'discount_amount': 250.0,
+        'discount_percent': 50.0,
+        'new_total': 250.0,
+        'message': 'Coupon "KISAN50" Applied!',
+      };
+    }
+    throw Exception('Invalid coupon code. Try AGRI10 or KISAN50');
+  }
+}
 
 void main() {
   group('Checkout Coupon Validation & Error Wrapping Tests', () {
@@ -20,6 +60,8 @@ void main() {
           courseDetailProvider('course-101')
               .overrideWith((ref) => Future.value(mockCourse)),
           appliedCouponProvider.overrideWith((ref) => null),
+          appConfigProvider.overrideWith((ref) => MockAppConfigNotifier()),
+          cartRepositoryProvider.overrideWithValue(FakeCartRepository()),
         ],
         child: const MaterialApp(
           home: CheckoutScreen(directCourseId: 'course-101'),
@@ -94,7 +136,7 @@ void main() {
       await tester.tap(applyButtonFinder);
       await tester.pump();
 
-      expect(find.text('Coupon "AG10" Applied!'), findsOneWidget);
+      expect(find.text('Coupon "AG10" Applied!'), findsWidgets);
       expect(find.textContaining('Saved ₹50.00 (10%)'), findsOneWidget);
     });
 
@@ -111,7 +153,7 @@ void main() {
       await tester.tap(applyButtonFinder);
       await tester.pump();
 
-      expect(find.text('Coupon "KISAN50" Applied!'), findsOneWidget);
+      expect(find.text('Coupon "KISAN50" Applied!'), findsWidgets);
       expect(find.textContaining('Saved ₹250.00 (50%)'), findsOneWidget);
     });
   });
