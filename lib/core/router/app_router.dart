@@ -28,6 +28,7 @@ import '../../features/instructor_dashboard/screens/instructor_kyc_screen.dart';
 import '../../features/instructor_dashboard/screens/instructor_reviews_screen.dart';
 import '../../features/home_farmer/screens/farmer_home_screen.dart';
 import '../../features/home_instructor/screens/instructor_home_screen.dart';
+import '../../features/learning/screens/my_learning_screen.dart';
 import '../../features/profile/screens/privacy_screen.dart';
 import '../../features/profile/screens/profile_screen.dart';
 import '../../features/explore/screens/quiz_player_screen.dart';
@@ -384,6 +385,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: RouteNames.farmerHome,
             builder: (context, state) => const FarmerHomeScreen(),
+          ),
+          GoRoute(
+            path: RouteNames.farmerLearning,
+            builder: (context, state) => const MyLearningScreen(),
           ),
           GoRoute(
             path: RouteNames.explore,

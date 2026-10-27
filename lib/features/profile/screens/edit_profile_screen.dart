@@ -614,10 +614,10 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                         children: [
                           if (hasCustomQuery)
                             ListTile(
-                              leading: const Icon(Icons.add_circle_outline, color: AppColors.primaryGreen),
+                              leading: const Icon(Icons.add_circle_outline, color: AppColors.editorialSecondary),
                               title: Text(
                                 'Use "$searchQuery"',
-                                style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.primaryGreen),
+                                style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.editorialSecondary),
                               ),
                               onTap: () {
                                 setState(() {
@@ -642,12 +642,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                   style: TextStyle(
                                     fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                                     color: isSelected
-                                        ? AppColors.primaryGreen
+                                        ? AppColors.editorialSecondary
                                         : (isDark ? Colors.white : AppColors.inkDark),
                                   ),
                                 ),
                                 trailing: isSelected
-                                    ? const Icon(Icons.check_circle, color: AppColors.primaryGreen, size: 20)
+                                    ? const Icon(Icons.check_circle, color: AppColors.editorialSecondary, size: 20)
                                     : null,
                                 onTap: () {
                                   setState(() {
@@ -727,19 +727,24 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     final isInstructor = role == UserRole.instructor;
     final status = user?.verificationStatus ?? 'PENDING';
     final isVerified = user?.isKycVerified == true || status == 'VERIFIED';
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 24),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: isInstructor
-            ? (isVerified ? AppColors.primaryGreen.withValues(alpha: 0.1) : Colors.amber.withValues(alpha: 0.1))
-            : AppColors.primaryGreen.withValues(alpha: 0.1),
+        color: isDark
+            ? (isInstructor
+                ? (isVerified ? AppColors.editorialSecondary.withValues(alpha: 0.18) : Colors.amber.withValues(alpha: 0.12))
+                : AppColors.editorialSecondary.withValues(alpha: 0.12))
+            : (isInstructor
+                ? (isVerified ? AppColors.editorialSecondaryFixed.withValues(alpha: 0.5) : Colors.amber.withValues(alpha: 0.1))
+                : AppColors.editorialSecondaryFixed.withValues(alpha: 0.4)),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: isInstructor
-              ? (isVerified ? AppColors.primaryGreen.withValues(alpha: 0.3) : Colors.amber.shade600)
-              : AppColors.primaryGreen.withValues(alpha: 0.3),
+              ? (isVerified ? AppColors.editorialSecondary.withValues(alpha: 0.35) : Colors.amber.shade600)
+              : AppColors.editorialSecondary.withValues(alpha: 0.3),
         ),
       ),
       child: Row(
@@ -747,8 +752,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           Icon(
             isInstructor ? Icons.school_rounded : Icons.agriculture_rounded,
             color: isInstructor
-                ? (isVerified ? AppColors.primaryGreen : Colors.amber.shade800)
-                : AppColors.primaryGreen,
+                ? (isVerified ? (isDark ? AppColors.editorialSecondaryFixedDim : AppColors.editorialSecondary) : Colors.amber.shade800)
+                : (isDark ? AppColors.editorialSecondaryFixedDim : AppColors.editorialSecondary),
             size: 24,
           ),
           const SizedBox(width: 12),
@@ -767,7 +772,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
-                      color: isVerified ? AppColors.primaryGreen : Colors.amber.shade900,
+                      color: isVerified ? (isDark ? AppColors.editorialSecondaryFixedDim : AppColors.editorialSecondary) : Colors.amber.shade900,
                     ),
                   )
                 else
@@ -775,9 +780,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                     user?.location != null && user!.location!.isNotEmpty
                         ? '📍 ${user.location}'
                         : '🌱 AgriLearn Farmer Community',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
-                      color: AppColors.inkSoft,
+                      color: isDark ? Colors.white70 : AppColors.inkSoft,
                     ),
                   ),
               ],
@@ -962,7 +967,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                             children: [
                               CircleAvatar(
                                 radius: 50,
-                                backgroundColor: AppColors.primaryGreen.withValues(alpha: 0.15),
+                                backgroundColor: Theme.of(context).brightness == Brightness.dark
+                                    ? AppColors.editorialSecondary.withValues(alpha: 0.25)
+                                    : AppColors.editorialSecondaryFixed,
                                 backgroundImage: _selectedImage != null 
                                   ? FileImage(_selectedImage!) 
                                   : (user?.avatarUrl != null 
@@ -973,7 +980,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                         user?.fullName.isNotEmpty == true
                                             ? user!.fullName[0].toUpperCase()
                                             : 'U',
-                                        style: Theme.of(context).textTheme.displayMedium?.copyWith(color: AppColors.primaryGreen),
+                                        style: Theme.of(context).textTheme.displayMedium?.copyWith(
+                                              color: Theme.of(context).brightness == Brightness.dark
+                                                  ? AppColors.editorialSecondaryFixedDim
+                                                  : AppColors.editorialSecondary,
+                                              fontWeight: FontWeight.bold,
+                                            ),
                                       )
                                     : null,
                               ),
@@ -981,9 +993,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                 bottom: 0,
                                 right: 0,
                                 child: Container(
-                                  padding: const EdgeInsets.all(6),
+                                  padding: const EdgeInsets.all(7),
                                   decoration: const BoxDecoration(
-                                    color: AppColors.primaryGreen,
+                                    color: AppColors.editorialSecondary,
                                     shape: BoxShape.circle,
                                   ),
                                   child: const Icon(Icons.camera_alt, size: 18, color: Colors.white),
@@ -1211,7 +1223,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               child: Container(
                 color: Colors.black.withValues(alpha: 0.2),
                 child: const Center(
-                  child: CircularProgressIndicator(color: AppColors.primaryGreen),
+                  child: CircularProgressIndicator(color: AppColors.editorialSecondary),
                 ),
               ),
             ),

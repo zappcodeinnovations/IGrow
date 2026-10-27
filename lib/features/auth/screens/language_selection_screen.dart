@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../core/localization/app_strings.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/canopy_gradient.dart';
@@ -9,18 +11,15 @@ import '../../../core/widgets/app_button.dart';
 import '../../../core/router/route_names.dart';
 
 /// Language selection screen — grid of language options.
-///
-/// Currently UI-only (no actual i18n). Picking a language just proceeds
-/// to the role selection screen.
-class LanguageSelectionScreen extends StatefulWidget {
+class LanguageSelectionScreen extends ConsumerStatefulWidget {
   const LanguageSelectionScreen({super.key});
 
   @override
-  State<LanguageSelectionScreen> createState() =>
+  ConsumerState<LanguageSelectionScreen> createState() =>
       _LanguageSelectionScreenState();
 }
 
-class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
+class _LanguageSelectionScreenState extends ConsumerState<LanguageSelectionScreen> {
   String _selected = 'English';
 
   static const _languages = [
@@ -82,6 +81,7 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
                   child: AppButton(
                     label: 'Continue',
                     onPressed: () async {
+                      await ref.read(languageProvider.notifier).setLanguage(_selected);
                       final prefs = await SharedPreferences.getInstance();
                       await prefs.setBool('has_selected_language', true);
                       if (context.mounted) {

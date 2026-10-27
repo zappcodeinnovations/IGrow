@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/localization/app_strings.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/theme_provider.dart';
@@ -25,6 +26,7 @@ class ProfileScreen extends ConsumerWidget {
     final authState = ref.watch(authProvider);
     final user = authState.user;
     final isFarmer = user?.activeRole == UserRole.farmer;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -33,84 +35,261 @@ class ProfileScreen extends ConsumerWidget {
           padding: const EdgeInsets.all(20),
           child: Column(
             children: [
-              // Profile header
+              // Profile header (Editorial EdTech Monogram + Verified Identity Card)
               AppCard(
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.all(22),
                 child: Column(
                   children: [
-                    CircleAvatar(
-                      radius: 44,
-                      backgroundColor: AppColors.primaryGreen.withValues(alpha: 0.15),
-                      backgroundImage: user?.avatarUrl != null 
-                        ? NetworkImage(user!.avatarUrl!) as ImageProvider
-                        : null,
-                      child: user?.avatarUrl == null
-                          ? Text(
-                              user?.fullName.isNotEmpty == true
-                                  ? user!.fullName[0].toUpperCase()
-                                  : 'U',
-                              style: Theme.of(context).textTheme.displayMedium?.copyWith(color: AppColors.primaryGreen),
-                            )
-                          : null,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Row(
+                            children: [
+                              // Monogram Avatar with Verified Badge
+                              Stack(
+                                clipBehavior: Clip.none,
+                                children: [
+                                  CircleAvatar(
+                                    radius: 32,
+                                    backgroundColor: AppColors.editorialPrimary,
+                                    backgroundImage: user?.avatarUrl != null 
+                                      ? NetworkImage(user!.avatarUrl!) as ImageProvider
+                                      : null,
+                                    child: user?.avatarUrl == null
+                                        ? Text(
+                                            user?.fullName.isNotEmpty == true
+                                                ? user!.fullName[0].toUpperCase()
+                                                : 'U',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 22,
+                                            ),
+                                          )
+                                        : null,
+                                  ),
+                                  Positioned(
+                                    bottom: -2,
+                                    right: -2,
+                                    child: Container(
+                                      width: 22,
+                                      height: 22,
+                                      decoration: const BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: AppColors.editorialSecondary,
+                                      ),
+                                      child: const Icon(
+                                        Icons.check,
+                                        size: 13,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Flexible(
+                                          child: Text(
+                                            user?.fullName ?? 'User',
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 17,
+                                                ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        const Icon(
+                                          Icons.verified_rounded,
+                                          size: 16,
+                                          color: AppColors.editorialSecondary,
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      user?.email ?? '',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                            color: AppColors.editorialOnSurfaceVariant,
+                                            fontSize: 12,
+                                          ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: isDark ? const Color(0xFF282830) : AppColors.editorialSurfaceContainerHighest,
+                                        borderRadius: BorderRadius.circular(9999),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            user?.activeRole.icon ?? Icons.person,
+                                            size: 13,
+                                            color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Flexible(
+                                            child: Text(
+                                              user?.activeRole.label ?? 'User',
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                                                fontSize: 10.5,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        // Edit Pill
+                        InkWell(
+                          onTap: () => context.push('/edit-profile'),
+                          borderRadius: BorderRadius.circular(9999),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                            decoration: BoxDecoration(
+                              color: isDark ? Colors.white : AppColors.editorialPrimary,
+                              borderRadius: BorderRadius.circular(9999),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.edit_outlined,
+                                  size: 14,
+                                  color: isDark ? Colors.black : Colors.white,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  tr(ref, 'Edit Profile'),
+                                  style: TextStyle(
+                                    color: isDark ? Colors.black : Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 16),
-                    Text(
-                      user?.fullName ?? 'User',
-                      style: Theme.of(context).textTheme.headlineMedium,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      user?.email ?? '',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.inkSoft),
-                    ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 18),
+                    // Quick Metrics Counter (Minimalist Triplet)
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 6,
-                      ),
+                      padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: AppColors.primaryGreen.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(10),
+                        color: isDark ? const Color(0xFF1E1E22) : AppColors.editorialSurfaceContainerLow,
+                        borderRadius: BorderRadius.circular(16),
                       ),
                       child: Row(
-                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [
-                          Icon(
-                            user?.activeRole.icon ?? Icons.person,
-                            size: 16,
-                            color: AppColors.primaryGreen,
+                          Column(
+                            children: [
+                              Text(
+                                '3',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w800,
+                                  color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'ENROLLED',
+                                style: TextStyle(
+                                  fontSize: 9,
+                                  letterSpacing: 0.8,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.editorialOnSurfaceVariant,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 6),
-                          Text(
-                            user?.activeRole.label ?? 'User',
-                            style: Theme.of(context).textTheme.labelSmall?.copyWith(color: AppColors.primaryGreen,),
+                          Container(
+                            height: 24,
+                            width: 1,
+                            color: isDark ? const Color(0xFF333338) : AppColors.editorialSurfaceContainerHigh,
+                          ),
+                          Column(
+                            children: [
+                              Text(
+                                '12h',
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.editorialSecondary,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'LAB HOURS',
+                                style: TextStyle(
+                                  fontSize: 9,
+                                  letterSpacing: 0.8,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.editorialOnSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Container(
+                            height: 24,
+                            width: 1,
+                            color: isDark ? const Color(0xFF333338) : AppColors.editorialSurfaceContainerHigh,
+                          ),
+                          Column(
+                            children: [
+                              Text(
+                                '1',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w800,
+                                  color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'CERTIFICATES',
+                                style: TextStyle(
+                                  fontSize: 9,
+                                  letterSpacing: 0.8,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.editorialOnSurfaceVariant,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      height: 36,
-                      child: OutlinedButton.icon(
-                        onPressed: () => context.push('/edit-profile'),
-                        icon: const Icon(Icons.edit_outlined, size: 16),
-                        label: const Text(
-                          'Edit Profile',
-                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.primaryGreen,
-                          side: const BorderSide(color: AppColors.primaryGreen, width: 1.2),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                        ),
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 18),
 
               // Revenue Card (Instructor Only)
               if (!isFarmer) ...[
@@ -139,7 +318,7 @@ class ProfileScreen extends ConsumerWidget {
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(
-                                  'Total Revenue',
+                                  tr(ref, 'Total Revenue'),
                                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                                         color: AppColors.white.withValues(alpha: 0.8),
                                       ),
@@ -154,7 +333,7 @@ class ProfileScreen extends ConsumerWidget {
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       Text(
-                                        'View Analytics',
+                                        tr(ref, 'View Analytics'),
                                         style: Theme.of(context).textTheme.labelSmall?.copyWith(color: AppColors.white),
                                       ),
                                       const SizedBox(width: 4),
@@ -244,74 +423,74 @@ class ProfileScreen extends ConsumerWidget {
               // Role-specific sections
               if (isFarmer) ...[
                 _MenuSection(
-                  title: 'Basic Info',
+                  title: tr(ref, 'Basic Info'),
                   items: [
                     _MenuItem(
                       icon: Icons.phone_rounded,
-                      label: 'Phone',
-                      value: user?.phone.isNotEmpty == true ? user!.phone : 'Not provided',
+                      label: tr(ref, 'Phone'),
+                      value: user?.phone.isNotEmpty == true ? user!.phone : tr(ref, 'Not provided'),
                       showChevron: false,
-                      onTap: () => _showComingSoon(context),
+                      onTap: () => _showComingSoon(context, ref),
                     ),
                     _MenuItem(
                       icon: Icons.location_on_rounded,
-                      label: 'Location',
-                      value: user?.location ?? 'Not provided',
+                      label: tr(ref, 'Location'),
+                      value: user?.location ?? tr(ref, 'Not provided'),
                       showChevron: false,
-                      onTap: () => _showComingSoon(context),
+                      onTap: () => _showComingSoon(context, ref),
                     ),
                     _MenuItem(
                       icon: Icons.agriculture_rounded,
-                      label: 'Farming Experience',
+                      label: tr(ref, 'Farming Experience'),
                       value: user?.farmingExperience != null && user!.farmingExperience!.isNotEmpty
                           ? (user.farmingExperience!.toUpperCase() == 'BEGINNER'
-                              ? 'Beginner'
+                              ? tr(ref, 'Beginner')
                               : user.farmingExperience!.toUpperCase() == 'INTERMEDIATE'
-                                  ? 'Intermediate'
+                                  ? tr(ref, 'Intermediate')
                                   : user.farmingExperience!.toUpperCase() == 'EXPERT'
-                                      ? 'Expert'
-                                      : '${user.farmingExperience} years')
-                          : 'Not provided',
+                                      ? tr(ref, 'Expert')
+                                      : '${user.farmingExperience} ${tr(ref, 'years')}')
+                          : tr(ref, 'Not provided'),
                       showChevron: false,
-                      onTap: () => _showComingSoon(context),
+                      onTap: () => _showComingSoon(context, ref),
                     ),
                     _MenuItem(
                       icon: Icons.interests_rounded,
-                      label: 'Areas of Interest',
-                      value: user?.areasOfInterest?.join(', ') ?? 'Not provided',
+                      label: tr(ref, 'Areas of Interest'),
+                      value: user?.areasOfInterest?.join(', ') ?? tr(ref, 'Not provided'),
                       showChevron: false,
-                      onTap: () => _showComingSoon(context),
+                      onTap: () => _showComingSoon(context, ref),
                     ),
                   ],
                 ),
                 const SizedBox(height: 16),
                 _MenuSection(
-                  title: 'My Learning & Activity',
+                  title: tr(ref, 'My Learning & Activity'),
                   items: [
                     _MenuItem(
                       icon: Icons.school_rounded,
-                      label: 'My Enrolled Courses',
+                      label: tr(ref, 'My Enrolled Courses'),
                       onTap: () {
-                        context.go(RouteNames.farmerHome);
+                        context.go(RouteNames.farmerLearning);
                       },
                     ),
                     _MenuItem(
                       icon: Icons.favorite_rounded,
-                      label: 'My Wishlist',
+                      label: tr(ref, 'My Wishlist'),
                       onTap: () {
                         context.push(RouteNames.wishlist);
                       },
                     ),
                     _MenuItem(
                       icon: Icons.receipt_long_rounded,
-                      label: 'Order History',
+                      label: tr(ref, 'Order History'),
                       onTap: () {
                         context.push('/orders');
                       },
                     ),
                     _MenuItem(
                       icon: Icons.workspace_premium_rounded,
-                      label: 'My Certificates',
+                      label: tr(ref, 'My Certificates'),
                       onTap: () {
                         context.push(RouteNames.certificates);
                       },
@@ -320,76 +499,76 @@ class ProfileScreen extends ConsumerWidget {
                 ),
               ] else ...[
                 _MenuSection(
-                  title: 'Basic Info',
+                  title: tr(ref, 'Basic Info'),
                   items: [
                     _MenuItem(
                       icon: Icons.phone_rounded,
-                      label: 'Phone',
-                      value: user?.phone.isNotEmpty == true ? user!.phone : 'Not provided',
+                      label: tr(ref, 'Phone'),
+                      value: user?.phone.isNotEmpty == true ? user!.phone : tr(ref, 'Not provided'),
                       showChevron: false,
-                      onTap: () => _showComingSoon(context),
+                      onTap: () => _showComingSoon(context, ref),
                     ),
                     _MenuItem(
                       icon: Icons.location_on_rounded,
-                      label: 'Location',
-                      value: user?.location ?? 'Not provided',
+                      label: tr(ref, 'Location'),
+                      value: user?.location ?? tr(ref, 'Not provided'),
                       showChevron: false,
-                      onTap: () => _showComingSoon(context),
+                      onTap: () => _showComingSoon(context, ref),
                     ),
                   ],
                 ),
                 const SizedBox(height: 16),
                 _MenuSection(
-                  title: 'Instructor Details',
+                  title: tr(ref, 'Instructor Details'),
                   items: [
                     if (user?.bio != null && user!.bio!.isNotEmpty)
                       _MenuItem(
                         icon: Icons.info_rounded,
-                        label: 'Bio',
+                        label: tr(ref, 'Bio'),
                         value: user.bio,
                         showChevron: false,
-                        onTap: () => _showComingSoon(context),
+                        onTap: () => _showComingSoon(context, ref),
                       ),
                     _MenuItem(
                       icon: Icons.star_rounded,
-                      label: 'Expertise Tags',
-                      value: user?.expertiseTags ?? 'Not provided',
+                      label: tr(ref, 'Expertise Tags'),
+                      value: user?.expertiseTags ?? tr(ref, 'Not provided'),
                       showChevron: false,
-                      onTap: () => _showComingSoon(context),
+                      onTap: () => _showComingSoon(context, ref),
                     ),
                     _MenuItem(
                       icon: Icons.work_rounded,
-                      label: 'Years of Experience',
-                      value: user?.yearsOfExperience != null ? '${user!.yearsOfExperience} years' : (user?.yearsOfExperience?.toString() ?? 'Not provided'),
+                      label: tr(ref, 'Years of Experience'),
+                      value: user?.yearsOfExperience != null ? '${user!.yearsOfExperience} ${tr(ref, 'years')}' : (user?.yearsOfExperience?.toString() ?? tr(ref, 'Not provided')),
                       showChevron: false,
-                      onTap: () => _showComingSoon(context),
+                      onTap: () => _showComingSoon(context, ref),
                     ),
                     _MenuItem(
                       icon: Icons.grass_rounded,
-                      label: 'Specialty Crops',
-                      value: user?.specialtyCrops ?? 'Not provided',
+                      label: tr(ref, 'Specialty Crops'),
+                      value: user?.specialtyCrops ?? tr(ref, 'Not provided'),
                       showChevron: false,
-                      onTap: () => _showComingSoon(context),
+                      onTap: () => _showComingSoon(context, ref),
                     ),
                     _MenuItem(
                       icon: Icons.link_rounded,
-                      label: 'Social Link',
-                      value: user?.socialLink ?? 'Not provided',
+                      label: tr(ref, 'Social Link'),
+                      value: user?.socialLink ?? tr(ref, 'Not provided'),
                       showChevron: false,
-                      onTap: () => _showComingSoon(context),
+                      onTap: () => _showComingSoon(context, ref),
                     ),
                   ],
                 ),
                 const SizedBox(height: 16),
                 _MenuSection(
-                  title: 'Verification & Payouts',
+                  title: tr(ref, 'Verification & Payouts'),
                   items: [
                     _MenuItem(
                       icon: Icons.verified_user_rounded,
-                      label: 'KYC & Bank Verification',
+                      label: tr(ref, 'KYC & Bank Verification'),
                       value: user?.isKycVerified == true
-                          ? 'Verified'
-                          : (user?.isKycPending == true ? 'Under Review' : 'Incomplete'),
+                          ? tr(ref, 'Verified')
+                          : (user?.isKycPending == true ? tr(ref, 'Under Review') : tr(ref, 'Incomplete')),
                       onTap: () {
                         context.push(RouteNames.instructorKyc);
                       },
@@ -401,23 +580,17 @@ class ProfileScreen extends ConsumerWidget {
 
               // Settings section
               _MenuSection(
-                title: 'Settings',
+                title: tr(ref, 'Settings'),
                 items: [
-                  _MenuItem(
-                    icon: Icons.edit_rounded, 
-                    label: 'Edit Profile',
-                    onTap: () {
-                      context.push('/edit-profile');
-                    },
-                  ),
+
                   _MenuItem(
                     icon: Icons.language_rounded, 
-                    label: 'Language',
+                    label: tr(ref, 'Language'),
                     onTap: () => _showLanguageBottomSheet(context, ref),
                   ),
                   _MenuItem(
                     icon: Theme.of(context).brightness == Brightness.dark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
-                    label: Theme.of(context).brightness == Brightness.dark ? 'Light Mode' : 'Dark Mode',
+                    label: Theme.of(context).brightness == Brightness.dark ? tr(ref, 'Light Mode') : tr(ref, 'Dark Mode'),
                     trailingWidget: Switch(
                       value: Theme.of(context).brightness == Brightness.dark,
                       onChanged: (isDark) {
@@ -436,23 +609,18 @@ class ProfileScreen extends ConsumerWidget {
                   ),
                   _MenuItem(
                     icon: Icons.notifications_outlined,
-                    label: 'Notifications',
+                    label: tr(ref, 'Notifications'),
                     onTap: () => context.push(RouteNames.notifications),
                   ),
                   _MenuItem(
                     icon: Icons.privacy_tip_outlined, 
-                    label: 'Privacy',
+                    label: tr(ref, 'Privacy'),
                     onTap: () => context.push('/privacy'),
                   ),
                   _MenuItem(
                     icon: Icons.help_outline_rounded, 
-                    label: 'Help & Support',
+                    label: tr(ref, 'Help & Support'),
                     onTap: () => context.push('/support'),
-                  ),
-                  _MenuItem(
-                    icon: Icons.delete_outline_rounded,
-                    label: 'Delete Account',
-                    onTap: () => showDeleteAccountConfirmationDialog(context, ref),
                   ),
                 ],
               ),
@@ -482,7 +650,7 @@ class ProfileScreen extends ConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Delete Account',
+                            tr(ref, 'Delete Account'),
                             style: Theme.of(context).textTheme.titleSmall?.copyWith(
                                   color: AppColors.error,
                                   fontWeight: FontWeight.bold,
@@ -490,7 +658,7 @@ class ProfileScreen extends ConsumerWidget {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            'Permanently remove account and data',
+                            tr(ref, 'Permanently remove account and data'),
                             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                   color: AppColors.inkSoft,
                                   fontSize: 11.5,
@@ -529,7 +697,7 @@ class ProfileScreen extends ConsumerWidget {
                     ),
                     const SizedBox(width: 14),
                     Text(
-                      'Logout',
+                      tr(ref, 'Logout'),
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(color: AppColors.error,),
                     ),
                   ],
@@ -552,6 +720,7 @@ class _MenuSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -576,36 +745,44 @@ class _MenuSection extends StatelessWidget {
                       child: Row(
                         children: [
                           Container(
-                            width: 40,
-                            height: 40,
+                            width: 38,
+                            height: 38,
                             decoration: BoxDecoration(
-                              color: AppColors.primaryGreen.withValues(alpha: 0.08),
-                              borderRadius: BorderRadius.circular(12),
+                              color: isDark ? const Color(0xFF222228) : AppColors.editorialSurfaceContainerLow,
+                              borderRadius: BorderRadius.circular(9999),
                             ),
                             child: Icon(
                               item.icon,
-                              size: 20,
-                              color: AppColors.primaryGreen,
+                              size: 19,
+                              color: isDark ? Colors.white : AppColors.editorialOnSurface,
                             ),
                           ),
                           const SizedBox(width: 14),
                           Expanded(
-                            child: Text(item.label,
-                                style: Theme.of(context).textTheme.bodyMedium),
+                            child: Text(
+                              item.label,
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    fontWeight: FontWeight.w500,
+                                    fontSize: 13.5,
+                                  ),
+                            ),
                           ),
                           if (item.value != null) ...[
                             Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 10,
-                                vertical: 3,
+                                vertical: 3.5,
                               ),
                               decoration: BoxDecoration(
-                                color: AppColors.primaryGreen.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(8),
+                                color: isDark ? AppColors.editorialSecondary.withValues(alpha: 0.2) : AppColors.editorialSecondaryFixed,
+                                borderRadius: BorderRadius.circular(9999),
                               ),
                               child: Text(
                                 item.value!,
-                                style: Theme.of(context).textTheme.labelSmall?.copyWith(color: AppColors.primaryGreen,),
+                                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                      color: isDark ? AppColors.editorialSecondaryFixedDim : AppColors.editorialOnSecondaryFixed,
+                                      fontWeight: FontWeight.w700,
+                                    ),
                               ),
                             ),
                             const SizedBox(width: 8),
@@ -660,27 +837,26 @@ class _MenuItem {
   final bool showChevron;
 }
 
-void _showComingSoon(BuildContext context) {
+void _showComingSoon(BuildContext context, WidgetRef ref) {
   final messenger = ScaffoldMessenger.of(context);
   messenger.clearSnackBars();
   messenger.showSnackBar(
-    const SnackBar(
-      content: Text('Feature coming soon'),
-      duration: Duration(milliseconds: 1800),
+    SnackBar(
+      content: Text(tr(ref, 'Feature coming soon')),
+      duration: const Duration(milliseconds: 1800),
       behavior: SnackBarBehavior.floating,
     ),
   );
 }
 
 void _showLanguageBottomSheet(BuildContext context, WidgetRef ref) {
-  final user = ref.read(authProvider).user;
-  final currentLang = user?.language ?? 'English';
+  final currentLangCode = ref.read(languageProvider);
   final isDark = Theme.of(context).brightness == Brightness.dark;
 
   final languages = [
-    {'name': 'English', 'code': 'EN', 'native': 'English'},
-    {'name': 'Hindi', 'code': 'HI', 'native': 'हिंदी'},
-    {'name': 'Marathi', 'code': 'MR', 'native': 'मराठी'},
+    {'name': 'English', 'code': 'en', 'displayCode': 'EN', 'native': 'English'},
+    {'name': 'Hindi', 'code': 'hi', 'displayCode': 'HI', 'native': 'हिंदी'},
+    {'name': 'Marathi', 'code': 'mr', 'displayCode': 'MR', 'native': 'मराठी'},
   ];
 
   showModalBottomSheet(
@@ -701,7 +877,7 @@ void _showLanguageBottomSheet(BuildContext context, WidgetRef ref) {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Select App Language',
+                    tr(ref, 'Select App Language'),
                     style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
@@ -714,7 +890,7 @@ void _showLanguageBottomSheet(BuildContext context, WidgetRef ref) {
               ),
               const SizedBox(height: 16),
               ...languages.map((lang) {
-                final isSelected = currentLang.toLowerCase() == lang['name']!.toLowerCase();
+                final isSelected = currentLangCode.toLowerCase() == lang['code']!.toLowerCase();
                 return Container(
                   margin: const EdgeInsets.only(bottom: 10),
                   decoration: BoxDecoration(
@@ -738,7 +914,7 @@ void _showLanguageBottomSheet(BuildContext context, WidgetRef ref) {
                       foregroundColor: isSelected ? Colors.white : AppColors.inkDark,
                       radius: 18,
                       child: Text(
-                        lang['code']!,
+                        lang['displayCode']!,
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 12,
@@ -762,17 +938,24 @@ void _showLanguageBottomSheet(BuildContext context, WidgetRef ref) {
                     trailing: isSelected
                         ? const Icon(Icons.check_circle_rounded, color: AppColors.primaryGreen)
                         : null,
-                    onTap: () {
-                      Navigator.pop(sheetContext);
-                      final messenger = ScaffoldMessenger.of(context);
-                      messenger.clearSnackBars();
-                      messenger.showSnackBar(
-                        SnackBar(
-                          content: Text('Language set to ${lang['name']} (${lang['native']})'),
-                          backgroundColor: AppColors.primaryGreen,
-                          duration: const Duration(seconds: 2),
-                        ),
-                      );
+                    onTap: () async {
+                      final selectedCode = lang['code']!;
+                      await ref.read(languageProvider.notifier).setLanguage(selectedCode);
+
+                      if (sheetContext.mounted) {
+                        Navigator.pop(sheetContext);
+                      }
+                      if (context.mounted) {
+                        final messenger = ScaffoldMessenger.of(context);
+                        messenger.clearSnackBars();
+                        messenger.showSnackBar(
+                          SnackBar(
+                            content: Text('Language set to ${lang['name']} (${lang['native']})'),
+                            backgroundColor: AppColors.primaryGreen,
+                            duration: const Duration(seconds: 2),
+                          ),
+                        );
+                      }
                     },
                   ),
                 );

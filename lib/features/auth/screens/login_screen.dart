@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:iconly/iconly.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/router/route_names.dart';
@@ -195,7 +194,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         AppPillTextField(
                           controller: _emailController,
                           hintText: 'Email or Phone',
-                          prefixIcon: IconlyLight.profile,
+                          prefixIcon: Icons.person_outline_rounded,
                           keyboardType: TextInputType.emailAddress,
                           textInputAction: TextInputAction.next,
                           autofillHints: const [
@@ -216,7 +215,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         AppPillTextField(
                           controller: _passwordController,
                           hintText: 'Password',
-                          prefixIcon: IconlyLight.lock,
+                          prefixIcon: Icons.lock_outline_rounded,
                           obscureText: _obscurePassword,
                           textInputAction: TextInputAction.done,
                           autofillHints: const [AutofillHints.password],
@@ -232,8 +231,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               padding: const EdgeInsets.symmetric(horizontal: 16),
                               child: Icon(
                                 _obscurePassword
-                                    ? IconlyLight.hide
-                                    : IconlyLight.show,
+                                    ? Icons.visibility_off_outlined
+                                    : Icons.visibility_outlined,
                                 size: 21,
                                 color: isDark
                                     ? AppColors.organicIconDark

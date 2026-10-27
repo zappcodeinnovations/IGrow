@@ -12,6 +12,7 @@ import '../../../data/models/api_models/order_models.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../explore/providers/explore_provider.dart';
 import '../../home_farmer/providers/student_provider.dart';
+import '../../../core/services/app_feature_flags.dart';
 import '../providers/cart_provider.dart';
 
 class CheckoutScreen extends ConsumerStatefulWidget {
@@ -752,14 +753,16 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
               const SizedBox(height: 16),
 
               // ── 3. Coupon & Promo Code Engine ─────────────────────
-              _buildCouponSection(appliedCoupon, discountAmount, isDark),
-
-              const SizedBox(height: 16),
+              if (ref.watch(appFeatureFlagsProvider).enableCoupons) ...[
+                _buildCouponSection(appliedCoupon, discountAmount, isDark),
+                const SizedBox(height: 16),
+              ],
 
               // ── 4. Payment Gateway Methods Showcase ───────────────
-              _buildPaymentGatewayShowcase(isDark, is100PercentFree),
-
-              const SizedBox(height: 16),
+              if (ref.watch(appFeatureFlagsProvider).enablePaymentGateway) ...[
+                _buildPaymentGatewayShowcase(isDark, is100PercentFree),
+                const SizedBox(height: 16),
+              ],
 
               // ── 5. Detailed Bill Summary ──────────────────────────
               _buildBillSummaryCard(

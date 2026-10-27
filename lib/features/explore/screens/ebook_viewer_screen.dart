@@ -3,8 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import 'package:screen_protector/screen_protector.dart';
 
+import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_button.dart';
+import '../../../core/router/route_names.dart';
+import '../../../core/utils/app_toast.dart';
 import '../../../data/models/api_models/wishlist_model.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../home_farmer/providers/student_provider.dart';
@@ -192,16 +195,18 @@ class _EbookViewerScreenState extends ConsumerState<EbookViewerScreen> {
                               .read(wishlistProvider.notifier)
                               .toggleEbook(effectiveId, previewItem: preview);
                           if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(inWishlist
-                                    ? 'Added to wishlist! ❤️'
-                                    : 'Removed from wishlist'),
-                                duration: const Duration(milliseconds: 1800),
-                                backgroundColor: inWishlist
-                                    ? AppColors.primaryGreen
-                                    : AppColors.inkDark,
-                              ),
+                            AppToast.show(
+                              context,
+                              inWishlist ? 'Added to wishlist! ❤️' : 'Removed from wishlist',
+                              isError: false,
+                              duration: const Duration(milliseconds: 3000),
+                              action: inWishlist
+                                  ? SnackBarAction(
+                                      label: 'View Wishlist',
+                                      textColor: const Color(0xFF1B5E20),
+                                      onPressed: () => context.push(RouteNames.wishlist),
+                                    )
+                                  : null,
                             );
                           }
                         } catch (e) {

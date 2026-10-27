@@ -22,22 +22,40 @@ class AppToast {
 
     return messenger.showSnackBar(
       SnackBar(
-        content: Text(
-          message,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-            color: Colors.white,
-          ),
+        content: Row(
+          children: [
+            Icon(
+              isError ? Icons.error_outline_rounded : Icons.check_circle_rounded,
+              color: isError ? Colors.white : const Color(0xFF1B5E20),
+              size: 20,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                message,
+                style: TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w600,
+                  color: isError ? Colors.white : const Color(0xFF1B5E20),
+                ),
+              ),
+            ),
+          ],
         ),
         duration: duration,
         behavior: SnackBarBehavior.floating,
-        showCloseIcon: true,
-        closeIconColor: Colors.white70,
-        backgroundColor: isError ? AppColors.error : AppColors.primaryGreen,
+        showCloseIcon: action == null,
+        closeIconColor: isError ? Colors.white70 : const Color(0xFF2E7D32),
+        backgroundColor: isError ? AppColors.error : const Color(0xFFDCEFD8),
         action: action,
         dismissDirection: DismissDirection.horizontal,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: isError ? Colors.transparent : const Color(0xFFA5D6A7),
+            width: 1.2,
+          ),
+        ),
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       ),
     );

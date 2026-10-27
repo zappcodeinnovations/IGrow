@@ -3,11 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'app_background.dart';
+import 'app_navigation_drawer.dart';
 import 'custom_bottom_nav_bar.dart';
 import '../../data/models/user_role.dart';
 import '../../features/auth/providers/auth_provider.dart';
+import '../localization/app_strings.dart';
 import '../router/route_names.dart';
 import '../theme/app_colors.dart';
+
+final GlobalKey<ScaffoldState> shellScaffoldKey = GlobalKey<ScaffoldState>();
 
 class ShellScaffold extends ConsumerWidget {
   const ShellScaffold({super.key, required this.child});
@@ -27,11 +31,11 @@ class ShellScaffold extends ConsumerWidget {
     if (isFarmer) {
       if (location.startsWith('/farmer/home')) {
         currentIndex = 0;
-      } else if (location.startsWith('/farmer/explore')) {
+      } else if (location.startsWith('/farmer/learning')) {
         currentIndex = 1;
-      } else if (location.startsWith('/farmer/community')) {
+      } else if (location.startsWith('/farmer/explore')) {
         currentIndex = 2;
-      } else if (location.startsWith('/farmer/profile')) {
+      } else if (location.startsWith('/farmer/community')) {
         currentIndex = 3;
       }
     } else {
@@ -48,54 +52,56 @@ class ShellScaffold extends ConsumerWidget {
 
     return AppBackground(
       child: Scaffold(
+        key: shellScaffoldKey,
         backgroundColor: Colors.transparent,
+        drawer: const AppNavigationDrawer(),
         body: child,
         bottomNavigationBar: CustomBottomNavBar(
           currentIndex: currentIndex,
           onTap: (index) => _onTap(context, index, isFarmer),
           items: isFarmer
-              ? const [
+              ? [
                   BottomNavItem(
                     icon: Icons.home_outlined,
                     activeIcon: Icons.home_rounded,
-                    label: 'Home',
+                    label: tr(ref, 'Home'),
+                  ),
+                  BottomNavItem(
+                    icon: Icons.play_circle_outline_rounded,
+                    activeIcon: Icons.play_circle_fill_rounded,
+                    label: tr(ref, 'My learning'),
                   ),
                   BottomNavItem(
                     icon: Icons.explore_outlined,
                     activeIcon: Icons.explore_rounded,
-                    label: 'Explore',
+                    label: tr(ref, 'Explore'),
                   ),
                   BottomNavItem(
                     icon: Icons.groups_outlined,
                     activeIcon: Icons.groups_rounded,
-                    label: 'Community',
-                  ),
-                  BottomNavItem(
-                    icon: Icons.person_outline_rounded,
-                    activeIcon: Icons.person_rounded,
-                    label: 'Profile',
+                    label: tr(ref, 'Community'),
                   ),
                 ]
-              : const [
+              : [
                   BottomNavItem(
                     icon: Icons.dashboard_outlined,
                     activeIcon: Icons.dashboard_rounded,
-                    label: 'Dashboard',
+                    label: tr(ref, 'Dashboard'),
                   ),
                   BottomNavItem(
                     icon: Icons.groups_outlined,
                     activeIcon: Icons.groups_rounded,
-                    label: 'Community',
+                    label: tr(ref, 'Community'),
                   ),
                   BottomNavItem(
                     icon: Icons.add_circle_outline_rounded,
                     activeIcon: Icons.add_circle_rounded,
-                    label: 'Upload',
+                    label: tr(ref, 'Upload'),
                   ),
                   BottomNavItem(
                     icon: Icons.person_outline_rounded,
                     activeIcon: Icons.person_rounded,
-                    label: 'Profile',
+                    label: tr(ref, 'Profile'),
                   ),
                 ],
         ),
@@ -110,13 +116,13 @@ class ShellScaffold extends ConsumerWidget {
           context.go(RouteNames.farmerHome);
           break;
         case 1:
-          context.go(RouteNames.explore);
+          context.go(RouteNames.farmerLearning);
           break;
         case 2:
-          context.go(RouteNames.farmerCommunity);
+          context.go(RouteNames.explore);
           break;
         case 3:
-          context.go(RouteNames.farmerProfile);
+          context.go(RouteNames.farmerCommunity);
           break;
       }
     } else {

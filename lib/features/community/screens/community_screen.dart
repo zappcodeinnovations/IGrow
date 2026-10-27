@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/localization/app_strings.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/services/weather_service.dart';
 import '../../../core/theme/app_colors.dart';
@@ -37,7 +38,7 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF111C15) : const Color(0xFFF7FAF6),
+      backgroundColor: isDark ? Colors.black : const Color(0xFFF7FAF6),
       body: SafeArea(
         child: isInstructor
             ? const _InstructorCommunityView()
@@ -888,7 +889,7 @@ class _StudentCommunityView extends ConsumerWidget {
         await ref.read(communityHubsProvider.notifier).fetchHubs();
       },
       child: CustomScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
+        physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
         slivers: [
           // ─── Header: Title & Area Tag ────────────────────────────
           SliverToBoxAdapter(
@@ -901,7 +902,7 @@ class _StudentCommunityView extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Community Hubs',
+                          tr(ref, 'Community Hubs'),
                           style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
@@ -913,7 +914,7 @@ class _StudentCommunityView extends ConsumerWidget {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          'Learn from regional farming instructors',
+                          tr(ref, 'Learn from regional farming instructors'),
                           style: TextStyle(
                             fontSize: 12,
                             color: isDark ? Colors.white70 : AppColors.inkSoft,
@@ -933,10 +934,10 @@ class _StudentCommunityView extends ConsumerWidget {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6.5),
                         decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF1B2A20) : Colors.white,
+                          color: isDark ? AppColors.cardDark : Colors.white,
                           borderRadius: BorderRadius.circular(14),
                           border: Border.all(
-                            color: AppColors.primaryGreen.withValues(alpha: isDark ? 0.45 : 0.3),
+                            color: isDark ? AppColors.lineDark : AppColors.primaryGreen.withValues(alpha: 0.3),
                             width: 1.2,
                           ),
                           boxShadow: [
@@ -983,28 +984,28 @@ class _StudentCommunityView extends ConsumerWidget {
               child: Container(
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF18261E) : const Color(0xFFE9F2E6),
+                  color: isDark ? AppColors.cardDark : AppColors.editorialSurfaceContainerLow,
                   borderRadius: BorderRadius.circular(18),
                   border: Border.all(
-                    color: isDark ? const Color(0xFF2C3E32) : const Color(0xFFDAE8D6),
+                    color: isDark ? AppColors.lineDark : AppColors.editorialOutlineVariant.withValues(alpha: 0.25),
                   ),
                 ),
                 child: Row(
                   children: [
                     _TabItem(
-                      title: 'Recommended',
+                      title: tr(ref, 'Recommended'),
                       isSelected: activeTab == 0,
                       isDark: isDark,
                       onTap: () => ref.read(studentCommunityTabProvider.notifier).state = 0,
                     ),
                     _TabItem(
-                      title: 'All Hubs',
+                      title: tr(ref, 'All Hubs'),
                       isSelected: activeTab == 1,
                       isDark: isDark,
                       onTap: () => ref.read(studentCommunityTabProvider.notifier).state = 1,
                     ),
                     _TabItem(
-                      title: 'My Hubs',
+                      title: tr(ref, 'My Hubs'),
                       isSelected: activeTab == 2,
                       isDark: isDark,
                       onTap: () => ref.read(studentCommunityTabProvider.notifier).state = 2,
@@ -1054,7 +1055,7 @@ class _TabItem extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 9.5),
           decoration: BoxDecoration(
             color: isSelected
-                ? (isDark ? const Color(0xFF263D2E) : Colors.white)
+                ? (isDark ? const Color(0xFF24242A) : Colors.white)
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(14),
             boxShadow: isSelected
@@ -1074,8 +1075,8 @@ class _TabItem extends StatelessWidget {
               fontSize: 12.5,
               fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
               color: isSelected
-                  ? AppColors.primaryGreen
-                  : (isDark ? Colors.white70 : AppColors.inkSoft),
+                  ? (isDark ? Colors.white : AppColors.editorialPrimary)
+                  : (isDark ? Colors.white60 : AppColors.editorialOnSurfaceVariant),
             ),
           ),
         ),
@@ -1308,21 +1309,24 @@ class _CommunityCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final borderColor = isDark ? const Color(0xFF2C3E32) : const Color(0xFFE2EBE0);
+    final borderColor = isDark ? AppColors.lineDark : const Color(0xFFE2EBE0);
     final titleColor = isDark ? Colors.white : AppColors.inkDark;
 
     final cardGradient = isDark
-        ? [const Color(0xFF192A1F), const Color(0xFF142219)]
+        ? [AppColors.cardDark, AppColors.cardDark]
         : [Colors.white, const Color(0xFFF9FCF8)];
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: cardGradient,
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: isDark ? AppColors.cardDark : null,
+        gradient: isDark
+            ? null
+            : LinearGradient(
+                colors: cardGradient,
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
         borderRadius: BorderRadius.circular(22),
         border: Border.all(color: borderColor, width: 1.2),
         boxShadow: [
@@ -1352,17 +1356,12 @@ class _CommunityCard extends ConsumerWidget {
                       width: 56,
                       height: 56,
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            AppColors.primaryGreen.withValues(alpha: isDark ? 0.25 : 0.12),
-                            AppColors.primaryGreen.withValues(alpha: isDark ? 0.08 : 0.03),
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
+                        color: isDark
+                            ? AppColors.cardDark
+                            : AppColors.editorialSurfaceContainerLow,
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: AppColors.primaryGreen.withValues(alpha: isDark ? 0.35 : 0.22),
+                          color: isDark ? AppColors.lineDark : AppColors.editorialOutlineVariant.withValues(alpha: 0.3),
                           width: 1.2,
                         ),
                       ),
@@ -1373,9 +1372,9 @@ class _CommunityCard extends ConsumerWidget {
                                 imageUrl: hub.logo!,
                                 fit: BoxFit.cover,
                                 errorWidget: (_, __, ___) =>
-                                    const Icon(Icons.agriculture_rounded, color: AppColors.primaryGreen, size: 28),
+                                    const Icon(Icons.agriculture_rounded, color: AppColors.editorialSecondary, size: 28),
                               )
-                            : const Icon(Icons.agriculture_rounded, color: AppColors.primaryGreen, size: 28),
+                            : const Icon(Icons.agriculture_rounded, color: AppColors.editorialSecondary, size: 28),
                       ),
                     ),
                     const SizedBox(width: 14),
@@ -1410,7 +1409,7 @@ class _CommunityCard extends ConsumerWidget {
                                 ),
                               ),
                               const SizedBox(width: 4),
-                              const Icon(Icons.verified, color: AppColors.primaryGreen, size: 15),
+                              const Icon(Icons.verified, color: AppColors.editorialSecondary, size: 15),
                             ],
                           ),
                         ],
@@ -1429,18 +1428,20 @@ class _CommunityCard extends ConsumerWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
                   decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF263D2E) : const Color(0xFFDCFCE7),
+                    color: isDark
+                        ? AppColors.editorialSecondary.withValues(alpha: 0.18)
+                        : AppColors.editorialSecondaryFixed.withValues(alpha: 0.6),
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
-                      color: AppColors.primaryGreen.withValues(alpha: isDark ? 0.4 : 0.2),
+                      color: AppColors.editorialSecondary.withValues(alpha: 0.3),
                     ),
                   ),
                   child: Text(
                     '📍 ${hub.districts.isNotEmpty ? hub.districts.first : hub.state}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.primaryGreen,
+                      color: isDark ? AppColors.editorialSecondaryFixedDim : AppColors.editorialSecondary,
                     ),
                   ),
                 ),
@@ -1485,42 +1486,28 @@ class _CommunityCard extends ConsumerWidget {
                       ? OutlinedButton.icon(
                           style: OutlinedButton.styleFrom(
                             side: BorderSide(
-                              color: isDark ? const Color(0xFF2E4D37) : const Color(0xFFCCE4C5),
+                              color: isDark ? AppColors.lineDark : AppColors.editorialOutlineVariant.withValues(alpha: 0.3),
                             ),
-                            backgroundColor: isDark ? const Color(0xFF192A1F) : const Color(0xFFF0FDF4),
-                            foregroundColor: AppColors.primaryGreen,
+                            backgroundColor: isDark ? const Color(0xFF24242A) : AppColors.editorialSurfaceContainerLow,
+                            foregroundColor: isDark ? Colors.white70 : AppColors.editorialOnSurface,
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                             padding: const EdgeInsets.symmetric(horizontal: 12),
                           ),
                           onPressed: () => _confirmLeave(context, ref),
-                          icon: const Icon(Icons.check_circle_rounded, size: 16, color: AppColors.primaryGreen),
+                          icon: const Icon(Icons.check_circle_rounded, size: 16, color: AppColors.editorialSecondary),
                           label: const Text(
                             'Joined ✓',
                             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
                           ),
                         )
-                      : DecoratedBox(
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFF16A34A), Color(0xFF15803D)],
-                            ),
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColors.primaryGreen.withValues(alpha: 0.35),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
+                      : ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.editorialSecondary,
+                            foregroundColor: Colors.white,
+                            elevation: 1,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            padding: const EdgeInsets.symmetric(horizontal: 14),
                           ),
-                          child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.transparent,
-                              foregroundColor: Colors.white,
-                              shadowColor: Colors.transparent,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              padding: const EdgeInsets.symmetric(horizontal: 14),
-                            ),
                             onPressed: () async {
                               try {
                                 await ref.read(communityHubsProvider.notifier).toggleJoin(
@@ -1551,7 +1538,6 @@ class _CommunityCard extends ConsumerWidget {
                             },
                             child: const Text('+ Join Community', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5)),
                           ),
-                        ),
                 ),
               ],
             ),

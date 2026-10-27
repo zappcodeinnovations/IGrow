@@ -18,6 +18,7 @@ class RouteNames {
 
   // ─── Farmer Shell ────────────────────────────────────────────────
   static const farmerHome = '/farmer/home';
+  static const farmerLearning = '/farmer/learning';
   static const explore = '/farmer/explore';
   static const farmerCommunity = '/farmer/community';
   static const farmerProfile = '/farmer/profile';
