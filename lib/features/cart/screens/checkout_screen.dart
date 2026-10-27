@@ -9,6 +9,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/app_toast.dart';
 import '../../../data/models/api_models/course_models.dart';
 import '../../../data/models/api_models/order_models.dart';
+import '../../../core/services/app_config_service.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../explore/providers/explore_provider.dart';
 import '../../home_farmer/providers/student_provider.dart';
@@ -734,6 +735,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     }
 
     final is100PercentFree = finalTotal <= 0.001;
+    final appConfig = ref.watch(appConfigProvider);
 
     return Column(
       children: [
@@ -749,15 +751,17 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
               // ── 2. Order Items Review Card ────────────────────────
               _buildOrderItemsSection(items, isDark),
 
-              const SizedBox(height: 16),
+              // ── 3. Coupon & Promo Code Engine (hidden if disabled) ─
+              if (appConfig.canShowCoupons) ...[
+                const SizedBox(height: 16),
+                _buildCouponSection(appliedCoupon, discountAmount, isDark),
+              ],
 
-              // ── 3. Coupon & Promo Code Engine ─────────────────────
-              _buildCouponSection(appliedCoupon, discountAmount, isDark),
-
-              const SizedBox(height: 16),
-
-              // ── 4. Payment Gateway Methods Showcase ───────────────
-              _buildPaymentGatewayShowcase(isDark, is100PercentFree),
+              // ── 4. Payment Gateway Methods Showcase (hidden if disabled) ─
+              if (appConfig.canShowPaymentGateway) ...[
+                const SizedBox(height: 16),
+                _buildPaymentGatewayShowcase(isDark, is100PercentFree),
+              ],
 
               const SizedBox(height: 16),
 
@@ -846,23 +850,25 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                         color: isDark ? Colors.white : AppColors.greenDark,
                       ),
                     ),
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryGreen,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: const Text(
-                        'RAZORPAY',
-                        style: TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                          letterSpacing: 0.5,
+                    if (ref.watch(appConfigProvider).canShowPaymentGateway) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryGreen,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Text(
+                          'RAZORPAY',
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            letterSpacing: 0.5,
+                          ),
                         ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
                 const SizedBox(height: 3),
@@ -1598,49 +1604,66 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
             const SizedBox(width: 12),
             Flexible(
               flex: 6,
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryGreen,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  elevation: 2,
-                ),
-                icon: _isProcessing
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
+              child: (!ref.watch(appConfigProvider).canShowPaymentGateway && !is100PercentFree)
+                  ? Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF2E3E32) : const Color(0xFFF1F5F0),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        'Direct purchase is temporarily unavailable on iOS. Please contact support.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: isDark ? Colors.white70 : AppColors.inkSoft,
+                        ),
+                      ),
+                    )
+                  : ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primaryGreen,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 2,
+                      ),
+                      icon: _isProcessing
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : Icon(
+                              is100PercentFree ? Icons.check_circle_outline_rounded : Icons.lock_rounded,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                      label: Text(
+                        buttonLabel,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
                           color: Colors.white,
                         ),
-                      )
-                    : Icon(
-                        is100PercentFree ? Icons.check_circle_outline_rounded : Icons.lock_rounded,
-                        color: Colors.white,
-                        size: 18,
                       ),
-                label: Text(
-                  buttonLabel,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-                onPressed: _isProcessing
-                    ? null
-                    : () => _startPaymentFlow(
-                          originalTotal: originalTotal,
-                          finalTotal: finalTotal,
-                          discountAmount: discountAmount,
-                          items: items,
-                        ),
-              ),
+                      onPressed: _isProcessing
+                          ? null
+                          : () => _startPaymentFlow(
+                                originalTotal: originalTotal,
+                                finalTotal: finalTotal,
+                                discountAmount: discountAmount,
+                                items: items,
+                              ),
+                    ),
             ),
           ],
         ),

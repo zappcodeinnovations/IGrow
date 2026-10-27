@@ -12,6 +12,7 @@ import '../../../core/utils/responsive_layout.dart';
 import '../../../core/widgets/app_elevated_back_button.dart';
 import '../../../core/widgets/app_gradient_button.dart';
 import '../../../core/widgets/app_pill_text_field.dart';
+import '../../../core/widgets/eula_terms_dialog.dart';
 import '../../../core/widgets/organic_background.dart';
 import '../providers/auth_provider.dart';
 
@@ -280,7 +281,44 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ),
                         ),
 
-                        const SizedBox(height: 32),
+                        const SizedBox(height: 20),
+
+                        // EULA / Terms Notice required by Apple Guideline 1.2
+                        GestureDetector(
+                          onTap: () => EulaTermsDialog.show(context),
+                          behavior: HitTestBehavior.opaque,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            child: Text.rich(
+                              TextSpan(
+                                text: 'By continuing, you agree to our ',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 12,
+                                  height: 1.4,
+                                  color: isDark ? Colors.white70 : AppColors.inkSoft,
+                                ),
+                                children: [
+                                  TextSpan(
+                                    text: 'Terms of Use (EULA)',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontWeight: FontWeight.bold,
+                                      color: isDark
+                                          ? AppColors.organicActionLinkDark
+                                          : AppColors.organicActionLink,
+                                      decoration: TextDecoration.underline,
+                                    ),
+                                  ),
+                                  const TextSpan(
+                                    text: ' and zero-tolerance policy against objectionable content and abusive users.',
+                                  ),
+                                ],
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 16),
 
                         // Reusable HD Green Gradient Pill Sign In Button
                         AppGradientButton(

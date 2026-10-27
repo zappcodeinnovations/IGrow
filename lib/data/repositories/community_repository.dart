@@ -404,4 +404,58 @@ class CommunityRepository {
     final response = await http.delete(uri, headers: await _getHeaders());
     _handleError(response);
   }
+
+  // ─── UGC Safety: Report & Block (Apple Guideline 1.2) ───────────
+
+  /// Report Objectionable Post
+  /// Reason options: SPAM, HARASSMENT, HATE_SPEECH, INAPPROPRIATE, MISINFORMATION, OTHER
+  Future<bool> reportPost(String postId, {required String reason, String? details}) async {
+    try {
+      final uri = Uri.parse('$baseUrl/posts/$postId/report/');
+      final response = await http.post(
+        uri,
+        headers: await _getHeaders(),
+        body: jsonEncode({
+          'reason': reason,
+          if (details != null && details.trim().isNotEmpty) 'details': details.trim(),
+        }),
+      );
+      return response.statusCode >= 200 && response.statusCode < 300;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Report Objectionable Comment
+  Future<bool> reportComment(String commentId, {required String reason, String? details}) async {
+    try {
+      final uri = Uri.parse('$baseUrl/comments/$commentId/report/');
+      final response = await http.post(
+        uri,
+        headers: await _getHeaders(),
+        body: jsonEncode({
+          'reason': reason,
+          if (details != null && details.trim().isNotEmpty) 'details': details.trim(),
+        }),
+      );
+      return response.statusCode >= 200 && response.statusCode < 300;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Block Abusive User
+  Future<bool> blockUser(String userId) async {
+    try {
+      final uri = Uri.parse('$baseUrl/users/$userId/block/');
+      final response = await http.post(
+        uri,
+        headers: await _getHeaders(),
+      );
+      return response.statusCode >= 200 && response.statusCode < 300;
+    } catch (_) {
+      return false;
+    }
+  }
 }
+

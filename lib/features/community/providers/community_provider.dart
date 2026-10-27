@@ -403,6 +403,37 @@ class CommunityPostsNotifier extends StateNotifier<AsyncValue<List<CommunityPost
   Future<bool> toggleLike(String postId) async {
     return reactToPost(postId, 'LIKE');
   }
+
+  // ─── UGC Safety Actions (Guideline 1.2) ──────────────────────────
+
+  /// Instantly removes a post from local feed state
+  void removePostLocally(String postId) {
+    if (state.value != null) {
+      state = AsyncValue.data(
+        state.value!.where((p) => p.id != postId).toList(),
+      );
+    }
+  }
+
+  /// Reports a post to backend and optionally hides it locally
+  Future<bool> reportPost(String postId, {required String reason, String? details}) async {
+    final success = await _repo.reportPost(postId, reason: reason, details: details);
+    return success;
+  }
+
+  /// Blocks an abusive user: notifies backend and immediately filters out
+  /// all of that user's posts from the local state
+  Future<bool> blockUserAndRemovePosts(String authorId) async {
+    // 1. Immediately remove from local state
+    if (state.value != null) {
+      state = AsyncValue.data(
+        state.value!.where((p) => p.author.id != authorId).toList(),
+      );
+    }
+
+    // 2. Notify backend
+    return _repo.blockUser(authorId);
+  }
 }
 
 // ─── Comments ──────────────────────────────────────────────────────
@@ -460,5 +491,18 @@ class PostCommentsNotifier extends StateNotifier<AsyncValue<List<CommunityCommen
     } catch (_) {
       // Retain optimistic comment in list
     }
+  }
+
+  void removeCommentLocally(String commentId) {
+    if (state.value != null) {
+      state = AsyncValue.data(
+        state.value!.where((c) => c.id != commentId).toList(),
+      );
+    }
+  }
+
+  Future<bool> reportComment(String commentId, {required String reason, String? details}) async {
+    final success = await _repo.reportComment(commentId, reason: reason, details: details);
+    return success;
   }
 }

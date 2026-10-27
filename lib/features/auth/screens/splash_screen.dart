@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/canopy_gradient.dart';
 import '../../../core/router/route_names.dart';
+import '../../../core/services/app_config_service.dart';
 import '../../../core/services/version_service.dart';
 import '../../../core/widgets/app_update_dialog.dart';
 import '../providers/auth_provider.dart';
@@ -58,6 +59,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
     // Trigger session check and version check after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(appConfigProvider.notifier).loadConfig();
       ref.read(authProvider.notifier).checkSession();
       _checkAppVersion();
     });

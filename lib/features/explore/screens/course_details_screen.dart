@@ -10,6 +10,7 @@ import 'package:video_player/video_player.dart';
 
 import '../../../core/network/api_exception.dart';
 import '../../../core/router/route_names.dart';
+import '../../../core/services/app_config_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/app_toast.dart';
 import '../../../core/widgets/shimmer_placeholders.dart';
@@ -905,7 +906,8 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
           final inCart = (course.id.isNotEmpty && ref.watch(isCourseInCartProvider(course.id))) ||
                          ref.watch(isCourseInCartProvider(widget.courseId)) ||
                          (course.slug != null && course.slug!.isNotEmpty && ref.watch(isCourseInCartProvider(course.slug!)));
-          final priceText = course.price == null || course.price == '0' || course.price == '0.00' ? 'Free' : '₹${course.price}';
+          final isFreeCourse = course.price == null || course.price == '0' || course.price == '0.00';
+          final priceText = isFreeCourse ? 'Free' : '₹${course.price}';
 
           return Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -943,71 +945,82 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                   ),
                   const SizedBox(width: 16),
                   Expanded(
-                    child: inCart
-                        ? FilledButton.icon(
-                            style: FilledButton.styleFrom(
-                              backgroundColor: const Color(0xFFC88528), // Golden-orange matching Screenshot 5
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 13),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                            ),
-                            onPressed: () => context.push('/cart'),
-                            icon: const Icon(Icons.shopping_cart_outlined, size: 18),
-                            label: const Text(
-                              'Go to Cart',
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    child: (!ref.watch(appConfigProvider).canShowPaymentGateway && !isFreeCourse)
+                        ? Center(
+                            child: Text(
+                              'Available via institutional access',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: isDark ? Colors.white70 : AppColors.inkSoft,
+                              ),
                             ),
                           )
-                        : Row(
-                            children: [
-                              Expanded(
-                                child: OutlinedButton(
-                                  style: OutlinedButton.styleFrom(
-                                    side: BorderSide(
-                                      color: isDark ? AppColors.primaryGreen : const Color(0xFF1B4D2E),
-                                      width: 1.5,
-                                    ),
-                                    padding: const EdgeInsets.symmetric(vertical: 12),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                  ),
-                                  onPressed: _isAddingToCart ? null : () => _handleAddToCart(context, course),
-                                  child: _isAddingToCart
-                                      ? SizedBox(
-                                          width: 16,
-                                          height: 16,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            color: isDark ? AppColors.primaryGreen : const Color(0xFF1B4D2E),
-                                          ),
-                                        )
-                                      : Text(
-                                          'Add to Cart',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 13,
-                                            color: isDark ? AppColors.primaryGreen : const Color(0xFF1B4D2E),
-                                          ),
+                        : inCart
+                            ? FilledButton.icon(
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: const Color(0xFFC88528), // Golden-orange matching Screenshot 5
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(vertical: 13),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                ),
+                                onPressed: () => context.push('/cart'),
+                                icon: const Icon(Icons.shopping_cart_outlined, size: 18),
+                                label: const Text(
+                                  'Go to Cart',
+                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                ),
+                              )
+                            : Row(
+                                children: [
+                                  Expanded(
+                                    child: OutlinedButton(
+                                      style: OutlinedButton.styleFrom(
+                                        side: BorderSide(
+                                          color: isDark ? AppColors.primaryGreen : const Color(0xFF1B4D2E),
+                                          width: 1.5,
                                         ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: FilledButton(
-                                  style: FilledButton.styleFrom(
-                                    backgroundColor: AppColors.primaryGreen,
-                                    foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(vertical: 12),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                        padding: const EdgeInsets.symmetric(vertical: 12),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                      ),
+                                      onPressed: _isAddingToCart ? null : () => _handleAddToCart(context, course),
+                                      child: _isAddingToCart
+                                          ? SizedBox(
+                                              width: 16,
+                                              height: 16,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                color: isDark ? AppColors.primaryGreen : const Color(0xFF1B4D2E),
+                                              ),
+                                            )
+                                          : Text(
+                                              'Add to Cart',
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 13,
+                                                color: isDark ? AppColors.primaryGreen : const Color(0xFF1B4D2E),
+                                              ),
+                                            ),
+                                    ),
                                   ),
-                                  onPressed: () => _handleBuyNow(context, course),
-                                  child: const Text(
-                                    'Buy Now',
-                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: FilledButton(
+                                      style: FilledButton.styleFrom(
+                                        backgroundColor: AppColors.primaryGreen,
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(vertical: 12),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                      ),
+                                      onPressed: () => _handleBuyNow(context, course),
+                                      child: const Text(
+                                        'Buy Now',
+                                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white),
+                                      ),
+                                    ),
                                   ),
-                                ),
+                                ],
                               ),
-                            ],
-                          ),
                   ),
                 ],
               ),
@@ -1365,6 +1378,25 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                       label: const Text(
                         'Go to Cart',
                         style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ] else if (!ref.watch(appConfigProvider).canShowPaymentGateway &&
+                    !(course.price == null || course.price == '0' || course.price == '0.00')) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1E2E23) : const Color(0xFFF1F5F0),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      'Direct purchase is temporarily disabled on iOS. Please contact support.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: isDark ? Colors.white70 : AppColors.inkSoft,
                       ),
                     ),
                   ),

@@ -8,6 +8,7 @@ import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_text_field.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/utils/app_toast.dart';
+import '../../../core/widgets/eula_terms_dialog.dart';
 import '../../../data/models/user_role.dart';
 import '../providers/auth_provider.dart';
 
@@ -256,21 +257,31 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     ),
                     const SizedBox(width: 10),
                     Expanded(
-                      child: Text.rich(
-                        TextSpan(
-                          text: 'I agree to the ',
-                          style: Theme.of(context).textTheme.bodySmall,
-                          children: [
-                            TextSpan(
-                              text: 'Terms of Service',
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.primaryGreen,),
-                            ),
-                            const TextSpan(text: ' and '),
-                            TextSpan(
-                              text: 'Privacy Policy',
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.primaryGreen,),
-                            ),
-                          ],
+                      child: GestureDetector(
+                        onTap: () => EulaTermsDialog.show(context),
+                        behavior: HitTestBehavior.opaque,
+                        child: Text.rich(
+                          TextSpan(
+                            text: 'By continuing, you agree to our ',
+                            style: Theme.of(context).textTheme.bodySmall,
+                            children: [
+                              TextSpan(
+                                text: 'Terms of Use (EULA)',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.copyWith(
+                                      color: AppColors.primaryGreen,
+                                      fontWeight: FontWeight.bold,
+                                      decoration: TextDecoration.underline,
+                                    ),
+                              ),
+                              const TextSpan(
+                                text:
+                                    ' and zero-tolerance policy against objectionable content and abusive users.',
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),

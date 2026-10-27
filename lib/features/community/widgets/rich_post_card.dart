@@ -6,10 +6,12 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/ugc_report_dialog.dart';
 import '../../../data/models/api_models/community_models.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../providers/community_provider.dart';
 import 'full_screen_image_viewer.dart';
+import 'post_comments_bottom_sheet.dart';
 
 class RichPostCard extends ConsumerStatefulWidget {
   const RichPostCard({
@@ -105,6 +107,85 @@ class _RichPostCardState extends ConsumerState<RichPostCard> with SingleTickerPr
         await ref.read(communityHubPostsProvider(widget.hubId!).notifier).deletePost(widget.post.id);
       } else {
         await ref.read(communityPostsProvider.notifier).deletePost(widget.post.id);
+      }
+    }
+  }
+
+  Future<void> _reportPost() async {
+    final submitted = await UgcReportDialog.show(
+      context,
+      itemId: widget.post.id,
+      type: UgcReportType.post,
+      authorName: widget.post.author.fullName,
+    );
+    if (submitted == true && mounted) {
+      if (widget.hubId != null && widget.hubId!.isNotEmpty) {
+        ref.read(communityHubPostsProvider(widget.hubId!).notifier).reportPost(
+              widget.post.id,
+              reason: 'INAPPROPRIATE',
+            );
+      } else {
+        ref.read(communityPostsProvider.notifier).reportPost(
+              widget.post.id,
+              reason: 'INAPPROPRIATE',
+            );
+      }
+    }
+  }
+
+  Future<void> _blockUser() async {
+    final authorName = widget.post.author.fullName.isNotEmpty
+        ? widget.post.author.fullName
+        : 'this user';
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        final isDark = Theme.of(ctx).brightness == Brightness.dark;
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          backgroundColor: isDark ? const Color(0xFF1E2B22) : Colors.white,
+          title: Row(
+            children: const [
+              Icon(Icons.block_rounded, color: Colors.redAccent, size: 22),
+              SizedBox(width: 8),
+              Text('Block User?', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          content: Text(
+            'Are you sure you want to block $authorName? Their posts and updates will be immediately removed from your feed.',
+            style: const TextStyle(fontSize: 13.5),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Block & Hide'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirm == true && mounted) {
+      final authorId = widget.post.author.id;
+      // 1. Instantly remove posts across all active feed providers
+      if (widget.hubId != null && widget.hubId!.isNotEmpty) {
+        await ref.read(communityHubPostsProvider(widget.hubId!).notifier).blockUserAndRemovePosts(authorId);
+      }
+      await ref.read(communityPostsProvider.notifier).blockUserAndRemovePosts(authorId);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$authorName has been blocked. Their content was removed.'),
+            duration: const Duration(seconds: 3),
+            backgroundColor: Colors.black87,
+          ),
+        );
       }
     }
   }
@@ -339,39 +420,52 @@ class _RichPostCardState extends ConsumerState<RichPostCard> with SingleTickerPr
                     ],
                   ),
                 ),
+                const SizedBox(width: 4),
                 // Post Type Badge
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: badgeBg,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: badgeColor.withValues(alpha: isDark ? 0.4 : 0.25)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(badgeIcon, size: 13, color: badgeColor),
-                      const SizedBox(width: 4),
-                      Text(
-                        badgeLabel,
-                        style: TextStyle(
-                          color: badgeColor,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 11,
+                Flexible(
+                  fit: FlexFit.loose,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3.5),
+                    decoration: BoxDecoration(
+                      color: badgeBg,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: badgeColor.withValues(alpha: isDark ? 0.4 : 0.25)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(badgeIcon, size: 11, color: badgeColor),
+                        const SizedBox(width: 3),
+                        Flexible(
+                          child: Text(
+                            badgeLabel,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: badgeColor,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 10,
+                            ),
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
-                // More Menu
-                if (isAuthorOrInstructor)
-                  PopupMenuButton<String>(
-                    icon: Icon(Icons.more_vert_rounded, size: 20, color: isDark ? Colors.white70 : AppColors.inkSoft),
-                    color: isDark ? const Color(0xFF1E2B22) : Colors.white,
-                    onSelected: (value) {
-                      if (value == 'delete') _deletePost();
-                    },
-                    itemBuilder: (_) => [
+                // More 3-Dots Menu (Apple Guideline 1.2: Report & Block)
+                PopupMenuButton<String>(
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  icon: Icon(Icons.more_vert_rounded, size: 19, color: isDark ? Colors.white70 : AppColors.inkSoft),
+                  color: isDark ? const Color(0xFF1E2B22) : Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  onSelected: (value) {
+                    if (value == 'delete') _deletePost();
+                    if (value == 'report') _reportPost();
+                    if (value == 'block') _blockUser();
+                  },
+                  itemBuilder: (_) => [
+                    if (isAuthorOrInstructor)
                       const PopupMenuItem(
                         value: 'delete',
                         child: Row(
@@ -382,8 +476,28 @@ class _RichPostCardState extends ConsumerState<RichPostCard> with SingleTickerPr
                           ],
                         ),
                       ),
-                    ],
-                  ),
+                    const PopupMenuItem(
+                      value: 'report',
+                      child: Row(
+                        children: [
+                          Icon(Icons.flag_outlined, color: Colors.orange, size: 18),
+                          SizedBox(width: 8),
+                          Text('Report Post'),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuItem(
+                      value: 'block',
+                      child: Row(
+                        children: [
+                          Icon(Icons.block_rounded, color: Colors.redAccent, size: 18),
+                          SizedBox(width: 8),
+                          Text('Block User', style: TextStyle(color: Colors.redAccent)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -860,43 +974,81 @@ class _RichPostCardState extends ConsumerState<RichPostCard> with SingleTickerPr
                     ),
                   ],
                 ),
-                // Emoji Reaction Button & Active Count
-                GestureDetector(
-                  onTap: _toggleEmojiPicker,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: widget.post.userReaction != null
-                          ? (isDark ? const Color(0xFF263B2B) : const Color(0xFFDCFCE7))
-                          : (isDark ? Colors.white10 : const Color(0xFFF1F5F9)),
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(
-                        color: widget.post.userReaction != null
-                            ? AppColors.primaryGreen
-                            : Colors.transparent,
-                        width: 1.2,
+                Row(
+                  children: [
+                    // Comment button
+                    GestureDetector(
+                      onTap: () => PostCommentsBottomSheet.show(
+                        context,
+                        postId: widget.post.id,
+                        postAuthorName: widget.post.author.fullName,
+                      ),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.white10 : const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.chat_bubble_outline_rounded,
+                              size: 15,
+                              color: isDark ? Colors.white70 : AppColors.inkSoft,
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              '${widget.post.commentsCount}',
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.bold,
+                                color: isDark ? Colors.white70 : AppColors.inkDark,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                    child: Row(
-                      children: [
-                        Text(
-                          _getReactionEmoji(widget.post.userReaction) ?? '👍',
-                          style: const TextStyle(fontSize: 16),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          '${widget.post.reactionsCount}',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
+                    const SizedBox(width: 8),
+                    // Emoji Reaction Button & Active Count
+                    GestureDetector(
+                      onTap: _toggleEmojiPicker,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: widget.post.userReaction != null
+                              ? (isDark ? const Color(0xFF263B2B) : const Color(0xFFDCFCE7))
+                              : (isDark ? Colors.white10 : const Color(0xFFF1F5F9)),
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(
                             color: widget.post.userReaction != null
                                 ? AppColors.primaryGreen
-                                : (isDark ? Colors.white70 : AppColors.inkDark),
+                                : Colors.transparent,
+                            width: 1.2,
                           ),
                         ),
-                      ],
+                        child: Row(
+                          children: [
+                            Text(
+                              _getReactionEmoji(widget.post.userReaction) ?? '👍',
+                              style: const TextStyle(fontSize: 16),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              '${widget.post.reactionsCount}',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: widget.post.userReaction != null
+                                    ? AppColors.primaryGreen
+                                    : (isDark ? Colors.white70 : AppColors.inkDark),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
+                  ],
                 ),
               ],
             ),
