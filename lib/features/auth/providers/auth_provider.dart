@@ -168,6 +168,33 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  /// Social Login with Google, Apple, or other provider token.
+  Future<bool> socialLogin({
+    required String provider,
+    required String idToken,
+    String? fullName,
+    String? fcmToken,
+  }) async {
+    state = state.copyWith(status: AuthStatus.loading);
+    try {
+      final user = await _repo.socialLogin(
+        provider: provider,
+        idToken: idToken,
+        fullName: fullName,
+        fcmToken: fcmToken,
+      );
+      state = AuthState(status: AuthStatus.authenticated, user: user);
+      _startPeriodicSync();
+      return true;
+    } on ApiException catch (e) {
+      state = AuthState(status: AuthStatus.error, error: e.message);
+      return false;
+    } catch (e) {
+      state = AuthState(status: AuthStatus.error, error: e.toString());
+      return false;
+    }
+  }
+
   /// Register a new account.
   Future<void> register({
     required String fullName,

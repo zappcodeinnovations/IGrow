@@ -1,13 +1,18 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/responsive_layout.dart';
 import '../../../core/widgets/app_button.dart';
+import '../../../core/widgets/app_social_button.dart';
 import '../../../core/widgets/app_text_field.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/utils/app_toast.dart';
+import '../../../core/services/social_auth_service.dart';
 import '../../../core/widgets/eula_terms_dialog.dart';
 import '../../../data/models/user_role.dart';
 import '../providers/auth_provider.dart';
@@ -76,6 +81,80 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           isError: false,
         );
         context.go('${RouteNames.login}?role=${widget.selectedRole ?? 'farmer'}');
+      }
+    }
+  }
+
+  Future<void> _handleSocialSuccess() async {
+    if (!mounted) return;
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    final hasSelectedLanguage = prefs.getBool('has_selected_language') ?? false;
+    if (hasSelectedLanguage) {
+      context.go(RouteNames.authSuccess);
+    } else {
+      context.go(RouteNames.languageSelection);
+    }
+  }
+
+  Future<void> _loginWithGoogle() async {
+    FocusScope.of(context).unfocus();
+    try {
+      print('\n👉 [REGISTER_SCREEN] Starting Google Sign-In...');
+      final payload = await SocialAuthService.instance.signInWithGoogle();
+      if (payload == null) {
+        print('⚠️ [REGISTER_SCREEN] Google Sign-In returned null (user canceled or no credential available).');
+        if (mounted) {
+          AppToast.show(
+            context,
+            'Google Sign-In was cancelled or no credential was returned.',
+            isError: true,
+          );
+        }
+        return;
+      }
+
+      print('✅ [REGISTER_SCREEN] Google Sign-In token received. Sending to backend...');
+      final success = await ref.read(authProvider.notifier).socialLogin(
+            provider: 'google',
+            idToken: payload['id_token'] as String,
+            fullName: payload['full_name'] as String?,
+            fcmToken: payload['fcm_token'] as String?,
+          );
+
+      if (success) {
+        print('✅ [REGISTER_SCREEN] Backend social register/login success! Navigating...');
+        await _handleSocialSuccess();
+      } else {
+        print('❌ [REGISTER_SCREEN] Backend social register/login failed: ${ref.read(authProvider).error}');
+      }
+    } catch (e, st) {
+      print('❌ [REGISTER_SCREEN] Google Sign-In Exception: $e\n$st');
+      if (mounted) {
+        AppToast.show(context, e.toString().replaceAll('Exception: ', ''), isError: true);
+      }
+    }
+  }
+
+  Future<void> _loginWithApple() async {
+    FocusScope.of(context).unfocus();
+    try {
+      final payload = await SocialAuthService.instance.signInWithApple();
+      if (payload == null) return;
+
+      final success = await ref.read(authProvider.notifier).socialLogin(
+            provider: 'apple',
+            idToken: payload['id_token'] as String,
+            fullName: payload['full_name'] as String?,
+            fcmToken: payload['fcm_token'] as String?,
+          );
+
+      if (success) {
+        await _handleSocialSuccess();
+      }
+    } catch (e) {
+      if (mounted) {
+        AppToast.show(context, e.toString().replaceAll('Exception: ', ''), isError: true);
       }
     }
   }
@@ -294,6 +373,60 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   onPressed: _agreeTerms ? _register : null,
                   isLoading: authState.isLoading,
                 ),
+
+                const SizedBox(height: 20),
+
+                // Modern "OR" Divider
+                Row(
+                  children: [
+                    Expanded(
+                      child: Divider(
+                        color: isDark ? AppColors.lineDark : AppColors.lineLight,
+                        thickness: 1,
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      child: Text(
+                        'OR',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: isDark ? Colors.white54 : AppColors.inkSoft,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: Divider(
+                        color: isDark ? AppColors.lineDark : AppColors.lineLight,
+                        thickness: 1,
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 16),
+
+                // Google Sign Up
+                AppSocialButton.google(
+                  text: 'Sign up with Google',
+                  isDark: isDark,
+                  isLoading: authState.isLoading,
+                  onPressed: authState.isLoading ? null : _loginWithGoogle,
+                ),
+
+                // Apple Sign Up (iOS only)
+                if (Platform.isIOS) ...[
+                  const SizedBox(height: 12),
+                  AppSocialButton.apple(
+                    text: 'Sign up with Apple',
+                    isDark: isDark,
+                    isLoading: authState.isLoading,
+                    onPressed: authState.isLoading ? null : _loginWithApple,
+                  ),
+                ],
+
                 const SizedBox(height: 24),
                 Center(
                   child: Row(

@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -12,8 +13,10 @@ import '../../../core/utils/responsive_layout.dart';
 import '../../../core/widgets/app_elevated_back_button.dart';
 import '../../../core/widgets/app_gradient_button.dart';
 import '../../../core/widgets/app_pill_text_field.dart';
+import '../../../core/widgets/app_social_button.dart';
 import '../../../core/widgets/eula_terms_dialog.dart';
 import '../../../core/widgets/organic_background.dart';
+import '../../../core/services/social_auth_service.dart';
 import '../providers/auth_provider.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -78,6 +81,76 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         context.go(RouteNames.authSuccess);
       } else {
         context.go(RouteNames.languageSelection);
+      }
+    }
+  }
+
+  Future<void> _handleSocialSuccess() async {
+    if (!mounted) return;
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    final hasSelectedLanguage = prefs.getBool('has_selected_language') ?? false;
+    if (hasSelectedLanguage) {
+      context.go(RouteNames.authSuccess);
+    } else {
+      context.go(RouteNames.languageSelection);
+    }
+  }
+
+  Future<void> _loginWithGoogle() async {
+    FocusScope.of(context).unfocus();
+    try {
+      print('\n👉 [LOGIN_SCREEN] Starting Google Sign-In...');
+      final payload = await SocialAuthService.instance.signInWithGoogle();
+      if (payload == null) {
+        print('⚠️ [LOGIN_SCREEN] Google Sign-In returned null (user canceled or no credential available).');
+        if (mounted) {
+          AppToast.show(context, 'Google Sign-In was cancelled or no credential was returned.', isError: true);
+        }
+        return;
+      }
+
+      print('✅ [LOGIN_SCREEN] Google Sign-In token received. Sending to backend...');
+      final success = await ref.read(authProvider.notifier).socialLogin(
+            provider: 'google',
+            idToken: payload['id_token'] as String,
+            fullName: payload['full_name'] as String?,
+            fcmToken: payload['fcm_token'] as String?,
+          );
+
+      if (success) {
+        print('✅ [LOGIN_SCREEN] Backend social login success! Navigating...');
+        await _handleSocialSuccess();
+      } else {
+        print('❌ [LOGIN_SCREEN] Backend social login failed. State error: ${ref.read(authProvider).error}');
+      }
+    } catch (e, st) {
+      print('❌ [LOGIN_SCREEN] Google Sign-In Exception: $e\n$st');
+      if (mounted) {
+        AppToast.show(context, e.toString().replaceAll('Exception: ', ''), isError: true);
+      }
+    }
+  }
+
+  Future<void> _loginWithApple() async {
+    FocusScope.of(context).unfocus();
+    try {
+      final payload = await SocialAuthService.instance.signInWithApple();
+      if (payload == null) return; // cancelled or unsupported
+
+      final success = await ref.read(authProvider.notifier).socialLogin(
+            provider: 'apple',
+            idToken: payload['id_token'] as String,
+            fullName: payload['full_name'] as String?,
+            fcmToken: payload['fcm_token'] as String?,
+          );
+
+      if (success) {
+        await _handleSocialSuccess();
+      }
+    } catch (e) {
+      if (mounted) {
+        AppToast.show(context, e.toString().replaceAll('Exception: ', ''), isError: true);
       }
     }
   }
@@ -327,7 +400,66 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           onPressed: _login,
                         ),
 
-                        const SizedBox(height: 36),
+                        const SizedBox(height: 24),
+
+                        // Modern "OR" Divider
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Divider(
+                                color: isDark
+                                    ? AppColors.lineDark
+                                    : AppColors.organicBorderLight,
+                                thickness: 1,
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 14),
+                              child: Text(
+                                tr(ref, 'OR').toUpperCase(),
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: isDark
+                                      ? AppColors.organicSubtitleDark
+                                      : AppColors.organicSubtitleGreen,
+                                  letterSpacing: 1.2,
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              child: Divider(
+                                color: isDark
+                                    ? AppColors.lineDark
+                                    : AppColors.organicBorderLight,
+                                thickness: 1,
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 20),
+
+                        // Google Sign-In Button
+                        AppSocialButton.google(
+                          text: tr(ref, 'Continue with Google'),
+                          isDark: isDark,
+                          isLoading: authState.isLoading,
+                          onPressed: authState.isLoading ? null : _loginWithGoogle,
+                        ),
+
+                        // Apple Sign-In Button (iOS only)
+                        if (Platform.isIOS) ...[
+                          const SizedBox(height: 12),
+                          AppSocialButton.apple(
+                            text: tr(ref, 'Sign in with Apple'),
+                            isDark: isDark,
+                            isLoading: authState.isLoading,
+                            onPressed: authState.isLoading ? null : _loginWithApple,
+                          ),
+                        ],
+
+                        const SizedBox(height: 32),
 
                         // Bottom Sign Up Link
                         Center(
