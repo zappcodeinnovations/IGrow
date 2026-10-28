@@ -14,6 +14,12 @@ import '../models/user_role.dart';
 abstract class AuthRepository {
   Future<UserModel?> getCurrentUser({bool forceRefresh = false});
   Future<UserModel> login({required String email, required String password});
+  Future<UserModel> socialLogin({
+    required String provider,
+    required String idToken,
+    String? fullName,
+    String? fcmToken,
+  });
   Future<void> syncFcmToken();
   Future<void> register({
     required String fullName,
@@ -179,6 +185,102 @@ class ApiAuthRepository implements AuthRepository {
     final profile = meResponse.body;
     if (profile == null) throw ApiException.server('Failed to fetch profile');
     
+    _currentUser = UserModel.fromApiProfile(profile);
+    return _currentUser!;
+  }
+
+  @override
+  Future<UserModel> socialLogin({
+    required String provider,
+    required String idToken,
+    String? fullName,
+    String? fcmToken,
+  }) async {
+    final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/auth/social-login/');
+    final body = <String, dynamic>{
+      'provider': provider,
+      'id_token': idToken,
+    };
+    if (fullName != null && fullName.trim().isNotEmpty) {
+      body['full_name'] = fullName.trim();
+    }
+    if (fcmToken != null && fcmToken.trim().isNotEmpty) {
+      body['fcm_token'] = fcmToken.trim();
+    }
+
+    print('\n🌐 [AUTH_REPO] POST /api/v1/auth/social-login/ with provider: $provider');
+    print('📦 [AUTH_REPO] Payload: id_token length=${idToken.length}, full_name=$fullName, fcm_token=${fcmToken != null}');
+
+    final response = await http.post(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: jsonEncode(body),
+    );
+
+    print('⬅️ [AUTH_REPO] Response status: ${response.statusCode}');
+    print('📄 [AUTH_REPO] Response body: ${response.body}');
+
+    if (response.statusCode >= 400) {
+      String errorMessage = 'Social sign-in failed (${response.statusCode})';
+      try {
+        final errorData = jsonDecode(response.body);
+        if (response.statusCode == 400 && errorData is Map<String, dynamic>) {
+          if (errorData.containsKey('errors') && errorData['errors'] is Map) {
+            final errs = errorData['errors'] as Map;
+            final firstKey = errs.keys.first;
+            final firstVal = errs[firstKey];
+            errorMessage = firstVal is List ? firstVal.first.toString() : firstVal.toString();
+          } else if (errorData.containsKey('error')) {
+            errorMessage = errorData['error'].toString();
+          } else {
+            throw ApiException.validation(errorData);
+          }
+        } else if (response.statusCode == 401) {
+          if (errorData is Map && errorData.containsKey('error')) {
+            errorMessage = errorData['error'].toString();
+          } else {
+            errorMessage = 'Invalid or expired social token signature.';
+          }
+        } else if (errorData is Map && errorData.containsKey('detail')) {
+          errorMessage = errorData['detail'].toString();
+        }
+      } catch (e) {
+        if (e is ApiException) rethrow;
+      }
+      throw ApiException(statusCode: response.statusCode, message: errorMessage);
+    }
+
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    final tokens = data['tokens'] as Map<String, dynamic>?;
+    final access = tokens?['access'] as String?;
+    final refresh = tokens?['refresh'] as String?;
+
+    if (access == null || access.isEmpty) {
+      throw ApiException.server('Invalid social login response: Missing access token');
+    }
+
+    await tokenStorage.saveTokens(
+      access: access,
+      refresh: refresh ?? '',
+    );
+
+    // Safely register FCM token in background
+    unawaited(
+      NotificationService.instance.registerFCMToken(
+        access,
+        forceRefresh: false,
+      ),
+    );
+
+    // Fetch the canonical current user profile
+    final meResponse = await appApi.apiV1AuthMeGet();
+    _handleError(meResponse);
+    final profile = meResponse.body;
+    if (profile == null) throw ApiException.server('Failed to fetch profile after social login');
+
     _currentUser = UserModel.fromApiProfile(profile);
     return _currentUser!;
   }
