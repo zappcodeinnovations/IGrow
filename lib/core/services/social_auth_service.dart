@@ -10,7 +10,7 @@ class SocialAuthService {
   SocialAuthService._();
   static final SocialAuthService instance = SocialAuthService._();
 
-  bool _initialized = false;
+  GoogleSignIn? _googleSignIn;
 
   /// Web Client ID from Google Cloud Console (required on Android to obtain an idToken)
   static const String googleServerClientId =
@@ -20,47 +20,45 @@ class SocialAuthService {
   static const String googleIosClientId =
       '744016784564-17296ad47ab763a51a7be1.apps.googleusercontent.com';
 
-  Future<void> _ensureInitialized() async {
-    if (_initialized) return;
-    try {
-      await GoogleSignIn.instance.initialize(
-        serverClientId: googleServerClientId,
-        clientId: Platform.isIOS ? googleIosClientId : null,
-      );
-      _initialized = true;
-    } catch (e) {
-      if (kDebugMode) {
-        print('⚠️ [SocialAuthService] GoogleSignIn initialize error: $e');
-      }
-      _initialized = true;
-    }
+  GoogleSignIn _getGoogleSignIn() {
+    _googleSignIn ??= GoogleSignIn(
+      scopes: ['email', 'profile'],
+      serverClientId: googleServerClientId,
+      clientId: Platform.isIOS ? googleIosClientId : null,
+    );
+    return _googleSignIn!;
   }
 
-  /// Triggers native Google Sign-In and returns a map with:
+  /// Triggers simple native Google Sign-In and returns:
   /// - `id_token`: The JWT identity token from Google
   /// - `full_name`: User's display name
   /// - `fcm_token`: Current device FCM token (optional)
   Future<Map<String, dynamic>?> signInWithGoogle() async {
     try {
-      await _ensureInitialized();
+      final googleSignIn = _getGoogleSignIn();
 
-      // Sign out first to allow account switching if desired
+      // Sign out first to let the user pick any account on their phone
       try {
-        await GoogleSignIn.instance.signOut();
+        await googleSignIn.signOut();
       } catch (_) {}
 
-      print('\n🚀 [SOCIAL_AUTH] Calling GoogleSignIn.instance.authenticate()...');
-      final GoogleSignInAccount account = await GoogleSignIn.instance.authenticate();
-      print('✅ [SOCIAL_AUTH] Google Auth SUCCESS: ${account.email}, id: ${account.id}');
+      print('\n🚀 [SOCIAL_AUTH] Calling googleSignIn.signIn()...');
+      final GoogleSignInAccount? account = await googleSignIn.signIn();
+
+      if (account == null) {
+        print('⚠️ [SOCIAL_AUTH] Google Sign-In cancelled by user.');
+        return null;
+      }
+
+      print('✅ [SOCIAL_AUTH] Account selected: ${account.email}, Name: ${account.displayName}');
       
-      final GoogleSignInAuthentication auth = account.authentication;
+      final GoogleSignInAuthentication auth = await account.authentication;
       final String? idToken = auth.idToken;
       print('🔑 [SOCIAL_AUTH] Google idToken: ${idToken != null ? "${idToken.substring(0, 15)}... (Length: ${idToken.length})" : "NULL"}');
 
       if (idToken == null || idToken.isEmpty) {
         throw Exception(
-          'Google Sign-In succeeded but no ID token was returned. '
-          'Please ensure the Google Cloud Web Client ID and SHA-1 fingerprints are registered.',
+          'Google Sign-In succeeded for ${account.email} but no ID token was returned.',
         );
       }
 
@@ -75,15 +73,8 @@ class SocialAuthService {
         'full_name': account.displayName,
         'fcm_token': fcmToken,
       };
-    } on GoogleSignInException catch (e) {
-      print('⚠️ [SOCIAL_AUTH] GoogleSignInException: code=${e.code}, description="${e.description}"');
-      if (e.code == GoogleSignInExceptionCode.canceled) {
-        // User voluntarily cancelled the prompt
-        return null;
-      }
-      rethrow;
     } catch (e, st) {
-      print('❌ [SOCIAL_AUTH] Google Sign-In generic error: $e\n$st');
+      print('❌ [SOCIAL_AUTH] Google Sign-In error: $e\n$st');
       rethrow;
     }
   }
