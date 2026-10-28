@@ -12,7 +12,12 @@
           "package_name": "com.zappkode.igrow"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "744016784564-uadkduueepk8ktffa7kg9124nnappatv.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyDxDtp7VaCRFhuWgFcQ90evjtNeZAg7tx0"
@@ -20,7 +25,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "744016784564-uadkduueepk8ktffa7kg9124nnappatv.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

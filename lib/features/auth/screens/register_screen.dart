@@ -99,9 +99,21 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   Future<void> _loginWithGoogle() async {
     FocusScope.of(context).unfocus();
     try {
+      print('\n👉 [REGISTER_SCREEN] Starting Google Sign-In...');
       final payload = await SocialAuthService.instance.signInWithGoogle();
-      if (payload == null) return;
+      if (payload == null) {
+        print('⚠️ [REGISTER_SCREEN] Google Sign-In returned null (user canceled or no credential available).');
+        if (mounted) {
+          AppToast.show(
+            context,
+            'Google Sign-In was cancelled or no credential was returned.',
+            isError: true,
+          );
+        }
+        return;
+      }
 
+      print('✅ [REGISTER_SCREEN] Google Sign-In token received. Sending to backend...');
       final success = await ref.read(authProvider.notifier).socialLogin(
             provider: 'google',
             idToken: payload['id_token'] as String,
@@ -110,9 +122,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           );
 
       if (success) {
+        print('✅ [REGISTER_SCREEN] Backend social register/login success! Navigating...');
         await _handleSocialSuccess();
+      } else {
+        print('❌ [REGISTER_SCREEN] Backend social register/login failed: ${ref.read(authProvider).error}');
       }
-    } catch (e) {
+    } catch (e, st) {
+      print('❌ [REGISTER_SCREEN] Google Sign-In Exception: $e\n$st');
       if (mounted) {
         AppToast.show(context, e.toString().replaceAll('Exception: ', ''), isError: true);
       }
