@@ -86,7 +86,6 @@ class SocialAuthService {
       print('❌ [SOCIAL_AUTH] Google Sign-In generic error: $e\n$st');
       rethrow;
     }
-    }
   }
 
   /// Triggers Apple Sign-In on iOS (or returns null if unsupported) and returns:
