@@ -97,7 +97,6 @@ class AppNavigationDrawer extends ConsumerWidget {
                     context: context,
                     icon: Icons.menu_book_rounded,
                     title: tr(ref, 'Courses'),
-                    subtitle: tr(ref, 'Browse catalog & specializations'),
                     iconColor: AppColors.editorialSecondary,
                     isDark: isDark,
                     onTap: () {
@@ -109,7 +108,6 @@ class AppNavigationDrawer extends ConsumerWidget {
                     context: context,
                     icon: Icons.play_circle_fill_rounded,
                     title: tr(ref, 'My Learning'),
-                    subtitle: tr(ref, 'Enrolled courses, certificates'),
                     iconColor: AppColors.editorialSecondary,
                     isDark: isDark,
                     onTap: () {
@@ -121,7 +119,6 @@ class AppNavigationDrawer extends ConsumerWidget {
                     context: context,
                     icon: Icons.favorite_rounded,
                     title: tr(ref, 'Wishlist'),
-                    subtitle: tr(ref, 'Saved courses & resources'),
                     iconColor: Colors.redAccent,
                     isDark: isDark,
                     onTap: () {
@@ -133,7 +130,6 @@ class AppNavigationDrawer extends ConsumerWidget {
                     context: context,
                     icon: Icons.groups_rounded,
                     title: tr(ref, 'Community Hubs'),
-                    subtitle: tr(ref, 'Connect with local farmers & experts'),
                     iconColor: isDark ? Colors.white70 : AppColors.editorialOnSurfaceVariant,
                     isDark: isDark,
                     onTap: () {
@@ -145,7 +141,6 @@ class AppNavigationDrawer extends ConsumerWidget {
                     context: context,
                     icon: Icons.person_rounded,
                     title: tr(ref, 'My Profile'),
-                    subtitle: tr(ref, 'Account details & certificates'),
                     iconColor: isDark ? AppColors.editorialSecondaryFixedDim : AppColors.editorialSecondary,
                     isDark: isDark,
                     onTap: () {
@@ -164,7 +159,6 @@ class AppNavigationDrawer extends ConsumerWidget {
                     context: context,
                     icon: Icons.support_agent_rounded,
                     title: tr(ref, 'Help & Support'),
-                    subtitle: tr(ref, 'Tickets, queries & FAQs'),
                     iconColor: isDark ? Colors.white70 : AppColors.editorialOnSurfaceVariant,
                     isDark: isDark,
                     onTap: () {
@@ -176,7 +170,6 @@ class AppNavigationDrawer extends ConsumerWidget {
                     context: context,
                     icon: Icons.confirmation_number_outlined,
                     title: tr(ref, 'My Tickets'),
-                    subtitle: tr(ref, 'Track support ticket updates'),
                     iconColor: isDark ? Colors.white70 : AppColors.editorialOnSurfaceVariant,
                     isDark: isDark,
                     onTap: () {
@@ -188,7 +181,6 @@ class AppNavigationDrawer extends ConsumerWidget {
                     context: context,
                     icon: Icons.security_rounded,
                     title: tr(ref, 'Privacy Settings'),
-                    subtitle: tr(ref, 'Visibility & data preferences'),
                     iconColor: isDark ? Colors.white70 : AppColors.editorialOnSurfaceVariant,
                     isDark: isDark,
                     onTap: () {
@@ -288,7 +280,7 @@ class AppNavigationDrawer extends ConsumerWidget {
     required BuildContext context,
     required IconData icon,
     required String title,
-    required String subtitle,
+    String? subtitle,
     required Color iconColor,
     required bool isDark,
     required VoidCallback onTap,
@@ -297,7 +289,7 @@ class AppNavigationDrawer extends ConsumerWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(14),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         child: Row(
           children: [
             Container(
@@ -313,24 +305,28 @@ class AppNavigationDrawer extends ConsumerWidget {
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
                     title,
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: 14.5,
                       fontWeight: FontWeight.w600,
                       color: isDark ? Colors.white : AppColors.editorialOnSurface,
                     ),
                   ),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: isDark ? Colors.white54 : AppColors.editorialOnSurfaceVariant,
+                  if (subtitle != null && subtitle.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: isDark ? Colors.white54 : AppColors.editorialOnSurfaceVariant,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                  ],
                 ],
               ),
             ),

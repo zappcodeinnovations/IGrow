@@ -9,6 +9,7 @@ import 'app_navigation_drawer.dart';
 import 'custom_bottom_nav_bar.dart';
 import '../../data/models/user_role.dart';
 import '../../features/auth/providers/auth_provider.dart';
+import '../../features/auth/widgets/complete_social_profile_dialog.dart';
 import '../localization/app_strings.dart';
 import '../router/route_names.dart';
 import '../theme/app_colors.dart';
@@ -28,6 +29,26 @@ class ShellScaffold extends ConsumerStatefulWidget {
 class _ShellScaffoldState extends ConsumerState<ShellScaffold> {
   DateTime? _lastBackPressed;
   DateTime? _lastNavTap;
+  bool _checkedProfileCompletion = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkIncompleteProfilePrompt();
+    });
+  }
+
+  void _checkIncompleteProfilePrompt() {
+    if (!mounted || _checkedProfileCompletion) return;
+    _checkedProfileCompletion = true;
+    final user = ref.read(authProvider).user;
+    if (user != null &&
+        (user.phone.trim().isEmpty ||
+            (user.locationState == null || user.locationState!.trim().isEmpty))) {
+      CompleteSocialProfileDialog.show(context, user);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -102,6 +123,7 @@ class _ShellScaffoldState extends ConsumerState<ShellScaffold> {
           key: shellScaffoldKey,
           backgroundColor: Colors.transparent,
           drawer: const AppNavigationDrawer(),
+          drawerEnableOpenDragGesture: false,
           body: widget.child,
           bottomNavigationBar: CustomBottomNavBar(
             currentIndex: currentIndex,

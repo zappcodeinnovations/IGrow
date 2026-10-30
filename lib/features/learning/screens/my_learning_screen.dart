@@ -6,6 +6,7 @@ import '../../../core/localization/app_strings.dart';
 import '../../../core/network/swagger_generated/app_api.swagger.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/shell_scaffold.dart';
 import '../../../core/widgets/shimmer_placeholders.dart';
 import '../../cart/providers/cart_provider.dart';
 import '../../home_farmer/providers/student_provider.dart';
@@ -104,6 +105,30 @@ class _MyLearningScreenState extends ConsumerState<MyLearningScreen> {
                       ),
                     )
                   else ...[
+                    InkWell(
+                      onTap: () {
+                        if (shellScaffoldKey.currentState != null) {
+                          shellScaffoldKey.currentState!.openDrawer();
+                        } else {
+                          Scaffold.of(context).openDrawer();
+                        }
+                      },
+                      borderRadius: BorderRadius.circular(9999),
+                      child: Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: isDark ? AppColors.cardDark : AppColors.editorialSurfaceContainerLow,
+                        ),
+                        child: Icon(
+                          Icons.menu_rounded,
+                          size: 20,
+                          color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         tr(ref, 'My courses'),

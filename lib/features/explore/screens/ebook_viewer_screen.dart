@@ -195,18 +195,9 @@ class _EbookViewerScreenState extends ConsumerState<EbookViewerScreen> {
                               .read(wishlistProvider.notifier)
                               .toggleEbook(effectiveId, previewItem: preview);
                           if (context.mounted) {
-                            AppToast.show(
+                            AppToast.showWishlistToast(
                               context,
-                              inWishlist ? 'Added to wishlist! ❤️' : 'Removed from wishlist',
-                              isError: false,
-                              duration: const Duration(milliseconds: 3000),
-                              action: inWishlist
-                                  ? SnackBarAction(
-                                      label: 'View Wishlist',
-                                      textColor: const Color(0xFF1B5E20),
-                                      onPressed: () => context.push(RouteNames.wishlist),
-                                    )
-                                  : null,
+                              isAdded: inWishlist,
                             );
                           }
                         } catch (e) {

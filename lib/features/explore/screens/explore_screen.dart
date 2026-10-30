@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/widgets/shell_scaffold.dart';
 import '../../cart/providers/cart_provider.dart';
 import '../../home_farmer/providers/student_provider.dart';
 import '../../wishlist/providers/wishlist_provider.dart';
@@ -10,7 +11,6 @@ import '../../../data/models/api_models/wishlist_model.dart';
 import '../../../core/network/swagger_generated/app_api.swagger.dart';
 import 'ebooks_tab.dart';
 import '../../../core/widgets/shimmer_placeholders.dart';
-import '../../../core/router/route_names.dart';
 import '../../../core/utils/app_toast.dart';
 
 /// Explore screen for courses.
@@ -528,6 +528,33 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
         appBar: AppBar(
           elevation: 0,
           backgroundColor: Colors.transparent,
+          leadingWidth: 54,
+          leading: Padding(
+            padding: const EdgeInsets.only(left: 12),
+            child: InkWell(
+              onTap: () {
+                if (shellScaffoldKey.currentState != null) {
+                  shellScaffoldKey.currentState!.openDrawer();
+                } else {
+                  Scaffold.of(context).openDrawer();
+                }
+              },
+              borderRadius: BorderRadius.circular(9999),
+              child: Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isDark ? AppColors.cardDark : AppColors.editorialSurfaceContainerLow,
+                ),
+                child: Icon(
+                  Icons.menu_rounded,
+                  size: 22,
+                  color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                ),
+              ),
+            ),
+          ),
           title: Container(
             height: 44,
             decoration: BoxDecoration(
@@ -566,12 +593,14 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                     decoration: InputDecoration(
                       hintText: 'Search courses...',
                       hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.inkSoft),
+                      filled: false,
+                      isDense: true,
                       border: InputBorder.none,
                       enabledBorder: InputBorder.none,
                       focusedBorder: InputBorder.none,
                       errorBorder: InputBorder.none,
                       focusedErrorBorder: InputBorder.none,
-                      contentPadding: const EdgeInsets.only(bottom: 12),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 10),
                     ),
                   ),
                 ),
@@ -689,11 +718,6 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                           ),
                     ),
                   ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Discover expert-led courses to advance your farming skills.',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.inkSoft),
                 ),
                 const SizedBox(height: 14),
                 const TabBar(
@@ -1180,18 +1204,9 @@ class _CatalogCourseCard extends ConsumerWidget {
                               .read(wishlistProvider.notifier)
                               .toggleCourse(course.id ?? '', previewItem: preview);
                           if (context.mounted) {
-                            AppToast.show(
+                            AppToast.showWishlistToast(
                               context,
-                              inWishlist ? 'Added to wishlist! ❤️' : 'Removed from wishlist',
-                              isError: false,
-                              duration: const Duration(milliseconds: 3000),
-                              action: inWishlist
-                                  ? SnackBarAction(
-                                      label: 'View Wishlist',
-                                      textColor: const Color(0xFF1B5E20),
-                                      onPressed: () => context.push(RouteNames.wishlist),
-                                    )
-                                  : null,
+                              isAdded: inWishlist,
                             );
                           }
                         },

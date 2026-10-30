@@ -7,10 +7,11 @@ import '../theme/app_colors.dart';
 class AppGradientButton extends StatelessWidget {
   final String label;
   final bool isLoading;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
   final double height;
   final double? width;
   final double borderRadius;
+  final IconData? icon;
 
   const AppGradientButton({
     super.key,
@@ -20,6 +21,7 @@ class AppGradientButton extends StatelessWidget {
     this.height = 56,
     this.width = double.infinity,
     this.borderRadius = 28,
+    this.icon,
   });
 
   @override
@@ -44,7 +46,7 @@ class AppGradientButton extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(borderRadius),
-          onTap: isLoading ? null : onPressed,
+          onTap: (isLoading || onPressed == null) ? null : onPressed,
           splashColor: const Color(0x2EFFFFFF),
           highlightColor: const Color(0x14FFFFFF),
           child: Center(
@@ -57,14 +59,24 @@ class AppGradientButton extends StatelessWidget {
                       valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                     ),
                   )
-                : Text(
-                    label,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 16.5,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                      letterSpacing: 0.2,
-                    ),
+                : Row(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        label,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 16.5,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                      if (icon != null) ...[
+                        const SizedBox(width: 8),
+                        Icon(icon, color: Colors.white, size: 20),
+                      ],
+                    ],
                   ),
           ),
         ),

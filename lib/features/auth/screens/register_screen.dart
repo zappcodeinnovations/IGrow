@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -7,7 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/responsive_layout.dart';
-import '../../../core/widgets/app_button.dart';
+import '../../../core/widgets/app_gradient_button.dart';
 import '../../../core/widgets/app_social_button.dart';
 import '../../../core/widgets/app_text_field.dart';
 import '../../../core/router/route_names.dart';
@@ -300,12 +301,23 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 AppTextField(
                   controller: _phoneController,
                   label: 'Phone Number',
-                  hint: '+91 XXXXX XXXXX',
+                  hint: '10-digit mobile number',
                   prefixIcon: const Icon(Icons.phone_outlined),
                   keyboardType: TextInputType.phone,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(10),
+                  ],
                   textInputAction: TextInputAction.next,
-                  validator: (v) =>
-                      (v == null || v.length < 10) ? 'Valid phone required' : null,
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) {
+                      return 'Phone number is required';
+                    }
+                    if (v.trim().length != 10) {
+                      return 'Enter a valid 10-digit phone number';
+                    }
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 16),
                 AppTextField(
@@ -400,9 +412,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 ),
                 const SizedBox(height: 28),
 
-                AppButton(
+                AppGradientButton(
                   label: 'Create Account',
-                  onPressed: (_agreeTerms && !_isRegisterLoading && !_isGoogleLoading && !_isAppleLoading) ? _register : null,
+                  onPressed: (_agreeTerms && !_isRegisterLoading && !_isGoogleLoading && !_isAppleLoading)
+                      ? () {
+                          _register();
+                        }
+                      : null,
                   isLoading: _isRegisterLoading,
                 ),
 

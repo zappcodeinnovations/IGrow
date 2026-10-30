@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
@@ -27,6 +28,7 @@ class AppTextField extends StatelessWidget {
     this.autofocus = false,
     this.focusNode,
     this.autofillHints,
+    this.inputFormatters,
   });
 
   final TextEditingController? controller;
@@ -49,6 +51,7 @@ class AppTextField extends StatelessWidget {
   final bool autofocus;
   final FocusNode? focusNode;
   final Iterable<String>? autofillHints;
+  final List<TextInputFormatter>? inputFormatters;
 
   @override
   Widget build(BuildContext context) {
@@ -67,6 +70,7 @@ class AppTextField extends StatelessWidget {
       autofocus: autofocus,
       focusNode: focusNode,
       autofillHints: autofillHints,
+      inputFormatters: inputFormatters,
       style: Theme.of(context).textTheme.bodyLarge?.copyWith(
             fontWeight: FontWeight.w500,
           ),
