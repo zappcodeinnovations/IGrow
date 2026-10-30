@@ -389,6 +389,75 @@ class CartRepository {
     }
   }
 
+  /// Step 4: Process Apple In-App Purchase Transaction on iOS
+  /// Calls POST https://iagrow.zappcode.in/api/v1/orders/ios/payment/transaction/
+  Future<Map<String, dynamic>> processIosAppleTransaction({
+    required String courseId,
+    required String productId,
+    required String transactionId,
+    required String receiptData,
+  }) async {
+    debugPrint('🍏 [CartRepository] processIosAppleTransaction START: courseId=$courseId, productId=$productId, txId=$transactionId');
+    final token = await tokenStorage.getAccessToken();
+    final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/orders/ios/payment/transaction/');
+
+    final payload = <String, dynamic>{
+      'course_id': courseId.trim(),
+      'product_id': productId.trim(),
+      'transaction_id': transactionId.trim(),
+      'receipt_data': receiptData.trim(),
+    };
+
+    http.Response response;
+    try {
+      response = await http.post(
+        uri,
+        headers: {
+          if (token != null) 'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode(payload),
+      ).timeout(const Duration(seconds: 30));
+    } catch (e) {
+      if (_isNetworkOrAbortError(e)) {
+        throw Exception('No internet connection. Please check your network and try again.');
+      }
+      throw Exception('Apple In-App Purchase verification timed out. Please try again.');
+    }
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      debugPrint('✅ [CartRepository] processIosAppleTransaction SUCCESS (${response.statusCode}): ${response.body}');
+      try {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map<String, dynamic>) {
+          return decoded;
+        }
+        return Map<String, dynamic>.from(decoded as Map);
+      } catch (_) {
+        return {
+          'success': true,
+          'message': 'Apple In-App Purchase processed successfully and access granted.',
+          'enrolled': true,
+        };
+      }
+    } else {
+      debugPrint('❌ [CartRepository] processIosAppleTransaction ERROR (${response.statusCode}): ${response.body}');
+      String message = 'Apple In-App Purchase verification failed.';
+      try {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map && decoded['message'] != null) {
+          message = decoded['message'].toString();
+        } else if (decoded is Map && decoded['error'] != null) {
+          message = decoded['error'].toString();
+        } else if (decoded is Map && decoded['detail'] != null) {
+          message = decoded['detail'].toString();
+        }
+      } catch (_) {}
+      throw Exception(message);
+    }
+  }
+
   /// Checkout — processes sandbox payment and enrolls.
   Future<Map<String, dynamic>> checkout({
     String? gatewayName,

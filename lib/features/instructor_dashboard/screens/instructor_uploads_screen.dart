@@ -211,43 +211,6 @@ class _CoursesTab extends ConsumerWidget {
                           tooltip: 'Manage Content',
                           onPressed: () => context.push('/instructor/manage-course/${course.id}'),
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.delete_outline, color: AppColors.error),
-                          tooltip: 'Delete Course',
-                          onPressed: () async {
-                            final confirm = await showDialog<bool>(
-                              context: context,
-                              builder: (c) => AlertDialog(
-                                title: const Text('Delete Course'),
-                                content: const Text('Are you sure you want to delete this course?'),
-                                actions: [
-                                  TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(c, true),
-                                    child: const Text('Delete', style: TextStyle(color: AppColors.error)),
-                                  ),
-                                ],
-                              ),
-                            );
-                            if (confirm == true) {
-                              try {
-                                await ref.read(instructorRepositoryProvider).deleteCourse(course.id);
-                                ref.invalidate(instructorCoursesProvider);
-                              } catch (e) {
-                                if (context.mounted) {
-                                  final messenger = ScaffoldMessenger.of(context);
-                                  messenger.clearSnackBars();
-                                  messenger.showSnackBar(
-                                    SnackBar(
-                                      content: Text('Error: $e'),
-                                      duration: const Duration(milliseconds: 1800),
-                                    ),
-                                  );
-                                }
-                              }
-                            }
-                          },
-                        ),
                       ],
                     ),
                   ],
@@ -488,59 +451,6 @@ class _EBooksTab extends ConsumerWidget {
                               ),
                             ],
                           ),
-                        ),
-                        // Delete Button
-                        IconButton(
-                          icon: const Icon(
-                            Icons.delete_outline,
-                            color: AppColors.error,
-                          ),
-                          tooltip: 'Delete E-Book',
-                          onPressed: () async {
-                            final confirm = await showDialog<bool>(
-                              context: context,
-                              builder: (c) => AlertDialog(
-                                title: const Text('Delete E-Book'),
-                                content: Text(
-                                  'Are you sure you want to delete "${ebook.title ?? 'this e-book'}"?',
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(c, false),
-                                    child: const Text('Cancel'),
-                                  ),
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(c, true),
-                                    child: const Text(
-                                      'Delete',
-                                      style: TextStyle(color: AppColors.error),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                            if (confirm == true) {
-                              try {
-                                await ref
-                                    .read(instructorRepositoryProvider)
-                                    .deleteEBook(ebook.id!);
-                                ref.invalidate(instructorEbooksProvider);
-                              } catch (e) {
-                                if (context.mounted) {
-                                  final messenger =
-                                      ScaffoldMessenger.of(context);
-                                  messenger.clearSnackBars();
-                                  messenger.showSnackBar(
-                                    SnackBar(
-                                      content: Text('Error: $e'),
-                                      duration:
-                                          const Duration(milliseconds: 1800),
-                                    ),
-                                  );
-                                }
-                              }
-                            }
-                          },
                         ),
                       ],
                     ),

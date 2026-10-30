@@ -17,6 +17,7 @@ import '../../../core/widgets/app_social_button.dart';
 import '../../../core/widgets/eula_terms_dialog.dart';
 import '../../../core/widgets/organic_background.dart';
 import '../../../core/services/social_auth_service.dart';
+import '../../../data/models/user_role.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/complete_social_profile_dialog.dart';
 
@@ -81,6 +82,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         final prefs = await SharedPreferences.getInstance();
         if (!mounted) return;
 
+        final selectedRoleStr = widget.selectedRole ?? prefs.getString('selected_auth_role');
+        if (selectedRoleStr == 'instructor') {
+          await ref.read(authProvider.notifier).switchRole(UserRole.instructor);
+          await prefs.setString('active_user_role', 'instructor');
+        }
+
+        if (!mounted) return;
+
         final hasSelectedLanguage =
             prefs.getBool('has_selected_language') ?? false;
         if (hasSelectedLanguage) {
@@ -112,6 +121,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
+
+    final selectedRoleStr = widget.selectedRole ?? prefs.getString('selected_auth_role');
+    if (selectedRoleStr == 'instructor') {
+      await ref.read(authProvider.notifier).switchRole(UserRole.instructor);
+      await prefs.setString('active_user_role', 'instructor');
+    }
+
+    if (!mounted) return;
+
     final hasSelectedLanguage = prefs.getBool('has_selected_language') ?? false;
     if (hasSelectedLanguage) {
       context.go(RouteNames.authSuccess);

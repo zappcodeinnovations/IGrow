@@ -537,11 +537,16 @@ class InstructorRepository {
 
   /// List instructor's ebooks.
   Future<PaginatedEBookList> getEBooks({int? page}) async {
-    final response = await appApi.apiV1InstructorEbooksGet(page: page);
-    if (!response.isSuccessful) {
-      throw Exception('Failed to get ebooks: ${response.error}');
+    try {
+      final response = await appApi.apiV1InstructorEbooksGet(page: page);
+      if (response.isSuccessful && response.body != null) {
+        return response.body!;
+      }
+      debugPrint('⚠️ [InstructorRepository] getEBooks returned unsuccessful status: ${response.statusCode} - ${response.error}');
+    } catch (e) {
+      debugPrint('⚠️ [InstructorRepository] getEBooks error: $e');
     }
-    return response.body!;
+    return const PaginatedEBookList(count: 0, results: []);
   }
 
   /// Create E-Book draft.

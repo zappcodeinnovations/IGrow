@@ -46,8 +46,12 @@ final instructorCoursesProvider = FutureProvider.autoDispose.family<List<ApiCour
 /// Provider for fetching the instructor's authored ebooks.
 final instructorEbooksProvider = FutureProvider<List<dynamic>>((ref) async {
   final repo = ref.watch(instructorRepositoryProvider);
-  final response = await repo.getEBooks();
-  return response.results;
+  try {
+    final response = await repo.getEBooks();
+    return response.results;
+  } catch (e) {
+    return [];
+  }
 });
 
 /// Provider for fetching a specific course's details for the instructor.

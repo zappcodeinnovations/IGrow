@@ -216,6 +216,36 @@ class CartNotifier extends AsyncNotifier<ApiCart> {
     }
   }
 
+  /// Step 4: Process Apple In-App Purchase & fulfill enrollment
+  Future<Map<String, dynamic>> processIosAppleTransaction({
+    required String courseId,
+    required String productId,
+    required String transactionId,
+    required String receiptData,
+  }) async {
+    state = const AsyncLoading();
+    try {
+      final result = await _repository.processIosAppleTransaction(
+        courseId: courseId,
+        productId: productId,
+        transactionId: transactionId,
+        receiptData: receiptData,
+      );
+
+      final newCart = await _fetchCart();
+      state = AsyncData(newCart);
+
+      // Invalidate student enrollments & orders so course activates instantly!
+      ref.invalidate(studentEnrollmentsProvider);
+      ref.invalidate(ordersProvider);
+
+      return result;
+    } catch (e) {
+      state = await AsyncValue.guard(() => _fetchCart());
+      rethrow;
+    }
+  }
+
   /// Checkout the cart or direct single course (legacy/sandbox fallback).
   Future<Map<String, dynamic>> checkout({
     String? paymentMethod,

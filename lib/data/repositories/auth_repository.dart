@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:chopper/chopper.dart' as chopper;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
 import '../../core/network/token_storage.dart';
@@ -135,6 +136,22 @@ class ApiAuthRepository implements AuthRepository {
         return null;
       }
       _currentUser = UserModel.fromApiProfile(profile);
+      
+      // If user had previously selected or switched to a specific active role, respect it
+      final prefs = await SharedPreferences.getInstance();
+      final savedRole = prefs.getString('active_user_role') ?? prefs.getString('selected_auth_role');
+      if (savedRole != null && _currentUser != null) {
+        final targetRole = savedRole == 'instructor' ? UserRole.instructor : UserRole.farmer;
+        final updatedGranted = List<UserRole>.from(_currentUser!.grantedRoles);
+        if (!updatedGranted.contains(targetRole)) {
+          updatedGranted.add(targetRole);
+        }
+        _currentUser = _currentUser!.copyWith(
+          activeRole: targetRole,
+          grantedRoles: updatedGranted,
+        );
+      }
+
       print('👤 [AUTH REPO] getCurrentUser loaded: email=${_currentUser?.email}, role=${_currentUser?.activeRole.name}, verificationStatus=${_currentUser?.verificationStatus}, kycVerified=${_currentUser?.kycVerified}');
       return _currentUser;
     } on ApiException catch (e) {
@@ -186,6 +203,22 @@ class ApiAuthRepository implements AuthRepository {
     if (profile == null) throw ApiException.server('Failed to fetch profile');
     
     _currentUser = UserModel.fromApiProfile(profile);
+    
+    // Check if a role was selected or previously saved
+    final prefs = await SharedPreferences.getInstance();
+    final savedRole = prefs.getString('active_user_role') ?? prefs.getString('selected_auth_role');
+    if (savedRole != null && _currentUser != null) {
+      final targetRole = savedRole == 'instructor' ? UserRole.instructor : UserRole.farmer;
+      final updatedGranted = List<UserRole>.from(_currentUser!.grantedRoles);
+      if (!updatedGranted.contains(targetRole)) {
+        updatedGranted.add(targetRole);
+      }
+      _currentUser = _currentUser!.copyWith(
+        activeRole: targetRole,
+        grantedRoles: updatedGranted,
+      );
+    }
+
     return _currentUser!;
   }
 
@@ -282,6 +315,22 @@ class ApiAuthRepository implements AuthRepository {
     if (profile == null) throw ApiException.server('Failed to fetch profile after social login');
 
     _currentUser = UserModel.fromApiProfile(profile);
+    
+    // Check if a role was selected or previously saved
+    final prefs = await SharedPreferences.getInstance();
+    final savedRole = prefs.getString('active_user_role') ?? prefs.getString('selected_auth_role');
+    if (savedRole != null && _currentUser != null) {
+      final targetRole = savedRole == 'instructor' ? UserRole.instructor : UserRole.farmer;
+      final updatedGranted = List<UserRole>.from(_currentUser!.grantedRoles);
+      if (!updatedGranted.contains(targetRole)) {
+        updatedGranted.add(targetRole);
+      }
+      _currentUser = _currentUser!.copyWith(
+        activeRole: targetRole,
+        grantedRoles: updatedGranted,
+      );
+    }
+
     return _currentUser!;
   }
 
@@ -437,6 +486,13 @@ class ApiAuthRepository implements AuthRepository {
       activeRole: newRole,
       grantedRoles: updatedGranted,
     );
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('active_user_role', newRole.name);
+      await prefs.setString('selected_auth_role', newRole.name);
+    } catch (_) {}
+
     return _currentUser!;
   }
 
@@ -478,6 +534,11 @@ class ApiAuthRepository implements AuthRepository {
     } catch (_) {}
 
     await tokenStorage.clearTokens();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('active_user_role');
+      await prefs.remove('selected_auth_role');
+    } catch (_) {}
     _currentUser = null;
   }
 

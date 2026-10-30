@@ -9,6 +9,7 @@ import '../../../core/network/swagger_generated/app_api.swagger.dart' show EBook
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/app_toast.dart';
+import '../../../core/services/apple_iap_service.dart';
 import '../../../data/models/api_models/course_models.dart';
 import '../../../data/models/api_models/order_models.dart';
 import '../../../core/services/app_config_service.dart';
@@ -261,16 +262,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       // Check if Razorpay is enabled for this platform/config
       final canShowRazorpay = ref.read(appConfigProvider).canShowPaymentGateway;
       if (!canShowRazorpay && !kIsWeb && Platform.isIOS) {
-        // Razorpay is disabled on iOS for App Store review / Apple Pay mode
-        if (mounted) {
-          setState(() => _isProcessing = false);
-          AppToast.show(
-            context,
-            'Apple Pay processing will be active once configured by the backend. Razorpay is hidden for Apple App Review.',
-            isError: false,
-            duration: const Duration(seconds: 4),
-          );
-        }
+        // Razorpay is disabled on iOS for App Store review. Execute Apple In-App Purchase flow!
+        await _startAppleIapFlow(items: items);
         return;
       }
 
@@ -286,6 +279,69 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
         AppToast.show(
           context,
           'Unable to initiate payment: $friendlyErr',
+          isError: true,
+          duration: const Duration(seconds: 4),
+        );
+      }
+    }
+  }
+
+  /// Apple In-App Purchase Flow (StoreKit) for iOS App Store compliance
+  Future<void> _startAppleIapFlow({required List<dynamic> items}) async {
+    try {
+      debugPrint('🍏 [CheckoutScreen] Starting Apple IAP flow...');
+      String targetCourseId = '';
+      if (widget.directCourseId != null && widget.directCourseId!.isNotEmpty) {
+        targetCourseId = widget.directCourseId!;
+      } else if (items.isNotEmpty) {
+        targetCourseId = _getItemCourseId(items.first);
+      }
+
+      if (targetCourseId.isEmpty) {
+        throw Exception('No course selected for purchase.');
+      }
+
+      const String productId = AppleIapService.defaultProductId; // com.zappkode.igrow.tier1
+
+      // 1. Launch StoreKit In-App Purchase sheet
+      final purchaseDetails = await AppleIapService.instance.buyProduct(productId: productId);
+      final transactionId = purchaseDetails.purchaseID ?? DateTime.now().millisecondsSinceEpoch.toString();
+      final receiptData = AppleIapService.instance.extractReceiptData(purchaseDetails);
+
+      debugPrint('🍏 [CheckoutScreen] IAP bought successfully: txId=$transactionId, receipt length=${receiptData.length}');
+
+      // 2. Post receipt & transaction to backend
+      final result = await ref.read(cartProvider.notifier).processIosAppleTransaction(
+            courseId: targetCourseId,
+            productId: productId,
+            transactionId: transactionId,
+            receiptData: receiptData,
+          );
+
+      debugPrint('🎉 [CheckoutScreen] Backend Apple IAP confirmation result: $result');
+
+      // 3. Clear cart if cart checkout
+      if (widget.directCourseId == null) {
+        await ref.read(cartProvider.notifier).clearCart();
+      }
+
+      if (mounted) {
+        setState(() => _isProcessing = false);
+      }
+
+      // 4. Complete order
+      _completeOrderSuccess(
+        result: result,
+        paymentMethodName: 'Apple In-App Purchase',
+      );
+    } catch (e) {
+      debugPrint('❌ [CheckoutScreen] Apple IAP flow error: $e');
+      if (mounted) {
+        setState(() => _isProcessing = false);
+        final errText = e.toString().replaceAll('Exception: ', '').replaceAll('UnsupportedError: ', '');
+        AppToast.show(
+          context,
+          'Apple Purchase error: $errText',
           isError: true,
           duration: const Duration(seconds: 4),
         );
@@ -522,6 +578,21 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     }
     if (item is Map) return item['instructor_name']?.toString() ?? item['author_name']?.toString() ?? 'iAgrow Faculty';
     return 'iAgrow Faculty';
+  }
+
+  String _getItemCourseId(dynamic item) {
+    if (widget.directCourseId != null && widget.directCourseId!.isNotEmpty) {
+      return widget.directCourseId!;
+    }
+    if (item is ApiCourseDetail) return item.id;
+    if (item is ApiCartItem) return item.course;
+    if (item is Map) {
+      return item['course_id']?.toString() ??
+          item['course']?.toString() ??
+          item['id']?.toString() ??
+          '';
+    }
+    return '';
   }
 
   // ─── Build UI ─────────────────────────────────────────────────────
@@ -774,6 +845,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                 const SizedBox(height: 16),
                 _buildCouponSection(appliedCoupon, discountAmount, isDark),
               ],
+
+              const SizedBox(height: 16),
 
               // ── 4. Payment Gateway Methods Showcase ─
               _buildPaymentGatewayShowcase(isDark, is100PercentFree),

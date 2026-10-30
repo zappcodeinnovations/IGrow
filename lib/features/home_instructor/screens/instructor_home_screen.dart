@@ -975,7 +975,6 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                                 context.push('/course/$target');
                               }
                             },
-                            onDelete: () => _confirmDeleteCourse(course),
                           ),
                         );
                       }).toList(),
@@ -1244,13 +1243,13 @@ class AgriLearnCourseCard extends StatelessWidget {
     required this.course,
     required this.onManage,
     this.onViewLive,
-    required this.onDelete,
+    this.onDelete,
   });
 
   final ApiCourseList course;
   final VoidCallback onManage;
   final VoidCallback? onViewLive;
-  final VoidCallback onDelete;
+  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -1444,16 +1443,17 @@ class AgriLearnCourseCard extends StatelessWidget {
                   ],
                 ),
               ),
-              IconButton(
-                style: IconButton.styleFrom(
-                  padding: const EdgeInsets.all(6),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              if (onDelete != null)
+                IconButton(
+                  style: IconButton.styleFrom(
+                    padding: const EdgeInsets.all(6),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  onPressed: onDelete,
+                  icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.error),
+                  tooltip: 'Delete Course',
                 ),
-                onPressed: onDelete,
-                icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.error),
-                tooltip: 'Delete Course',
-              ),
             ],
           ),
         ],

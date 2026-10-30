@@ -1186,99 +1186,109 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                     const SizedBox(width: 16),
                     Expanded(
                       child: inCart
-                          ? FilledButton.icon(
-                              style: FilledButton.styleFrom(
-                                backgroundColor: const Color(
-                                  0xFFC88528,
-                                ), // Golden-orange matching Cart
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 13,
+                          ? SizedBox(
+                              height: 44,
+                              child: FilledButton.icon(
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: const Color(
+                                    0xFFC88528,
+                                  ), // Golden-orange matching Cart
+                                  foregroundColor: Colors.white,
+                                  padding: EdgeInsets.zero,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
                                 ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
+                                onPressed: () => context.push('/cart'),
+                                icon: const Icon(
+                                  Icons.shopping_cart_outlined,
+                                  size: 18,
                                 ),
-                              ),
-                              onPressed: () => context.push('/cart'),
-                              icon: const Icon(
-                                Icons.shopping_cart_outlined,
-                                size: 18,
-                              ),
-                              label: const Text(
-                                'Go to Cart',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
+                                label: const Text(
+                                  'Go to Cart',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
                                 ),
                               ),
                             )
                           : Row(
                               children: [
                                 Expanded(
-                                  child: OutlinedButton(
-                                    style: OutlinedButton.styleFrom(
-                                      side: BorderSide(
-                                        color: isDark
-                                            ? AppColors.editorialSecondary
-                                            : AppColors.editorialPrimary,
-                                        width: 1.5,
+                                  child: SizedBox(
+                                    height: 44,
+                                    child: OutlinedButton(
+                                      style: OutlinedButton.styleFrom(
+                                        side: BorderSide(
+                                          color: isDark
+                                              ? AppColors.editorialSecondary
+                                              : AppColors.editorialPrimary,
+                                          width: 1.5,
+                                        ),
+                                        padding: EdgeInsets.zero,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                        ),
                                       ),
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 12,
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
+                                      onPressed: _isAddingToCart
+                                          ? null
+                                          : () => _handleAddToCart(
+                                              context, course),
+                                      child: _isAddingToCart
+                                          ? SizedBox(
+                                              width: 16,
+                                              height: 16,
+                                              child:
+                                                  CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                color: isDark
+                                                    ? AppColors
+                                                        .editorialSecondary
+                                                    : AppColors
+                                                        .editorialPrimary,
+                                              ),
+                                            )
+                                          : Text(
+                                              'Add to Cart',
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 13,
+                                                color: isDark
+                                                    ? AppColors
+                                                        .editorialSecondary
+                                                    : AppColors
+                                                        .editorialPrimary,
+                                              ),
+                                            ),
                                     ),
-                                    onPressed: _isAddingToCart
-                                        ? null
-                                        : () =>
-                                              _handleAddToCart(context, course),
-                                    child: _isAddingToCart
-                                        ? SizedBox(
-                                            width: 16,
-                                            height: 16,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                              color: isDark
-                                                  ? AppColors.editorialSecondary
-                                                  : AppColors.editorialPrimary,
-                                            ),
-                                          )
-                                        : Text(
-                                            'Add to Cart',
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 13,
-                                              color: isDark
-                                                  ? AppColors.editorialSecondary
-                                                  : AppColors.editorialPrimary,
-                                            ),
-                                          ),
                                   ),
                                 ),
                                 const SizedBox(width: 8),
                                 Expanded(
-                                  child: FilledButton(
-                                    style: FilledButton.styleFrom(
-                                      backgroundColor:
-                                          AppColors.editorialSecondary,
-                                      foregroundColor: Colors.white,
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 12,
+                                  child: SizedBox(
+                                    height: 44,
+                                    child: FilledButton(
+                                      style: FilledButton.styleFrom(
+                                        backgroundColor:
+                                            AppColors.editorialSecondary,
+                                        foregroundColor: Colors.white,
+                                        padding: EdgeInsets.zero,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                        ),
                                       ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                    ),
-                                    onPressed: () =>
-                                        _handleBuyNow(context, course),
-                                    child: const Text(
-                                      'Buy Now',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 13,
-                                        color: Colors.white,
+                                      onPressed: () =>
+                                          _handleBuyNow(context, course),
+                                      child: const Text(
+                                        'Buy Now',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13,
+                                          color: Colors.white,
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -1683,14 +1693,51 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Price
-                Text(
-                  priceText,
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.white : Colors.black87,
-                  ),
+                // Price & Wishlist Row
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      priceText,
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                    Container(
+                      height: 44,
+                      width: 44,
+                      decoration: BoxDecoration(
+                        color: isSaved
+                            ? Colors.red.withValues(alpha: 0.1)
+                            : Colors.transparent,
+                        border: Border.all(
+                          color: isSaved
+                              ? Colors.redAccent
+                              : (isDark
+                                    ? AppColors.lineDark
+                                    : Colors.grey.shade300),
+                        ),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: IconButton(
+                        icon: Icon(
+                          isSaved ? Icons.favorite : Icons.favorite_border,
+                          color: isSaved
+                              ? Colors.redAccent
+                              : (isDark
+                                    ? Colors.white70
+                                    : Colors.grey.shade700),
+                          size: 20,
+                        ),
+                        tooltip: isSaved
+                            ? 'Remove from Wishlist'
+                            : 'Add to Wishlist',
+                        onPressed: () => _toggleWishlist(course),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 16),
 
@@ -1749,7 +1796,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                     ),
                   ),
                 ] else ...[
-                  // Action Buttons Row: [Add to Cart] [Heart] matching Screenshot 4!
+                  // Action Buttons Row: [Add to Cart] and [Buy Now] (Same size, side-by-side)
                   Row(
                     children: [
                       Expanded(
@@ -1761,6 +1808,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                                   ? AppColors.editorialSecondary
                                   : AppColors.editorialPrimary,
                               foregroundColor: Colors.white,
+                              padding: EdgeInsets.zero,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(10),
                               ),
@@ -1781,7 +1829,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                                 : const Text(
                                     'Add to Cart',
                                     style: TextStyle(
-                                      fontSize: 15,
+                                      fontSize: 14,
                                       fontWeight: FontWeight.bold,
                                       color: Colors.white,
                                     ),
@@ -1790,69 +1838,37 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                         ),
                       ),
                       const SizedBox(width: 10),
-                      Container(
-                        height: 48,
-                        width: 48,
-                        decoration: BoxDecoration(
-                          color: isSaved
-                              ? Colors.red.withValues(alpha: 0.1)
-                              : Colors.transparent,
-                          border: Border.all(
-                            color: isSaved
-                                ? Colors.redAccent
-                                : (isDark
-                                      ? AppColors.lineDark
-                                      : Colors.grey.shade300),
+                      Expanded(
+                        child: SizedBox(
+                          height: 48,
+                          child: OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              side: BorderSide(
+                                color: isDark
+                                    ? AppColors.editorialSecondary
+                                    : AppColors.editorialPrimary,
+                                width: 1.5,
+                              ),
+                              padding: EdgeInsets.zero,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            onPressed: () => _handleBuyNow(context, course),
+                            child: Text(
+                              'Buy Now',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: isDark
+                                    ? AppColors.editorialSecondary
+                                    : AppColors.editorialPrimary,
+                              ),
+                            ),
                           ),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: IconButton(
-                          icon: Icon(
-                            isSaved ? Icons.favorite : Icons.favorite_border,
-                            color: isSaved
-                                ? Colors.redAccent
-                                : (isDark
-                                      ? Colors.white70
-                                      : Colors.grey.shade700),
-                          ),
-                          tooltip: isSaved
-                              ? 'Remove from Wishlist'
-                              : 'Add to Wishlist',
-                          onPressed: () => _toggleWishlist(course),
                         ),
                       ),
                     ],
-                  ),
-                  const SizedBox(height: 10),
-
-                  // Buy Now Button
-                  SizedBox(
-                    width: double.infinity,
-                    height: 44,
-                    child: OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        side: BorderSide(
-                          color: isDark
-                              ? AppColors.primaryGreen
-                              : const Color(0xFF1B4D2E),
-                          width: 1.5,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      onPressed: () => _handleBuyNow(context, course),
-                      child: Text(
-                        'Buy Now',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: isDark
-                              ? AppColors.primaryGreen
-                              : const Color(0xFF1B4D2E),
-                        ),
-                      ),
-                    ),
                   ),
                 ],
                 const SizedBox(height: 18),
