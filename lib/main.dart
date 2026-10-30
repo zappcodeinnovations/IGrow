@@ -19,6 +19,42 @@ import 'firebase_options.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Custom ErrorWidget builder so errors are immediately visible and debuggable
+  ErrorWidget.builder = (FlutterErrorDetails details) {
+    debugPrint('💥 [FlutterError] Exception: ${details.exceptionAsString()}');
+    debugPrint('💥 [FlutterError] Stack: ${details.stack}');
+    return Material(
+      color: Colors.white,
+      child: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 48),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Render Error in Section',
+                    style: TextStyle(fontSize: 16, color: Colors.black87, fontWeight: FontWeight.bold),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    details.exceptionAsString(),
+                    style: const TextStyle(fontSize: 12, color: Colors.red, fontWeight: FontWeight.w500),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  };
+
   // Set initial system UI overlay style with dark icons for light background
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(

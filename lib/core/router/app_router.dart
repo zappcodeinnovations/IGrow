@@ -390,38 +390,136 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           // ─── Farmer Routes ───────────────────────────────────────────
           GoRoute(
             path: RouteNames.farmerHome,
-            builder: (context, state) => const FarmerHomeScreen(),
+            pageBuilder: (context, state) => CustomTransitionPage(
+              key: state.pageKey,
+              child: const FarmerHomeScreen(),
+              transitionDuration: const Duration(milliseconds: 250),
+              reverseTransitionDuration: const Duration(milliseconds: 250),
+              transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                return FadeTransition(
+                  opacity: CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeInOut,
+                  ),
+                  child: child,
+                );
+              },
+            ),
           ),
           GoRoute(
             path: RouteNames.farmerLearning,
-            builder: (context, state) => const MyLearningScreen(),
+            pageBuilder: (context, state) => CustomTransitionPage(
+              key: state.pageKey,
+              child: const MyLearningScreen(),
+              transitionDuration: const Duration(milliseconds: 250),
+              reverseTransitionDuration: const Duration(milliseconds: 250),
+              transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                return FadeTransition(
+                  opacity: CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeInOut,
+                  ),
+                  child: child,
+                );
+              },
+            ),
           ),
           GoRoute(
             path: RouteNames.explore,
-            builder: (context, state) {
+            pageBuilder: (context, state) {
               final search = state.uri.queryParameters['search'];
               final tabParam = state.uri.queryParameters['tab'];
               final initialTab = (tabParam == 'ebooks' || tabParam == '1') ? 1 : 0;
-              return ExploreScreen(initialSearch: search, initialTab: initialTab);
+              return CustomTransitionPage(
+                key: state.pageKey,
+                child: ExploreScreen(initialSearch: search, initialTab: initialTab),
+                transitionDuration: const Duration(milliseconds: 250),
+                reverseTransitionDuration: const Duration(milliseconds: 250),
+                transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                  return FadeTransition(
+                    opacity: CurvedAnimation(
+                      parent: animation,
+                      curve: Curves.easeInOut,
+                    ),
+                    child: child,
+                  );
+                },
+              );
             },
           ),
           GoRoute(
             path: RouteNames.farmerCommunity,
-            builder: (context, state) => const CommunityScreen(),
+            pageBuilder: (context, state) => CustomTransitionPage(
+              key: state.pageKey,
+              child: const CommunityScreen(),
+              transitionDuration: const Duration(milliseconds: 250),
+              reverseTransitionDuration: const Duration(milliseconds: 250),
+              transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                return FadeTransition(
+                  opacity: CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeInOut,
+                  ),
+                  child: child,
+                );
+              },
+            ),
           ),
           GoRoute(
             path: RouteNames.farmerProfile,
-            builder: (context, state) => const ProfileScreen(),
+            pageBuilder: (context, state) => CustomTransitionPage(
+              key: state.pageKey,
+              child: const ProfileScreen(),
+              transitionDuration: const Duration(milliseconds: 250),
+              reverseTransitionDuration: const Duration(milliseconds: 250),
+              transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                return FadeTransition(
+                  opacity: CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeInOut,
+                  ),
+                  child: child,
+                );
+              },
+            ),
           ),
           
           // ─── Instructor Routes ───────────────────────────────────────
           GoRoute(
             path: RouteNames.instructorHome,
-            builder: (context, state) => const InstructorHomeScreen(),
+            pageBuilder: (context, state) => CustomTransitionPage(
+              key: state.pageKey,
+              child: const InstructorHomeScreen(),
+              transitionDuration: const Duration(milliseconds: 250),
+              reverseTransitionDuration: const Duration(milliseconds: 250),
+              transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                return FadeTransition(
+                  opacity: CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeInOut,
+                  ),
+                  child: child,
+                );
+              },
+            ),
           ),
           GoRoute(
             path: RouteNames.instructorCommunity,
-            builder: (context, state) => const CommunityScreen(),
+            pageBuilder: (context, state) => CustomTransitionPage(
+              key: state.pageKey,
+              child: const CommunityScreen(),
+              transitionDuration: const Duration(milliseconds: 250),
+              reverseTransitionDuration: const Duration(milliseconds: 250),
+              transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                return FadeTransition(
+                  opacity: CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeInOut,
+                  ),
+                  child: child,
+                );
+              },
+            ),
           ),
           GoRoute(
             path: RouteNames.uploadCourse,
@@ -437,7 +535,21 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: RouteNames.instructorProfile,
-            builder: (context, state) => const ProfileScreen(),
+            pageBuilder: (context, state) => CustomTransitionPage(
+              key: state.pageKey,
+              child: const ProfileScreen(),
+              transitionDuration: const Duration(milliseconds: 250),
+              reverseTransitionDuration: const Duration(milliseconds: 250),
+              transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                return FadeTransition(
+                  opacity: CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeInOut,
+                  ),
+                  child: child,
+                );
+              },
+            ),
           ),
           GoRoute(
             path: RouteNames.instructorUploads,

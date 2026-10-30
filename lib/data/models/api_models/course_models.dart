@@ -302,6 +302,20 @@ class ApiCourseSection {
 
   factory ApiCourseSection.fromJson(Map<String, dynamic> json) {
     try {
+      final rawLectures = json['lectures'];
+      final List<ApiLecture> parsedLectures = [];
+      if (rawLectures is List) {
+        for (var item in rawLectures) {
+          if (item is Map<String, dynamic>) {
+            try {
+              parsedLectures.add(ApiLecture.fromJson(item));
+            } catch (err) {
+              debugPrint('⚠️ [ApiCourseSection] Skipping malformed lecture: $err');
+            }
+          }
+        }
+      }
+
       return ApiCourseSection(
         id: json['id']?.toString() ?? '',
         title: json['title']?.toString() ?? '',
@@ -309,17 +323,16 @@ class ApiCourseSection {
         sortOrder: json['sort_order'] is num
             ? (json['sort_order'] as num).toInt()
             : int.tryParse(json['sort_order']?.toString() ?? ''),
-        lectures: (json['lectures'] as List?)
-                ?.whereType<Map<String, dynamic>>()
-                .map((e) => ApiLecture.fromJson(e))
-                .toList() ??
-            [],
+        lectures: parsedLectures,
         lectureCount: json['lecture_count']?.toString(),
         quiz: json['quiz'] ?? json['has_quiz'] ?? json['quiz_id'],
       );
     } catch (e) {
       debugPrint('Error parsing ApiCourseSection: $e\nJSON: $json');
-      rethrow;
+      return ApiCourseSection(
+        id: json['id']?.toString() ?? '',
+        title: json['title']?.toString() ?? 'Section',
+      );
     }
   }
 }
@@ -434,7 +447,12 @@ class ApiCourseDetail {
       );
     } catch (e) {
       debugPrint('Error parsing ApiCourseDetail: $e\nJSON: $json');
-      rethrow;
+      return ApiCourseDetail(
+        id: json['id']?.toString() ?? '',
+        title: json['title']?.toString() ?? 'Course',
+        description: json['description']?.toString() ?? '',
+        price: json['price']?.toString() ?? '0.00',
+      );
     }
   }
 }

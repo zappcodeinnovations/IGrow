@@ -48,14 +48,18 @@ class CourseRepository {
       if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
     };
 
-    // 1. Try public courses endpoint
+    // 1. Try public courses endpoint with timeout
     try {
       final uri = Uri.parse('$_baseUrl/courses/$slug/');
-      final response = await http.get(uri, headers: headers);
+      debugPrint('📚 [CourseRepository] getCourseDetail: fetching $uri');
+      final response = await http.get(uri, headers: headers).timeout(const Duration(seconds: 8));
+      debugPrint('📚 [CourseRepository] getCourseDetail HTTP status: ${response.statusCode}');
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final decoded = jsonDecode(response.body);
         if (decoded is Map<String, dynamic>) {
-          return ApiCourseDetail.fromJson(decoded);
+          final detail = ApiCourseDetail.fromJson(decoded);
+          debugPrint('✅ [CourseRepository] getCourseDetail SUCCESS: ${detail.title} (sections: ${detail.sections.length})');
+          return detail;
         }
       }
     } catch (e) {
@@ -66,7 +70,7 @@ class CourseRepository {
     if (token != null && token.isNotEmpty) {
       try {
         final instructorUri = Uri.parse('$_baseUrl/instructor/courses/$slug/');
-        final instructorResponse = await http.get(instructorUri, headers: headers);
+        final instructorResponse = await http.get(instructorUri, headers: headers).timeout(const Duration(seconds: 8));
         if (instructorResponse.statusCode >= 200 && instructorResponse.statusCode < 300) {
           final decoded = jsonDecode(instructorResponse.body);
           if (decoded is Map<String, dynamic>) {
@@ -98,6 +102,30 @@ class CourseRepository {
       }
     } catch (e) {
       debugPrint('⚠️ [CourseRepository] appApi fallback error: $e');
+    }
+
+    // 4. Fallback: try catalog search if ID/slug lookup was mismatched
+    try {
+      final catalog = await getCatalog(search: slug);
+      if (catalog.results.isNotEmpty) {
+        final match = catalog.results.firstWhere(
+          (c) => c.id == slug || c.slug == slug,
+          orElse: () => catalog.results.first,
+        );
+        final fallbackSlug = match.slug ?? match.id;
+        if (fallbackSlug.isNotEmpty && fallbackSlug != slug) {
+          final uri = Uri.parse('$_baseUrl/courses/$fallbackSlug/');
+          final response = await http.get(uri, headers: headers).timeout(const Duration(seconds: 8));
+          if (response.statusCode >= 200 && response.statusCode < 300) {
+            final decoded = jsonDecode(response.body);
+            if (decoded is Map<String, dynamic>) {
+              return ApiCourseDetail.fromJson(decoded);
+            }
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ [CourseRepository] catalog fallback error: $e');
     }
 
     throw Exception('This course has not been approved or published yet.');

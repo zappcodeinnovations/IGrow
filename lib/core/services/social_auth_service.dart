@@ -12,13 +12,13 @@ class SocialAuthService {
 
   GoogleSignIn? _googleSignIn;
 
-  /// Web Client ID from Google Cloud Console (required on Android to obtain an idToken)
+  /// Web Client ID from Google Cloud Console expected by the backend
   static const String googleServerClientId =
       '744016784564-uadkduueepk8ktffa7kg9124nnappatv.apps.googleusercontent.com';
 
-  /// iOS Client ID (if needed explicitly for iOS sign-in without reverse client id)
+  /// iOS Client ID from Google Cloud Console
   static const String googleIosClientId =
-      '744016784564-17296ad47ab763a51a7be1.apps.googleusercontent.com';
+      '744016784564-sr68f36ofb4mekg78mqa0alco7kav30d.apps.googleusercontent.com';
 
   GoogleSignIn _getGoogleSignIn() {
     _googleSignIn ??= GoogleSignIn(

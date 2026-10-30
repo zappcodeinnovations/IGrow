@@ -323,6 +323,8 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
                 ],
               ),
             ),
+            const SizedBox(height: 20),
+
             AppCard(
               padding: const EdgeInsets.all(16),
               child: Column(

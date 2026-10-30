@@ -16,6 +16,7 @@ import '../../../core/services/social_auth_service.dart';
 import '../../../core/widgets/eula_terms_dialog.dart';
 import '../../../data/models/user_role.dart';
 import '../providers/auth_provider.dart';
+import '../widgets/complete_social_profile_dialog.dart';
 
 /// Registration screen — full form with name, email, phone, password.
 class RegisterScreen extends ConsumerStatefulWidget {
@@ -37,6 +38,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
   bool _agreeTerms = false;
+  bool _isRegisterLoading = false;
+  bool _isGoogleLoading = false;
+  bool _isAppleLoading = false;
 
   late UserRole _selectedRole;
 
@@ -59,34 +63,52 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   }
 
   Future<void> _register() async {
-    if (ref.read(authProvider).isLoading) return;
+    if (_isRegisterLoading || _isGoogleLoading || _isAppleLoading) return;
     if (!_formKey.currentState!.validate()) return;
     if (!_agreeTerms) return;
 
-    await ref.read(authProvider.notifier).register(
-          fullName: _nameController.text.trim(),
-          email: _emailController.text.trim(),
-          phone: _phoneController.text.trim(),
-          password: _passwordController.text,
-          passwordConfirm: _confirmPasswordController.text,
-          role: _selectedRole,
-        );
+    setState(() => _isRegisterLoading = true);
+    try {
+      await ref.read(authProvider.notifier).register(
+            fullName: _nameController.text.trim(),
+            email: _emailController.text.trim(),
+            phone: _phoneController.text.trim(),
+            password: _passwordController.text,
+            passwordConfirm: _confirmPasswordController.text,
+            role: _selectedRole,
+          );
 
-    if (mounted) {
-      final authState = ref.read(authProvider);
-      if (authState.status != AuthStatus.error) {
-        AppToast.show(
-          context,
-          'Registration successful! Please login.',
-          isError: false,
-        );
-        context.go('${RouteNames.login}?role=${widget.selectedRole ?? 'farmer'}');
+      if (mounted) {
+        final authState = ref.read(authProvider);
+        if (authState.status != AuthStatus.error) {
+          AppToast.show(
+            context,
+            'Registration successful! Please login.',
+            isError: false,
+          );
+          context.go('${RouteNames.login}?role=${widget.selectedRole ?? 'farmer'}');
+        }
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isRegisterLoading = false);
       }
     }
   }
 
   Future<void> _handleSocialSuccess() async {
     if (!mounted) return;
+
+    final user = ref.read(authProvider).user;
+    final needsDetails = user != null &&
+        (user.phone.trim().isEmpty ||
+            (user.locationState == null || user.locationState!.trim().isEmpty));
+
+    if (needsDetails) {
+      await CompleteSocialProfileDialog.show(context, user);
+      return;
+    }
+
     final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
     final hasSelectedLanguage = prefs.getBool('has_selected_language') ?? false;
@@ -99,6 +121,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   Future<void> _loginWithGoogle() async {
     FocusScope.of(context).unfocus();
+    setState(() => _isGoogleLoading = true);
     try {
       print('\n👉 [REGISTER_SCREEN] Starting Google Sign-In...');
       final payload = await SocialAuthService.instance.signInWithGoogle();
@@ -133,11 +156,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       if (mounted) {
         AppToast.show(context, e.toString().replaceAll('Exception: ', ''), isError: true);
       }
+    } finally {
+      if (mounted) {
+        setState(() => _isGoogleLoading = false);
+      }
     }
   }
 
   Future<void> _loginWithApple() async {
     FocusScope.of(context).unfocus();
+    setState(() => _isAppleLoading = true);
     try {
       final payload = await SocialAuthService.instance.signInWithApple();
       if (payload == null) return;
@@ -155,6 +183,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     } catch (e) {
       if (mounted) {
         AppToast.show(context, e.toString().replaceAll('Exception: ', ''), isError: true);
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isAppleLoading = false);
       }
     }
   }
@@ -370,8 +402,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
                 AppButton(
                   label: 'Create Account',
-                  onPressed: _agreeTerms ? _register : null,
-                  isLoading: authState.isLoading,
+                  onPressed: (_agreeTerms && !_isRegisterLoading && !_isGoogleLoading && !_isAppleLoading) ? _register : null,
+                  isLoading: _isRegisterLoading,
                 ),
 
                 const SizedBox(height: 20),
@@ -412,8 +444,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 AppSocialButton.google(
                   text: 'Sign up with Google',
                   isDark: isDark,
-                  isLoading: authState.isLoading,
-                  onPressed: authState.isLoading ? null : _loginWithGoogle,
+                  isLoading: _isGoogleLoading,
+                  onPressed: (_isRegisterLoading || _isGoogleLoading || _isAppleLoading) ? null : _loginWithGoogle,
                 ),
 
                 // Apple Sign Up (iOS only)
@@ -422,8 +454,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   AppSocialButton.apple(
                     text: 'Sign up with Apple',
                     isDark: isDark,
-                    isLoading: authState.isLoading,
-                    onPressed: authState.isLoading ? null : _loginWithApple,
+                    isLoading: _isAppleLoading,
+                    onPressed: (_isRegisterLoading || _isGoogleLoading || _isAppleLoading) ? null : _loginWithApple,
                   ),
                 ],
 

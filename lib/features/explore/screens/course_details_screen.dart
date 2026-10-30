@@ -13,7 +13,6 @@ import '../../../core/router/route_names.dart';
 import '../../../core/services/app_config_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/app_toast.dart';
-import '../../../core/widgets/shimmer_placeholders.dart';
 import '../../../data/models/api_models/course_models.dart';
 import '../../../data/models/api_models/wishlist_model.dart';
 import '../../../data/models/user_role.dart';
@@ -615,6 +614,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final courseAsync = ref.watch(courseDetailProvider(widget.courseId));
+    debugPrint('📱 [CourseDetailsScreen] build: courseId=${widget.courseId}, status=${courseAsync.runtimeType}, hasValue=${courseAsync.hasValue}, hasError=${courseAsync.hasError}');
 
     return PopScope(
       canPop: context.canPop(),
@@ -802,15 +802,62 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
           );
         },
         loading: () => ListView(
-          padding: const EdgeInsets.all(20),
-          children: const [
-            ShimmerContainer(width: double.infinity, height: 220, borderRadius: 16),
-            SizedBox(height: 16),
-            ShimmerContainer(width: 120, height: 24),
-            SizedBox(height: 12),
-            ShimmerContainer(width: 260, height: 28),
-            SizedBox(height: 8),
-            ShimmerContainer(width: double.infinity, height: 120, borderRadius: 12),
+          padding: EdgeInsets.zero,
+          physics: const NeverScrollableScrollPhysics(),
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
+              color: const Color(0xFF1E2124),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 100,
+                    height: 20,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Container(
+                    width: 240,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Container(
+                    width: double.infinity,
+                    height: 16,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 48),
+            const Center(
+              child: CircularProgressIndicator(
+                color: AppColors.primaryGreen,
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Center(
+              child: Text(
+                'Loading course details...',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.inkSoft,
+                ),
+              ),
+            ),
           ],
         ),
         error: (err, _) {
@@ -932,6 +979,8 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
             ),
             child: SafeArea(
               child: Row(
+                mainAxisSize: MainAxisSize.max,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Column(
                     mainAxisSize: MainAxisSize.min,
@@ -954,9 +1003,17 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                   const SizedBox(width: 16),
                   Expanded(
                     child: (!ref.watch(appConfigProvider).canShowPaymentGateway && !isFreeCourse)
-                        ? Center(
+                        ? Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: isDark ? const Color(0xFF1E2E23) : const Color(0xFFF1F5F0),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
                             child: Text(
                               'Available via institutional access',
+                              textAlign: TextAlign.center,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,

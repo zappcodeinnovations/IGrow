@@ -759,34 +759,50 @@ class _MenuSection extends StatelessWidget {
                           ),
                           const SizedBox(width: 14),
                           Expanded(
-                            child: Text(
-                              item.label,
-                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    fontWeight: FontWeight.w500,
-                                    fontSize: 13.5,
+                            child: Row(
+                              children: [
+                                Text(
+                                  item.label,
+                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                        fontWeight: FontWeight.w500,
+                                        fontSize: 13.5,
+                                      ),
+                                ),
+                                const SizedBox(width: 8),
+                                if (item.value != null)
+                                  Expanded(
+                                    child: Align(
+                                      alignment: Alignment.centerRight,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 3.5,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: isDark
+                                              ? AppColors.editorialSecondary.withValues(alpha: 0.2)
+                                              : AppColors.editorialSecondaryFixed,
+                                          borderRadius: BorderRadius.circular(9999),
+                                        ),
+                                        child: Text(
+                                          item.value!,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                                color: isDark
+                                                    ? AppColors.editorialSecondaryFixedDim
+                                                    : AppColors.editorialOnSecondaryFixed,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                        ),
+                                      ),
+                                    ),
                                   ),
+                              ],
                             ),
                           ),
-                          if (item.value != null) ...[
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 3.5,
-                              ),
-                              decoration: BoxDecoration(
-                                color: isDark ? AppColors.editorialSecondary.withValues(alpha: 0.2) : AppColors.editorialSecondaryFixed,
-                                borderRadius: BorderRadius.circular(9999),
-                              ),
-                              child: Text(
-                                item.value!,
-                                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                      color: isDark ? AppColors.editorialSecondaryFixedDim : AppColors.editorialOnSecondaryFixed,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                              ),
-                            ),
+                          if (item.showChevron || item.trailingWidget != null)
                             const SizedBox(width: 8),
-                          ],
                           if (item.trailingWidget != null)
                             item.trailingWidget!
                           else if (item.showChevron)

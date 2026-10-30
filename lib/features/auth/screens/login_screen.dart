@@ -18,6 +18,7 @@ import '../../../core/widgets/eula_terms_dialog.dart';
 import '../../../core/widgets/organic_background.dart';
 import '../../../core/services/social_auth_service.dart';
 import '../providers/auth_provider.dart';
+import '../widgets/complete_social_profile_dialog.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key, this.selectedRole});
@@ -34,6 +35,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _passwordController = TextEditingController();
   final _scrollController = ScrollController();
   bool _obscurePassword = true;
+  bool _isEmailLoading = false;
+  bool _isGoogleLoading = false;
+  bool _isAppleLoading = false;
 
   @override
   void dispose() {
@@ -63,30 +67,49 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
 
-    await ref.read(authProvider.notifier).login(
-          email: email,
-          password: password,
-        );
+    setState(() => _isEmailLoading = true);
+    try {
+      await ref.read(authProvider.notifier).login(
+            email: email,
+            password: password,
+          );
 
-    if (!mounted) return;
-
-    final authState = ref.read(authProvider);
-    if (authState.isAuthenticated) {
-      final prefs = await SharedPreferences.getInstance();
       if (!mounted) return;
 
-      final hasSelectedLanguage =
-          prefs.getBool('has_selected_language') ?? false;
-      if (hasSelectedLanguage) {
-        context.go(RouteNames.authSuccess);
-      } else {
-        context.go(RouteNames.languageSelection);
+      final authState = ref.read(authProvider);
+      if (authState.isAuthenticated) {
+        final prefs = await SharedPreferences.getInstance();
+        if (!mounted) return;
+
+        final hasSelectedLanguage =
+            prefs.getBool('has_selected_language') ?? false;
+        if (hasSelectedLanguage) {
+          context.go(RouteNames.authSuccess);
+        } else {
+          context.go(RouteNames.languageSelection);
+        }
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isEmailLoading = false);
       }
     }
   }
 
   Future<void> _handleSocialSuccess() async {
     if (!mounted) return;
+
+    final user = ref.read(authProvider).user;
+    // If user is missing phone number, prompt them to complete details
+    final needsDetails = user != null &&
+        (user.phone.trim().isEmpty ||
+            (user.locationState == null || user.locationState!.trim().isEmpty));
+
+    if (needsDetails) {
+      await CompleteSocialProfileDialog.show(context, user);
+      return;
+    }
+
     final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
     final hasSelectedLanguage = prefs.getBool('has_selected_language') ?? false;
@@ -99,6 +122,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _loginWithGoogle() async {
     FocusScope.of(context).unfocus();
+    setState(() => _isGoogleLoading = true);
     try {
       print('\n👉 [LOGIN_SCREEN] Starting Google Sign-In...');
       final payload = await SocialAuthService.instance.signInWithGoogle();
@@ -129,11 +153,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (mounted) {
         AppToast.show(context, e.toString().replaceAll('Exception: ', ''), isError: true);
       }
+    } finally {
+      if (mounted) {
+        setState(() => _isGoogleLoading = false);
+      }
     }
   }
 
   Future<void> _loginWithApple() async {
     FocusScope.of(context).unfocus();
+    setState(() => _isAppleLoading = true);
     try {
       final payload = await SocialAuthService.instance.signInWithApple();
       if (payload == null) return; // cancelled or unsupported
@@ -151,6 +180,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     } catch (e) {
       if (mounted) {
         AppToast.show(context, e.toString().replaceAll('Exception: ', ''), isError: true);
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isAppleLoading = false);
       }
     }
   }
@@ -396,8 +429,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         // Reusable HD Green Gradient Pill Sign In Button
                         AppGradientButton(
                           label: tr(ref, 'Sign In'),
-                          isLoading: authState.isLoading,
-                          onPressed: _login,
+                          isLoading: _isEmailLoading,
+                          onPressed: (_isEmailLoading || _isGoogleLoading || _isAppleLoading)
+                              ? () {}
+                              : () => _login(),
                         ),
 
                         const SizedBox(height: 24),
@@ -444,8 +479,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         AppSocialButton.google(
                           text: tr(ref, 'Continue with Google'),
                           isDark: isDark,
-                          isLoading: authState.isLoading,
-                          onPressed: authState.isLoading ? null : _loginWithGoogle,
+                          isLoading: _isGoogleLoading,
+                          onPressed: (_isEmailLoading || _isGoogleLoading || _isAppleLoading) ? null : _loginWithGoogle,
                         ),
 
                         // Apple Sign-In Button (iOS only)
@@ -454,8 +489,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           AppSocialButton.apple(
                             text: tr(ref, 'Sign in with Apple'),
                             isDark: isDark,
-                            isLoading: authState.isLoading,
-                            onPressed: authState.isLoading ? null : _loginWithApple,
+                            isLoading: _isAppleLoading,
+                            onPressed: (_isEmailLoading || _isGoogleLoading || _isAppleLoading) ? null : _loginWithApple,
                           ),
                         ],
 

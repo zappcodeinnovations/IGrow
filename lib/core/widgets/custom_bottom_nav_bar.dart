@@ -97,8 +97,8 @@ class CustomBottomNavBar extends StatelessWidget {
                   splashColor: Colors.transparent,
                   child: Center(
                     child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 220),
-                      curve: Curves.easeOutCubic,
+                      duration: const Duration(milliseconds: 280),
+                      curve: Curves.easeInOutCubic,
                       padding: EdgeInsets.symmetric(
                         horizontal: isActive ? 12 : 8,
                         vertical: isActive ? 5 : 4,

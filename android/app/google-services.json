@@ -14,7 +14,23 @@
       },
       "oauth_client": [
         {
-          "client_id": "744016784564-uadkduueepk8ktffa7kg9124nnappatv.apps.googleusercontent.com",
+          "client_id": "744016784564-llffthjikehbu9sbgdb8l0kv7580s009.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.zappkode.igrow",
+            "certificate_hash": "094601ab1c2213f57ec877426331ad0b10d474e4"
+          }
+        },
+        {
+          "client_id": "744016784564-vfn7s771gl29g2erltamrquuu3sl0aft.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.zappkode.igrow",
+            "certificate_hash": "0ee60038117857f2c8b15521d1e341dae50d2883"
+          }
+        },
+        {
+          "client_id": "744016784564-3i9l17qg5uoqi8qiv2pqvon51isoubnu.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
@@ -27,8 +43,15 @@
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "744016784564-uadkduueepk8ktffa7kg9124nnappatv.apps.googleusercontent.com",
+              "client_id": "744016784564-3i9l17qg5uoqi8qiv2pqvon51isoubnu.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "744016784564-sr68f36ofb4mekg78mqa0alco7kav30d.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.zappkode.igrow"
+              }
             }
           ]
         }

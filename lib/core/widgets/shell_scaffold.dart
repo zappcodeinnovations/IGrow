@@ -27,6 +27,7 @@ class ShellScaffold extends ConsumerStatefulWidget {
 
 class _ShellScaffoldState extends ConsumerState<ShellScaffold> {
   DateTime? _lastBackPressed;
+  DateTime? _lastNavTap;
 
   @override
   Widget build(BuildContext context) {
@@ -104,7 +105,7 @@ class _ShellScaffoldState extends ConsumerState<ShellScaffold> {
           body: widget.child,
           bottomNavigationBar: CustomBottomNavBar(
             currentIndex: currentIndex,
-            onTap: (index) => _onTap(context, index, isFarmer),
+            onTap: (index) => _onTap(context, index, isFarmer, currentIndex),
             items: isFarmer
                 ? [
                     BottomNavItem(
@@ -156,7 +157,18 @@ class _ShellScaffoldState extends ConsumerState<ShellScaffold> {
     );
   }
 
-  void _onTap(BuildContext context, int index, bool isFarmer) {
+  void _onTap(BuildContext context, int index, bool isFarmer, int currentIndex) {
+    // Ignore tap if already on this tab (except for action items like upload)
+    if (index == currentIndex && (isFarmer || index != 2)) {
+      return;
+    }
+
+    // Debounce rapid successive taps to prevent animation queuing/glitches
+    final now = DateTime.now();
+    if (_lastNavTap != null && now.difference(_lastNavTap!) < const Duration(milliseconds: 350)) {
+      return;
+    }
+    _lastNavTap = now;
     if (isFarmer) {
       switch (index) {
         case 0:
