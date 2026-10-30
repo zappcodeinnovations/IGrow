@@ -71,7 +71,12 @@ class _CompleteSocialProfileDialogState
     final destination = widget.user.isFarmer
         ? RouteNames.farmerProfile
         : RouteNames.instructorProfile;
-    context.go(destination);
+    context.push(destination);
+  }
+
+  void _dismissDialog() {
+    if (!mounted) return;
+    Navigator.of(context, rootNavigator: true).pop();
   }
 
   Future<void> _saveAndContinue() async {
@@ -259,7 +264,7 @@ class _CompleteSocialProfileDialogState
 
                 // Secondary Action: Skip for now
                 TextButton(
-                  onPressed: _isSaving ? null : _navigateToProfile,
+                  onPressed: _isSaving ? null : _dismissDialog,
                   style: TextButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(

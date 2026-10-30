@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -255,6 +257,22 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
         'send_sms_hash': true,
         'retry': {'enabled': true, 'max_count': 2},
       };
+
+      // Check if Razorpay is enabled for this platform/config
+      final canShowRazorpay = ref.read(appConfigProvider).canShowPaymentGateway;
+      if (!canShowRazorpay && !kIsWeb && Platform.isIOS) {
+        // Razorpay is disabled on iOS for App Store review / Apple Pay mode
+        if (mounted) {
+          setState(() => _isProcessing = false);
+          AppToast.show(
+            context,
+            'Apple Pay processing will be active once configured by the backend. Razorpay is hidden for Apple App Review.',
+            isError: false,
+            duration: const Duration(seconds: 4),
+          );
+        }
+        return;
+      }
 
       debugPrint('🚀 [Razorpay] Launching native checkout UI...');
       _razorpay.open(options);
@@ -757,11 +775,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                 _buildCouponSection(appliedCoupon, discountAmount, isDark),
               ],
 
-              // ── 4. Payment Gateway Methods Showcase (hidden if disabled) ─
-              if (appConfig.canShowPaymentGateway) ...[
-                const SizedBox(height: 16),
-                _buildPaymentGatewayShowcase(isDark, is100PercentFree),
-              ],
+              // ── 4. Payment Gateway Methods Showcase ─
+              _buildPaymentGatewayShowcase(isDark, is100PercentFree),
 
               const SizedBox(height: 16),
 
@@ -860,6 +875,24 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                         ),
                         child: const Text(
                           'RAZORPAY',
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                    ] else if (!kIsWeb && Platform.isIOS) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF333333) : const Color(0xFF1C1C1E),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Text(
+                          'APPLE PAY',
                           style: TextStyle(
                             fontSize: 9,
                             fontWeight: FontWeight.bold,
@@ -1273,6 +1306,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       );
     }
 
+    final isRazorpayEnabled = ref.watch(appConfigProvider).canShowPaymentGateway;
+
     return Container(
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E2E23) : Colors.white,
@@ -1311,7 +1346,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                   const Icon(Icons.lock_outline_rounded, size: 14, color: AppColors.primaryGreen),
                   const SizedBox(width: 4),
                   Text(
-                    'Razorpay Gateway',
+                    isRazorpayEnabled ? 'Razorpay Gateway' : 'Apple Pay',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -1343,8 +1378,10 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                         color: AppColors.primaryGreen.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Icon(
-                        Icons.account_balance_wallet_rounded,
+                      child: Icon(
+                        isRazorpayEnabled
+                            ? Icons.account_balance_wallet_rounded
+                            : Icons.apple_rounded,
                         color: AppColors.primaryGreen,
                         size: 20,
                       ),
@@ -1355,7 +1392,9 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'All Major Payment Modes Supported',
+                            isRazorpayEnabled
+                                ? 'All Major Payment Modes Supported'
+                                : 'Apple Pay Express Checkout',
                             style: TextStyle(
                               fontSize: 13.5,
                               fontWeight: FontWeight.bold,
@@ -1364,7 +1403,9 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            'Select your preferred mode inside the official Razorpay sheet:',
+                            isRazorpayEnabled
+                                ? 'Select your preferred mode inside the official Razorpay sheet:'
+                                : 'Fast, easy and secure payment with Face ID or Touch ID.',
                             style: TextStyle(
                               fontSize: 11.5,
                               color: isDark ? Colors.white60 : AppColors.inkSoft,
@@ -1375,17 +1416,30 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _buildPaymentPill(Icons.qr_code_2_rounded, 'UPI (GPay, PhonePe, Paytm)', isDark),
-                    _buildPaymentPill(Icons.credit_card_rounded, 'Cards (Visa, Master, RuPay)', isDark),
-                    _buildPaymentPill(Icons.account_balance_rounded, 'Net Banking (50+ Banks)', isDark),
-                    _buildPaymentPill(Icons.wallet_rounded, 'Wallets', isDark),
-                  ],
-                ),
+                if (isRazorpayEnabled) ...[
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      _buildPaymentPill(Icons.qr_code_2_rounded, 'UPI (GPay, PhonePe, Paytm)', isDark),
+                      _buildPaymentPill(Icons.credit_card_rounded, 'Cards (Visa, Master, RuPay)', isDark),
+                      _buildPaymentPill(Icons.account_balance_rounded, 'Net Banking (50+ Banks)', isDark),
+                      _buildPaymentPill(Icons.wallet_rounded, 'Wallets', isDark),
+                    ],
+                  ),
+                ] else ...[
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      _buildPaymentPill(Icons.apple_rounded, 'Apple Pay', isDark),
+                      _buildPaymentPill(Icons.security_rounded, 'Touch ID / Face ID', isDark),
+                      _buildPaymentPill(Icons.credit_card_rounded, 'Saved Cards', isDark),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
@@ -1604,66 +1658,49 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
             const SizedBox(width: 12),
             Flexible(
               flex: 6,
-              child: (!ref.watch(appConfigProvider).canShowPaymentGateway && !is100PercentFree)
-                  ? Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF2E3E32) : const Color(0xFFF1F5F0),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        'Direct purchase is temporarily unavailable on iOS. Please contact support.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: isDark ? Colors.white70 : AppColors.inkSoft,
-                        ),
-                      ),
-                    )
-                  : ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primaryGreen,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        elevation: 2,
-                      ),
-                      icon: _isProcessing
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : Icon(
-                              is100PercentFree ? Icons.check_circle_outline_rounded : Icons.lock_rounded,
-                              color: Colors.white,
-                              size: 18,
-                            ),
-                      label: Text(
-                        buttonLabel,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryGreen,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 2,
+                ),
+                icon: _isProcessing
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
                           color: Colors.white,
                         ),
+                      )
+                    : Icon(
+                        is100PercentFree ? Icons.check_circle_outline_rounded : Icons.lock_rounded,
+                        color: Colors.white,
+                        size: 18,
                       ),
-                      onPressed: _isProcessing
-                          ? null
-                          : () => _startPaymentFlow(
-                                originalTotal: originalTotal,
-                                finalTotal: finalTotal,
-                                discountAmount: discountAmount,
-                                items: items,
-                              ),
-                    ),
+                label: Text(
+                  buttonLabel,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                onPressed: _isProcessing
+                    ? null
+                    : () => _startPaymentFlow(
+                          originalTotal: originalTotal,
+                          finalTotal: finalTotal,
+                          discountAmount: discountAmount,
+                          items: items,
+                        ),
+              ),
             ),
           ],
         ),

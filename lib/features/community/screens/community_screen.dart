@@ -7,6 +7,7 @@ import '../../../core/localization/app_strings.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/services/weather_service.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/shell_scaffold.dart';
 import '../../../data/models/api_models/community_models.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../home_farmer/providers/weather_provider.dart';
@@ -897,32 +898,41 @@ class _StudentCommunityView extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 10),
               child: Row(
                 children: [
+                  InkWell(
+                    onTap: () {
+                      if (shellScaffoldKey.currentState != null) {
+                        shellScaffoldKey.currentState!.openDrawer();
+                      } else {
+                        Scaffold.of(context).openDrawer();
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(9999),
+                    child: Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: isDark ? AppColors.cardDark : AppColors.editorialSurfaceContainerLow,
+                      ),
+                      child: Icon(
+                        Icons.menu_rounded,
+                        size: 20,
+                        color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          tr(ref, 'Community Hubs'),
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: isDark ? Colors.white : AppColors.inkDark,
-                            letterSpacing: -0.4,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          tr(ref, 'Learn from regional farming instructors'),
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: isDark ? Colors.white70 : AppColors.inkSoft,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
+                    child: Text(
+                      tr(ref, 'Community Hubs'),
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : AppColors.inkDark,
+                        letterSpacing: -0.4,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   const SizedBox(width: 8),

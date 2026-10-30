@@ -18,24 +18,40 @@ class AppConfig {
   });
 
   factory AppConfig.fromJson(Map<String, dynamic> json) {
-    final bool enablePayment = (json['enable_payment_gateway'] ??
-            json['show_payments'] ??
-            json['payment_enabled'] ??
-            false) as bool;
-    final bool enableCoupon = (json['enable_coupons'] ??
-            json['show_coupons'] ??
-            json['coupon_enabled'] ??
-            false) as bool;
+    bool parseFlag(dynamic val, {bool defaultValue = true}) {
+      if (val == null) return defaultValue;
+      if (val is bool) return val;
+      if (val is num) return val != 0;
+      if (val is String) {
+        final s = val.trim().toLowerCase();
+        if (s == '0' || s == 'false' || s == 'disabled' || s == 'hide') return false;
+        if (s == '1' || s == 'true' || s == 'enabled' || s == 'show') return true;
+      }
+      return defaultValue;
+    }
+
+    final dynamic paymentVal = json['enable_payment_gateway'] ??
+        json['show_payments'] ??
+        json['payment_enabled'] ??
+        json['status'];
+    final dynamic couponVal = json['enable_coupons'] ??
+        json['show_coupons'] ??
+        json['coupon_enabled'];
+
+    final bool enablePayment = parseFlag(paymentVal, defaultValue: true);
+    final bool enableCoupon = parseFlag(couponVal, defaultValue: true);
 
     return AppConfig(
       enablePaymentGateway: enablePayment,
       enableCoupons: enableCoupon,
-      showPayments: (json['show_payments'] ?? enablePayment) as bool,
-      showCoupons: (json['show_coupons'] ?? enableCoupon) as bool,
+      showPayments: parseFlag(json['show_payments'], defaultValue: enablePayment),
+      showCoupons: parseFlag(json['show_coupons'], defaultValue: enableCoupon),
     );
   }
 
-  /// Safe default for iOS during review: false; true for others.
+  /// Default configuration for platform.
+  /// On Android, web, and other non-iOS platforms, always returns true.
+  /// On iOS, defaults to false if not yet fetched.
   factory AppConfig.defaultForPlatform() {
     final isIos = !kIsWeb && Platform.isIOS;
     return AppConfig(
@@ -46,20 +62,24 @@ class AppConfig {
     );
   }
 
-  /// Helper to check if payment gateway should be displayed
+  /// Helper to check if Razorpay payment gateway should be displayed.
+  /// On Android/Web, this ALWAYS returns true.
+  /// On iOS, it respects the remote feature flag.
   bool get canShowPaymentGateway {
-    if (!kIsWeb && Platform.isIOS) {
-      return enablePaymentGateway && showPayments;
+    if (!kIsWeb && !Platform.isIOS) {
+      return true;
     }
-    return enablePaymentGateway;
+    return enablePaymentGateway && showPayments;
   }
 
-  /// Helper to check if coupon field should be displayed
+  /// Helper to check if coupon field should be displayed.
+  /// On Android/Web, this ALWAYS returns true.
+  /// On iOS, it respects the remote feature flag.
   bool get canShowCoupons {
-    if (!kIsWeb && Platform.isIOS) {
-      return enableCoupons && showCoupons;
+    if (!kIsWeb && !Platform.isIOS) {
+      return true;
     }
-    return enableCoupons;
+    return enableCoupons && showCoupons;
   }
 }
 
