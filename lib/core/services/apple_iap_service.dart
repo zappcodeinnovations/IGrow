@@ -109,24 +109,18 @@ class AppleIapService {
       debugPrint('⚠️ [AppleIapService] queryProductDetails error: ${response.error}');
     }
 
-    ProductDetails? targetProduct;
-    if (response.productDetails.isNotEmpty) {
-      targetProduct = response.productDetails.firstWhere(
-        (p) => p.id == productId,
-        orElse: () => response.productDetails.first,
+    if (response.productDetails.isEmpty) {
+      debugPrint('⚠️ [AppleIapService] Product $productId not returned by StoreKit. notFoundIDs=${response.notFoundIDs}');
+      throw Exception(
+        'Product "$productId" is not available yet from Apple StoreKit. '
+        'Please ensure the product is approved in App Store Connect and propagation has completed.',
       );
     }
 
-    // 2. If product details not found in sandbox (or StoreKit config), fallback to synthetic ProductDetails for StoreKit checkout
-    final productToBuy = targetProduct ??
-        ProductDetails(
-          id: productId,
-          title: 'Course Access',
-          description: 'Full course access on iAgrow',
-          price: '₹99.00',
-          rawPrice: 99.0,
-          currencyCode: 'INR',
-        );
+    final ProductDetails productToBuy = response.productDetails.firstWhere(
+      (p) => p.id == productId,
+      orElse: () => response.productDetails.first,
+    );
 
     final purchaseParam = PurchaseParam(productDetails: productToBuy);
 
