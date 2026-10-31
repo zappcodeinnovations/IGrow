@@ -740,14 +740,6 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                           color: isDark ? Colors.white : AppColors.editorialOnSurface,
                         ),
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Curated specialist curriculums',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: isDark ? Colors.white60 : AppColors.editorialOnSurfaceVariant,
-                        ),
-                      ),
                     ],
                   ),
                   ref.watch(studentCatalogProvider(const CatalogQuery())).maybeWhen(
@@ -1027,7 +1019,7 @@ class _SummaryStatCard extends StatelessWidget {
   }
 }
 
-// ── Course Card Component (Coursera & MasterClass Inspired) ──────────────────
+// ── Course Card Component (Udemy Mobile-Style Compact Layout) ───────────────
 class _CourseCard extends StatelessWidget {
   const _CourseCard({required this.course, required this.index});
 
@@ -1037,233 +1029,182 @@ class _CourseCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final tagLabel = index % 2 == 0 ? 'Core Specialization' : 'Applied Agrotech';
+    final tagLabel = index % 2 == 0 ? 'Core Agrotech' : 'Specialization';
+    final priceText = course.price == null || course.price == '0' || course.price == '0.00'
+        ? 'Free'
+        : '₹${course.price}';
 
-    return GestureDetector(
-      onTap: () {
-        context.push('/farmer/course/${course.id}');
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          color: isDark ? AppColors.cardDark : Colors.white,
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(
-            color: isDark
-                ? AppColors.lineDark
-                : AppColors.editorialOutlineVariant.withValues(alpha: 0.3),
-            width: 1.2,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          context.push('/farmer/course/${course.id}');
+        },
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.cardDark : Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isDark
+                  ? AppColors.lineDark
+                  : AppColors.editorialOutlineVariant.withValues(alpha: 0.25),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.035),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
+              ),
+            ],
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.05),
-              blurRadius: 18,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Top Image Container with Coursera-Style 16:9 Aspect Ratio and Floating Badges
-            Stack(
-              children: [
-                AspectRatio(
-                  aspectRatio: 16 / 9,
-                  child: Container(
-                    color: isDark ? const Color(0xFF24242A) : AppColors.editorialSurfaceContainer,
-                    child: course.thumbnail != null && course.thumbnail!.isNotEmpty
-                        ? Image.network(
-                            course.thumbnail!,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => const Center(
-                              child: Icon(
-                                Icons.play_circle_fill_rounded,
-                                size: 48,
-                                color: AppColors.editorialSecondary,
-                              ),
-                            ),
-                          )
-                        : const Center(
-                            child: Icon(
-                              Icons.play_circle_fill_rounded,
-                              size: 48,
-                              color: AppColors.editorialSecondary,
-                            ),
-                          ),
-                  ),
-                ),
-                // Gradient Scrim for contrast
-                Positioned.fill(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.black.withValues(alpha: 0.35),
-                          Colors.transparent,
-                          Colors.black.withValues(alpha: 0.25),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                // Coursera-style Floating Rating Pill
-                Positioned(
-                  top: 12,
-                  left: 12,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.75),
-                      borderRadius: BorderRadius.circular(9999),
-                      border: Border.all(color: Colors.white24, width: 0.8),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.star_rounded, size: 14, color: Color(0xFFFBBF24)),
-                        SizedBox(width: 4),
-                        Text(
-                          '4.8',
-                          style: TextStyle(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                // Specialization Pill
-                Positioned(
-                  top: 12,
-                  right: 12,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: AppColors.editorialSecondary,
-                      borderRadius: BorderRadius.circular(9999),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.editorialSecondary.withValues(alpha: 0.4),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Text(
-                      tagLabel,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.3,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-
-            // Card Body: Clean Coursera / MasterClass Typography & Attributes
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Title
-                  Text(
-                    course.title,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 16.5,
-                      height: 1.25,
-                      color: isDark ? Colors.white : AppColors.editorialOnSurface,
-                      letterSpacing: -0.3,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 6),
-
-                  // Subtitle / Description
-                  Text(
-                    (course.shortDescription != null && course.shortDescription!.isNotEmpty)
-                        ? course.shortDescription!
-                        : 'Comprehensive practical field syllabus designed by certified faculty',
-                    style: TextStyle(
-                      fontSize: 12.5,
-                      height: 1.35,
-                      color: isDark ? Colors.white60 : AppColors.editorialOnSurfaceVariant,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-
-                  const SizedBox(height: 14),
-
-                  // Divider
-                  Divider(
-                    height: 1,
-                    color: isDark ? AppColors.lineDark : AppColors.editorialOutlineVariant.withValues(alpha: 0.25),
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  // Bottom Specs & Action Row
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Left: Compact Thumbnail with rounded corners
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: SizedBox(
+                  width: 86,
+                  height: 86,
+                  child: Stack(
+                    fit: StackFit.expand,
                     children: [
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.schedule_rounded,
-                            size: 15,
-                            color: isDark ? Colors.white60 : AppColors.editorialOnSurfaceVariant,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '14 hrs',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                              color: isDark ? Colors.white70 : AppColors.editorialOnSurfaceVariant,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Icon(
-                            Icons.workspace_premium_rounded,
-                            size: 15,
-                            color: isDark ? Colors.white60 : AppColors.editorialOnSurfaceVariant,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Certificate',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                              color: isDark ? Colors.white70 : AppColors.editorialOnSurfaceVariant,
-                            ),
-                          ),
-                        ],
+                      Container(
+                        color: isDark ? const Color(0xFF24242A) : AppColors.editorialSurfaceContainer,
+                        child: course.thumbnail != null && course.thumbnail!.isNotEmpty
+                            ? Image.network(
+                                course.thumbnail!,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => const Center(
+                                  child: Icon(
+                                    Icons.play_circle_fill_rounded,
+                                    size: 32,
+                                    color: AppColors.editorialSecondary,
+                                  ),
+                                ),
+                              )
+                            : const Center(
+                                child: Icon(
+                                  Icons.play_circle_fill_rounded,
+                                  size: 32,
+                                  color: AppColors.editorialSecondary,
+                                ),
+                              ),
                       ),
-                      Text(
-                        course.price == '0.00' ? 'Free' : '₹${course.price}',
-                        style: TextStyle(
-                          color: isDark ? Colors.white : AppColors.editorialOnSurface,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
+                      Positioned(
+                        bottom: 4,
+                        left: 4,
+                        right: 4,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.7),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            tagLabel,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 8.5,
+                              fontWeight: FontWeight.w700,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                          ),
                         ),
                       ),
                     ],
                   ),
-                ],
+                ),
               ),
-            ),
-          ],
+              const SizedBox(width: 12),
+
+              // Right: Course Info in Udemy Format
+              Expanded(
+                child: SizedBox(
+                  height: 86,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // Title (Clean 2-line max)
+                      Text(
+                        course.title,
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w700,
+                          height: 1.25,
+                          letterSpacing: -0.2,
+                          color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+
+                      // Instructor / Category
+                      Text(
+                        course.instructorName ?? course.category?.name ?? 'Agricultural Faculty',
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w500,
+                          color: isDark ? Colors.white60 : AppColors.editorialOnSurfaceVariant,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+
+                      // Bottom Row: Rating, Duration & Price
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.star_rounded, size: 14, color: Color(0xFFFBBF24)),
+                              const SizedBox(width: 2),
+                              Text(
+                                '4.8',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Icon(
+                                Icons.schedule_rounded,
+                                size: 12,
+                                color: isDark ? Colors.white54 : AppColors.editorialOnSurfaceVariant,
+                              ),
+                              const SizedBox(width: 3),
+                              Text(
+                                '14 hrs',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: isDark ? Colors.white54 : AppColors.editorialOnSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Text(
+                            priceText,
+                            style: TextStyle(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w800,
+                              color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1326,15 +1267,6 @@ class _TopInstructorsShowcase extends ConsumerWidget {
                           height: 1.2,
                         ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    tr(ref, 'Learn directly from verified farming experts, agronomists, and agricultural specialists.'),
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppColors.inkSoft,
-                          fontSize: 11.5,
-                          height: 1.3,
-                        ),
-                  ),
                 ],
               ),
             ),
@@ -1371,11 +1303,11 @@ class _TopInstructorsShowcase extends ConsumerWidget {
 
         // Instructors Horizontal List
         SizedBox(
-          height: 252,
+          height: 168,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: instructors.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 14),
+            separatorBuilder: (_, __) => const SizedBox(width: 12),
             itemBuilder: (context, index) {
               final inst = instructors[index];
               return _InstructorCard(inst: inst);
@@ -1397,229 +1329,199 @@ class _InstructorCard extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
-      width: 220,
+      width: 172,
       decoration: BoxDecoration(
         color: isDark ? AppColors.cardDark : Colors.white,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isDark
               ? AppColors.lineDark
               : AppColors.editorialOutlineVariant.withValues(alpha: 0.3),
-          width: 1.2,
+          width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.05),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Top Row: Avatar with verified badge & Experience Pill
-            Row(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () {
+            context.push('/farmer/explore?search=${Uri.encodeComponent(inst.fullName)}');
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Stack(
-                  clipBehavior: Clip.none,
+                // Top Row: Avatar with verified check & Experience Pill
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Container(
-                      width: 50,
-                      height: 50,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: isDark
-                            ? AppColors.editorialSecondary.withValues(alpha: 0.2)
-                            : AppColors.editorialSecondaryFixed,
-                        border: Border.all(
-                          color: AppColors.editorialSecondary.withValues(alpha: 0.4),
-                          width: 2,
-                        ),
-                      ),
-                      child: Center(
-                        child: inst.avatar != null && inst.avatar!.isNotEmpty
-                            ? ClipOval(
-                                child: Image.network(
-                                  inst.avatar!,
-                                  width: 50,
-                                  height: 50,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => Text(
+                    Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: isDark
+                                ? AppColors.editorialSecondary.withValues(alpha: 0.2)
+                                : AppColors.editorialSecondaryFixed,
+                            border: Border.all(
+                              color: AppColors.editorialSecondary.withValues(alpha: 0.4),
+                              width: 1.5,
+                            ),
+                          ),
+                          child: Center(
+                            child: inst.avatar != null && inst.avatar!.isNotEmpty
+                                ? ClipOval(
+                                    child: Image.network(
+                                      inst.avatar!,
+                                      width: 42,
+                                      height: 42,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) => Text(
+                                        inst.fullName.isNotEmpty ? inst.fullName[0].toUpperCase() : 'I',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                          color: AppColors.editorialSecondary,
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                : Text(
                                     inst.fullName.isNotEmpty ? inst.fullName[0].toUpperCase() : 'I',
                                     style: const TextStyle(
                                       fontWeight: FontWeight.bold,
-                                      fontSize: 18,
+                                      fontSize: 16,
                                       color: AppColors.editorialSecondary,
                                     ),
                                   ),
-                                ),
-                              )
-                            : Text(
-                                inst.fullName.isNotEmpty ? inst.fullName[0].toUpperCase() : 'I',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 18,
-                                  color: AppColors.editorialSecondary,
-                                ),
-                              ),
-                      ),
-                    ),
-                    Positioned(
-                      bottom: -1,
-                      right: -1,
-                      child: Container(
-                        padding: const EdgeInsets.all(2),
-                        decoration: BoxDecoration(
-                          color: AppColors.editorialSecondary,
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: isDark ? AppColors.cardDark : Colors.white,
-                            width: 1.5,
                           ),
                         ),
-                        child: const Icon(
-                          Icons.check,
-                          color: Colors.white,
-                          size: 10,
+                        Positioned(
+                          bottom: -1,
+                          right: -1,
+                          child: Container(
+                            padding: const EdgeInsets.all(1.5),
+                            decoration: BoxDecoration(
+                              color: AppColors.editorialSecondary,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: isDark ? AppColors.cardDark : Colors.white,
+                                width: 1.2,
+                              ),
+                            ),
+                            child: const Icon(
+                              Icons.check,
+                              color: Colors.white,
+                              size: 8,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (inst.experience.isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? AppColors.editorialSecondary.withValues(alpha: 0.15)
+                              : AppColors.editorialSecondaryFixed.withValues(alpha: 0.7),
+                          borderRadius: BorderRadius.circular(9999),
+                        ),
+                        child: Text(
+                          inst.experience,
+                          style: TextStyle(
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w700,
+                            color: isDark
+                                ? AppColors.editorialSecondaryFixedDim
+                                : AppColors.editorialOnSecondaryFixed,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+
+                // Name & Expertise
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      inst.fullName,
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                        letterSpacing: -0.2,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      inst.specialtyCrops ?? inst.expertiseTags ?? 'Agricultural Specialist',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w500,
+                        color: isDark ? Colors.white60 : AppColors.editorialOnSurfaceVariant,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+
+                // Footer Row: Rating & Course count tag
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.star_rounded, size: 14, color: Color(0xFFFBBF24)),
+                        const SizedBox(width: 2),
+                        Text(
+                          inst.rating.toStringAsFixed(1),
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.08)
+                            : AppColors.editorialSurfaceContainer,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        '${inst.totalCourses} courses',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: isDark ? Colors.white70 : AppColors.editorialOnSurfaceVariant,
                         ),
                       ),
                     ),
                   ],
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4.5),
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? AppColors.editorialSecondary.withValues(alpha: 0.15)
-                        : AppColors.editorialSecondaryFixed.withValues(alpha: 0.7),
-                    borderRadius: BorderRadius.circular(9999),
-                  ),
-                  child: Text(
-                    inst.experience,
-                    style: TextStyle(
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w700,
-                      color: isDark
-                          ? AppColors.editorialSecondaryFixedDim
-                          : AppColors.editorialOnSecondaryFixed,
-                    ),
-                  ),
-                ),
               ],
             ),
-            const SizedBox(height: 12),
-
-            // Instructor Name
-            Text(
-              inst.fullName,
-              style: TextStyle(
-                fontSize: 15.5,
-                fontWeight: FontWeight.bold,
-                color: isDark ? Colors.white : AppColors.editorialOnSurface,
-                letterSpacing: -0.2,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 3),
-
-            // Specialty Crops / Agro Role
-            Text(
-              inst.specialtyCrops ?? inst.expertiseTags ?? 'Agricultural Specialist',
-              style: TextStyle(
-                fontSize: 11.5,
-                fontWeight: FontWeight.w600,
-                color: isDark ? Colors.white60 : AppColors.editorialOnSurfaceVariant,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-
-            const Spacer(),
-
-            // Rating & Students Row
-            Row(
-              children: [
-                const Icon(Icons.star_rounded, size: 16, color: Color(0xFFFBBF24)),
-                const SizedBox(width: 3),
-                Text(
-                  inst.rating.toStringAsFixed(1),
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.white : AppColors.editorialOnSurface,
-                  ),
-                ),
-                if (inst.reviewCount > 0)
-                  Text(
-                    ' (${inst.reviewCount})',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: isDark ? Colors.white54 : AppColors.editorialOnSurfaceVariant,
-                    ),
-                  ),
-                const Spacer(),
-                Icon(
-                  Icons.people_alt_outlined,
-                  size: 13,
-                  color: isDark ? Colors.white54 : AppColors.editorialOnSurfaceVariant,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  '${inst.totalStudents} learners',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                    color: isDark ? Colors.white60 : AppColors.editorialOnSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-
-            // Elevated Action Button
-            SizedBox(
-              width: double.infinity,
-              height: 34,
-              child: FilledButton.tonal(
-                style: FilledButton.styleFrom(
-                  backgroundColor: isDark
-                      ? const Color(0xFF24242A)
-                      : AppColors.editorialSurfaceContainerLow,
-                  foregroundColor: isDark ? Colors.white : AppColors.editorialOnSurface,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  padding: EdgeInsets.zero,
-                ),
-                onPressed: () {
-                  context.push('/farmer/explore?search=${Uri.encodeComponent(inst.fullName)}');
-                },
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.menu_book_rounded,
-                      size: 14,
-                      color: AppColors.editorialSecondary,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      'View Courses (${inst.totalCourses})',
-                      style: const TextStyle(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

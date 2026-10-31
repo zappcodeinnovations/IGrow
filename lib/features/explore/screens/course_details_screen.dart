@@ -6,11 +6,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../../core/network/api_exception.dart';
 import '../../../core/router/route_names.dart';
-import '../../../core/services/app_config_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/app_toast.dart';
 import '../../../data/models/api_models/course_models.dart';
@@ -708,13 +708,17 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
         context.go(RouteNames.farmerHome);
       },
       child: Scaffold(
-        backgroundColor: isDark ? AppColors.bgDark : const Color(0xFFF9FBF8),
+        backgroundColor: isDark ? AppColors.bgDark : Colors.white,
         appBar: AppBar(
-          backgroundColor: isDark ? AppColors.bgDark : const Color(0xFF1E2124),
-          foregroundColor: Colors.white,
+          backgroundColor: isDark ? AppColors.bgDark : Colors.white,
+          foregroundColor: isDark ? Colors.white : AppColors.inkDark,
           elevation: 0,
+          scrolledUnderElevation: 0,
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
+            icon: Icon(
+              Icons.arrow_back,
+              color: isDark ? Colors.white : AppColors.inkDark,
+            ),
             onPressed: () {
               if (context.canPop()) {
                 context.pop();
@@ -723,41 +727,31 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
               }
             },
           ),
-          title: courseAsync.maybeWhen(
-            data: (course) => Text(
-              course.title,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 17,
-                color: Colors.white,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            orElse: () => const Text(
-              'Course Details',
-              style: TextStyle(color: Colors.white),
-            ),
-          ),
           actions: [
             courseAsync.maybeWhen(
-              data: (course) {
-                final isSaved =
-                    ref.watch(isWishlistedProvider(course.id)) ||
-                    (course.slug != null &&
-                        course.slug!.isNotEmpty &&
-                        ref.watch(isWishlistedProvider(course.slug!))) ||
-                    ref.watch(isWishlistedProvider(widget.courseId));
-                return IconButton(
-                  icon: Icon(
-                    isSaved ? Icons.favorite : Icons.favorite_border,
-                    color: isSaved ? Colors.redAccent : Colors.white,
-                  ),
-                  tooltip: isSaved ? 'Remove from Wishlist' : 'Add to Wishlist',
-                  onPressed: () => _toggleWishlist(course),
-                );
-              },
+              data: (course) => IconButton(
+                icon: Icon(
+                  Icons.share_outlined,
+                  color: isDark ? Colors.white : AppColors.inkDark,
+                ),
+                tooltip: 'Share Course',
+                onPressed: () {
+                  final title = course.title;
+                  final slug = course.slug ?? widget.courseId;
+                  final text = 'Check out "$title" on IGrow: https://iagrow.org/courses/$slug';
+                  // ignore: deprecated_member_use
+                  Share.share(text, subject: title);
+                },
+              ),
               orElse: () => const SizedBox.shrink(),
+            ),
+            IconButton(
+              icon: Icon(
+                Icons.shopping_cart_outlined,
+                color: isDark ? Colors.white : AppColors.inkDark,
+              ),
+              tooltip: 'Cart',
+              onPressed: () => context.push('/cart'),
             ),
           ],
         ),
@@ -781,8 +775,9 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
               }
               if (previewLecture != null &&
                   videoUrl != null &&
-                  videoUrl.isNotEmpty)
+                  videoUrl.isNotEmpty) {
                 break;
+              }
             }
 
             if (videoUrl == null || videoUrl.isEmpty) {
@@ -893,27 +888,28 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                     physics: const AlwaysScrollableScrollPhysics(),
                     padding: EdgeInsets.zero,
                     children: [
-                      _buildHeroHeader(course, totalLectures),
+                      // Video at the very top, followed by course info, pricing, and action buttons
+                      _buildUdemyCourseOverview(
+                        context,
+                        course,
+                        isDark,
+                        isEnrolled,
+                        totalLectures,
+                        previewVideoUrl: videoUrl,
+                        previewBunnyId: previewLecture?.bunnyVideoId,
+                      ),
                       Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 90),
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 90),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _buildPurchaseCard(
-                              context,
-                              course,
-                              isDark,
-                              isEnrolled,
-                              previewVideoUrl: videoUrl,
-                              previewBunnyId: previewLecture?.bunnyVideoId,
-                            ),
-                            const SizedBox(height: 20),
+                            const Divider(height: 32),
                             _buildWhatYouLearnCard(course, isDark),
-                            const SizedBox(height: 20),
+                            const Divider(height: 32),
                             _buildCourseContent(course, isDark, isEnrolled),
-                            const SizedBox(height: 20),
+                            const Divider(height: 32),
                             _buildDescriptionSection(course, isDark),
-                            const SizedBox(height: 20),
+                            const Divider(height: 32),
                             _buildFeedbackSection(
                               context,
                               course,
@@ -933,40 +929,17 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
             padding: EdgeInsets.zero,
             physics: const NeverScrollableScrollPhysics(),
             children: [
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
-                color: const Color(0xFF1E2124),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 100,
-                      height: 20,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
+              AspectRatio(
+                aspectRatio: 16 / 9,
+                child: Container(
+                  color: isDark ? const Color(0xFF1E2124) : Colors.grey.shade200,
+                  child: const Center(
+                    child: Icon(
+                      Icons.play_circle_fill,
+                      size: 54,
+                      color: Colors.black26,
                     ),
-                    const SizedBox(height: 14),
-                    Container(
-                      width: 240,
-                      height: 28,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Container(
-                      width: double.infinity,
-                      height: 16,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
               const SizedBox(height: 48),
@@ -1500,6 +1473,535 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
     );
   }
 
+  // ── Video Preview Player ──────────────────────────────────────────────────
+
+  Widget _buildVideoPreview(
+    BuildContext context,
+    ApiCourseDetail course, {
+    String? previewVideoUrl,
+    String? previewBunnyId,
+    BorderRadius? borderRadius,
+  }) {
+    return ClipRRect(
+      borderRadius: borderRadius ?? BorderRadius.zero,
+      child: AspectRatio(
+        aspectRatio: 16 / 9,
+        child: _isPlayingVideo &&
+                _chewieController != null &&
+                _chewieController!.videoPlayerController.value.isInitialized
+            ? Chewie(controller: _chewieController!)
+            : Stack(
+                fit: StackFit.expand,
+                children: [
+                  // Thumbnail
+                  course.thumbnail != null && course.thumbnail!.isNotEmpty
+                      ? Image.network(
+                          course.thumbnail!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            color: const Color(0xFF1B2E21),
+                            child: const Icon(
+                              Icons.school,
+                              size: 48,
+                              color: AppColors.primaryGreen,
+                            ),
+                          ),
+                        )
+                      : Container(
+                          color: const Color(0xFF1B2E21),
+                          child: const Icon(
+                            Icons.school,
+                            size: 48,
+                            color: AppColors.primaryGreen,
+                          ),
+                        ),
+                  // Dark Gradient Overlay
+                  Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.transparent,
+                          Colors.black.withValues(alpha: 0.65),
+                        ],
+                      ),
+                    ),
+                  ),
+                  // Loading indicator or "Preview this course" Play Button Overlay
+                  if (_isLoadingVideo)
+                    Container(
+                      color: Colors.black54,
+                      child: const Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            CircularProgressIndicator(
+                              color: AppColors.primaryGreen,
+                            ),
+                            SizedBox(height: 10),
+                            Text(
+                              'Loading preview...',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  else
+                    Center(
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () {
+                            if (previewVideoUrl != null &&
+                                previewVideoUrl.isNotEmpty) {
+                              _initializePlayer(
+                                previewVideoUrl,
+                                autoPlay: true,
+                                bunnyId: previewBunnyId,
+                              );
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'No preview video available for this course.',
+                                  ),
+                                ),
+                              );
+                            }
+                          },
+                          borderRadius: BorderRadius.circular(50),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 18,
+                              vertical: 12,
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 60,
+                                  height: 60,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Colors.black.withValues(alpha: 0.45),
+                                    border: Border.all(
+                                      color: Colors.white,
+                                      width: 2,
+                                    ),
+                                  ),
+                                  child: const Icon(
+                                    Icons.play_arrow_rounded,
+                                    color: Colors.white,
+                                    size: 38,
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                const Text(
+                                  'Preview this course',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                    shadows: [
+                                      Shadow(
+                                        color: Colors.black87,
+                                        blurRadius: 4,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+      ),
+    );
+  }
+
+  // ── Udemy-Style Mobile Course Overview ────────────────────────────────────
+
+  Widget _buildUdemyCourseOverview(
+    BuildContext context,
+    ApiCourseDetail course,
+    bool isDark,
+    bool isEnrolled,
+    int totalLectures, {
+    String? previewVideoUrl,
+    String? previewBunnyId,
+  }) {
+    final instructor = course.instructorName ?? 'Instructor';
+    final inCart = (course.id.isNotEmpty &&
+            ref.watch(isCourseInCartProvider(course.id))) ||
+        ref.watch(isCourseInCartProvider(widget.courseId)) ||
+        (course.slug != null &&
+            course.slug!.isNotEmpty &&
+            ref.watch(isCourseInCartProvider(course.slug!)));
+
+    // Pricing & discount calculations
+    final rawPrice = double.tryParse(course.price ?? '');
+    final isFreeCourse = rawPrice == null || rawPrice == 0.0;
+    final priceDisplay = isFreeCourse ? 'Free' : '₹${rawPrice.toStringAsFixed(2)}';
+    // Calculate a realistic original price for visual discount display
+    final double? origPrice = (rawPrice != null && rawPrice > 0)
+        ? (rawPrice * 3.2).roundToDouble() - 1.0
+        : null;
+    final origPriceDisplay = origPrice != null ? '₹${origPrice.toStringAsFixed(2)}' : null;
+
+    // Last updated date string
+    String lastUpdated = '5/2025';
+    if (course.publishedAt != null) {
+      lastUpdated = '${course.publishedAt!.month}/${course.publishedAt!.year}';
+    } else if (course.createdAt != null) {
+      lastUpdated = '${course.createdAt!.month}/${course.createdAt!.year}';
+    }
+
+    // Language display
+    final lang = course.language?.isNotEmpty == true
+        ? (course.language![0].toUpperCase() + course.language!.substring(1).toLowerCase())
+        : 'English';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 1. Top Video Preview Player
+        _buildVideoPreview(
+          context,
+          course,
+          previewVideoUrl: previewVideoUrl,
+          previewBunnyId: previewBunnyId,
+        ),
+
+        // 2. Course Details Body (Plain text surface, NO CARDS!)
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Course Title
+              Text(
+                course.title,
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : AppColors.inkDark,
+                  height: 1.25,
+                ),
+              ),
+              const SizedBox(height: 8),
+
+              // Subtitle / Short Description
+              if (course.shortDescription != null &&
+                  course.shortDescription!.trim().isNotEmpty) ...[
+                Text(
+                  course.shortDescription!.trim(),
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: isDark ? Colors.white70 : Colors.black87,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
+
+              // Ratings & Students Row: "4.8 ★★★★★ (417 ratings) 30,089 students"
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const Text(
+                    '4.8',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.accentOrange,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: List.generate(
+                      5,
+                      (index) => const Icon(
+                        Icons.star_rounded,
+                        size: 16,
+                        color: AppColors.accentOrange,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      '(${course.sections.fold<int>(0, (s, sec) => s + sec.lectures.length) * 12 + 48} ratings) ${course.enrollmentCount ?? '1,240'} students',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDark ? Colors.white60 : Colors.grey.shade700,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+
+              // Created by [Instructor Name]
+              Row(
+                children: [
+                  Text(
+                    'Created by ',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: isDark ? Colors.white60 : Colors.grey.shade700,
+                    ),
+                  ),
+                  Text(
+                    instructor,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF6B46C1), // Rich purple link styling
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+
+              // Meta items row: Last updated, Language, CC
+              Row(
+                children: [
+                  Icon(
+                    Icons.new_releases_outlined,
+                    size: 16,
+                    color: isDark ? Colors.white60 : Colors.grey.shade700,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Last updated $lastUpdated',
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      color: isDark ? Colors.white70 : Colors.grey.shade700,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  Icon(
+                    Icons.language_rounded,
+                    size: 16,
+                    color: isDark ? Colors.white60 : Colors.grey.shade700,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    lang,
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      color: isDark ? Colors.white70 : Colors.grey.shade700,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  Icon(
+                    Icons.closed_caption_outlined,
+                    size: 16,
+                    color: isDark ? Colors.white60 : Colors.grey.shade700,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    '$lang [Auto]',
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      color: isDark ? Colors.white70 : Colors.grey.shade700,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+
+              // 3. Pricing Section (Direct text, no card!)
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  Text(
+                    priceDisplay,
+                    style: TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : AppColors.inkDark,
+                    ),
+                  ),
+                  if (origPriceDisplay != null) ...[
+                    const SizedBox(width: 8),
+                    Text(
+                      origPriceDisplay,
+                      style: TextStyle(
+                        fontSize: 14,
+                        decoration: TextDecoration.lineThrough,
+                        color: isDark ? Colors.white38 : Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              if (!isFreeCourse) ...[
+                const SizedBox(height: 6),
+                const Row(
+                  children: [
+                    Icon(
+                      Icons.alarm_rounded,
+                      size: 16,
+                      color: Color(0xFF6B46C1),
+                    ),
+                    SizedBox(width: 6),
+                    Text(
+                      '68% off - 23 hours left at this price!',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF6B46C1),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+              const SizedBox(height: 18),
+
+              // 4. Action Buttons (Only buttons have border and card styling)
+              if (isEnrolled) ...[
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFFA435F0), // Udemy primary purple
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      elevation: 0,
+                    ),
+                    onPressed: () => context.push(
+                      '/player/${course.slug ?? widget.courseId}',
+                    ),
+                    icon: const Icon(Icons.play_circle_fill),
+                    label: const Text(
+                      'Start Learning (Enrolled)',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ),
+                ),
+              ] else if (inCart) ...[
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFFA435F0), // Udemy primary purple
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      elevation: 0,
+                    ),
+                    onPressed: () => context.push('/cart'),
+                    icon: const Icon(Icons.shopping_cart_outlined, size: 20),
+                    label: const Text(
+                      'Go to Cart',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ] else ...[
+                // Primary Action Button: "Buy now"
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFFA435F0), // Udemy prominent purple button
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      elevation: 0,
+                    ),
+                    onPressed: () => _handleBuyNow(context, course),
+                    child: const Text(
+                      'Buy now',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                // Secondary Action Button: "Add to cart" with border & clean card
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: isDark ? AppColors.cardDark : Colors.white,
+                      side: BorderSide(
+                        color: isDark ? Colors.white60 : Colors.black87,
+                        width: 1.5,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    onPressed: _isAddingToCart
+                        ? null
+                        : () => _handleAddToCart(context, course),
+                    child: _isAddingToCart
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Color(0xFFA435F0),
+                            ),
+                          )
+                        : Text(
+                            'Add to cart',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: isDark ? Colors.white : Colors.black87,
+                            ),
+                          ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   // ── Purchase Card ───────────────────────────────────────────────────────────
 
   Widget _buildPurchaseCard(
@@ -1547,144 +2049,12 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Media / Video Preview Header
-          ClipRRect(
+          _buildVideoPreview(
+            context,
+            course,
+            previewVideoUrl: previewVideoUrl,
+            previewBunnyId: previewBunnyId,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-            child: AspectRatio(
-              aspectRatio: 16 / 9,
-              child:
-                  _isPlayingVideo &&
-                      _chewieController != null &&
-                      _chewieController!
-                          .videoPlayerController
-                          .value
-                          .isInitialized
-                  ? Chewie(controller: _chewieController!)
-                  : Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        // Thumbnail
-                        course.thumbnail != null && course.thumbnail!.isNotEmpty
-                            ? Image.network(
-                                course.thumbnail!,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => Container(
-                                  color: const Color(0xFF1B2E21),
-                                  child: const Icon(
-                                    Icons.school,
-                                    size: 48,
-                                    color: AppColors.primaryGreen,
-                                  ),
-                                ),
-                              )
-                            : Container(
-                                color: const Color(0xFF1B2E21),
-                                child: const Icon(
-                                  Icons.school,
-                                  size: 48,
-                                  color: AppColors.primaryGreen,
-                                ),
-                              ),
-                        // Dark Gradient Overlay
-                        Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                Colors.transparent,
-                                Colors.black.withValues(alpha: 0.65),
-                              ],
-                            ),
-                          ),
-                        ),
-                        // Loading indicator or "Preview Course" Play Button Overlay
-                        if (_isLoadingVideo)
-                          Container(
-                            color: Colors.black54,
-                            child: const Center(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  CircularProgressIndicator(
-                                    color: AppColors.primaryGreen,
-                                  ),
-                                  SizedBox(height: 10),
-                                  Text(
-                                    'Loading preview...',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          )
-                        else
-                          Center(
-                            child: Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                onTap: () {
-                                  if (previewVideoUrl != null &&
-                                      previewVideoUrl.isNotEmpty) {
-                                    _initializePlayer(
-                                      previewVideoUrl,
-                                      autoPlay: true,
-                                      bunnyId: previewBunnyId,
-                                    );
-                                  } else {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                          'No preview video available for this course.',
-                                        ),
-                                      ),
-                                    );
-                                  }
-                                },
-                                borderRadius: BorderRadius.circular(30),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 10,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.black.withValues(alpha: 0.6),
-                                    borderRadius: BorderRadius.circular(30),
-                                    border: Border.all(
-                                      color: Colors.white.withValues(
-                                        alpha: 0.4,
-                                      ),
-                                    ),
-                                  ),
-                                  child: const Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.play_circle_fill,
-                                        color: Colors.white,
-                                        size: 22,
-                                      ),
-                                      SizedBox(width: 8),
-                                      Text(
-                                        'Preview Course',
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 13,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-            ),
           ),
 
           // Price & Actions
@@ -1938,27 +2308,17 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
       ];
     }
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.cardDark : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isDark ? AppColors.lineDark : Colors.grey.shade200,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            "What you'll learn",
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: isDark ? Colors.white : Colors.black87,
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "What you'll learn",
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: isDark ? Colors.white : AppColors.inkDark,
           ),
+        ),
           const SizedBox(height: 14),
           ...outcomes.map(
             (item) => Padding(
@@ -1988,8 +2348,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
             ),
           ),
         ],
-      ),
-    );
+      );
   }
 
   // ── Course Content Accordion ────────────────────────────────────────────────
@@ -2031,16 +2390,8 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
         const SizedBox(height: 12),
 
         if (course.sections.isEmpty)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: isDark ? AppColors.cardDark : Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: isDark ? AppColors.lineDark : Colors.grey.shade200,
-              ),
-            ),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
             child: Text(
               'No curriculum sections published yet.',
               style: TextStyle(
@@ -2056,14 +2407,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
             final isExpanded = _sectionExpanded[section.id] ?? (sIdx == 0);
 
             return Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              decoration: BoxDecoration(
-                color: isDark ? AppColors.cardDark : Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: isDark ? AppColors.lineDark : Colors.grey.shade200,
-                ),
-              ),
+              margin: const EdgeInsets.only(bottom: 8),
               child: Column(
                 children: [
                   // Section Header Accordion
@@ -2073,24 +2417,12 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                         _sectionExpanded[section.id] = !isExpanded;
                       });
                     },
-                    borderRadius: BorderRadius.vertical(
-                      top: const Radius.circular(12),
-                      bottom: Radius.circular(isExpanded ? 0 : 12),
-                    ),
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
+                        horizontal: 4,
                         vertical: 12,
                       ),
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? Colors.white.withValues(alpha: 0.04)
-                            : Colors.grey.shade50,
-                        borderRadius: BorderRadius.vertical(
-                          top: const Radius.circular(12),
-                          bottom: Radius.circular(isExpanded ? 0 : 12),
-                        ),
-                      ),
+                      color: Colors.transparent,
                       child: Row(
                         children: [
                           Container(
@@ -2304,38 +2636,27 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
         course.shortDescription ??
         'No description provided.';
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.cardDark : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isDark ? AppColors.lineDark : Colors.grey.shade200,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Description',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: isDark ? Colors.white : AppColors.inkDark,
+          ),
         ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Description',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: isDark ? Colors.white : Colors.black87,
-            ),
+        const SizedBox(height: 12),
+        Text(
+          desc,
+          style: TextStyle(
+            fontSize: 14,
+            height: 1.6,
+            color: isDark ? Colors.white70 : Colors.black87,
           ),
-          const SizedBox(height: 12),
-          Text(
-            desc,
-            style: TextStyle(
-              fontSize: 13.5,
-              height: 1.5,
-              color: isDark ? Colors.white70 : Colors.black87,
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -2398,31 +2719,15 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
               error: (_, __) => const SizedBox.shrink(),
               data: (reviews) {
                 if (reviews.isEmpty) {
-                  return Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? Colors.white.withValues(alpha: 0.04)
-                          : Colors.grey.shade50,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: isDark ? Colors.white10 : AppColors.lineLight,
-                      ),
-                    ),
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(
-                          Icons.chat_bubble_outline_rounded,
-                          color: AppColors.inkSoft,
-                          size: 32,
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
+                        Text(
                           'No reviews yet. Be the first to review after enrolling!',
-                          textAlign: TextAlign.center,
                           style: TextStyle(
-                            color: AppColors.inkSoft,
+                            color: isDark ? Colors.white60 : AppColors.inkSoft,
                             fontSize: 13,
                           ),
                         ),
@@ -2454,17 +2759,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                 return Column(
                   children: reviews.map((review) {
                     return Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? const Color(0xFF1E231F)
-                            : Colors.grey.shade50,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: isDark ? Colors.white10 : AppColors.lineLight,
-                        ),
-                      ),
+                      margin: const EdgeInsets.only(bottom: 16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [

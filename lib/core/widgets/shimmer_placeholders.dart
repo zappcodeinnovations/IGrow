@@ -84,39 +84,48 @@ class ShimmerCourseCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 170,
-      margin: const EdgeInsets.only(right: 14),
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: Theme.of(context).brightness == Brightness.dark 
           ? AppColors.cardDark 
           : AppColors.white,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
       ),
-      child: Column(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const ShimmerContainer(
-            width: double.infinity,
-            height: 100,
-            borderRadius: 18,
+            width: 86,
+            height: 86,
+            borderRadius: 12,
           ),
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const ShimmerContainer(width: double.infinity, height: 14),
-                const SizedBox(height: 4),
-                const ShimmerContainer(width: 80, height: 14),
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const ShimmerContainer(width: 30, height: 12),
-                    const ShimmerContainer(width: 40, height: 12),
-                  ],
-                ),
-              ],
+          const SizedBox(width: 12),
+          Expanded(
+            child: SizedBox(
+              height: 86,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
+                      ShimmerContainer(width: double.infinity, height: 13),
+                      SizedBox(height: 5),
+                      ShimmerContainer(width: 140, height: 13),
+                    ],
+                  ),
+                  const ShimmerContainer(width: 100, height: 11),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: const [
+                      ShimmerContainer(width: 80, height: 11),
+                      ShimmerContainer(width: 45, height: 13),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ],

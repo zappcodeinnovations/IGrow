@@ -1075,282 +1075,261 @@ class _CatalogCourseCard extends ConsumerWidget {
         (course.slug != null && ref.watch(isCourseEnrolledProvider(course.slug!)));
 
     final priceText = course.price == null || course.price == '0' || course.price == '0.00'
-        ? '₹0'
+        ? 'Free'
         : '₹${course.price}';
 
     final categoryName = course.category?.name ?? 'Agriculture';
     final instructorName = course.instructorName ?? 'Instructor';
     final totalLectures = course.totalLectures ?? 1;
 
-    return GestureDetector(
-      onTap: () {
-        context.push('/farmer/course/${course.id}');
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          color: isDark ? AppColors.cardDark : Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: isDark ? AppColors.lineDark : const Color(0xFFE2EBE0),
-            width: 1,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          context.push('/farmer/course/${course.id}');
+        },
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.cardDark : Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isDark
+                  ? AppColors.lineDark
+                  : AppColors.editorialOutlineVariant.withValues(alpha: 0.25),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.035),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
+              ),
+            ],
           ),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.editorialSecondary.withValues(alpha: isDark ? 0.08 : 0.06),
-              blurRadius: 18,
-              offset: const Offset(0, 6),
-            ),
-            BoxShadow(
-              color: (isDark ? Colors.black : const Color(0xFF1B2318)).withValues(alpha: isDark ? 0.25 : 0.03),
-              blurRadius: 3,
-              offset: const Offset(0, 1),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Top Media with Category badge & Wishlist Heart
-            ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
-              child: Stack(
-                children: [
-                  Container(
-                    height: 125,
-                    width: double.infinity,
-                    color: const Color(0xFF1B2E21),
-                    child: course.thumbnail != null && course.thumbnail!.isNotEmpty
-                        ? Image.network(
-                            course.thumbnail!,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => const Center(
-                              child: Icon(Icons.school, size: 40, color: AppColors.editorialSecondary),
-                            ),
-                          )
-                        : const Center(
-                            child: Icon(Icons.school, size: 40, color: AppColors.editorialSecondary),
-                          ),
-                  ),
-                  // Category Tag & Enrolled badge top-left
-                  Positioned(
-                    top: 10,
-                    left: 10,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Left: Compact Thumbnail with rounded corners & Category badge
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: SizedBox(
+                  width: 88,
+                  height: 88,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Container(
+                        color: const Color(0xFF1B2E21),
+                        child: course.thumbnail != null && course.thumbnail!.isNotEmpty
+                            ? Image.network(
+                                course.thumbnail!,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => const Center(
+                                  child: Icon(Icons.school, size: 32, color: AppColors.editorialSecondary),
+                                ),
+                              )
+                            : const Center(
+                                child: Icon(Icons.school, size: 32, color: AppColors.editorialSecondary),
+                              ),
+                      ),
+                      // Category Tag bottom of thumbnail
+                      Positioned(
+                        bottom: 4,
+                        left: 4,
+                        right: 4,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                           decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.65),
-                            borderRadius: BorderRadius.circular(8),
+                            color: Colors.black.withValues(alpha: 0.72),
+                            borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
                             categoryName,
                             style: const TextStyle(
                               color: Colors.white,
-                              fontSize: 10.5,
-                              fontWeight: FontWeight.bold,
+                              fontSize: 8.5,
+                              fontWeight: FontWeight.w700,
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
                           ),
                         ),
-                        if (isEnrolled) ...[
-                          const SizedBox(width: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: AppColors.editorialSecondary,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.check_circle, color: Colors.white, size: 11),
-                                SizedBox(width: 4),
-                                Text(
-                                  'Enrolled',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 10.5,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  // Wishlist Heart top-right
-                  Positioned(
-                    top: 6,
-                    right: 6,
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: () async {
-                          final preview = ApiWishlistItem(
-                            id: '',
-                            targetId: course.id ?? '',
-                            type: 'course',
-                            title: course.title,
-                            slug: course.slug ?? '',
-                            thumbnail: course.thumbnail,
-                            price: course.price ?? '0.00',
-                            category: categoryName,
-                            rating: 4.8,
-                          );
-                          final inWishlist = await ref
-                              .read(wishlistProvider.notifier)
-                              .toggleCourse(course.id ?? '', previewItem: preview);
-                          if (context.mounted) {
-                            AppToast.showWishlistToast(
-                              context,
-                              isAdded: inWishlist,
-                            );
-                          }
-                        },
-                        borderRadius: BorderRadius.circular(20),
-                        child: Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.85),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            isWishlisted ? Icons.favorite : Icons.favorite_border,
-                            color: isWishlisted ? Colors.redAccent : Colors.grey.shade700,
-                            size: 16,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Card Body
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    course.title,
-                    style: const TextStyle(
-                      fontSize: 14.5,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    course.shortDescription != null && course.shortDescription!.isNotEmpty
-                        ? course.shortDescription!
-                        : course.title,
-                    style: TextStyle(
-                      fontSize: 11.5,
-                      color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 8),
-
-                  // Meta Row matching Screenshot 3: "1 Lectures  0 hrs  ⭐ 0"
-                  Row(
-                    children: [
-                      Icon(Icons.video_library_outlined, size: 12, color: Colors.grey.shade500),
-                      const SizedBox(width: 3),
-                      Text(
-                        '$totalLectures Lectures',
-                        style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
-                      ),
-                      const SizedBox(width: 8),
-                      Icon(Icons.access_time, size: 12, color: Colors.grey.shade500),
-                      const SizedBox(width: 3),
-                      Text(
-                        _formatCourseDuration(course.totalDuration),
-                        style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
-                      ),
-                      const SizedBox(width: 8),
-                      const Icon(Icons.star_rounded, size: 13, color: Color(0xFFF59E0B)),
-                      const SizedBox(width: 2),
-                      Text(
-                        '0',
-                        style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 10),
+                ),
+              ),
+              const SizedBox(width: 12),
 
-                  Divider(height: 1, color: isDark ? AppColors.lineDark : Colors.grey.shade200),
-                  const SizedBox(height: 8),
-
-                  // Instructor & Price Row
-                  Row(
+              // Right: Udemy Compact Course Info
+              Expanded(
+                child: SizedBox(
+                  height: 88,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
+                      // Title & Wishlist Heart Row
                       Row(
-                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          CircleAvatar(
-                            radius: 10,
-                            backgroundColor: isDark ? AppColors.editorialSecondaryFixedDim : AppColors.editorialSecondary,
+                          Expanded(
                             child: Text(
-                              instructorName.isNotEmpty ? instructorName[0].toUpperCase() : 'I',
-                              style: const TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 110),
-                            child: Text(
-                              instructorName,
+                              course.title,
                               style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w500,
-                                color: isDark ? Colors.grey.shade300 : Colors.grey.shade700,
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w700,
+                                height: 1.25,
+                                letterSpacing: -0.2,
+                                color: isDark ? Colors.white : AppColors.editorialOnSurface,
                               ),
-                              maxLines: 1,
+                              maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                        ],
-                      ),
-                      if (isEnrolled)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: AppColors.editorialSecondary.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: const Text(
-                            'Enrolled',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.editorialSecondary,
+                          const SizedBox(width: 4),
+                          Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () async {
+                                final preview = ApiWishlistItem(
+                                  id: '',
+                                  targetId: course.id ?? '',
+                                  type: 'course',
+                                  title: course.title,
+                                  slug: course.slug ?? '',
+                                  thumbnail: course.thumbnail,
+                                  price: course.price ?? '0.00',
+                                  category: categoryName,
+                                  rating: 4.8,
+                                );
+                                final inWishlist = await ref
+                                    .read(wishlistProvider.notifier)
+                                    .toggleCourse(course.id ?? '', previewItem: preview);
+                                if (context.mounted) {
+                                  AppToast.showWishlistToast(
+                                    context,
+                                    isAdded: inWishlist,
+                                  );
+                                }
+                              },
+                              borderRadius: BorderRadius.circular(16),
+                              child: Padding(
+                                padding: const EdgeInsets.all(2),
+                                child: Icon(
+                                  isWishlisted ? Icons.favorite : Icons.favorite_border,
+                                  color: isWishlisted ? Colors.redAccent : (isDark ? Colors.white54 : Colors.grey.shade500),
+                                  size: 18,
+                                ),
+                              ),
                             ),
                           ),
-                        )
-                      else
-                        Text(
-                          priceText,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.editorialSecondary,
+                        ],
+                      ),
+
+                      // Instructor & Enrolled Badge
+                      Row(
+                        children: [
+                          Text(
+                            instructorName,
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w500,
+                              color: isDark ? Colors.white60 : AppColors.editorialOnSurfaceVariant,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
+                          if (isEnrolled) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                              decoration: BoxDecoration(
+                                color: AppColors.editorialSecondary.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Text(
+                                'Enrolled',
+                                style: TextStyle(
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.editorialSecondary,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+
+                      // Meta Specs & Price
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.star_rounded, size: 14, color: Color(0xFFFBBF24)),
+                              const SizedBox(width: 2),
+                              Text(
+                                '4.8',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                '•',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: isDark ? Colors.white38 : Colors.grey.shade400,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                '$totalLectures lec',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: isDark ? Colors.white54 : AppColors.editorialOnSurfaceVariant,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                '•',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: isDark ? Colors.white38 : Colors.grey.shade400,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                _formatCourseDuration(course.totalDuration),
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: isDark ? Colors.white54 : AppColors.editorialOnSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Text(
+                            priceText,
+                            style: TextStyle(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w800,
+                              color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
-                ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

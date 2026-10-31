@@ -105,13 +105,6 @@ class HomeNewsCarousel extends ConsumerWidget {
                           ),
                         ],
                       ),
-                      Text(
-                        'The Hindu Business Line updates',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: isDark ? Colors.white60 : AppColors.inkSoft,
-                              fontSize: 11,
-                            ),
-                      ),
                     ],
                   ),
                 ],

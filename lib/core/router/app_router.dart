@@ -390,14 +390,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           // ─── Farmer Routes ───────────────────────────────────────────
           GoRoute(
             path: RouteNames.farmerHome,
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: FarmerHomeScreen(),
+            pageBuilder: (context, state) => _buildSlideRightPage(
+              context: context,
+              state: state,
+              child: const FarmerHomeScreen(),
             ),
           ),
           GoRoute(
             path: RouteNames.farmerLearning,
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: MyLearningScreen(),
+            pageBuilder: (context, state) => _buildSlideRightPage(
+              context: context,
+              state: state,
+              child: const MyLearningScreen(),
             ),
           ),
           GoRoute(
@@ -406,35 +410,45 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               final search = state.uri.queryParameters['search'];
               final tabParam = state.uri.queryParameters['tab'];
               final initialTab = (tabParam == 'ebooks' || tabParam == '1') ? 1 : 0;
-              return NoTransitionPage(
+              return _buildSlideRightPage(
+                context: context,
+                state: state,
                 child: ExploreScreen(initialSearch: search, initialTab: initialTab),
               );
             },
           ),
           GoRoute(
             path: RouteNames.farmerCommunity,
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: CommunityScreen(),
+            pageBuilder: (context, state) => _buildSlideRightPage(
+              context: context,
+              state: state,
+              child: const CommunityScreen(),
             ),
           ),
           GoRoute(
             path: RouteNames.farmerProfile,
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: ProfileScreen(),
+            pageBuilder: (context, state) => _buildSlideRightPage(
+              context: context,
+              state: state,
+              child: const ProfileScreen(),
             ),
           ),
           
           // ─── Instructor Routes ───────────────────────────────────────
           GoRoute(
             path: RouteNames.instructorHome,
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: InstructorHomeScreen(),
+            pageBuilder: (context, state) => _buildSlideRightPage(
+              context: context,
+              state: state,
+              child: const InstructorHomeScreen(),
             ),
           ),
           GoRoute(
             path: RouteNames.instructorCommunity,
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: CommunityScreen(),
+            pageBuilder: (context, state) => _buildSlideRightPage(
+              context: context,
+              state: state,
+              child: const CommunityScreen(),
             ),
           ),
           GoRoute(
@@ -451,8 +465,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: RouteNames.instructorProfile,
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: ProfileScreen(),
+            pageBuilder: (context, state) => _buildSlideRightPage(
+              context: context,
+              state: state,
+              child: const ProfileScreen(),
             ),
           ),
           GoRoute(
@@ -506,4 +522,42 @@ class GoRouterRefreshStream extends ChangeNotifier {
     _subscription.cancel();
     super.dispose();
   }
+}
+
+/// Builds a smooth right-to-left slide transition page with an opaque background
+/// so that old screens do not shine through during transitions.
+CustomTransitionPage<T> _buildSlideRightPage<T>({
+  required BuildContext context,
+  required GoRouterState state,
+  required Widget child,
+}) {
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+  final surfaceColor = isDark ? Colors.black : const Color(0xFFFBF9F9);
+
+  return CustomTransitionPage<T>(
+    key: state.pageKey,
+    transitionDuration: const Duration(milliseconds: 320),
+    reverseTransitionDuration: const Duration(milliseconds: 280),
+    child: ColoredBox(
+      color: surfaceColor,
+      child: child,
+    ),
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      final curvedAnimation = CurvedAnimation(
+        parent: animation,
+        curve: Curves.fastOutSlowIn,
+        reverseCurve: Curves.fastOutSlowIn.flipped,
+      );
+
+      final offsetAnimation = Tween<Offset>(
+        begin: const Offset(1.0, 0.0),
+        end: Offset.zero,
+      ).animate(curvedAnimation);
+
+      return SlideTransition(
+        position: offsetAnimation,
+        child: child,
+      );
+    },
+  );
 }
