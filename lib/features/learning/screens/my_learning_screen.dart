@@ -276,6 +276,7 @@ class _MyLearningScreenState extends ConsumerState<MyLearningScreen> {
                 onRefresh: () async {
                   ref.invalidate(studentEnrollmentsProvider);
                   ref.invalidate(studentEbooksProvider);
+                  ref.invalidate(ordersProvider);
                   await ref.read(studentEnrollmentsProvider.future).catchError((_) => <Enrollment>[]);
                 },
                 child: _selectedFilterIndex == 3
@@ -501,7 +502,45 @@ class _MyLearningScreenState extends ConsumerState<MyLearningScreen> {
         separatorBuilder: (_, __) => const SizedBox(height: 16),
         itemBuilder: (_, __) => const ShimmerCard(height: 76),
       ),
-      error: (err, _) => Center(child: Text('Error: $err')),
+      error: (err, _) => Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.cloud_off_rounded,
+                size: 48,
+                color: isDark ? Colors.white38 : AppColors.editorialOutlineVariant,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                tr(ref, 'Unable to load your courses right now.'),
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? Colors.white70 : AppColors.editorialOnSurface,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                onPressed: () {
+                  ref.invalidate(studentEnrollmentsProvider);
+                  ref.invalidate(ordersProvider);
+                },
+                icon: const Icon(Icons.refresh_rounded, size: 18),
+                label: Text(tr(ref, 'Retry')),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: isDark ? Colors.white : Colors.black,
+                  foregroundColor: isDark ? Colors.black : Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9999)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 

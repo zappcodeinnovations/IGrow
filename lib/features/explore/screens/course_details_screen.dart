@@ -799,8 +799,11 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
               (sum, s) => sum + s.lectures.length,
             );
             final isEnrolledInList =
+                (course.id.isNotEmpty &&
+                    ref.watch(isCourseEnrolledProvider(course.id))) ||
                 ref.watch(isCourseEnrolledProvider(widget.courseId)) ||
                 (course.slug != null &&
+                    course.slug!.isNotEmpty &&
                     ref.watch(isCourseEnrolledProvider(course.slug!)));
             final isEnrolled =
                 (course.isEnrolled == true ||
@@ -1059,8 +1062,11 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
         bottomNavigationBar: courseAsync.maybeWhen(
           data: (course) {
             final isEnrolledInList =
+                (course.id.isNotEmpty &&
+                    ref.watch(isCourseEnrolledProvider(course.id))) ||
                 ref.watch(isCourseEnrolledProvider(widget.courseId)) ||
                 (course.slug != null &&
+                    course.slug!.isNotEmpty &&
                     ref.watch(isCourseEnrolledProvider(course.slug!)));
             final isEnrolled =
                 (course.isEnrolled == true ||
@@ -1640,22 +1646,6 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
     String? previewBunnyId,
   }) {
     final instructor = course.instructorName ?? 'Instructor';
-    final inCart = (course.id.isNotEmpty &&
-            ref.watch(isCourseInCartProvider(course.id))) ||
-        ref.watch(isCourseInCartProvider(widget.courseId)) ||
-        (course.slug != null &&
-            course.slug!.isNotEmpty &&
-            ref.watch(isCourseInCartProvider(course.slug!)));
-
-    // Pricing & discount calculations
-    final rawPrice = double.tryParse(course.price ?? '');
-    final isFreeCourse = rawPrice == null || rawPrice == 0.0;
-    final priceDisplay = isFreeCourse ? 'Free' : '₹${rawPrice.toStringAsFixed(2)}';
-    // Calculate a realistic original price for visual discount display
-    final double? origPrice = (rawPrice != null && rawPrice > 0)
-        ? (rawPrice * 3.2).roundToDouble() - 1.0
-        : null;
-    final origPriceDisplay = origPrice != null ? '₹${origPrice.toStringAsFixed(2)}' : null;
 
     // Last updated date string
     String lastUpdated = '5/2025';

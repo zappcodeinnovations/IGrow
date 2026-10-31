@@ -6,6 +6,7 @@ import '../../../data/repositories/student_repository.dart';
 import '../../../core/services/course_progress_service.dart';
 import '../../../core/services/quiz_service.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../cart/providers/cart_provider.dart';
 
 final studentRepositoryProvider = Provider<StudentRepository>((ref) {
   return StudentRepository(
@@ -102,11 +103,46 @@ final studentCategoriesProvider = FutureProvider.autoDispose<List<Category>>((re
   return response.results;
 });
 
-/// Provider for fetching student enrollments (My Courses), enriched with accurate local progress.
+/// Provider for fetching student enrollments (My Courses), enriched with accurate local progress and completed orders.
 final studentEnrollmentsProvider = FutureProvider.autoDispose<List<Enrollment>>((ref) async {
   final repo = ref.watch(studentRepositoryProvider);
   final response = await repo.getEnrollments();
-  final list = response.results;
+  final list = List<Enrollment>.from(response.results);
+
+  // Cross-reference completed orders so freshly bought courses appear immediately even before backend batch enrollment sync
+  try {
+    final orders = await ref.watch(ordersProvider.future);
+    for (final order in orders) {
+      final status = order.status?.toUpperCase();
+      // Only include successful or pending/confirmed orders
+      if (status == 'SUCCESS' || status == 'COMPLETED' || status == 'PAID' || status == null) {
+        for (final item in order.items) {
+          final courseId = item.course;
+          final courseSlug = item.courseSlug;
+          if (courseId == null && courseSlug == null) continue;
+
+          final alreadyInList = list.any((enr) {
+            return (courseId != null && enr.course.toLowerCase() == courseId.toLowerCase()) ||
+                (courseSlug != null && enr.courseSlug?.toLowerCase() == courseSlug.toLowerCase());
+          });
+
+          if (!alreadyInList) {
+            list.add(Enrollment(
+              id: item.id,
+              course: courseId ?? courseSlug ?? '',
+              courseTitle: item.courseTitle ?? 'Purchased Course',
+              courseSlug: courseSlug,
+              enrolledAt: order.completedAt ?? order.createdAt ?? DateTime.now(),
+              completed: false,
+              completionPercentage: 0.0,
+            ));
+          }
+        }
+      }
+    }
+  } catch (e) {
+    // Orders fetch is non-fatal fallback
+  }
 
   final enriched = <Enrollment>[];
   for (final enr in list) {
@@ -137,14 +173,38 @@ final studentEnrollmentsProvider = FutureProvider.autoDispose<List<Enrollment>>(
 
 /// Provider for checking if a student is enrolled in a specific course by ID or slug.
 final isCourseEnrolledProvider = Provider.autoDispose.family<bool, String>((ref, courseIdOrSlug) {
-  if (courseIdOrSlug.isEmpty) return false;
+  final target = courseIdOrSlug.trim();
+  if (target.isEmpty) return false;
+  final targetLower = target.toLowerCase();
+
   final enrollmentsAsync = ref.watch(studentEnrollmentsProvider);
-  return enrollmentsAsync.maybeWhen(
+  final isEnrolledFromEnrollments = enrollmentsAsync.maybeWhen(
     data: (enrollments) {
       return enrollments.any((enr) {
-        return enr.course == courseIdOrSlug ||
-            enr.courseSlug == courseIdOrSlug ||
-            enr.id == courseIdOrSlug;
+        return enr.course.toLowerCase() == targetLower ||
+            (enr.courseSlug != null && enr.courseSlug!.toLowerCase() == targetLower) ||
+            (enr.id != null && enr.id!.toLowerCase() == targetLower);
+      });
+    },
+    orElse: () => false,
+  );
+
+  if (isEnrolledFromEnrollments) return true;
+
+  // Secondary check: verify against ordersProvider
+  final ordersAsync = ref.watch(ordersProvider);
+  return ordersAsync.maybeWhen(
+    data: (orders) {
+      return orders.any((order) {
+        final status = order.status?.toUpperCase();
+        if (status != 'FAILED' && status != 'CANCELLED' && status != 'REFUNDED') {
+          return order.items.any((item) {
+            return (item.course != null && item.course!.toLowerCase() == targetLower) ||
+                (item.courseSlug != null && item.courseSlug!.toLowerCase() == targetLower) ||
+                item.id.toLowerCase() == targetLower;
+          });
+        }
+        return false;
       });
     },
     orElse: () => false,

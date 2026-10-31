@@ -118,6 +118,15 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
             signature: signature,
           );
 
+      // Invalidate enrollments, orders, and clear cart if checking out cart
+      ref.invalidate(studentEnrollmentsProvider);
+      ref.invalidate(ordersProvider);
+      if (widget.directCourseId != null) {
+        ref.invalidate(courseDetailProvider(widget.directCourseId!));
+      } else {
+        await ref.read(cartProvider.notifier).clearCart();
+      }
+
       _completeOrderSuccess(
         result: verifyResult,
         paymentMethodName: 'Razorpay',

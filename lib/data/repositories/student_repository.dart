@@ -128,17 +128,77 @@ class StudentRepository {
 
   /// Fetch student enrollments (My Courses).
   Future<PaginatedEnrollmentList> getEnrollments({int? page}) async {
-    final response = await appApi.apiV1EnrollmentsGet(page: page);
-    if (!response.isSuccessful) {
-      throw Exception('Failed to load enrollments: ${response.error}');
+    try {
+      final response = await appApi.apiV1EnrollmentsGet(page: page);
+      if (response.isSuccessful && response.body != null) {
+        return response.body!;
+      }
+    } catch (e) {
+      debugPrint('⚠️ [StudentRepository] appApi.apiV1EnrollmentsGet failed: $e, falling back to HTTP');
     }
-    return response.body!;
+
+    // Direct HTTP Fallback
+    try {
+      final token = await tokenStorage.getAccessToken();
+      final pageParam = page != null ? '?page=$page' : '';
+      final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/enrollments/$pageParam');
+      final response = await http.get(
+        uri,
+        headers: {
+          if (token != null) 'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      ).timeout(const Duration(seconds: 15));
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map<String, dynamic>) {
+          return PaginatedEnrollmentList.fromJson(decoded);
+        } else if (decoded is List) {
+          final results = decoded
+              .whereType<Map<String, dynamic>>()
+              .map((e) => Enrollment.fromJson(e))
+              .toList();
+          return PaginatedEnrollmentList(
+            count: results.length,
+            results: results,
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ [StudentRepository] getEnrollments direct HTTP error: $e');
+    }
+
+    return const PaginatedEnrollmentList(count: 0, results: []);
   }
 
   /// Check if enrolled in a specific course.
   Future<bool> checkEnrollment(String courseId) async {
-    final response = await appApi.apiV1EnrollmentsCheckCourseIdGet(courseId: courseId);
-    return response.isSuccessful;
+    try {
+      final response = await appApi.apiV1EnrollmentsCheckCourseIdGet(courseId: courseId);
+      if (response.isSuccessful) return true;
+    } catch (_) {}
+
+    try {
+      final token = await tokenStorage.getAccessToken();
+      final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/enrollments/check/$courseId/');
+      final res = await http.get(
+        uri,
+        headers: {
+          if (token != null) 'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      ).timeout(const Duration(seconds: 10));
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        final data = jsonDecode(res.body);
+        if (data is Map && (data['enrolled'] == true || data['is_enrolled'] == true)) {
+          return true;
+        }
+        return res.statusCode == 200;
+      }
+    } catch (_) {}
+    return false;
   }
 
   // ── Cart ──────────────────────────────────────────────────────
