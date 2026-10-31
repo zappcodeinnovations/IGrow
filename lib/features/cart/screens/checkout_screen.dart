@@ -320,6 +320,16 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
 
       debugPrint('🎉 [CheckoutScreen] Backend Apple IAP confirmation result: $result');
 
+      // Check if backend flagged this as an already processed / duplicate transaction
+      final isAlreadyProcessed = result['message']?.toString().contains('already processed') ?? false;
+      if (isAlreadyProcessed && !(result['enrolled'] == true)) {
+        throw Exception('This Apple In-App Purchase transaction has already been redeemed.');
+      }
+
+      // Immediately invalidate enrollment and order caches so user sees course in My Learning
+      ref.invalidate(studentEnrollmentsProvider);
+      ref.invalidate(ordersProvider);
+
       // 3. Clear cart if cart checkout
       if (widget.directCourseId == null) {
         await ref.read(cartProvider.notifier).clearCart();

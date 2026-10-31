@@ -124,8 +124,13 @@ class AppleIapService {
 
     final purchaseParam = PurchaseParam(productDetails: productToBuy);
 
-    debugPrint('🚀 [AppleIapService] Initiating buyNonConsumable for $productId...');
-    final launched = await _iap.buyNonConsumable(purchaseParam: purchaseParam);
+    debugPrint('🚀 [AppleIapService] Initiating buyConsumable for $productId...');
+    // Use buyConsumable with autoConsume=true so that Apple StoreKit allows repeat purchases
+    // for educational tier products and issues a fresh transaction ID on every checkout.
+    final launched = await _iap.buyConsumable(
+      purchaseParam: purchaseParam,
+      autoConsume: true,
+    );
     if (!launched) {
       throw Exception('Failed to initiate Apple In-App Purchase sheet.');
     }
