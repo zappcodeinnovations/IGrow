@@ -117,10 +117,10 @@ class AppleIapService {
       );
     }
 
-    final ProductDetails productToBuy = response.productDetails.firstWhere(
-      (p) => p.id == productId,
-      orElse: () => response.productDetails.first,
-    );
+    final productMatches = response.productDetails.where((p) => p.id == productId);
+    final ProductDetails productToBuy = productMatches.isNotEmpty
+        ? productMatches.first
+        : response.productDetails.first;
 
     final purchaseParam = PurchaseParam(productDetails: productToBuy);
 
