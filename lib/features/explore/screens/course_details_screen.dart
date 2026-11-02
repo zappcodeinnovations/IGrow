@@ -2791,10 +2791,13 @@ class _FreePreviewModalSheet extends StatefulWidget {
 }
 
 class _FreePreviewModalSheetState extends State<_FreePreviewModalSheet> {
+  static const Duration _maxPreviewDuration = Duration(seconds: 45);
+
   VideoPlayerController? _controller;
   ChewieController? _chewieController;
   bool _isLoading = true;
   String? _error;
+  bool _previewLimitReached = false;
 
   @override
   void initState() {
@@ -2802,10 +2805,39 @@ class _FreePreviewModalSheetState extends State<_FreePreviewModalSheet> {
     _startPreview();
   }
 
+  void _onVideoPlayerTick() {
+    if (_controller == null || !_controller!.value.isInitialized) return;
+    final currentPos = _controller!.value.position;
+    final totalDuration = _controller!.value.duration;
+
+    // Only apply the 45s cutoff if the total video is longer than 45s
+    if (totalDuration > _maxPreviewDuration && currentPos >= _maxPreviewDuration) {
+      if (!_previewLimitReached) {
+        _controller!.pause();
+        _controller!.seekTo(_maxPreviewDuration);
+        if (_chewieController != null && _chewieController!.isFullScreen) {
+          _chewieController!.exitFullScreen();
+        }
+        if (mounted) {
+          setState(() {
+            _previewLimitReached = true;
+          });
+        }
+      }
+    } else if (_previewLimitReached && currentPos < _maxPreviewDuration) {
+      if (mounted) {
+        setState(() {
+          _previewLimitReached = false;
+        });
+      }
+    }
+  }
+
   Future<void> _startPreview() async {
     setState(() {
       _isLoading = true;
       _error = null;
+      _previewLimitReached = false;
     });
 
     final videoUrl = widget.lecture.videoUrl;
@@ -2877,6 +2909,8 @@ class _FreePreviewModalSheetState extends State<_FreePreviewModalSheet> {
 
       if (!mounted) return;
 
+      _controller!.addListener(_onVideoPlayerTick);
+
       _chewieController = ChewieController(
         videoPlayerController: _controller!,
         autoPlay: true,
@@ -2906,6 +2940,7 @@ class _FreePreviewModalSheetState extends State<_FreePreviewModalSheet> {
 
   @override
   void dispose() {
+    _controller?.removeListener(_onVideoPlayerTick);
     _chewieController?.dispose();
     _controller?.dispose();
     super.dispose();
@@ -3064,7 +3099,100 @@ class _FreePreviewModalSheetState extends State<_FreePreviewModalSheet> {
                               .videoPlayerController
                               .value
                               .isInitialized
-                    ? Chewie(controller: _chewieController!)
+                    ? Stack(
+                        children: [
+                          Positioned.fill(
+                            child: Chewie(controller: _chewieController!),
+                          ),
+                          if (_previewLimitReached)
+                            Positioned.fill(
+                              child: Container(
+                                color: Colors.black.withValues(alpha: 0.88),
+                                padding: const EdgeInsets.symmetric(horizontal: 24),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(10),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primaryGreen.withValues(alpha: 0.2),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(
+                                        Icons.lock_outline_rounded,
+                                        color: AppColors.primaryGreen,
+                                        size: 28,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 10),
+                                    const Text(
+                                      'Preview Time Limit Reached',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                    const SizedBox(height: 6),
+                                    const Text(
+                                      'Enjoying this lecture? Enroll now to unlock all lectures and the full video content.',
+                                      style: TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 11.5,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Wrap(
+                                      spacing: 10,
+                                      runSpacing: 8,
+                                      alignment: WrapAlignment.center,
+                                      children: [
+                                        OutlinedButton.icon(
+                                          style: OutlinedButton.styleFrom(
+                                            foregroundColor: Colors.white70,
+                                            side: const BorderSide(color: Colors.white38),
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                              vertical: 6,
+                                            ),
+                                          ),
+                                          onPressed: () {
+                                            _controller?.seekTo(Duration.zero);
+                                            setState(() => _previewLimitReached = false);
+                                            _controller?.play();
+                                          },
+                                          icon: const Icon(Icons.replay_rounded, size: 14),
+                                          label: const Text(
+                                            'Replay Sample',
+                                            style: TextStyle(fontSize: 11),
+                                          ),
+                                        ),
+                                        ElevatedButton.icon(
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: AppColors.primaryGreen,
+                                            foregroundColor: Colors.white,
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 14,
+                                              vertical: 6,
+                                            ),
+                                          ),
+                                          onPressed: widget.onEnroll,
+                                          icon: const Icon(Icons.shopping_bag_outlined, size: 14),
+                                          label: const Text(
+                                            'Enroll Now',
+                                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                        ],
+                      )
                     : const SizedBox.shrink(),
               ),
             ),
