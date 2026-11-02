@@ -187,10 +187,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/course/:id',
-        builder: (context, state) {
-          final id = state.pathParameters['id']!;
-          return CourseDetailsScreen(courseId: id);
-        },
+        redirect: (context, state) => '/farmer/course/${state.pathParameters['id']}',
       ),
       GoRoute(
         path: '/farmer/courses/:id',
@@ -361,7 +358,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/wishlist',
-        builder: (context, state) => const WishlistScreen(),
+        redirect: (context, state) => RouteNames.wishlist,
       ),
       GoRoute(
         path: RouteNames.certificates,

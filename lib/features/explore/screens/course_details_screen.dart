@@ -210,6 +210,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
   bool _isPlayingVideo = false;
   bool _isLoadingVideo = false;
   bool _isAddingToCart = false;
+  bool _isTogglingWishlist = false;
 
   // Track expanded state for sections
   final Map<String, bool> _sectionExpanded = {};
@@ -705,6 +706,8 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
   }
 
   Future<void> _toggleWishlist(ApiCourseDetail course) async {
+    if (_isTogglingWishlist) return;
+    _isTogglingWishlist = true;
     try {
       final effectiveId = course.id.isNotEmpty ? course.id : widget.courseId;
       final preview = ApiWishlistItem(
@@ -736,6 +739,10 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
           e.toString().replaceAll('Exception: ', ''),
           isError: true,
         );
+      }
+    } finally {
+      if (mounted) {
+        _isTogglingWishlist = false;
       }
     }
   }
@@ -1994,7 +2001,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                         tooltip: isSaved
                             ? 'Remove from Wishlist'
                             : 'Add to Wishlist',
-                        onPressed: () => _toggleWishlist(course),
+                        onPressed: _isTogglingWishlist ? null : () => _toggleWishlist(course),
                       ),
                     ),
                   ],

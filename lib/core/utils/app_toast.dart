@@ -87,6 +87,8 @@ class AppToast {
     );
   }
 
+  static DateTime? _lastWishlistNavTime;
+
   /// Premium, compact floating banner specifically for Wishlist interactions.
   static void showWishlistToast(BuildContext context, {required bool isAdded}) {
     final messenger = ScaffoldMessenger.of(context);
@@ -171,11 +173,18 @@ class AppToast {
               if (isAdded)
                 InkWell(
                   onTap: () {
+                    final now = DateTime.now();
+                    if (_lastWishlistNavTime != null &&
+                        now.difference(_lastWishlistNavTime!).inMilliseconds < 1000) {
+                      return;
+                    }
+                    _lastWishlistNavTime = now;
                     messenger.hideCurrentSnackBar();
                     final navContext =
                         rootNavigatorKey.currentContext ?? context;
-                    final router = GoRouter.of(navContext);
-                    router.push(RouteNames.wishlist);
+                    if (navContext.mounted) {
+                      navContext.push(RouteNames.wishlist);
+                    }
                   },
                   borderRadius: BorderRadius.circular(10),
                   child: Container(
