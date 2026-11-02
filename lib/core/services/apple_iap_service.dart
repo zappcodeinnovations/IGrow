@@ -19,13 +19,14 @@ class AppleIapService {
   String? _expectedProductId;
 
   /// Default fallback product tier provided by backend.
-  static const String defaultProductId = 'com.zappkode.igrow.tier1';
+  static const String defaultProductId = 'com.zappkode.igrow.c.tier1';
 
   /// Predefined set of IAP product IDs configured in App Store Connect.
   static const Set<String> productIds = {
-    'com.zappkode.igrow.tier1',
+    'com.zappkode.igrow.c.tier1',
     'com.zappkode.igrow.tier2',
     'com.zappkode.igrow.tier3',
+    'com.zappkode.igrow.tier1',
   };
 
   /// Initialize listener for purchase updates.
