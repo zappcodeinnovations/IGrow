@@ -316,11 +316,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                         const SizedBox(height: 36),
 
-                        // Input Card: Email or Phone (Reusable AppPillTextField)
+                        // Input Card: Email (Reusable AppPillTextField)
                         AppPillTextField(
                           controller: _emailController,
-                          hintText: tr(ref, 'Email or Phone'),
-                          prefixIcon: Icons.person_outline_rounded,
+                          hintText: tr(ref, 'Email'),
+                          prefixIcon: Icons.email_outlined,
                           keyboardType: TextInputType.emailAddress,
                           textInputAction: TextInputAction.next,
                           autofillHints: const [
@@ -329,7 +329,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ],
                           validator: (v) {
                             if (v == null || v.trim().isEmpty) {
-                              return tr(ref, 'Email or Phone is required');
+                              return tr(ref, 'Email is required');
+                            }
+                            final trimmed = v.trim();
+                            final emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+                            if (!emailRegex.hasMatch(trimmed)) {
+                              return tr(ref, 'Please enter a valid email address');
                             }
                             return null;
                           },
