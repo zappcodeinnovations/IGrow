@@ -221,7 +221,56 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
     super.dispose();
   }
 
-  String _formatCourseDuration(String? totalDuration) {
+  String _formatCourseDuration(ApiCourseDetail course) {
+    int totalLectureSeconds = 0;
+    bool hasLectureDuration = false;
+
+    for (final section in course.sections) {
+      for (final lecture in section.lectures) {
+        int lectureSec = 0;
+        if (lecture.duration != null && lecture.duration! > 0) {
+          lectureSec = lecture.duration!;
+        } else if (lecture.durationFormatted != null &&
+            lecture.durationFormatted!.trim().isNotEmpty) {
+          final clean = lecture.durationFormatted!.trim();
+          final parts = clean.split(':');
+          if (parts.length == 2) {
+            final m = int.tryParse(parts[0]) ?? 0;
+            final s = int.tryParse(parts[1]) ?? 0;
+            lectureSec = (m * 60) + s;
+          } else if (parts.length == 3) {
+            final h = int.tryParse(parts[0]) ?? 0;
+            final m = int.tryParse(parts[1]) ?? 0;
+            final s = int.tryParse(parts[2]) ?? 0;
+            lectureSec = (h * 3600) + (m * 60) + s;
+          }
+        }
+        if (lectureSec > 0) {
+          totalLectureSeconds += lectureSec;
+          hasLectureDuration = true;
+        }
+      }
+    }
+
+    if (hasLectureDuration && totalLectureSeconds > 0) {
+      if (totalLectureSeconds < 60) {
+        return '$totalLectureSeconds secs';
+      }
+      final totalMinutes = (totalLectureSeconds / 60).round();
+      if (totalMinutes < 60) {
+        final displayMin = totalMinutes <= 0 ? 1 : totalMinutes;
+        return '$displayMin min${displayMin == 1 ? '' : 's'}';
+      }
+      final hours = totalMinutes ~/ 60;
+      final remainingMinutes = totalMinutes % 60;
+      if (remainingMinutes == 0) {
+        return '$hours ${hours == 1 ? "hr" : "hrs"}';
+      }
+      return '$hours hr $remainingMinutes mins';
+    }
+
+    // Fall back to parsed course.totalDuration if lectures don't have duration info
+    final totalDuration = course.totalDuration;
     if (totalDuration == null || totalDuration.trim().isEmpty) return '0 mins';
     final parsed =
         double.tryParse(totalDuration.replaceAll(RegExp(r'[^0-9.]'), '')) ??
@@ -1407,7 +1456,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    _formatCourseDuration(course.totalDuration),
+                    _formatCourseDuration(course),
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.9),
                       fontSize: 12,
