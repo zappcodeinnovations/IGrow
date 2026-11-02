@@ -1016,9 +1016,24 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                 ref.watch(instructorEbooksProvider).when(
                   data: (ebooks) {
                     if (ebooks.isEmpty) {
-                      return const Padding(
-                        padding: EdgeInsets.only(top: 16),
-                        child: Text('No e-books uploaded yet.'),
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 20),
+                        child: Center(
+                          child: Column(
+                            children: [
+                              Icon(Icons.menu_book_rounded, size: 48, color: Colors.grey.shade400),
+                              const SizedBox(height: 10),
+                              const Text('No e-books uploaded yet.'),
+                              const SizedBox(height: 10),
+                              FilledButton.icon(
+                                style: FilledButton.styleFrom(backgroundColor: const Color(0xFF9333EA)),
+                                onPressed: () => context.push(RouteNames.uploadEbook),
+                                icon: const Icon(Icons.add, size: 18),
+                                label: const Text('Create First E-Book'),
+                              ),
+                            ],
+                          ),
+                        ),
                       );
                     }
                     return Column(
