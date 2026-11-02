@@ -1763,42 +1763,53 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
               ],
 
               // Ratings & Students Row: "4.8 ★★★★★ (417 ratings) 30,089 students"
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  const Text(
-                    '4.8',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.accentOrange,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: List.generate(
-                      5,
-                      (index) => const Icon(
-                        Icons.star_rounded,
-                        size: 16,
-                        color: AppColors.accentOrange,
+              Builder(
+                builder: (context) {
+                  final ratingsCount = course.sections.fold<int>(0, (s, sec) => s + sec.lectures.length) * 12 + 48;
+                  final rawEnrollment = course.enrollmentCount?.replaceAll(RegExp(r'[^0-9]'), '') ?? '';
+                  final enrollmentNum = int.tryParse(rawEnrollment) ?? 0;
+                  final studentText = enrollmentNum > 0
+                      ? ' $enrollmentNum ${enrollmentNum == 1 ? "student" : "students"}'
+                      : '';
+
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      const Text(
+                        '4.8',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.accentOrange,
+                        ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Flexible(
-                    child: Text(
-                      '(${course.sections.fold<int>(0, (s, sec) => s + sec.lectures.length) * 12 + 48} ratings) ${course.enrollmentCount ?? '1,240'} students',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: isDark ? Colors.white60 : Colors.grey.shade700,
+                      const SizedBox(width: 4),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: List.generate(
+                          5,
+                          (index) => const Icon(
+                            Icons.star_rounded,
+                            size: 16,
+                            color: AppColors.accentOrange,
+                          ),
+                        ),
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          '($ratingsCount ratings)$studentText',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isDark ? Colors.white60 : Colors.grey.shade700,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
               const SizedBox(height: 12),
 
