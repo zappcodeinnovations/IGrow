@@ -1,5 +1,27 @@
 import 'package:flutter/foundation.dart';
 
+int? _parseDurationInSeconds(dynamic val) {
+  if (val == null) return null;
+  if (val is num) return val.toInt();
+  final s = val.toString().trim();
+  if (s.isEmpty) return null;
+  if (s.contains(':')) {
+    final parts = s.split(':');
+    if (parts.length == 2) {
+      final m = int.tryParse(parts[0]) ?? 0;
+      final sec = int.tryParse(parts[1]) ?? 0;
+      return (m * 60) + sec;
+    } else if (parts.length == 3) {
+      final h = int.tryParse(parts[0]) ?? 0;
+      final m = int.tryParse(parts[1]) ?? 0;
+      final sec = int.tryParse(parts[2]) ?? 0;
+      return (h * 3600) + (m * 60) + sec;
+    }
+  }
+  final cleaned = s.replaceAll(RegExp(r'[^0-9]'), '');
+  return int.tryParse(cleaned);
+}
+
 /// Course-related models matching the IAgrow Swagger schema.
 
 // ── Enums ───────────────────────────────────────────────────────
@@ -220,6 +242,7 @@ class ApiLecture {
     this.bunnyStatus,
     this.duration,
     this.durationFormatted,
+    this.previewDuration,
     this.sortOrder,
     this.isPreview = false,
     this.resources = const [],
@@ -233,6 +256,7 @@ class ApiLecture {
   final int? bunnyStatus;
   final int? duration;
   final String? durationFormatted;
+  final int? previewDuration;
   final int? sortOrder;
   final bool isPreview;
   final List<ApiLectureResource> resources;
@@ -252,6 +276,14 @@ class ApiLecture {
             ? (json['duration'] as num).toInt()
             : int.tryParse(json['duration']?.toString() ?? ''),
         durationFormatted: json['duration_formatted']?.toString(),
+        previewDuration: _parseDurationInSeconds(
+          json['preview_duration'] ??
+              json['previewDuration'] ??
+              json['preview_duration_seconds'] ??
+              json['preview_limit'] ??
+              json['previewLimit'] ??
+              json['preview_time'],
+        ),
         sortOrder: json['sort_order'] is num
             ? (json['sort_order'] as num).toInt()
             : int.tryParse(json['sort_order']?.toString() ?? ''),
@@ -348,6 +380,7 @@ class ApiCourseDetail {
     this.shortDescription,
     this.thumbnail,
     this.previewVideoUrl,
+    this.previewDuration,
     this.category,
     this.categoryDisplay,
     this.level,
@@ -376,6 +409,7 @@ class ApiCourseDetail {
   final String? shortDescription;
   final String? thumbnail;
   final String? previewVideoUrl;
+  final int? previewDuration;
   final String? category;
   final String? categoryDisplay;
   final String? level;
@@ -417,6 +451,14 @@ class ApiCourseDetail {
         shortDescription: json['short_description']?.toString(),
         thumbnail: json['thumbnail']?.toString(),
         previewVideoUrl: json['preview_video_url']?.toString(),
+        previewDuration: _parseDurationInSeconds(
+          json['preview_duration'] ??
+              json['previewDuration'] ??
+              json['preview_duration_seconds'] ??
+              json['preview_limit'] ??
+              json['previewLimit'] ??
+              json['preview_time'],
+        ),
         category: json['category'] is Map
             ? (json['category']['id']?.toString() ??
                 json['category']['slug']?.toString() ??

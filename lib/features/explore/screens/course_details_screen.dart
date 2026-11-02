@@ -2840,7 +2840,20 @@ class _FreePreviewModalSheet extends StatefulWidget {
 }
 
 class _FreePreviewModalSheetState extends State<_FreePreviewModalSheet> {
-  static const Duration _maxPreviewDuration = Duration(seconds: 45);
+  Duration get _effectivePreviewLimit {
+    // 1. Lecture-specific previewDuration parameter set by instructor
+    final lectureSec = widget.lecture.previewDuration;
+    if (lectureSec != null && lectureSec > 0) {
+      return Duration(seconds: lectureSec);
+    }
+    // 2. Course-level previewDuration fallback
+    final courseSec = widget.course.previewDuration;
+    if (courseSec != null && courseSec > 0) {
+      return Duration(seconds: courseSec);
+    }
+    // 3. Platform default preview time limit (30 seconds)
+    return const Duration(seconds: 30);
+  }
 
   VideoPlayerController? _controller;
   ChewieController? _chewieController;
@@ -2858,12 +2871,15 @@ class _FreePreviewModalSheetState extends State<_FreePreviewModalSheet> {
     if (_controller == null || !_controller!.value.isInitialized) return;
     final currentPos = _controller!.value.position;
     final totalDuration = _controller!.value.duration;
+    final limit = _effectivePreviewLimit;
 
-    // Only apply the 45s cutoff if the total video is longer than 45s
-    if (totalDuration > _maxPreviewDuration && currentPos >= _maxPreviewDuration) {
-      if (!_previewLimitReached) {
+    // Apply preview cutoff once position reaches the designated preview duration limit
+    if (totalDuration > limit && currentPos >= limit) {
+      if (_controller!.value.isPlaying) {
         _controller!.pause();
-        _controller!.seekTo(_maxPreviewDuration);
+      }
+      if (!_previewLimitReached) {
+        _controller!.seekTo(limit);
         if (_chewieController != null && _chewieController!.isFullScreen) {
           _chewieController!.exitFullScreen();
         }
@@ -2873,7 +2889,7 @@ class _FreePreviewModalSheetState extends State<_FreePreviewModalSheet> {
           });
         }
       }
-    } else if (_previewLimitReached && currentPos < _maxPreviewDuration) {
+    } else if (_previewLimitReached && currentPos < limit) {
       if (mounted) {
         setState(() {
           _previewLimitReached = false;
