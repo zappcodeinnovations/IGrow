@@ -9,7 +9,6 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/responsive_layout.dart';
-import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_text_field.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -766,11 +765,46 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
                       const SizedBox(height: 24),
 
                       // Submit Button
-                      AppButton(
-                        label: 'Submit for Verification',
-                        icon: Icons.check_circle_outline_rounded,
-                        isLoading: _isLoading,
-                        onPressed: _submitKyc,
+                      SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primaryGreen,
+                            foregroundColor: Colors.white,
+                            disabledBackgroundColor:
+                                AppColors.primaryGreen.withValues(alpha: 0.5),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            elevation: 0,
+                          ),
+                          onPressed: _isLoading ? null : _submitKyc,
+                          icon: _isLoading
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(
+                                  Icons.check_circle_outline_rounded,
+                                  size: 20,
+                                  color: Colors.white,
+                                ),
+                          label: Text(
+                            _isLoading
+                                ? 'Please wait...'
+                                : 'Submit for Verification',
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
                       ),
                       if (_isEditingExisting) ...[
                         const SizedBox(height: 12),
