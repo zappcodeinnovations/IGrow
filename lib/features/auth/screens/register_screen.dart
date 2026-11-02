@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../core/localization/app_strings.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/responsive_layout.dart';
 import '../../../core/widgets/app_gradient_button.dart';
@@ -244,16 +245,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   ),
                 ),
                 const SizedBox(height: 32),
-                Text('Create Account 🌱', style: Theme.of(context).textTheme.displayMedium),
+                Text('${tr(ref, 'Create Account')} 🌱', style: Theme.of(context).textTheme.displayMedium),
                 const SizedBox(height: 8),
                 Text(
-                  'Join as ${_selectedRole.label} and start your journey.',
+                  '${tr(ref, 'Join as')} ${tr(ref, _selectedRole.label)} ${tr(ref, 'and start your journey.')}',
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: AppColors.inkSoft),
                 ),
                 const SizedBox(height: 32),
                 // Role Selection
                 Text(
-                  'Select Your Role',
+                  tr(ref, 'Select Your Role'),
                   style: Theme.of(context).textTheme.titleSmall,
                 ),
                 const SizedBox(height: 12),
@@ -279,32 +280,32 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 const SizedBox(height: 24),
                 AppTextField(
                   controller: _nameController,
-                  label: 'Full Name',
-                  hint: 'Enter your full name',
+                  label: tr(ref, 'Full Name'),
+                  hint: tr(ref, 'Enter your full name'),
                   prefixIcon: const Icon(Icons.person_outline_rounded),
                   textInputAction: TextInputAction.next,
                   validator: (v) =>
-                      (v == null || v.isEmpty) ? 'Name is required' : null,
+                      (v == null || v.isEmpty) ? tr(ref, 'Name is required') : null,
                 ),
                 const SizedBox(height: 16),
                 AppTextField(
                   controller: _emailController,
-                  label: 'Email',
-                  hint: 'Enter your email address',
+                  label: tr(ref, 'Email'),
+                  hint: tr(ref, 'Enter your email address'),
                   prefixIcon: const Icon(Icons.email_outlined),
                   keyboardType: TextInputType.emailAddress,
                   textInputAction: TextInputAction.next,
                   validator: (v) {
                     if (v == null || v.trim().isEmpty) {
-                      return 'Email is required';
+                      return tr(ref, 'Email is required');
                     }
                     final trimmed = v.trim();
                     if (RegExp(r'[A-Z]').hasMatch(trimmed)) {
-                      return 'Email must contain lowercase letters only';
+                      return tr(ref, 'Email must contain lowercase letters only');
                     }
                     final emailRegex = RegExp(r'^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$');
                     if (!emailRegex.hasMatch(trimmed)) {
-                      return 'Valid email required';
+                      return tr(ref, 'Valid email required');
                     }
                     return null;
                   },
@@ -312,8 +313,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 const SizedBox(height: 16),
                 AppTextField(
                   controller: _phoneController,
-                  label: 'Phone Number',
-                  hint: '10-digit mobile number',
+                  label: tr(ref, 'Phone Number'),
+                  hint: tr(ref, '10-digit mobile number'),
                   prefixIcon: const Icon(Icons.phone_outlined),
                   keyboardType: TextInputType.phone,
                   inputFormatters: [
@@ -323,10 +324,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   textInputAction: TextInputAction.next,
                   validator: (v) {
                     if (v == null || v.trim().isEmpty) {
-                      return 'Phone number is required';
+                      return tr(ref, 'Phone number is required');
                     }
                     if (v.trim().length != 10) {
-                      return 'Enter a valid 10-digit phone number';
+                      return tr(ref, 'Enter a valid 10-digit phone number');
                     }
                     return null;
                   },
@@ -334,8 +335,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 const SizedBox(height: 16),
                 AppTextField(
                   controller: _passwordController,
-                  label: 'Password',
-                  hint: 'Create a strong password',
+                  label: tr(ref, 'Password'),
+                  hint: tr(ref, 'Create a strong password'),
                   obscureText: _obscurePassword,
                   prefixIcon: const Icon(Icons.lock_outline_rounded),
                   suffixIcon: GestureDetector(
@@ -349,14 +350,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   ),
                   textInputAction: TextInputAction.next,
                   validator: (v) => (v == null || v.length < 4)
-                      ? 'Min 4 characters'
+                      ? tr(ref, 'Min 4 characters')
                       : null,
                 ),
                 const SizedBox(height: 16),
                 AppTextField(
                   controller: _confirmPasswordController,
-                  label: 'Confirm Password',
-                  hint: 'Re-enter your password',
+                  label: tr(ref, 'Confirm Password'),
+                  hint: tr(ref, 'Re-enter your password'),
                   obscureText: _obscureConfirm,
                   prefixIcon: const Icon(Icons.lock_outline_rounded),
                   suffixIcon: GestureDetector(
@@ -370,7 +371,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   ),
                   textInputAction: TextInputAction.done,
                   validator: (v) => v != _passwordController.text
-                      ? 'Passwords don\'t match'
+                      ? tr(ref, 'Passwords don\'t match')
                       : null,
                 ),
                 const SizedBox(height: 20),
@@ -397,11 +398,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         behavior: HitTestBehavior.opaque,
                         child: Text.rich(
                           TextSpan(
-                            text: 'By continuing, you agree to our ',
+                            text: tr(ref, 'By continuing, you agree to our '),
                             style: Theme.of(context).textTheme.bodySmall,
                             children: [
                               TextSpan(
-                                text: 'Terms of Use (EULA)',
+                                text: tr(ref, 'Terms of Use (EULA)'),
                                 style: Theme.of(context)
                                     .textTheme
                                     .bodySmall
@@ -411,9 +412,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                       decoration: TextDecoration.underline,
                                     ),
                               ),
-                              const TextSpan(
+                              TextSpan(
                                 text:
-                                    ' and zero-tolerance policy against objectionable content and abusive users.',
+                                    tr(ref, ' and zero-tolerance policy against objectionable content and abusive users.'),
                               ),
                             ],
                           ),
@@ -425,7 +426,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 const SizedBox(height: 28),
 
                 AppGradientButton(
-                  label: 'Create Account',
+                  label: tr(ref, 'Create Account'),
                   onPressed: (_agreeTerms && !_isRegisterLoading && !_isGoogleLoading && !_isAppleLoading)
                       ? () {
                           _register();
@@ -470,7 +471,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
                 // Google Sign Up
                 AppSocialButton.google(
-                  text: 'Sign up with Google',
+                  text: tr(ref, 'Sign up with Google'),
                   isDark: isDark,
                   isLoading: _isGoogleLoading,
                   onPressed: (_isRegisterLoading || _isGoogleLoading || _isAppleLoading) ? null : _loginWithGoogle,
@@ -480,7 +481,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 if (Platform.isIOS) ...[
                   const SizedBox(height: 12),
                   AppSocialButton.apple(
-                    text: 'Sign up with Apple',
+                    text: tr(ref, 'Sign up with Apple'),
                     isDark: isDark,
                     isLoading: _isAppleLoading,
                     onPressed: (_isRegisterLoading || _isGoogleLoading || _isAppleLoading) ? null : _loginWithApple,
@@ -493,7 +494,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        'Already have an account? ',
+                        tr(ref, 'Already have an account? '),
                         style:
                             Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.inkSoft),
                       ),
@@ -508,7 +509,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           }
                         },
                         child: Text(
-                          'Sign In',
+                          tr(ref, 'Sign In'),
                           style: Theme.of(context).textTheme.labelMedium?.copyWith(color: AppColors.primaryGreen,),
                         ),
                       ),
@@ -526,7 +527,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   }
 }
 
-class _RoleSelectCard extends StatelessWidget {
+class _RoleSelectCard extends ConsumerWidget {
   const _RoleSelectCard({
     required this.role,
     required this.isSelected,
@@ -538,7 +539,7 @@ class _RoleSelectCard extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return GestureDetector(
@@ -567,7 +568,7 @@ class _RoleSelectCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              role.label,
+              tr(ref, role.label),
               style: Theme.of(context).textTheme.labelMedium?.copyWith(
                     color: isSelected
                         ? AppColors.primaryGreen
