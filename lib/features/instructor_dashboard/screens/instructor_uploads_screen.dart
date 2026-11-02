@@ -27,8 +27,21 @@ class _InstructorUploadsScreenState extends ConsumerState<InstructorUploadsScree
     _tabController = TabController(
       length: 2,
       vsync: this,
-      initialIndex: widget.initialTabIndex,
+      initialIndex: (widget.initialTabIndex >= 0 && widget.initialTabIndex < 2)
+          ? widget.initialTabIndex
+          : 0,
     );
+  }
+
+  @override
+  void didUpdateWidget(covariant InstructorUploadsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialTabIndex != widget.initialTabIndex &&
+        widget.initialTabIndex >= 0 &&
+        widget.initialTabIndex < _tabController.length &&
+        _tabController.index != widget.initialTabIndex) {
+      _tabController.animateTo(widget.initialTabIndex);
+    }
   }
 
   @override
