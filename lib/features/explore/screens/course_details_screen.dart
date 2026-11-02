@@ -1240,6 +1240,48 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                                 Expanded(
                                   child: SizedBox(
                                     height: 44,
+                                    child: FilledButton(
+                                      style: FilledButton.styleFrom(
+                                        backgroundColor: isDark
+                                            ? AppColors.editorialSecondary
+                                            : AppColors.editorialPrimary,
+                                        foregroundColor: Colors.white,
+                                        padding: EdgeInsets.zero,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                        ),
+                                        elevation: 1,
+                                      ),
+                                      onPressed: _isAddingToCart
+                                          ? null
+                                          : () => _handleAddToCart(
+                                              context, course),
+                                      child: _isAddingToCart
+                                          ? const SizedBox(
+                                              width: 16,
+                                              height: 16,
+                                              child:
+                                                  CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                color: Colors.white,
+                                              ),
+                                            )
+                                          : const Text(
+                                              'Add to Cart',
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 13,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: SizedBox(
+                                    height: 44,
                                     child: OutlinedButton(
                                       style: OutlinedButton.styleFrom(
                                         side: BorderSide(
@@ -1254,62 +1296,16 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                                               BorderRadius.circular(10),
                                         ),
                                       ),
-                                      onPressed: _isAddingToCart
-                                          ? null
-                                          : () => _handleAddToCart(
-                                              context, course),
-                                      child: _isAddingToCart
-                                          ? SizedBox(
-                                              width: 16,
-                                              height: 16,
-                                              child:
-                                                  CircularProgressIndicator(
-                                                strokeWidth: 2,
-                                                color: isDark
-                                                    ? AppColors
-                                                        .editorialSecondary
-                                                    : AppColors
-                                                        .editorialPrimary,
-                                              ),
-                                            )
-                                          : Text(
-                                              'Add to Cart',
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 13,
-                                                color: isDark
-                                                    ? AppColors
-                                                        .editorialSecondary
-                                                    : AppColors
-                                                        .editorialPrimary,
-                                              ),
-                                            ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: SizedBox(
-                                    height: 44,
-                                    child: FilledButton(
-                                      style: FilledButton.styleFrom(
-                                        backgroundColor:
-                                            AppColors.editorialSecondary,
-                                        foregroundColor: Colors.white,
-                                        padding: EdgeInsets.zero,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(10),
-                                        ),
-                                      ),
                                       onPressed: () =>
                                           _handleBuyNow(context, course),
-                                      child: const Text(
+                                      child: Text(
                                         'Buy Now',
                                         style: TextStyle(
                                           fontWeight: FontWeight.bold,
                                           fontSize: 13,
-                                          color: Colors.white,
+                                          color: isDark
+                                              ? AppColors.editorialSecondary
+                                              : AppColors.editorialPrimary,
                                         ),
                                       ),
                                     ),
