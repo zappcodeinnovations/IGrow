@@ -320,7 +320,7 @@ class CommunityRepository {
 
   Future<Map<String, dynamic>> likePost(String postId) async {
     try {
-      return await reactToPost(postId, 'LIKE');
+      return await reactToPost(postId, 'FARM');
     } catch (_) {
       final uri = Uri.parse('$baseUrl/posts/$postId/like/');
       final response = await http.post(uri, headers: await _getHeaders());

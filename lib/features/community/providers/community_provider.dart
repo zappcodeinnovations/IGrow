@@ -401,7 +401,7 @@ class CommunityPostsNotifier extends StateNotifier<AsyncValue<List<CommunityPost
   }
 
   Future<bool> toggleLike(String postId) async {
-    return reactToPost(postId, 'LIKE');
+    return reactToPost(postId, 'FARM');
   }
 
   // ─── UGC Safety Actions (Guideline 1.2) ──────────────────────────
