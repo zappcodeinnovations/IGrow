@@ -706,6 +706,11 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
   }
 
   Future<void> _toggleWishlist(ApiCourseDetail course) async {
+    final user = ref.read(authProvider).user;
+    if (user != null && user.activeRole != UserRole.farmer) {
+      _showStudentOnlyDialog(context);
+      return;
+    }
     if (_isTogglingWishlist) return;
     _isTogglingWishlist = true;
     try {
@@ -753,15 +758,18 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final courseAsync = ref.watch(courseDetailProvider(widget.courseId));
+    final currentUser = ref.watch(authProvider).user;
+    final isInstructor = currentUser?.isInstructor == true || currentUser?.isAdmin == true;
+    final defaultHomeRoute = isInstructor ? RouteNames.instructorHome : RouteNames.farmerHome;
     debugPrint(
-      '📱 [CourseDetailsScreen] build: courseId=${widget.courseId}, status=${courseAsync.runtimeType}, hasValue=${courseAsync.hasValue}, hasError=${courseAsync.hasError}',
+      '📱 [CourseDetailsScreen] build: courseId=${widget.courseId}, isInstructor=$isInstructor, status=${courseAsync.runtimeType}, hasValue=${courseAsync.hasValue}, hasError=${courseAsync.hasError}',
     );
 
     return PopScope(
       canPop: context.canPop(),
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
-        context.go(RouteNames.farmerHome);
+        context.go(defaultHomeRoute);
       },
       child: Scaffold(
         backgroundColor: isDark ? AppColors.bgDark : Colors.white,
@@ -779,7 +787,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
               if (context.canPop()) {
                 context.pop();
               } else {
-                context.go(RouteNames.farmerHome);
+                context.go(defaultHomeRoute);
               }
             },
           ),
@@ -801,14 +809,15 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
               ),
               orElse: () => const SizedBox.shrink(),
             ),
-            IconButton(
-              icon: Icon(
-                Icons.shopping_cart_outlined,
-                color: isDark ? Colors.white : AppColors.inkDark,
+            if (!isInstructor)
+              IconButton(
+                icon: Icon(
+                  Icons.shopping_cart_outlined,
+                  color: isDark ? Colors.white : AppColors.inkDark,
+                ),
+                tooltip: 'Cart',
+                onPressed: () => context.push('/cart'),
               ),
-              tooltip: 'Cart',
-              onPressed: () => context.push('/cart'),
-            ),
           ],
         ),
         body: courseAsync.when(
@@ -924,6 +933,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                             isEnrolled,
                             previewVideoUrl: videoUrl,
                             previewBunnyId: previewLecture?.bunnyVideoId,
+                            isInstructor: isInstructor,
                           ),
                         ),
                       ),
@@ -1114,6 +1124,61 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
         ),
         bottomNavigationBar: courseAsync.maybeWhen(
           data: (course) {
+            // Instructors viewing or previewing courses should not see ecommerce purchase footer
+            if (isInstructor) {
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.cardDark : Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.08),
+                      blurRadius: 10,
+                      offset: const Offset(0, -3),
+                    ),
+                  ],
+                  border: Border(
+                    top: BorderSide(
+                      color: isDark ? AppColors.lineDark : Colors.grey.shade200,
+                    ),
+                  ),
+                ),
+                child: SafeArea(
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: SizedBox(
+                          height: 48,
+                          child: FilledButton.icon(
+                            style: FilledButton.styleFrom(
+                              backgroundColor: AppColors.primaryGreen,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              elevation: 2,
+                            ),
+                            onPressed: () {
+                              final targetId = course.id.isNotEmpty ? course.id : widget.courseId;
+                              context.push('/instructor/manage-course/$targetId');
+                            },
+                            icon: const Icon(Icons.settings_outlined, size: 18),
+                            label: const Text(
+                              'Manage Course',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+
             final isEnrolledInList =
                 ref.watch(isCourseEnrolledProvider(widget.courseId)) ||
                 (course.slug != null &&
@@ -1692,22 +1757,6 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
     String? previewBunnyId,
   }) {
     final instructor = course.instructorName ?? 'Instructor';
-    final inCart = (course.id.isNotEmpty &&
-            ref.watch(isCourseInCartProvider(course.id))) ||
-        ref.watch(isCourseInCartProvider(widget.courseId)) ||
-        (course.slug != null &&
-            course.slug!.isNotEmpty &&
-            ref.watch(isCourseInCartProvider(course.slug!)));
-
-    // Pricing & discount calculations
-    final rawPrice = double.tryParse(course.price ?? '');
-    final isFreeCourse = rawPrice == null || rawPrice == 0.0;
-    final priceDisplay = isFreeCourse ? 'Free' : '₹${rawPrice.toStringAsFixed(2)}';
-    // Calculate a realistic original price for visual discount display
-    final double? origPrice = (rawPrice != null && rawPrice > 0)
-        ? (rawPrice * 3.2).roundToDouble() - 1.0
-        : null;
-    final origPriceDisplay = origPrice != null ? '₹${origPrice.toStringAsFixed(2)}' : null;
 
     // Last updated date string
     String lastUpdated = '5/2025';
@@ -1908,6 +1957,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
     bool isEnrolled, {
     String? previewVideoUrl,
     String? previewBunnyId,
+    bool isInstructor = false,
   }) {
     final priceText =
         course.price == null || course.price == '0' || course.price == '0.00'
@@ -1972,43 +2022,71 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                         color: isDark ? Colors.white : Colors.black87,
                       ),
                     ),
-                    Container(
-                      height: 44,
-                      width: 44,
-                      decoration: BoxDecoration(
-                        color: isSaved
-                            ? Colors.red.withValues(alpha: 0.1)
-                            : Colors.transparent,
-                        border: Border.all(
+                    if (!isInstructor)
+                      Container(
+                        height: 44,
+                        width: 44,
+                        decoration: BoxDecoration(
                           color: isSaved
-                              ? Colors.redAccent
-                              : (isDark
-                                    ? AppColors.lineDark
-                                    : Colors.grey.shade300),
+                              ? Colors.red.withValues(alpha: 0.1)
+                              : Colors.transparent,
+                          border: Border.all(
+                            color: isSaved
+                                ? Colors.redAccent
+                                : (isDark
+                                      ? AppColors.lineDark
+                                      : Colors.grey.shade300),
+                          ),
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: IconButton(
-                        icon: Icon(
-                          isSaved ? Icons.favorite : Icons.favorite_border,
-                          color: isSaved
-                              ? Colors.redAccent
-                              : (isDark
-                                    ? Colors.white70
-                                    : Colors.grey.shade700),
-                          size: 20,
+                        child: IconButton(
+                          icon: Icon(
+                            isSaved ? Icons.favorite : Icons.favorite_border,
+                            color: isSaved
+                                ? Colors.redAccent
+                                : (isDark
+                                      ? Colors.white70
+                                      : Colors.grey.shade700),
+                            size: 20,
+                          ),
+                          tooltip: isSaved
+                              ? 'Remove from Wishlist'
+                              : 'Add to Wishlist',
+                          onPressed: _isTogglingWishlist ? null : () => _toggleWishlist(course),
                         ),
-                        tooltip: isSaved
-                            ? 'Remove from Wishlist'
-                            : 'Add to Wishlist',
-                        onPressed: _isTogglingWishlist ? null : () => _toggleWishlist(course),
                       ),
-                    ),
                   ],
                 ),
                 const SizedBox(height: 16),
 
-                if (isEnrolled) ...[
+                if (isInstructor) ...[
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.primaryGreen,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        elevation: 2,
+                      ),
+                      onPressed: () {
+                        final targetId = course.id.isNotEmpty ? course.id : widget.courseId;
+                        context.push('/instructor/manage-course/$targetId');
+                      },
+                      icon: const Icon(Icons.settings_outlined, size: 18),
+                      label: const Text(
+                        'Manage Course',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ] else if (isEnrolled) ...[
                   SizedBox(
                     width: double.infinity,
                     height: 48,
