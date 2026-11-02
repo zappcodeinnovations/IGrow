@@ -23,11 +23,26 @@ class AppleIapService {
 
   /// Predefined set of IAP product IDs configured in App Store Connect.
   static const Set<String> productIds = {
-    'com.zappkode.igrow.c.tier1',
-    'com.zappkode.igrow.tier2',
-    'com.zappkode.igrow.tier3',
-    'com.zappkode.igrow.tier1',
+    'com.zappkode.igrow.c.tier1', // Tier 1: ₹249
+    'com.zappkode.igrow.tier.499', // Tier 1.5: ₹499
+    'om.zappkode.igrow.tier2',    // Tier 2: ₹999 (custom App Store ID)
+    'com.zappkode.igrow.tier2',   // Tier 2 fallback: ₹999
+    'com.zappkode.igrow.tier3',   // Tier 3: ₹1499
+    'com.zappkode.igrow.tier1',   // Legacy fallback
   };
+
+  /// Returns the corresponding Apple In-App Purchase product ID for a given course price in INR.
+  static String getProductIdForPrice(double price) {
+    if (price <= 350.0) {
+      return 'com.zappkode.igrow.c.tier1'; // ₹249
+    } else if (price <= 700.0) {
+      return 'com.zappkode.igrow.tier.499'; // ₹499
+    } else if (price <= 1200.0) {
+      return 'om.zappkode.igrow.tier2'; // ₹999
+    } else {
+      return 'com.zappkode.igrow.tier3'; // ₹1499
+    }
+  }
 
   /// Initialize listener for purchase updates.
   void init() {

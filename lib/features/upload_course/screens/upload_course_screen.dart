@@ -1388,27 +1388,26 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
           const SizedBox(height: 18),
 
           // Price & Language
-          _buildFieldLabel('Price (₹)'),
-          TextField(
-            controller: _priceController,
-            focusNode: _priceFocusNode,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
-            ],
+          _buildFieldLabel('Course Price Tier *'),
+          DropdownButtonFormField<String>(
+            initialValue: const ['0', '249', '499', '999', '1499'].contains(_priceController.text.trim())
+                ? _priceController.text.trim()
+                : '0',
             decoration: const InputDecoration(
-              hintText: 'e.g., 1499 (0 for Free)',
-              prefixText: '₹ ',
+              helperText: 'Select one of the standard price tiers.',
               border: OutlineInputBorder(),
+              contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             ),
+            items: const [
+              DropdownMenuItem(value: '0', child: Text('Free (₹0)')),
+              DropdownMenuItem(value: '249', child: Text('₹249 — Tier 1')),
+              DropdownMenuItem(value: '499', child: Text('₹499 — Tier 1.5')),
+              DropdownMenuItem(value: '999', child: Text('₹999 — Tier 2')),
+              DropdownMenuItem(value: '1499', child: Text('₹1,499 — Tier 3')),
+            ],
             onChanged: (val) {
-              if (val.length > 1 && val.startsWith('0') && !val.startsWith('0.')) {
-                final cleaned = val.replaceFirst(RegExp(r'^0+'), '');
-                final target = cleaned.isEmpty ? '0' : cleaned;
-                _priceController.value = TextEditingValue(
-                  text: target,
-                  selection: TextSelection.collapsed(offset: target.length),
-                );
+              if (val != null) {
+                setState(() => _priceController.text = val);
               }
             },
           ),
