@@ -409,11 +409,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             pageBuilder: (context, state) {
               final search = state.uri.queryParameters['search'];
               final tabParam = state.uri.queryParameters['tab'];
+              final instructorId = state.uri.queryParameters['instructor_id'] ??
+                  state.uri.queryParameters['instructorId'] ??
+                  state.uri.queryParameters['instructor'];
               final initialTab = (tabParam == 'ebooks' || tabParam == '1') ? 1 : 0;
               return _buildSlideRightPage(
                 context: context,
                 state: state,
-                child: ExploreScreen(initialSearch: search, initialTab: initialTab),
+                child: ExploreScreen(
+                  initialSearch: search,
+                  initialTab: initialTab,
+                  initialInstructorId: instructorId,
+                ),
               );
             },
           ),

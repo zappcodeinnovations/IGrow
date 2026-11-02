@@ -586,6 +586,9 @@ class ProfileScreen extends ConsumerWidget {
                   _MenuItem(
                     icon: Icons.language_rounded, 
                     label: tr(ref, 'Language'),
+                    value: ref.watch(languageProvider) == 'hi'
+                        ? 'हिंदी'
+                        : (ref.watch(languageProvider) == 'mr' ? 'मराठी' : 'English'),
                     onTap: () => _showLanguageBottomSheet(context, ref),
                   ),
                   _MenuItem(
@@ -866,7 +869,6 @@ void _showComingSoon(BuildContext context, WidgetRef ref) {
 }
 
 void _showLanguageBottomSheet(BuildContext context, WidgetRef ref) {
-  final currentLangCode = ref.read(languageProvider);
   final isDark = Theme.of(context).brightness == Brightness.dark;
 
   final languages = [
@@ -882,103 +884,108 @@ void _showLanguageBottomSheet(BuildContext context, WidgetRef ref) {
     ),
     backgroundColor: isDark ? AppColors.bgDark : Colors.white,
     builder: (sheetContext) {
-      return SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      return Consumer(
+        builder: (context, sheetRef, _) {
+          final activeLangCode = sheetRef.watch(languageProvider);
+          return SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    tr(ref, 'Select App Language'),
-                    style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        tr(sheetRef, 'Select App Language'),
+                        style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(sheetContext),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  ...languages.map((lang) {
+                    final isSelected = activeLangCode.toLowerCase() == lang['code']!.toLowerCase();
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? AppColors.primaryGreen.withValues(alpha: 0.1)
+                            : (isDark ? AppColors.cardDark : AppColors.bgLight),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: isSelected ? AppColors.primaryGreen : Colors.transparent,
+                          width: 1.5,
                         ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.pop(sheetContext),
-                  ),
+                      ),
+                      child: ListTile(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        leading: CircleAvatar(
+                          backgroundColor: isSelected
+                              ? AppColors.primaryGreen
+                              : (isDark ? Colors.grey.shade800 : Colors.grey.shade300),
+                          foregroundColor: isSelected ? Colors.white : AppColors.inkDark,
+                          radius: 18,
+                          child: Text(
+                            lang['displayCode']!,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                              color: isSelected ? Colors.white : (isDark ? Colors.white : AppColors.inkDark),
+                            ),
+                          ),
+                        ),
+                        title: Text(
+                          lang['name']!,
+                          style: TextStyle(
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          ),
+                        ),
+                        subtitle: Text(
+                          lang['native']!,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isDark ? Colors.grey.shade400 : AppColors.inkSoft,
+                          ),
+                        ),
+                        trailing: isSelected
+                            ? const Icon(Icons.check_circle_rounded, color: AppColors.primaryGreen)
+                            : null,
+                        onTap: () async {
+                          final selectedCode = lang['code']!;
+                          await sheetRef.read(languageProvider.notifier).setLanguage(selectedCode);
+
+                          if (sheetContext.mounted) {
+                            Navigator.pop(sheetContext);
+                          }
+                          if (context.mounted) {
+                            final messenger = ScaffoldMessenger.of(context);
+                            messenger.clearSnackBars();
+                            messenger.showSnackBar(
+                              SnackBar(
+                                content: Text('Language set to ${lang['name']} (${lang['native']})'),
+                                backgroundColor: AppColors.primaryGreen,
+                                duration: const Duration(seconds: 2),
+                              ),
+                            );
+                          }
+                        },
+                      ),
+                    );
+                  }),
                 ],
               ),
-              const SizedBox(height: 16),
-              ...languages.map((lang) {
-                final isSelected = currentLangCode.toLowerCase() == lang['code']!.toLowerCase();
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 10),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? AppColors.primaryGreen.withValues(alpha: 0.1)
-                        : (isDark ? AppColors.cardDark : AppColors.bgLight),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: isSelected ? AppColors.primaryGreen : Colors.transparent,
-                      width: 1.5,
-                    ),
-                  ),
-                  child: ListTile(
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    leading: CircleAvatar(
-                      backgroundColor: isSelected
-                          ? AppColors.primaryGreen
-                          : (isDark ? Colors.grey.shade800 : Colors.grey.shade300),
-                      foregroundColor: isSelected ? Colors.white : AppColors.inkDark,
-                      radius: 18,
-                      child: Text(
-                        lang['displayCode']!,
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                          color: isSelected ? Colors.white : (isDark ? Colors.white : AppColors.inkDark),
-                        ),
-                      ),
-                    ),
-                    title: Text(
-                      lang['name']!,
-                      style: TextStyle(
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                      ),
-                    ),
-                    subtitle: Text(
-                      lang['native']!,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: isDark ? Colors.grey.shade400 : AppColors.inkSoft,
-                      ),
-                    ),
-                    trailing: isSelected
-                        ? const Icon(Icons.check_circle_rounded, color: AppColors.primaryGreen)
-                        : null,
-                    onTap: () async {
-                      final selectedCode = lang['code']!;
-                      await ref.read(languageProvider.notifier).setLanguage(selectedCode);
-
-                      if (sheetContext.mounted) {
-                        Navigator.pop(sheetContext);
-                      }
-                      if (context.mounted) {
-                        final messenger = ScaffoldMessenger.of(context);
-                        messenger.clearSnackBars();
-                        messenger.showSnackBar(
-                          SnackBar(
-                            content: Text('Language set to ${lang['name']} (${lang['native']})'),
-                            backgroundColor: AppColors.primaryGreen,
-                            duration: const Duration(seconds: 2),
-                          ),
-                        );
-                      }
-                    },
-                  ),
-                );
-              }),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       );
     },
   );

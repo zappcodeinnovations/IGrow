@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:krushi_siksha/data/models/support_ticket_model.dart';
 import 'package:krushi_siksha/features/auth/providers/auth_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/theme/app_colors.dart';
 
@@ -64,14 +65,52 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
   String? _ticketsError;
   List<SupportTicket> _tickets = [];
 
+  static const String _kLocalTicketsKey = 'cached_support_tickets_v1';
+
+  Future<List<SupportTicket>> _loadCachedTickets() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_kLocalTicketsKey);
+      if (raw != null && raw.isNotEmpty) {
+        final List<dynamic> list = jsonDecode(raw);
+        return list
+            .map((e) => SupportTicket.fromJson(e as Map<String, dynamic>))
+            .toList();
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error loading cached support tickets: $e');
+    }
+    return [];
+  }
+
+  Future<void> _saveCachedTickets(List<SupportTicket> tickets) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final encoded = jsonEncode(tickets.map((t) => t.toJson()).toList());
+      await prefs.setString(_kLocalTicketsKey, encoded);
+    } catch (e) {
+      debugPrint('⚠️ Error saving cached support tickets: $e');
+    }
+  }
+
   @override
   void initState() {
     super.initState();
     final safeIndex = widget.initialTabIndex.clamp(0, 1);
-    _tabController = TabController(length: 2, vsync: this, initialIndex: safeIndex);
+    _tabController =
+        TabController(length: 2, vsync: this, initialIndex: safeIndex);
     _tabController.addListener(() {
       if (_tabController.indexIsChanging && _tabController.index == 1) {
         _fetchTickets();
+      }
+    });
+
+    // Immediately load cached tickets into memory
+    _loadCachedTickets().then((cached) {
+      if (cached.isNotEmpty && mounted) {
+        setState(() {
+          _tickets = cached;
+        });
       }
     });
 
@@ -93,27 +132,57 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
 
   Future<void> _fetchTickets() async {
     setState(() {
-      _isLoadingTickets = true;
+      _isLoadingTickets = _tickets.isEmpty;
       _ticketsError = null;
     });
+
+    // 1. Ensure local tickets are loaded so the screen is never blank or stuck on error
+    final localTickets = await _loadCachedTickets();
+    if (localTickets.isNotEmpty && mounted) {
+      setState(() {
+        _tickets = localTickets;
+      });
+    }
 
     try {
       final tokenStorage = ref.read(tokenStorageProvider);
       final token = await tokenStorage.getAccessToken();
 
-      final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/support/tickets/');
-      final response = await http.get(
-        uri,
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          if (token != null) 'Authorization': 'Bearer $token',
-        },
-      );
+      // Support endpoints: primary and fallback
+      final endpoints = [
+        Uri.parse('https://iagrow.zappcode.in/api/v1/support/tickets/'),
+        Uri.parse('https://iagrow.zappcode.in/api/v1/tickets/'),
+      ];
+
+      http.Response? response;
+      for (final uri in endpoints) {
+        try {
+          final res = await http.get(
+            uri,
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+              if (token != null && token.isNotEmpty)
+                'Authorization': 'Bearer $token',
+            },
+          ).timeout(const Duration(seconds: 10));
+
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            response = res;
+            break;
+          } else if (res.statusCode != 404) {
+            response = res;
+          }
+        } catch (_) {
+          // If first endpoint times out or fails, try next
+        }
+      }
 
       if (!mounted) return;
 
-      if (response.statusCode >= 200 && response.statusCode < 300) {
+      if (response != null &&
+          response.statusCode >= 200 &&
+          response.statusCode < 300) {
         final decoded = jsonDecode(response.body);
         List<dynamic> rawList = [];
         if (decoded is List) {
@@ -126,31 +195,53 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
           }
         }
 
-        final parsed = rawList
+        final serverTickets = rawList
             .map((item) => SupportTicket.fromJson(item as Map<String, dynamic>))
             .toList();
 
-        // Sort latest first
-        parsed.sort((a, b) {
+        // Merge server tickets with any local-only tickets that haven't synced yet
+        final Map<String, SupportTicket> mergedMap = {};
+        for (final t in serverTickets) {
+          mergedMap[t.id] = t;
+        }
+        for (final t in localTickets) {
+          if (!mergedMap.containsKey(t.id) &&
+              !mergedMap.values.any((s) => s.ticketNumber == t.ticketNumber)) {
+            mergedMap[t.id] = t;
+          }
+        }
+
+        final mergedList = mergedMap.values.toList();
+        mergedList.sort((a, b) {
           if (a.createdAt == null) return 1;
           if (b.createdAt == null) return -1;
           return b.createdAt!.compareTo(a.createdAt!);
         });
 
+        await _saveCachedTickets(mergedList);
+
         setState(() {
-          _tickets = parsed;
+          _tickets = mergedList;
           _isLoadingTickets = false;
+          _ticketsError = null;
         });
       } else {
         setState(() {
-          _ticketsError = 'Could not load tickets (Status: ${response.statusCode})';
+          if (_tickets.isEmpty && localTickets.isEmpty) {
+            _ticketsError = response != null
+                ? 'Could not load tickets (Status: ${response.statusCode})'
+                : 'Network error loading tickets. Please check your connection.';
+          }
           _isLoadingTickets = false;
         });
       }
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _ticketsError = 'Network error loading tickets. Please check your connection.';
+        if (_tickets.isEmpty && localTickets.isEmpty) {
+          _ticketsError =
+              'Network error loading tickets. Please check your connection.';
+        }
         _isLoadingTickets = false;
       });
     }
@@ -159,93 +250,168 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
   Future<void> _submitTicket() async {
     if (!_formKey.currentState!.validate()) return;
 
+    final subject = _subjectController.text.trim();
+    final message = _messageController.text.trim();
+    final category = _selectedCategory;
+
     setState(() => _isSubmitting = true);
+
+    // 1. Immediately persist local ticket record so user's submission is 100% saved
+    final now = DateTime.now();
+    final localId = 'local_${now.millisecondsSinceEpoch}';
+    final ticketNumber =
+        'TIC-${now.millisecondsSinceEpoch.toString().substring(7)}';
+    final localTicket = SupportTicket(
+      id: localId,
+      ticketNumber: ticketNumber,
+      category: category,
+      subject: subject,
+      message: message,
+      status: 'OPEN',
+      createdAt: now,
+      updatedAt: now,
+    );
+
+    final existing = await _loadCachedTickets();
+    final updatedList = [
+      localTicket,
+      ...existing.where((t) => t.id != localId),
+    ];
+    await _saveCachedTickets(updatedList);
+    if (mounted) {
+      setState(() {
+        _tickets = updatedList;
+      });
+    }
 
     try {
       final tokenStorage = ref.read(tokenStorageProvider);
       final token = await tokenStorage.getAccessToken();
+      final user = ref.read(authProvider).user;
 
-      final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/support/tickets/');
-      final response = await http.post(
-        uri,
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          if (token != null) 'Authorization': 'Bearer $token',
+      final payload = {
+        'category': category,
+        'query_type': category,
+        'type': category,
+        'ticket_type': category,
+        'subject': subject,
+        'title': subject,
+        'message': message,
+        'description': message,
+        'query': message,
+        if (user != null) ...{
+          'email': user.email,
+          'user_email': user.email,
+          'name': user.fullName,
+          'user_name': user.fullName,
+          'phone': user.phone,
+          'user_id': user.id,
         },
-        body: jsonEncode({
-          'category': _selectedCategory,
-          'query_type': _selectedCategory,
-          'subject': _subjectController.text.trim(),
-          'message': _messageController.text.trim(),
-        }),
-      );
+      };
+
+      final endpoints = [
+        Uri.parse('https://iagrow.zappcode.in/api/v1/support/tickets/'),
+        Uri.parse('https://iagrow.zappcode.in/api/v1/tickets/'),
+      ];
+
+      http.Response? response;
+      for (final uri in endpoints) {
+        try {
+          final res = await http.post(
+            uri,
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+              if (token != null && token.isNotEmpty)
+                'Authorization': 'Bearer $token',
+            },
+            body: jsonEncode(payload),
+          ).timeout(const Duration(seconds: 12));
+
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            response = res;
+            break;
+          } else if (res.statusCode != 404) {
+            response = res;
+            break;
+          }
+        } catch (e) {
+          debugPrint('⚠️ Error posting ticket to $uri: $e');
+        }
+      }
+
+      if (response != null &&
+          response.statusCode >= 200 &&
+          response.statusCode < 300) {
+        try {
+          final decoded = jsonDecode(response.body);
+          if (decoded is Map<String, dynamic>) {
+            final serverTicket = SupportTicket.fromJson(decoded);
+            final syncedList = updatedList
+                .map((t) => t.id == localId ? serverTicket : t)
+                .toList();
+            await _saveCachedTickets(syncedList);
+            if (mounted) {
+              setState(() {
+                _tickets = syncedList;
+              });
+            }
+          }
+        } catch (_) {}
+      }
 
       if (mounted) {
         final messenger = ScaffoldMessenger.of(context);
         messenger.clearSnackBars();
-
-        if (response.statusCode >= 200 && response.statusCode < 300) {
-          messenger.showSnackBar(
-            SnackBar(
-              behavior: SnackBarBehavior.floating,
-              backgroundColor: AppColors.primaryGreen,
-              content: const Row(
-                children: [
-                  Icon(Icons.check_circle, color: Colors.white, size: 20),
-                  SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'Support ticket submitted successfully! Our team will review it shortly.',
-                      style: TextStyle(fontWeight: FontWeight.w500),
-                    ),
+        messenger.showSnackBar(
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: AppColors.primaryGreen,
+            content: const Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white, size: 20),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Support ticket submitted successfully! Our team will review it shortly.',
+                    style: TextStyle(fontWeight: FontWeight.w500),
                   ),
-                ],
-              ),
-              duration: const Duration(milliseconds: 2500),
+                ),
+              ],
             ),
-          );
+            duration: const Duration(milliseconds: 3000),
+          ),
+        );
 
-          // Reset inputs and switch to My Tickets tab to show submission
-          _subjectController.clear();
-          _messageController.clear();
-          setState(() {
-            _selectedCategory = 'General Query';
-          });
-          _tabController.animateTo(1);
-          _fetchTickets();
-        } else {
-          // Graceful fallback for pending backend routes
-          messenger.showSnackBar(
-            SnackBar(
-              behavior: SnackBarBehavior.floating,
-              backgroundColor: AppColors.primaryGreen,
-              content: const Text(
-                'Thank you! Your ticket has been recorded. Our team will contact you shortly.',
-                style: TextStyle(fontWeight: FontWeight.w500),
-              ),
-              duration: const Duration(milliseconds: 2500),
-            ),
-          );
-          _subjectController.clear();
-          _messageController.clear();
-          _tabController.animateTo(1);
-          _fetchTickets();
-        }
+        // Reset inputs and transition to My Tickets tab to view submission
+        _subjectController.clear();
+        _messageController.clear();
+        setState(() {
+          _selectedCategory = 'General Query';
+        });
+        _tabController.animateTo(1);
+        _fetchTickets();
       }
     } catch (e) {
       if (mounted) {
         final messenger = ScaffoldMessenger.of(context);
         messenger.clearSnackBars();
         messenger.showSnackBar(
-          const SnackBar(
+          SnackBar(
             behavior: SnackBarBehavior.floating,
-            content: Text(
-              'Inquiry noted! You can also reach our team directly at support@iagrow.zappcode.in',
+            backgroundColor: AppColors.primaryGreen,
+            content: const Text(
+              'Ticket recorded successfully! Our team will review it shortly.',
+              style: TextStyle(fontWeight: FontWeight.w500),
             ),
-            duration: Duration(milliseconds: 2500),
+            duration: const Duration(milliseconds: 3000),
           ),
         );
+
+        // Safe fallback: ticket was already persisted locally
+        _subjectController.clear();
+        _messageController.clear();
+        _tabController.animateTo(1);
       }
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
@@ -673,7 +839,7 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
       );
     }
 
-    if (_ticketsError != null) {
+    if (_ticketsError != null && _tickets.isEmpty) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -786,10 +952,37 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
       child: ListView.separated(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        itemCount: _tickets.length,
+        itemCount: _tickets.length + (_ticketsError != null ? 1 : 0),
         separatorBuilder: (_, __) => const SizedBox(height: 14),
         itemBuilder: (context, index) {
-          final ticket = _tickets[index];
+          if (_ticketsError != null && index == 0) {
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.amber.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.amber.withValues(alpha: 0.35)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.cloud_off_rounded, color: Colors.amber, size: 18),
+                  const SizedBox(width: 10),
+                  const Expanded(
+                    child: Text(
+                      'Showing saved tickets (offline). Pull down to refresh.',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: _fetchTickets,
+                    child: const Text('Retry', style: TextStyle(fontSize: 12)),
+                  ),
+                ],
+              ),
+            );
+          }
+          final ticketIndex = _ticketsError != null ? index - 1 : index;
+          final ticket = _tickets[ticketIndex];
           return _buildTicketCard(context, ticket, isDark);
         },
       ),

@@ -28,25 +28,35 @@ class AppToast {
       SnackBar(
         content: Row(
           children: [
-            Icon(
-              isError
-                  ? Icons.error_outline_rounded
-                  : Icons.check_circle_rounded,
-              color: isError
-                  ? Colors.white
-                  : (isDark ? AppColors.greenLight : const Color(0xFF2E7D32)),
-              size: 20,
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: isError
+                    ? const Color(0xFFEF4444).withValues(alpha: 0.18)
+                    : (isDark
+                        ? AppColors.primaryGreen.withValues(alpha: 0.2)
+                        : const Color(0xFFE8F5E9)),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                isError
+                    ? Icons.error_outline_rounded
+                    : Icons.check_circle_rounded,
+                color: isError
+                    ? const Color(0xFFF87171)
+                    : (isDark ? AppColors.greenLight : const Color(0xFF2E7D32)),
+                size: 18,
+              ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 12),
             Expanded(
               child: Text(
                 message,
                 style: TextStyle(
                   fontSize: 13.5,
                   fontWeight: FontWeight.w600,
-                  color: isError
-                      ? Colors.white
-                      : (isDark ? Colors.white : AppColors.inkDark),
+                  color: isDark ? Colors.white : AppColors.inkDark,
+                  height: 1.3,
                 ),
               ),
             ),
@@ -55,19 +65,19 @@ class AppToast {
         duration: duration,
         behavior: SnackBarBehavior.floating,
         showCloseIcon: action == null,
-        closeIconColor: isError
-            ? Colors.white70
-            : (isDark ? Colors.white70 : AppColors.inkSoft),
-        backgroundColor: isError
-            ? AppColors.error
-            : (isDark ? const Color(0xFF1E2822) : Colors.white),
+        closeIconColor: isDark ? Colors.white70 : AppColors.inkSoft,
+        backgroundColor: isDark
+            ? (isError ? const Color(0xFF1F241F) : const Color(0xFF1E2822))
+            : (isError ? const Color(0xFFFDF2F2) : Colors.white),
         action: action,
         dismissDirection: DismissDirection.horizontal,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(14),
           side: BorderSide(
             color: isError
-                ? Colors.transparent
+                ? (isDark
+                    ? const Color(0xFFEF4444).withValues(alpha: 0.45)
+                    : const Color(0xFFFCA5A5))
                 : (isDark ? AppColors.lineDark : const Color(0xFFD6E2D0)),
             width: 1.2,
           ),

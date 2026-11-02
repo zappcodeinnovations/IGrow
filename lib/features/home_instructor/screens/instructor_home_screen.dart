@@ -931,7 +931,10 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                   ),
                   const Spacer(),
                   TextButton(
-                    onPressed: () => context.push(RouteNames.instructorUploads),
+                    onPressed: () {
+                      final tabParam = _selectedDashboardTab == 1 ? '?tab=1' : '';
+                      context.push('${RouteNames.instructorUploads}$tabParam');
+                    },
                     child: const Text('See All'),
                   ),
                 ],
@@ -1029,7 +1032,7 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                             rating: 'New',
                             percent: 0.0,
                             isFree: true,
-                            onTap: () => context.push(RouteNames.instructorUploads),
+                            onTap: () => context.push('${RouteNames.instructorUploads}?tab=1'),
                           ),
                         );
                       }).toList(),

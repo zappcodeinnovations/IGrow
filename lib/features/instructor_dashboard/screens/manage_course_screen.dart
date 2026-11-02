@@ -524,6 +524,11 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
           ? existingLecture.duration.toString()
           : '10',
     );
+    final previewDurationController = TextEditingController(
+      text: existingLecture?.previewDuration != null && existingLecture!.previewDuration! > 0
+          ? existingLecture.previewDuration.toString()
+          : '30',
+    );
     bool isPreview = existingLecture?.isPreview ?? false;
 
     XFile? pickedVideo;
@@ -629,6 +634,19 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                         ),
                       ],
                     ),
+                    if (isPreview) ...[
+                      const SizedBox(height: 14),
+                      TextField(
+                        controller: previewDurationController,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Preview Limit (Seconds)',
+                          hintText: 'e.g., 30, 45, or 60',
+                          suffixText: 'sec',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 20),
 
                     // Video Upload Section
@@ -818,6 +836,9 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                           }
 
                           final duration = int.tryParse(durationController.text.trim()) ?? 10;
+                          final previewDuration = isPreview
+                              ? (int.tryParse(previewDurationController.text.trim()) ?? 30)
+                              : null;
                           Navigator.pop(modalContext); // Close sheet
 
                           _saveLectureWithMedia(
@@ -827,6 +848,7 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                             description: descController.text.trim(),
                             duration: duration,
                             isPreview: isPreview,
+                            previewDuration: previewDuration,
                             pickedVideo: pickedVideo,
                             pickedResource: pickedResource,
                           );
@@ -855,6 +877,7 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
     required String description,
     required int duration,
     required bool isPreview,
+    int? previewDuration,
     XFile? pickedVideo,
     FilePickerResult? pickedResource,
   }) async {
@@ -879,18 +902,21 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
 
     try {
       // Step 1: Create or Update lecture basic details
+      final lecturePayload = <String, dynamic>{
+        'title': title,
+        'description': description,
+        'duration': duration,
+        'sort_order': 99,
+        'is_preview': isPreview,
+        if (previewDuration != null) 'preview_duration': previewDuration,
+      };
+
       if (!isEditing) {
         debugPrint('➕ [CURRICULUM BUILDER] Creating lecture: title="$title", sectionId=$sectionId');
         final res = await ref.read(instructorRepositoryProvider).createLecture(
           widget.courseId,
           sectionId,
-          {
-            'title': title,
-            'description': description,
-            'duration': duration,
-            'sort_order': 99,
-            'is_preview': isPreview,
-          },
+          lecturePayload,
         );
         lectureId = res['id']?.toString();
       } else {
@@ -899,12 +925,7 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
           widget.courseId,
           sectionId,
           lectureId!,
-          {
-            'title': title,
-            'description': description,
-            'duration': duration,
-            'is_preview': isPreview,
-          },
+          lecturePayload,
         );
       }
 

@@ -353,7 +353,7 @@ class CommunityPost {
     if (parsedUserReaction == null || parsedUserReaction.isEmpty) {
       final isLiked = json['is_liked'] as bool? ?? json['is_liked_by_me'] as bool? ?? false;
       if (isLiked) {
-        parsedUserReaction = 'LIKE';
+        parsedUserReaction = 'FARM';
       }
     }
 
@@ -448,7 +448,7 @@ class CommunityPost {
       tag: tag ?? this.tag,
       viewsCount: viewsCount ?? this.viewsCount,
       reactionsCount: reactionsCount ?? likesCount ?? this.reactionsCount,
-      userReaction: userReaction ?? (isLikedByMe != null ? (isLikedByMe ? 'LIKE' : null) : this.userReaction),
+      userReaction: userReaction ?? (isLikedByMe != null ? (isLikedByMe ? 'FARM' : null) : this.userReaction),
       commentsCount: commentsCount ?? this.commentsCount,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

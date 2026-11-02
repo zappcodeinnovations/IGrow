@@ -39,6 +39,28 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _isEmailLoading = false;
   bool _isGoogleLoading = false;
   bool _isAppleLoading = false;
+  String? _persistedRole;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPersistedRole();
+  }
+
+  Future<void> _loadPersistedRole() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final role = prefs.getString('selected_auth_role') ?? prefs.getString('active_user_role');
+      if (mounted && role != null) {
+        setState(() => _persistedRole = role);
+      }
+    } catch (_) {}
+  }
+
+  bool get _isInstructorRole {
+    final effectiveRole = (widget.selectedRole ?? _persistedRole)?.toLowerCase().trim();
+    return effectiveRole == 'instructor';
+  }
 
   @override
   void dispose() {
@@ -215,7 +237,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       }
     });
 
-    final authState = ref.watch(authProvider);
+    ref.watch(authProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return GestureDetector(
@@ -303,7 +325,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                         // Subtitle
                         Text(
-                          tr(ref, 'Sign in to continue your learning journey.'),
+                          _isInstructorRole
+                              ? tr(ref, 'Sign in to continue your teaching journey.')
+                              : tr(ref, 'Sign in to continue your learning journey.'),
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 15.5,
                             fontWeight: FontWeight.w400,
@@ -316,11 +340,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                         const SizedBox(height: 36),
 
-                        // Input Card: Email or Phone (Reusable AppPillTextField)
+                        // Input Card: Email (Reusable AppPillTextField)
                         AppPillTextField(
                           controller: _emailController,
-                          hintText: tr(ref, 'Email or Phone'),
-                          prefixIcon: Icons.person_outline_rounded,
+                          hintText: tr(ref, 'Email'),
+                          prefixIcon: Icons.email_outlined,
                           keyboardType: TextInputType.emailAddress,
                           textInputAction: TextInputAction.next,
                           autofillHints: const [
@@ -329,7 +353,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ],
                           validator: (v) {
                             if (v == null || v.trim().isEmpty) {
-                              return tr(ref, 'Email or Phone is required');
+                              return tr(ref, 'Email is required');
+                            }
+                            final trimmed = v.trim();
+                            final emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+                            if (!emailRegex.hasMatch(trimmed)) {
+                              return tr(ref, 'Please enter a valid email address');
                             }
                             return null;
                           },

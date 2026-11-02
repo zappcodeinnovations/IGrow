@@ -51,7 +51,7 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
   Future<void> _refreshDashboard() async {
     // Invalidate all data providers so they re-fetch from the network
     ref.invalidate(studentEnrollmentsProvider);
-    ref.invalidate(studentEbooksProvider(''));
+    ref.invalidate(studentEbooksProvider(const EbooksQuery()));
     ref.invalidate(studentCatalogProvider(const CatalogQuery()));
     ref.invalidate(studentCategoriesProvider);
     ref.invalidate(topInstructorsProvider);
@@ -84,7 +84,7 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
 
     // Fetch async data providers
     final enrollmentsAsync = ref.watch(studentEnrollmentsProvider);
-    final ebooksAsync = ref.watch(studentEbooksProvider(''));
+    final ebooksAsync = ref.watch(studentEbooksProvider(const EbooksQuery()));
     final weatherAsync = ref.watch(weatherProvider);
     final weatherData = weatherAsync.valueOrNull;
 

@@ -27,8 +27,21 @@ class _InstructorUploadsScreenState extends ConsumerState<InstructorUploadsScree
     _tabController = TabController(
       length: 2,
       vsync: this,
-      initialIndex: widget.initialTabIndex,
+      initialIndex: (widget.initialTabIndex >= 0 && widget.initialTabIndex < 2)
+          ? widget.initialTabIndex
+          : 0,
     );
+  }
+
+  @override
+  void didUpdateWidget(covariant InstructorUploadsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialTabIndex != widget.initialTabIndex &&
+        widget.initialTabIndex >= 0 &&
+        widget.initialTabIndex < _tabController.length &&
+        _tabController.index != widget.initialTabIndex) {
+      _tabController.animateTo(widget.initialTabIndex);
+    }
   }
 
   @override
@@ -451,6 +464,77 @@ class _EBooksTab extends ConsumerWidget {
                               ),
                             ],
                           ),
+                        ),
+                        // Delete Button
+                        IconButton(
+                          icon: const Icon(
+                            Icons.delete_outline,
+                            color: AppColors.error,
+                          ),
+                          tooltip: 'Delete E-Book',
+                          onPressed: () async {
+                            final confirm = await showDialog<bool>(
+                              context: context,
+                              builder: (c) => AlertDialog(
+                                title: const Text('Delete E-Book'),
+                                content: Text(
+                                  'Are you sure you want to delete "${ebook.title ?? 'this e-book'}"?',
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(c, false),
+                                    child: const Text('Cancel'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(c, true),
+                                    child: const Text(
+                                      'Delete',
+                                      style: TextStyle(color: AppColors.error),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                            if (confirm == true) {
+                              try {
+                                await ref
+                                    .read(instructorRepositoryProvider)
+                                    .deleteEBook(ebook.id!);
+                                ref.invalidate(instructorEbooksProvider);
+                                if (context.mounted) {
+                                  final messenger = ScaffoldMessenger.of(context);
+                                  messenger.clearSnackBars();
+                                  messenger.showSnackBar(
+                                    const SnackBar(
+                                      content: Text('E-Book deleted successfully.'),
+                                      backgroundColor: AppColors.primaryGreen,
+                                      duration: Duration(seconds: 2),
+                                    ),
+                                  );
+                                }
+                              } catch (e) {
+                                if (context.mounted) {
+                                  String cleanError = e.toString();
+                                  if (cleanError.startsWith('Exception: ')) {
+                                    cleanError = cleanError.substring('Exception: '.length);
+                                  }
+                                  if (cleanError.toLowerCase().contains('not permitted') ||
+                                      cleanError.toLowerCase().contains('only platform administrators')) {
+                                    cleanError = 'You do not have permission to delete e-books. Please contact an administrator.';
+                                  }
+                                  final messenger = ScaffoldMessenger.of(context);
+                                  messenger.clearSnackBars();
+                                  messenger.showSnackBar(
+                                    SnackBar(
+                                      content: Text(cleanError),
+                                      backgroundColor: AppColors.error,
+                                      duration: const Duration(seconds: 3),
+                                    ),
+                                  );
+                                }
+                              }
+                            }
+                          },
                         ),
                       ],
                     ),

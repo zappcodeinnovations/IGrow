@@ -941,11 +941,36 @@ class _RichPostCardState extends ConsumerState<RichPostCard> with SingleTickerPr
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    _EmojiItem(emoji: '👍', label: 'Like', isSelected: widget.post.userReaction == 'LIKE', onTap: () => _onReact('LIKE')),
-                    _EmojiItem(emoji: '❤️', label: 'Love', isSelected: widget.post.userReaction == 'LOVE', onTap: () => _onReact('LOVE')),
-                    _EmojiItem(emoji: '👏', label: 'Clap', isSelected: widget.post.userReaction == 'CLAP', onTap: () => _onReact('CLAP')),
-                    _EmojiItem(emoji: '💡', label: 'Helpful', isSelected: widget.post.userReaction == 'IDEA', onTap: () => _onReact('IDEA')),
-                    _EmojiItem(emoji: '🌾', label: 'Farmer', isSelected: widget.post.userReaction == 'FARM', onTap: () => _onReact('FARM')),
+                    _EmojiItem(
+                      emoji: '🌾',
+                      label: 'Farm',
+                      isSelected: widget.post.userReaction == 'FARM' || widget.post.userReaction == 'LIKE',
+                      onTap: () => _onReact('FARM'),
+                    ),
+                    _EmojiItem(
+                      emoji: '🌱',
+                      label: 'Grow',
+                      isSelected: widget.post.userReaction == 'GROW',
+                      onTap: () => _onReact('GROW'),
+                    ),
+                    _EmojiItem(
+                      emoji: '❤️',
+                      label: 'Love',
+                      isSelected: widget.post.userReaction == 'LOVE',
+                      onTap: () => _onReact('LOVE'),
+                    ),
+                    _EmojiItem(
+                      emoji: '👏',
+                      label: 'Clap',
+                      isSelected: widget.post.userReaction == 'CLAP',
+                      onTap: () => _onReact('CLAP'),
+                    ),
+                    _EmojiItem(
+                      emoji: '💡',
+                      label: 'Helpful',
+                      isSelected: widget.post.userReaction == 'IDEA',
+                      onTap: () => _onReact('IDEA'),
+                    ),
                   ],
                 ),
               ),
@@ -1030,7 +1055,7 @@ class _RichPostCardState extends ConsumerState<RichPostCard> with SingleTickerPr
                         child: Row(
                           children: [
                             Text(
-                              _getReactionEmoji(widget.post.userReaction) ?? '👍',
+                              _getReactionEmoji(widget.post.userReaction) ?? '🌾',
                               style: const TextStyle(fontSize: 16),
                             ),
                             const SizedBox(width: 6),
@@ -1060,16 +1085,18 @@ class _RichPostCardState extends ConsumerState<RichPostCard> with SingleTickerPr
 
   String? _getReactionEmoji(String? reaction) {
     switch (reaction) {
+      case 'FARM':
       case 'LIKE':
-        return '👍';
+        return '🌾';
+      case 'GROW':
+      case 'LEAF':
+        return '🌱';
       case 'LOVE':
         return '❤️';
       case 'CLAP':
         return '👏';
       case 'IDEA':
         return '💡';
-      case 'FARM':
-        return '🌾';
       default:
         return null;
     }

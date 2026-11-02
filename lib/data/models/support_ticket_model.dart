@@ -70,6 +70,44 @@ class SupportTicket {
     );
   }
 
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'ticket_number': ticketNumber,
+      'category': category,
+      'subject': subject,
+      'message': message,
+      'status': status,
+      if (adminReply != null) 'admin_reply': adminReply,
+      if (createdAt != null) 'created_at': createdAt!.toIso8601String(),
+      if (updatedAt != null) 'updated_at': updatedAt!.toIso8601String(),
+    };
+  }
+
+  SupportTicket copyWith({
+    String? id,
+    String? ticketNumber,
+    String? category,
+    String? subject,
+    String? message,
+    String? status,
+    String? adminReply,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) {
+    return SupportTicket(
+      id: id ?? this.id,
+      ticketNumber: ticketNumber ?? this.ticketNumber,
+      category: category ?? this.category,
+      subject: subject ?? this.subject,
+      message: message ?? this.message,
+      status: status ?? this.status,
+      adminReply: adminReply ?? this.adminReply,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
   /// Whether the ticket has been resolved or closed.
   bool get isResolved => status == 'RESOLVED' || status == 'CLOSED';
 

@@ -40,14 +40,52 @@ class StudentRepository {
     return response.body!;
   }
 
-  /// Fetch ebooks catalog.
+  /// Fetch ebooks catalog with search, category, and instructor filtering.
   Future<PaginatedEBookList> getEbooksCatalog({
     int? page,
     String? search,
+    String? category,
+    String? instructorId,
   }) async {
+    // 1. Direct HTTP call to support instructor_id / instructor parameter
+    try {
+      final token = await tokenStorage.getAccessToken();
+      final queryParams = <String, String>{
+        if (page != null) 'page': page.toString(),
+        if (search != null && search.isNotEmpty) 'search': search,
+        if (category != null && category.isNotEmpty) 'category': category,
+        if (instructorId != null && instructorId.isNotEmpty) ...{
+          'instructor': instructorId,
+          'instructor_id': instructorId,
+        },
+      };
+
+      final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/ebooks/').replace(
+        queryParameters: queryParams.isNotEmpty ? queryParams : null,
+      );
+
+      final response = await http.get(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        return PaginatedEBookList.fromJson(data);
+      }
+    } catch (e) {
+      debugPrint('⚠️ [StudentRepository] Direct HTTP ebooks query failed: $e');
+    }
+
+    // 2. Fallback to Swagger client
     final response = await appApi.apiV1EbooksGet(
       page: page,
       search: search,
+      category: category,
     );
     if (!response.isSuccessful) {
       throw Exception('Failed to load ebooks catalog: ${response.error}');

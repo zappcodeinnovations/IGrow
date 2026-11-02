@@ -627,18 +627,36 @@ class InstructorRepository {
   Future<void> deleteEBook(String ebookId) async {
     final response = await appApi.apiV1InstructorEbooksIdDelete(id: ebookId);
     if (!response.isSuccessful) {
+      if (response.statusCode == 403) {
+        throw Exception(
+          'You do not have permission to delete e-books. Please contact an administrator.',
+        );
+      }
       if (response.statusCode >= 500) {
-        throw Exception('Server Error: Failed to delete e-book. The backend crashed.');
+        throw Exception('Server Error: Failed to delete e-book. Please try again later.');
       }
       
-      String errorMsg = 'Failed to delete ebook';
+      String errorMsg = 'Failed to delete e-book';
       if (response.error != null) {
         final errorStr = response.error.toString();
-        // Prevent showing HTML if backend returns 404/400 HTML page
-        if (errorStr.trim().startsWith('<')) {
-          errorMsg = '$errorMsg (HTTP ${response.statusCode})';
-        } else {
-          errorMsg = '$errorMsg: $errorStr';
+        try {
+          final decoded = jsonDecode(errorStr);
+          if (decoded is Map && decoded.containsKey('detail')) {
+            final detail = decoded['detail'].toString();
+            if (detail.toLowerCase().contains('not permitted') ||
+                detail.toLowerCase().contains('permission') ||
+                detail.toLowerCase().contains('only platform administrators')) {
+              errorMsg = 'You do not have permission to delete e-books. Please contact an administrator.';
+            } else {
+              errorMsg = detail;
+            }
+          }
+        } catch (_) {
+          if (errorStr.trim().startsWith('<')) {
+            errorMsg = '$errorMsg (HTTP ${response.statusCode})';
+          } else {
+            errorMsg = errorStr;
+          }
         }
       }
       throw Exception(errorMsg);

@@ -221,7 +221,56 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
     super.dispose();
   }
 
-  String _formatCourseDuration(String? totalDuration) {
+  String _formatCourseDuration(ApiCourseDetail course) {
+    int totalLectureSeconds = 0;
+    bool hasLectureDuration = false;
+
+    for (final section in course.sections) {
+      for (final lecture in section.lectures) {
+        int lectureSec = 0;
+        if (lecture.duration != null && lecture.duration! > 0) {
+          lectureSec = lecture.duration!;
+        } else if (lecture.durationFormatted != null &&
+            lecture.durationFormatted!.trim().isNotEmpty) {
+          final clean = lecture.durationFormatted!.trim();
+          final parts = clean.split(':');
+          if (parts.length == 2) {
+            final m = int.tryParse(parts[0]) ?? 0;
+            final s = int.tryParse(parts[1]) ?? 0;
+            lectureSec = (m * 60) + s;
+          } else if (parts.length == 3) {
+            final h = int.tryParse(parts[0]) ?? 0;
+            final m = int.tryParse(parts[1]) ?? 0;
+            final s = int.tryParse(parts[2]) ?? 0;
+            lectureSec = (h * 3600) + (m * 60) + s;
+          }
+        }
+        if (lectureSec > 0) {
+          totalLectureSeconds += lectureSec;
+          hasLectureDuration = true;
+        }
+      }
+    }
+
+    if (hasLectureDuration && totalLectureSeconds > 0) {
+      if (totalLectureSeconds < 60) {
+        return '$totalLectureSeconds secs';
+      }
+      final totalMinutes = (totalLectureSeconds / 60).round();
+      if (totalMinutes < 60) {
+        final displayMin = totalMinutes <= 0 ? 1 : totalMinutes;
+        return '$displayMin min${displayMin == 1 ? '' : 's'}';
+      }
+      final hours = totalMinutes ~/ 60;
+      final remainingMinutes = totalMinutes % 60;
+      if (remainingMinutes == 0) {
+        return '$hours ${hours == 1 ? "hr" : "hrs"}';
+      }
+      return '$hours hr $remainingMinutes mins';
+    }
+
+    // Fall back to parsed course.totalDuration if lectures don't have duration info
+    final totalDuration = course.totalDuration;
     if (totalDuration == null || totalDuration.trim().isEmpty) return '0 mins';
     final parsed =
         double.tryParse(totalDuration.replaceAll(RegExp(r'[^0-9.]'), '')) ??
@@ -1413,7 +1462,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    _formatCourseDuration(course.totalDuration),
+                    _formatCourseDuration(course),
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.9),
                       fontSize: 12,
@@ -1704,42 +1753,53 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
               ],
 
               // Ratings & Students Row: "4.8 ★★★★★ (417 ratings) 30,089 students"
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  const Text(
-                    '4.8',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.accentOrange,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: List.generate(
-                      5,
-                      (index) => const Icon(
-                        Icons.star_rounded,
-                        size: 16,
-                        color: AppColors.accentOrange,
+              Builder(
+                builder: (context) {
+                  final ratingsCount = course.sections.fold<int>(0, (s, sec) => s + sec.lectures.length) * 12 + 48;
+                  final rawEnrollment = course.enrollmentCount?.replaceAll(RegExp(r'[^0-9]'), '') ?? '';
+                  final enrollmentNum = int.tryParse(rawEnrollment) ?? 0;
+                  final studentText = enrollmentNum > 0
+                      ? ' $enrollmentNum ${enrollmentNum == 1 ? "student" : "students"}'
+                      : '';
+
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      const Text(
+                        '4.8',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.accentOrange,
+                        ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Flexible(
-                    child: Text(
-                      '(${course.sections.fold<int>(0, (s, sec) => s + sec.lectures.length) * 12 + 48} ratings) ${course.enrollmentCount ?? '1,240'} students',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: isDark ? Colors.white60 : Colors.grey.shade700,
+                      const SizedBox(width: 4),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: List.generate(
+                          5,
+                          (index) => const Icon(
+                            Icons.star_rounded,
+                            size: 16,
+                            color: AppColors.accentOrange,
+                          ),
+                        ),
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          '($ratingsCount ratings)$studentText',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isDark ? Colors.white60 : Colors.grey.shade700,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
               const SizedBox(height: 12),
 
@@ -2781,10 +2841,26 @@ class _FreePreviewModalSheet extends StatefulWidget {
 }
 
 class _FreePreviewModalSheetState extends State<_FreePreviewModalSheet> {
+  Duration get _effectivePreviewLimit {
+    // 1. Lecture-specific previewDuration parameter set by instructor
+    final lectureSec = widget.lecture.previewDuration;
+    if (lectureSec != null && lectureSec > 0) {
+      return Duration(seconds: lectureSec);
+    }
+    // 2. Course-level previewDuration fallback
+    final courseSec = widget.course.previewDuration;
+    if (courseSec != null && courseSec > 0) {
+      return Duration(seconds: courseSec);
+    }
+    // 3. Platform default preview time limit (30 seconds)
+    return const Duration(seconds: 30);
+  }
+
   VideoPlayerController? _controller;
   ChewieController? _chewieController;
   bool _isLoading = true;
   String? _error;
+  bool _previewLimitReached = false;
 
   @override
   void initState() {
@@ -2792,10 +2868,42 @@ class _FreePreviewModalSheetState extends State<_FreePreviewModalSheet> {
     _startPreview();
   }
 
+  void _onVideoPlayerTick() {
+    if (_controller == null || !_controller!.value.isInitialized) return;
+    final currentPos = _controller!.value.position;
+    final totalDuration = _controller!.value.duration;
+    final limit = _effectivePreviewLimit;
+
+    // Apply preview cutoff once position reaches the designated preview duration limit
+    if (totalDuration > limit && currentPos >= limit) {
+      if (_controller!.value.isPlaying) {
+        _controller!.pause();
+      }
+      if (!_previewLimitReached) {
+        _controller!.seekTo(limit);
+        if (_chewieController != null && _chewieController!.isFullScreen) {
+          _chewieController!.exitFullScreen();
+        }
+        if (mounted) {
+          setState(() {
+            _previewLimitReached = true;
+          });
+        }
+      }
+    } else if (_previewLimitReached && currentPos < limit) {
+      if (mounted) {
+        setState(() {
+          _previewLimitReached = false;
+        });
+      }
+    }
+  }
+
   Future<void> _startPreview() async {
     setState(() {
       _isLoading = true;
       _error = null;
+      _previewLimitReached = false;
     });
 
     final videoUrl = widget.lecture.videoUrl;
@@ -2867,6 +2975,8 @@ class _FreePreviewModalSheetState extends State<_FreePreviewModalSheet> {
 
       if (!mounted) return;
 
+      _controller!.addListener(_onVideoPlayerTick);
+
       _chewieController = ChewieController(
         videoPlayerController: _controller!,
         autoPlay: true,
@@ -2896,6 +3006,7 @@ class _FreePreviewModalSheetState extends State<_FreePreviewModalSheet> {
 
   @override
   void dispose() {
+    _controller?.removeListener(_onVideoPlayerTick);
     _chewieController?.dispose();
     _controller?.dispose();
     super.dispose();
@@ -3054,7 +3165,100 @@ class _FreePreviewModalSheetState extends State<_FreePreviewModalSheet> {
                               .videoPlayerController
                               .value
                               .isInitialized
-                    ? Chewie(controller: _chewieController!)
+                    ? Stack(
+                        children: [
+                          Positioned.fill(
+                            child: Chewie(controller: _chewieController!),
+                          ),
+                          if (_previewLimitReached)
+                            Positioned.fill(
+                              child: Container(
+                                color: Colors.black.withValues(alpha: 0.88),
+                                padding: const EdgeInsets.symmetric(horizontal: 24),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(10),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primaryGreen.withValues(alpha: 0.2),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(
+                                        Icons.lock_outline_rounded,
+                                        color: AppColors.primaryGreen,
+                                        size: 28,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 10),
+                                    const Text(
+                                      'Preview Time Limit Reached',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                    const SizedBox(height: 6),
+                                    const Text(
+                                      'Enjoying this lecture? Enroll now to unlock all lectures and the full video content.',
+                                      style: TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 11.5,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Wrap(
+                                      spacing: 10,
+                                      runSpacing: 8,
+                                      alignment: WrapAlignment.center,
+                                      children: [
+                                        OutlinedButton.icon(
+                                          style: OutlinedButton.styleFrom(
+                                            foregroundColor: Colors.white70,
+                                            side: const BorderSide(color: Colors.white38),
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                              vertical: 6,
+                                            ),
+                                          ),
+                                          onPressed: () {
+                                            _controller?.seekTo(Duration.zero);
+                                            setState(() => _previewLimitReached = false);
+                                            _controller?.play();
+                                          },
+                                          icon: const Icon(Icons.replay_rounded, size: 14),
+                                          label: const Text(
+                                            'Replay Sample',
+                                            style: TextStyle(fontSize: 11),
+                                          ),
+                                        ),
+                                        ElevatedButton.icon(
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: AppColors.primaryGreen,
+                                            foregroundColor: Colors.white,
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 14,
+                                              vertical: 6,
+                                            ),
+                                          ),
+                                          onPressed: widget.onEnroll,
+                                          icon: const Icon(Icons.shopping_bag_outlined, size: 14),
+                                          label: const Text(
+                                            'Enroll Now',
+                                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                        ],
+                      )
                     : const SizedBox.shrink(),
               ),
             ),

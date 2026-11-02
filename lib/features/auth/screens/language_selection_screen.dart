@@ -22,13 +22,33 @@ class LanguageSelectionScreen extends ConsumerStatefulWidget {
       _LanguageSelectionScreenState();
 }
 class _LanguageSelectionScreenState extends ConsumerState<LanguageSelectionScreen> {
-  String _selected = 'English';
+  String? _selected;
 
   static const _languages = [
     _Language('English', 'English', 'A', 'Universal / Official'),
     _Language('Hindi', 'हिन्दी', 'अ', 'राष्ट्रीय भाषा'),
     _Language('Marathi', 'मराठी', 'म', 'प्रादेशिक भाषा'),
   ];
+
+  static String _codeToName(String code) {
+    final lower = code.toLowerCase().trim();
+    if (lower == 'hi' || lower == 'hindi') return 'Hindi';
+    if (lower == 'mr' || lower == 'marathi') return 'Marathi';
+    return 'English';
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        final activeCode = ref.read(languageProvider);
+        setState(() {
+          _selected = _codeToName(activeCode);
+        });
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -72,8 +92,9 @@ class _LanguageSelectionScreenState extends ConsumerState<LanguageSelectionScree
                 
                 // 3 Exclusive Language Cards
                 ..._languages.map((lang) {
-                  final isSelected = lang.codeName.toLowerCase() == _selected.toLowerCase() ||
-                      lang.nativeName == _selected;
+                  final activeLangName = _selected ?? _codeToName(ref.watch(languageProvider));
+                  final isSelected = lang.codeName.toLowerCase() == activeLangName.toLowerCase() ||
+                      lang.nativeName == activeLangName;
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 16),
                     child: _LanguageCard(
@@ -95,7 +116,8 @@ class _LanguageSelectionScreenState extends ConsumerState<LanguageSelectionScree
                   child: AppGradientButton(
                     label: tr(ref, 'Continue'),
                     onPressed: () async {
-                      await ref.read(languageProvider.notifier).setLanguage(_selected);
+                      final chosenLang = _selected ?? _codeToName(ref.read(languageProvider));
+                      await ref.read(languageProvider.notifier).setLanguage(chosenLang);
                       final prefs = await SharedPreferences.getInstance();
                       await prefs.setBool('has_selected_language', true);
                       if (context.mounted) {

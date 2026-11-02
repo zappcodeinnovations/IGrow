@@ -15,10 +15,16 @@ import '../../../core/utils/app_toast.dart';
 
 /// Explore screen for courses.
 class ExploreScreen extends ConsumerStatefulWidget {
-  const ExploreScreen({super.key, this.initialSearch, this.initialTab = 0});
+  const ExploreScreen({
+    super.key,
+    this.initialSearch,
+    this.initialTab = 0,
+    this.initialInstructorId,
+  });
 
   final String? initialSearch;
   final int initialTab;
+  final String? initialInstructorId;
 
   @override
   ConsumerState<ExploreScreen> createState() => _ExploreScreenState();
@@ -27,6 +33,7 @@ class ExploreScreen extends ConsumerStatefulWidget {
 class _ExploreScreenState extends ConsumerState<ExploreScreen> {
   String _searchQuery = '';
   String _selectedCategory = 'all';
+  String? _selectedInstructorId;
   String _selectedLevel = '';
   String _selectedOrdering = '';
   String _selectedPricePreset = 'all'; // all, free, under_500, 500_1000, above_1000
@@ -41,12 +48,16 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
     if (_selectedOrdering.isNotEmpty && _selectedOrdering != '-created_at') count++;
     if (_selectedPricePreset != 'all') count++;
     if (_minRating != null && _minRating! > 0) count++;
+    if (_selectedInstructorId != null && _selectedInstructorId!.isNotEmpty) count++;
     return count;
   }
 
   @override
   void initState() {
     super.initState();
+    if (widget.initialInstructorId != null && widget.initialInstructorId!.isNotEmpty) {
+      _selectedInstructorId = widget.initialInstructorId;
+    }
     if (widget.initialSearch != null && widget.initialSearch!.isNotEmpty) {
       _searchQuery = widget.initialSearch!;
       _searchController.text = widget.initialSearch!;
@@ -56,6 +67,11 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
   @override
   void didUpdateWidget(covariant ExploreScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.initialInstructorId != oldWidget.initialInstructorId) {
+      setState(() {
+        _selectedInstructorId = widget.initialInstructorId;
+      });
+    }
     if (widget.initialSearch != oldWidget.initialSearch) {
       setState(() {
         _searchQuery = widget.initialSearch ?? '';
@@ -873,6 +889,18 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                                         labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.editorialSecondary),
                                       ),
                                     ),
+                                  if (_selectedInstructorId != null && _selectedInstructorId!.isNotEmpty)
+                                    Padding(
+                                      padding: const EdgeInsets.only(right: 6),
+                                      child: InputChip(
+                                        label: Text('Instructor: ${_selectedInstructorId!.length > 10 ? "${_selectedInstructorId!.substring(0, 8)}..." : _selectedInstructorId}'),
+                                        avatar: const Icon(Icons.person_rounded, size: 14, color: AppColors.editorialSecondary),
+                                        onDeleted: () => setState(() => _selectedInstructorId = null),
+                                        deleteIconColor: AppColors.editorialSecondary,
+                                        backgroundColor: AppColors.editorialSecondary.withValues(alpha: 0.1),
+                                        labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.editorialSecondary),
+                                      ),
+                                    ),
                                   TextButton(
                                     style: TextButton.styleFrom(
                                       padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -886,6 +914,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                                         _minPrice = null;
                                         _maxPrice = null;
                                         _minRating = null;
+                                        _selectedInstructorId = null;
                                       });
                                     },
                                     child: const Text('Clear All', style: TextStyle(fontSize: 12, color: Colors.redAccent)),
@@ -904,6 +933,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                               maxPrice: _maxPrice,
                               ordering: _selectedOrdering,
                               minRating: _minRating,
+                              instructor: _selectedInstructorId,
                             ))).when(
                               data: (courses) {
                                 if (courses.isEmpty) {
@@ -1017,7 +1047,11 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                         ],
                       ),
                       // E-Books Tab
-                      const EbooksTab(),
+                      EbooksTab(
+                        searchQuery: _searchQuery,
+                        category: _selectedCategory != 'all' ? _selectedCategory : null,
+                        instructorId: _selectedInstructorId,
+                      ),
                     ],
                   ),
                 ),
