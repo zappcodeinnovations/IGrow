@@ -294,8 +294,20 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   prefixIcon: const Icon(Icons.email_outlined),
                   keyboardType: TextInputType.emailAddress,
                   textInputAction: TextInputAction.next,
-                  validator: (v) =>
-                      (v == null || !v.contains('@')) ? 'Valid email required' : null,
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) {
+                      return 'Email is required';
+                    }
+                    final trimmed = v.trim();
+                    if (RegExp(r'[A-Z]').hasMatch(trimmed)) {
+                      return 'Email must contain lowercase letters only';
+                    }
+                    final emailRegex = RegExp(r'^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$');
+                    if (!emailRegex.hasMatch(trimmed)) {
+                      return 'Valid email required';
+                    }
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 16),
                 AppTextField(
