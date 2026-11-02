@@ -132,9 +132,14 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
     super.dispose();
   }
 
+  bool _isPickingCoverImage = false;
+
   // ── Step 1 Helpers ────────────────────────────────────────────────────────
 
   Future<void> _pickCoverImage() async {
+    if (_isPickingCoverImage) return;
+    setState(() => _isPickingCoverImage = true);
+
     FocusManager.instance.primaryFocus?.unfocus();
     await Future.delayed(const Duration(milliseconds: 120));
     try {
@@ -148,7 +153,14 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
         setState(() => _coverImage = File(picked.path));
       }
     } catch (e) {
-      _showErrorSnackbar('Failed to pick cover image: $e');
+      final errorStr = e.toString();
+      if (!errorStr.contains('already_active')) {
+        _showErrorSnackbar('Failed to pick cover image: $e');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isPickingCoverImage = false);
+      }
     }
   }
 
@@ -1339,9 +1351,17 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     OutlinedButton.icon(
-                      onPressed: _pickCoverImage,
-                      icon: const Icon(Icons.cloud_upload_outlined, size: 18),
-                      label: Text(_coverImage != null ? 'Change Thumbnail' : 'Upload Thumbnail'),
+                      onPressed: _isPickingCoverImage ? null : _pickCoverImage,
+                      icon: _isPickingCoverImage
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.cloud_upload_outlined, size: 18),
+                      label: Text(_isPickingCoverImage
+                          ? 'Opening...'
+                          : (_coverImage != null ? 'Change Thumbnail' : 'Upload Thumbnail')),
                     ),
                     Text(
                       '16:9 (1280x720), JPG/PNG',
