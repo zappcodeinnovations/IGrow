@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,6 +17,7 @@ import '../../../core/router/route_names.dart';
 import '../../../core/utils/app_toast.dart';
 import '../../../core/services/social_auth_service.dart';
 import '../../../core/widgets/eula_terms_dialog.dart';
+import '../../profile/screens/privacy_screen.dart';
 import '../../../data/models/user_role.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/complete_social_profile_dialog.dart';
@@ -326,7 +328,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   textInputAction: TextInputAction.next,
                   onChanged: (v) {
                     setState(() {
-                      _phoneHasBeenTouched = true;
                       final trimmed = v.trim();
                       if (trimmed.isEmpty) {
                         _phoneLiveError = tr(ref, 'Phone number is required');
@@ -409,31 +410,49 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     ),
                     const SizedBox(width: 10),
                     Expanded(
-                      child: GestureDetector(
-                        onTap: () => EulaTermsDialog.show(context),
-                        behavior: HitTestBehavior.opaque,
-                        child: Text.rich(
-                          TextSpan(
-                            text: tr(ref, 'By continuing, you agree to our '),
-                            style: Theme.of(context).textTheme.bodySmall,
-                            children: [
-                              TextSpan(
-                                text: tr(ref, 'Terms of Use (EULA)'),
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodySmall
-                                    ?.copyWith(
-                                      color: AppColors.primaryGreen,
-                                      fontWeight: FontWeight.bold,
-                                      decoration: TextDecoration.underline,
-                                    ),
-                              ),
+                      child: Text.rich(
+                        TextSpan(
+                          text: tr(ref, 'I agree to the '),
+                          style: Theme.of(context).textTheme.bodySmall,
+                          children: [
+                            TextSpan(
+                              text: tr(ref, 'Terms of Service'),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(
+                                    color: AppColors.primaryGreen,
+                                    fontWeight: FontWeight.bold,
+                                    decoration: TextDecoration.underline,
+                                  ),
+                              recognizer: TapGestureRecognizer()
+                                ..onTap = () {
+                                  EulaTermsDialog.show(context);
+                                },
+                            ),
+                            TextSpan(text: tr(ref, ' and ')),
+                            TextSpan(
+                              text: tr(ref, 'Privacy Policy'),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(
+                                    color: AppColors.primaryGreen,
+                                    fontWeight: FontWeight.bold,
+                                    decoration: TextDecoration.underline,
+                                  ),
+                              recognizer: TapGestureRecognizer()
+                                ..onTap = () {
+                                  PrivacyScreen.showPrivacyPolicyModal(context);
+                                },
+                            ),
+                            if (Platform.isIOS) ...[
                               TextSpan(
                                 text:
                                     tr(ref, ' and zero-tolerance policy against objectionable content and abusive users.'),
                               ),
                             ],
-                          ),
+                          ],
                         ),
                       ),
                     ),

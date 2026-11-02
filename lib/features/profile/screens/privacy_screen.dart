@@ -10,44 +10,7 @@ import '../../../core/widgets/delete_account_dialog.dart';
 class PrivacyScreen extends ConsumerStatefulWidget {
   const PrivacyScreen({super.key});
 
-  @override
-  ConsumerState<PrivacyScreen> createState() => _PrivacyScreenState();
-}
-
-class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
-  bool _profileVisibility = true;
-  bool _showActivityStatus = true;
-  bool _allowDirectMessages = true;
-  bool _shareDataForAnalytics = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadPreferences();
-  }
-
-  Future<void> _loadPreferences() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      if (mounted) {
-        setState(() {
-          _profileVisibility = prefs.getBool('privacy_profile_visibility') ?? true;
-          _showActivityStatus = prefs.getBool('privacy_activity_status') ?? true;
-          _allowDirectMessages = prefs.getBool('privacy_direct_messages') ?? true;
-          _shareDataForAnalytics = prefs.getBool('privacy_share_analytics') ?? false;
-        });
-      }
-    } catch (_) {}
-  }
-
-  Future<void> _savePreference(String key, bool value) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool(key, value);
-    } catch (_) {}
-  }
-
-  void _showPrivacyPolicyModal(BuildContext context) {
+  static void showPrivacyPolicyModal(BuildContext context) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -124,6 +87,43 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
         );
       },
     );
+  }
+
+  @override
+  ConsumerState<PrivacyScreen> createState() => _PrivacyScreenState();
+}
+
+class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
+  bool _profileVisibility = true;
+  bool _showActivityStatus = true;
+  bool _allowDirectMessages = true;
+  bool _shareDataForAnalytics = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPreferences();
+  }
+
+  Future<void> _loadPreferences() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (mounted) {
+        setState(() {
+          _profileVisibility = prefs.getBool('privacy_profile_visibility') ?? true;
+          _showActivityStatus = prefs.getBool('privacy_activity_status') ?? true;
+          _allowDirectMessages = prefs.getBool('privacy_direct_messages') ?? true;
+          _shareDataForAnalytics = prefs.getBool('privacy_share_analytics') ?? false;
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _savePreference(String key, bool value) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(key, value);
+    } catch (_) {}
   }
 
   Widget _buildSwitchItem({
@@ -388,7 +388,7 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
             
             Center(
               child: TextButton.icon(
-                onPressed: () => _showPrivacyPolicyModal(context),
+                onPressed: () => PrivacyScreen.showPrivacyPolicyModal(context),
                 icon: Icon(
                   Icons.description_outlined, 
                   size: 18, 
