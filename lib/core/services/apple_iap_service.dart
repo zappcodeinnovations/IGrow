@@ -19,14 +19,36 @@ class AppleIapService {
   String? _expectedProductId;
 
   /// Default fallback product tier provided by backend.
-  static const String defaultProductId = 'com.zappkode.igrow.tier1';
+  static const String defaultProductId = 'com.zappkode.igrow.c.tier1';
 
   /// Predefined set of IAP product IDs configured in App Store Connect.
   static const Set<String> productIds = {
-    'com.zappkode.igrow.tier1',
-    'com.zappkode.igrow.tier2',
-    'com.zappkode.igrow.tier3',
+    'com.zappkode.igrow.c.tier1', // Tier 1: ₹249
+    'com.zappkode.igrow.tier.499', // Tier 1.5: ₹499
+    'om.zappkode.igrow.tier2',    // Tier 2: ₹999 (custom App Store ID)
+    'com.zappkode.igrow.tier2',   // Tier 2 fallback: ₹999
+    'com.zappkode.igrow.tier3',   // Tier 3: ₹1499
+    'com.zappkode.igrow.tier1',   // Legacy fallback
   };
+
+  /// Returns the exact corresponding Apple In-App Purchase product ID for an exact course price in INR.
+  static String getProductIdForPrice(double price) {
+    final int rounded = price.round();
+    switch (rounded) {
+      case 249:
+        return 'com.zappkode.igrow.c.tier1';
+      case 499:
+        return 'com.zappkode.igrow.tier.499';
+      case 999:
+        return 'om.zappkode.igrow.tier2';
+      case 1499:
+        return 'com.zappkode.igrow.tier3';
+      default:
+        // Fallback to Tier 1 if undefined
+        debugPrint('⚠️ [AppleIapService] Unmatched course price ₹$price. Defaulting to Tier 1.');
+        return 'com.zappkode.igrow.c.tier1';
+    }
+  }
 
   /// Initialize listener for purchase updates.
   void init() {
@@ -124,8 +146,13 @@ class AppleIapService {
 
     final purchaseParam = PurchaseParam(productDetails: productToBuy);
 
-    debugPrint('🚀 [AppleIapService] Initiating buyNonConsumable for $productId...');
-    final launched = await _iap.buyNonConsumable(purchaseParam: purchaseParam);
+    debugPrint('🚀 [AppleIapService] Initiating buyConsumable for $productId...');
+    // Use buyConsumable with autoConsume=true so that Apple StoreKit allows repeat purchases
+    // for educational tier products and issues a fresh transaction ID on every checkout.
+    final launched = await _iap.buyConsumable(
+      purchaseParam: purchaseParam,
+      autoConsume: true,
+    );
     if (!launched) {
       throw Exception('Failed to initiate Apple In-App Purchase sheet.');
     }

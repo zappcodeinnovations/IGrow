@@ -2289,16 +2289,30 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
         ),
         const SizedBox(height: 16),
 
-        TextField(
-          controller: _settingsPriceController,
-          enabled: !isLocked,
-          keyboardType: TextInputType.number,
+        DropdownButtonFormField<String>(
+          initialValue: const ['0', '249', '499', '999', '1499'].contains(_settingsPriceController.text.trim())
+              ? _settingsPriceController.text.trim()
+              : '0',
           decoration: const InputDecoration(
-            labelText: 'Price (₹) *',
-            prefixText: '₹ ',
-            helperText: 'Enter 0 to make this course free for students.',
+            labelText: 'Course Price Tier *',
+            helperText: 'Select one of the standard price tiers.',
             border: OutlineInputBorder(),
+            contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           ),
+          items: const [
+            DropdownMenuItem(value: '0', child: Text('Free (₹0)')),
+            DropdownMenuItem(value: '249', child: Text('₹249 — Tier 1')),
+            DropdownMenuItem(value: '499', child: Text('₹499 — Tier 1.5')),
+            DropdownMenuItem(value: '999', child: Text('₹999 — Tier 2')),
+            DropdownMenuItem(value: '1499', child: Text('₹1,499 — Tier 3')),
+          ],
+          onChanged: isLocked
+              ? null
+              : (val) {
+                  if (val != null) {
+                    setState(() => _settingsPriceController.text = val);
+                  }
+                },
         ),
         const SizedBox(height: 24),
 

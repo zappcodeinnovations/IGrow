@@ -272,7 +272,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       final canShowRazorpay = ref.read(appConfigProvider).canShowPaymentGateway;
       if (!canShowRazorpay && !kIsWeb && Platform.isIOS) {
         // Razorpay is disabled on iOS for App Store review. Execute Apple In-App Purchase flow!
-        await _startAppleIapFlow(items: items);
+        await _startAppleIapFlow(items: items, finalTotal: finalTotal);
         return;
       }
 
@@ -296,9 +296,12 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   }
 
   /// Apple In-App Purchase Flow (StoreKit) for iOS App Store compliance
-  Future<void> _startAppleIapFlow({required List<dynamic> items}) async {
+  Future<void> _startAppleIapFlow({
+    required List<dynamic> items,
+    required double finalTotal,
+  }) async {
     try {
-      debugPrint('🍏 [CheckoutScreen] Starting Apple IAP flow...');
+      debugPrint('🍏 [CheckoutScreen] Starting Apple IAP flow for total: ₹$finalTotal...');
       String targetCourseId = '';
       if (widget.directCourseId != null && widget.directCourseId!.isNotEmpty) {
         targetCourseId = widget.directCourseId!;
@@ -310,7 +313,9 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
         throw Exception('No course selected for purchase.');
       }
 
-      const String productId = AppleIapService.defaultProductId; // com.zappkode.igrow.tier1
+      // Map dynamic course price to Apple Consumable Tier
+      final String productId = AppleIapService.getProductIdForPrice(finalTotal);
+      debugPrint('🍏 [CheckoutScreen] Mapped total ₹$finalTotal to Apple Product ID: $productId');
 
       // 1. Launch StoreKit In-App Purchase sheet
       final purchaseDetails = await AppleIapService.instance.buyProduct(productId: productId);
@@ -328,6 +333,16 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
           );
 
       debugPrint('🎉 [CheckoutScreen] Backend Apple IAP confirmation result: $result');
+
+      // Check if backend flagged this as an already processed / duplicate transaction
+      final isAlreadyProcessed = result['message']?.toString().contains('already processed') ?? false;
+      if (isAlreadyProcessed && !(result['enrolled'] == true)) {
+        throw Exception('This Apple In-App Purchase transaction has already been redeemed.');
+      }
+
+      // Immediately invalidate enrollment and order caches so user sees course in My Learning
+      ref.invalidate(studentEnrollmentsProvider);
+      ref.invalidate(ordersProvider);
 
       // 3. Clear cart if cart checkout
       if (widget.directCourseId == null) {
