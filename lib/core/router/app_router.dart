@@ -479,7 +479,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: RouteNames.instructorUploads,
             builder: (context, state) {
               final tab = int.tryParse(state.uri.queryParameters['tab'] ?? '') ?? 0;
-              return InstructorUploadsScreen(initialTabIndex: tab);
+              return InstructorUploadsScreen(
+                key: ValueKey('instructor_uploads_tab_$tab'),
+                initialTabIndex: tab,
+              );
             },
           ),
           GoRoute(
