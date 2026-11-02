@@ -190,12 +190,20 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                 const SizedBox(height: 24),
                 Text(
                   'iAgrow',
-                  style: Theme.of(context).textTheme.displayLarge?.copyWith(color: AppColors.greenDark,),
+                  style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   'Learn • Grow • Achieve',
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: AppColors.inkSoft,),
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: AppColors.greenLight,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 1.1,
+                      ),
                 ),
               ],
             ),
