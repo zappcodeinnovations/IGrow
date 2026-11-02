@@ -30,6 +30,8 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
   PlatformFile? _selectedFile;
   File? _coverImage;
   final ImagePicker _imagePicker = ImagePicker();
+  bool _isPickingImage = false;
+  bool _isPickingFile = false;
   bool _isSavingDraft = false;
   bool _isSubmittingReview = false;
   bool get _isUploading => _isSavingDraft || _isSubmittingReview;
@@ -111,6 +113,9 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
   }
 
   Future<void> _pickCoverImage() async {
+    if (_isPickingImage) return;
+    setState(() => _isPickingImage = true);
+
     FocusManager.instance.primaryFocus?.unfocus();
     await Future.delayed(const Duration(milliseconds: 120));
     try {
@@ -127,14 +132,25 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error selecting cover image: $e')),
-        );
+        final errorStr = e.toString();
+        // Ignore duplicate active picker invocation error cleanly
+        if (!errorStr.contains('already_active')) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error selecting cover image: $e')),
+          );
+        }
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isPickingImage = false);
       }
     }
   }
 
   Future<void> _pickFile() async {
+    if (_isPickingFile) return;
+    setState(() => _isPickingFile = true);
+
     try {
       final result = await FilePicker.pickFiles(
         type: FileType.custom,
@@ -148,9 +164,16 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error picking file: $e')));
+        final errorStr = e.toString();
+        if (!errorStr.contains('already_active')) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Error picking file: $e')));
+        }
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isPickingFile = false);
       }
     }
   }
@@ -458,19 +481,25 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
                                 ),
                                 const SizedBox(height: 10),
                                 OutlinedButton.icon(
-                                  onPressed: _pickCoverImage,
-                                  icon: const Icon(
-                                    Icons.photo_library_outlined,
-                                    size: 16,
-                                  ),
-                                  label: const Text('Change Cover Image'),
+                                  onPressed: _isPickingImage ? null : _pickCoverImage,
+                                  icon: _isPickingImage
+                                      ? const SizedBox(
+                                          width: 16,
+                                          height: 16,
+                                          child: CircularProgressIndicator(strokeWidth: 2),
+                                        )
+                                      : const Icon(
+                                          Icons.photo_library_outlined,
+                                          size: 16,
+                                        ),
+                                  label: Text(_isPickingImage ? 'Selecting...' : 'Change Cover Image'),
                                   style: OutlinedButton.styleFrom(
                                     visualDensity: VisualDensity.compact,
                                   ),
                                 ),
                               ] else ...[
                                 InkWell(
-                                  onTap: _pickCoverImage,
+                                  onTap: _isPickingImage ? null : _pickCoverImage,
                                   borderRadius: BorderRadius.circular(16),
                                   child: Container(
                                     width: double.infinity,
@@ -500,15 +529,26 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
                                             ),
                                             shape: BoxShape.circle,
                                           ),
-                                          child: const Icon(
-                                            Icons.add_photo_alternate_outlined,
-                                            size: 34,
-                                            color: AppColors.skyBlue,
-                                          ),
+                                          child: _isPickingImage
+                                              ? const SizedBox(
+                                                  width: 34,
+                                                  height: 34,
+                                                  child: CircularProgressIndicator(
+                                                    strokeWidth: 2.5,
+                                                    color: AppColors.skyBlue,
+                                                  ),
+                                                )
+                                              : const Icon(
+                                                  Icons.add_photo_alternate_outlined,
+                                                  size: 34,
+                                                  color: AppColors.skyBlue,
+                                                ),
                                         ),
                                         const SizedBox(height: 12),
                                         Text(
-                                          'Tap to upload Cover Image / Thumbnail',
+                                          _isPickingImage
+                                              ? 'Opening Gallery...'
+                                              : 'Tap to upload Cover Image / Thumbnail',
                                           style: TextStyle(
                                             fontWeight: FontWeight.bold,
                                             fontSize: 14,
@@ -573,7 +613,7 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
                               ),
                               const SizedBox(height: 18),
                               InkWell(
-                                onTap: _pickFile,
+                                onTap: _isPickingFile ? null : _pickFile,
                                 borderRadius: BorderRadius.circular(16),
                                 child: Container(
                                   width: double.infinity,
