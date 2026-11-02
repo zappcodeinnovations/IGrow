@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:chopper/chopper.dart';
 import 'package:http/http.dart' as http;
+import 'api_exception.dart';
 import 'chopper_auth.dart';
 import 'token_storage.dart';
 import 'swagger_generated/app_api.swagger.dart';
@@ -16,14 +18,66 @@ class TimeoutClient extends http.BaseClient {
   final http.Client _inner;
 
   @override
-  Future<http.StreamedResponse> send(http.BaseRequest request) {
-    return _inner.send(request).timeout(timeout);
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    try {
+      return await _inner.send(request).timeout(timeout);
+    } on SocketException catch (_) {
+      throw ApiException.network(
+        'No internet connection. Please check your network and try again.',
+      );
+    } on TimeoutException catch (_) {
+      throw ApiException.network(
+        'Connection timed out. Please check your internet connection and try again.',
+      );
+    } on http.ClientException catch (e) {
+      final s = e.toString().toLowerCase();
+      if (s.contains('socket') ||
+          s.contains('abort') ||
+          s.contains('connection') ||
+          s.contains('handshake') ||
+          s.contains('host lookup')) {
+        throw ApiException.network(
+          'No internet connection. Please check your network and try again.',
+        );
+      }
+      rethrow;
+    }
   }
 
   @override
   void close() {
     _inner.close();
     super.close();
+  }
+}
+
+/// Intercepts network-level failures and maps them to user-friendly ApiExceptions.
+class NetworkErrorInterceptor implements Interceptor {
+  @override
+  FutureOr<Response<BodyType>> intercept<BodyType>(Chain<BodyType> chain) async {
+    try {
+      return await chain.proceed(chain.request);
+    } on SocketException catch (_) {
+      throw ApiException.network(
+        'No internet connection. Please check your network and try again.',
+      );
+    } on TimeoutException catch (_) {
+      throw ApiException.network(
+        'Connection timed out. Please check your internet connection and try again.',
+      );
+    } on http.ClientException catch (e) {
+      final s = e.toString().toLowerCase();
+      if (s.contains('socket') ||
+          s.contains('abort') ||
+          s.contains('connection') ||
+          s.contains('handshake') ||
+          s.contains('host lookup')) {
+        throw ApiException.network(
+          'No internet connection. Please check your network and try again.',
+        );
+      }
+      rethrow;
+    }
   }
 }
 
@@ -136,6 +190,7 @@ AppApi buildAppApi(TokenStorage tokenStorage) {
     ),
     converter: SafeJsonConverter($JsonSerializableConverter()),
     interceptors: [
+      NetworkErrorInterceptor(),
       TokenInterceptor(tokenStorage),
       DebugLoggingInterceptor(),
       HttpLoggingInterceptor(),

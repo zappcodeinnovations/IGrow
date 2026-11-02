@@ -253,11 +253,32 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
       }
     } catch (e) {
       if (mounted) {
+        String cleanError = e.toString();
+        if (cleanError.startsWith('Exception: ')) {
+          cleanError = cleanError.substring('Exception: '.length);
+        }
+        final lower = cleanError.toLowerCase();
+        if (lower.contains('socketexception') ||
+            lower.contains('clientexception') ||
+            lower.contains('connection abort') ||
+            lower.contains('connection refused') ||
+            lower.contains('connection reset') ||
+            lower.contains('connection closed') ||
+            lower.contains('failed host lookup') ||
+            lower.contains('network is unreachable') ||
+            lower.contains('handshake') ||
+            lower.contains('timed out') ||
+            lower.contains('timeoutexception') ||
+            lower.contains('network error') ||
+            lower.contains('no internet')) {
+          cleanError = 'No internet connection. Please check your network and try again.';
+        }
+
         final messenger = ScaffoldMessenger.of(context);
         messenger.clearSnackBars();
         messenger.showSnackBar(
           SnackBar(
-            content: Text('Failed to ${submitForReview ? "submit" : "save"} ebook: $e'),
+            content: Text(cleanError),
             backgroundColor: AppColors.error,
             duration: const Duration(seconds: 4),
           ),
