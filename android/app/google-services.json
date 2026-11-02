@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "744016784564-eqqa7p9no6blm7qsg1ihlfakp5i0jfek.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.zappkode.igrow",
+            "certificate_hash": "4c98ed062116ada8692dfbd334e356fe4b1f8007"
+          }
+        },
+        {
           "client_id": "744016784564-llffthjikehbu9sbgdb8l0kv7580s009.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
