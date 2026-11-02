@@ -45,7 +45,7 @@ class _MyLearningScreenState extends ConsumerState<MyLearningScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final enrollmentsAsync = ref.watch(studentEnrollmentsProvider);
-    final ebooksAsync = ref.watch(studentEbooksProvider(''));
+    final ebooksAsync = ref.watch(studentEbooksProvider(const EbooksQuery()));
     final cartState = ref.watch(cartProvider);
     final cartItemCount = cartState.maybeWhen(
       data: (cart) => cart.items.length,

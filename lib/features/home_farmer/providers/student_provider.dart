@@ -22,6 +22,7 @@ class CatalogQuery {
   final num? maxPrice;
   final String? ordering;
   final double? minRating;
+  final String? instructor;
 
   const CatalogQuery({
     this.search = '',
@@ -31,6 +32,7 @@ class CatalogQuery {
     this.maxPrice,
     this.ordering,
     this.minRating,
+    this.instructor,
   });
 
   @override
@@ -44,7 +46,8 @@ class CatalogQuery {
           minPrice == other.minPrice &&
           maxPrice == other.maxPrice &&
           ordering == other.ordering &&
-          minRating == other.minRating;
+          minRating == other.minRating &&
+          instructor == other.instructor;
 
   @override
   int get hashCode => Object.hash(
@@ -55,6 +58,7 @@ class CatalogQuery {
         maxPrice,
         ordering,
         minRating,
+        instructor,
       );
 }
 
@@ -70,6 +74,13 @@ final studentCatalogProvider = FutureProvider.autoDispose.family<List<CourseList
     ordering: query.ordering != null && query.ordering!.isNotEmpty ? query.ordering : null,
   );
   var list = response.results;
+  if (query.instructor != null && query.instructor!.isNotEmpty) {
+    final inst = query.instructor!.trim().toLowerCase();
+    list = list.where((c) {
+      final cInstName = (c.instructorName ?? '').toLowerCase();
+      return cInstName.contains(inst);
+    }).toList();
+  }
   if (query.minRating != null && query.minRating! > 0) {
     list = list.where((c) {
       // In Agrilearn, default rating is 4.8 if not explicitly low
@@ -80,13 +91,80 @@ final studentCatalogProvider = FutureProvider.autoDispose.family<List<CourseList
   return list;
 });
 
-/// Provider for fetching the ebooks catalog.
-final studentEbooksProvider = FutureProvider.autoDispose.family<List<EBook>, String>((ref, search) async {
+class EbooksQuery {
+  final String? search;
+  final String? category;
+  final String? instructorId;
+
+  const EbooksQuery({
+    this.search,
+    this.category,
+    this.instructorId,
+  });
+
+  static const empty = EbooksQuery();
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is EbooksQuery &&
+          runtimeType == other.runtimeType &&
+          search == other.search &&
+          category == other.category &&
+          instructorId == other.instructorId;
+
+  @override
+  int get hashCode => Object.hash(search, category, instructorId);
+}
+
+/// Provider for fetching the ebooks catalog with search, category, and strict instructor filtering.
+final studentEbooksProvider = FutureProvider.autoDispose.family<List<EBook>, EbooksQuery>((ref, query) async {
   final repo = ref.watch(studentRepositoryProvider);
   final response = await repo.getEbooksCatalog(
-    search: search.isNotEmpty ? search : null,
+    search: query.search?.isNotEmpty == true ? query.search : null,
+    category: query.category?.isNotEmpty == true ? query.category : null,
+    instructorId: query.instructorId?.isNotEmpty == true ? query.instructorId : null,
   );
-  return response.results;
+
+  var list = response.results;
+
+  // 1. Strict instructor filter: match by instructor UUID, instructor_name, or author_name
+  if (query.instructorId != null && query.instructorId!.trim().isNotEmpty) {
+    final target = query.instructorId!.trim().toLowerCase();
+    list = list.where((ebook) {
+      final matchesId = ebook.instructor.toLowerCase() == target;
+      final matchesInstructorName = (ebook.instructorName ?? '').toLowerCase() == target;
+      final matchesAuthor = ebook.authorName.toLowerCase() == target;
+      return matchesId || matchesInstructorName || matchesAuthor;
+    }).toList();
+  }
+
+  // 2. Search query filter: search across title, author_name, instructor_name, instructor ID, description
+  if (query.search != null && query.search!.trim().isNotEmpty) {
+    final q = query.search!.trim().toLowerCase();
+    list = list.where((ebook) {
+      final inTitle = ebook.title.toLowerCase().contains(q);
+      final inAuthor = ebook.authorName.toLowerCase().contains(q);
+      final inInstructorName = (ebook.instructorName ?? '').toLowerCase().contains(q);
+      final inInstructorId = ebook.instructor.toLowerCase().contains(q);
+      final inDesc = ebook.description.toLowerCase().contains(q);
+      return inTitle || inAuthor || inInstructorName || inInstructorId || inDesc;
+    }).toList();
+  }
+
+  // 3. Category filter
+  if (query.category != null && query.category!.isNotEmpty && query.category != 'all') {
+    final catTarget = query.category!.toLowerCase();
+    list = list.where((ebook) {
+      final category = ebook.category;
+      if (category == null) return false;
+      final ebookCatSlug = category.slug.toLowerCase();
+      final ebookCatId = (category.id ?? '').toLowerCase();
+      return ebookCatSlug == catTarget || ebookCatId == catTarget;
+    }).toList();
+  }
+
+  return list;
 });
 
 /// Provider for fetching a single ebook detail by slug or ID.

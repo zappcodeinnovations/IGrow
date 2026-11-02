@@ -6,45 +6,65 @@ import '../../home_farmer/providers/student_provider.dart';
 import '../../../core/widgets/shimmer_placeholders.dart';
 
 class EbooksTab extends ConsumerWidget {
-  const EbooksTab({super.key});
+  const EbooksTab({
+    super.key,
+    this.searchQuery = '',
+    this.category,
+    this.instructorId,
+  });
+
+  final String searchQuery;
+  final String? category;
+  final String? instructorId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final query = EbooksQuery(
+      search: searchQuery.trim().isEmpty ? null : searchQuery.trim(),
+      category: category,
+      instructorId: instructorId,
+    );
     
     return RefreshIndicator(
       color: AppColors.editorialSecondary,
       onRefresh: () async {
-        ref.invalidate(studentEbooksProvider(''));
+        ref.invalidate(studentEbooksProvider(query));
       },
-      child: ref.watch(studentEbooksProvider('')).when(
+      child: ref.watch(studentEbooksProvider(query)).when(
         data: (ebooks) {
           if (ebooks.isEmpty) {
+            final isFiltering = searchQuery.trim().isNotEmpty ||
+                (category != null && category!.isNotEmpty && category != 'all') ||
+                (instructorId != null && instructorId!.isNotEmpty);
+
             return ListView(
               physics: const AlwaysScrollableScrollPhysics(),
-              children: const [
-                SizedBox(height: 80),
+              children: [
+                const SizedBox(height: 80),
                 Center(
                   child: Padding(
-                    padding: EdgeInsets.all(32),
+                    padding: const EdgeInsets.all(32),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                          Icons.menu_book_rounded,
+                          isFiltering ? Icons.search_off_rounded : Icons.menu_book_rounded,
                           size: 56,
                           color: AppColors.inkSoft,
                         ),
-                        SizedBox(height: 12),
+                        const SizedBox(height: 12),
                         Text(
-                          'No E-Books Available',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          isFiltering ? 'No Matching E-Books' : 'No E-Books Available',
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                         ),
-                        SizedBox(height: 6),
+                        const SizedBox(height: 6),
                         Text(
-                          'Agricultural e-books and farming guides will appear here soon.',
+                          isFiltering
+                              ? 'No e-books found matching the selected instructor or search keywords.'
+                              : 'Agricultural e-books and farming guides will appear here soon.',
                           textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 13, color: AppColors.inkSoft),
+                          style: const TextStyle(fontSize: 13, color: AppColors.inkSoft),
                         ),
                       ],
                     ),
