@@ -434,52 +434,6 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
     );
   }
 
-  Future<void> _confirmDeleteCourse(ApiCourseList course) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (c) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Delete Course Draft', style: TextStyle(fontWeight: FontWeight.bold)),
-        content: Text('Are you sure you want to delete "${course.title}"? This action cannot be undone.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
-            onPressed: () => Navigator.pop(c, true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true) {
-      try {
-        await ref.read(instructorRepositoryProvider).deleteCourse(course.id);
-        if (!mounted) return;
-        final messenger = ScaffoldMessenger.of(context);
-        messenger.clearSnackBars();
-        messenger.showSnackBar(
-          const SnackBar(
-            content: Text('Course deleted successfully'),
-            backgroundColor: AppColors.primaryGreen,
-          ),
-        );
-        ref.invalidate(instructorCoursesProvider);
-        ref.invalidate(instructorStatsProvider);
-      } catch (e) {
-        if (!mounted) return;
-        final messenger = ScaffoldMessenger.of(context);
-        messenger.clearSnackBars();
-        messenger.showSnackBar(
-          SnackBar(
-            content: Text('Failed to delete course: $e'),
-            backgroundColor: AppColors.error,
-          ),
-        );
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -1261,13 +1215,11 @@ class AgriLearnCourseCard extends StatelessWidget {
     required this.course,
     required this.onManage,
     this.onViewLive,
-    this.onDelete,
   });
 
   final ApiCourseList course;
   final VoidCallback onManage;
   final VoidCallback? onViewLive;
-  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -1412,7 +1364,7 @@ class AgriLearnCourseCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
 
-          // Action Buttons: [Manage Course] (only if not live) [View Live] [Delete]
+          // Action Buttons: [Manage Course] (only if not live) [View Live]
           Row(
             children: [
               Expanded(
@@ -1461,17 +1413,6 @@ class AgriLearnCourseCard extends StatelessWidget {
                   ],
                 ),
               ),
-              if (onDelete != null)
-                IconButton(
-                  style: IconButton.styleFrom(
-                    padding: const EdgeInsets.all(6),
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                  onPressed: onDelete,
-                  icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.error),
-                  tooltip: 'Delete Course',
-                ),
             ],
           ),
         ],

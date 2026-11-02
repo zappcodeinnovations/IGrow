@@ -263,7 +263,42 @@ class InstructorRepository {
   /// Delete a course.
   Future<void> deleteCourse(String courseId) async {
     debugPrint('🗑️ [InstructorRepository] deleteCourse: courseId=$courseId');
-    await appApi.apiV1InstructorCoursesIdDelete(id: courseId);
+    final response = await appApi.apiV1InstructorCoursesIdDelete(id: courseId);
+    if (!response.isSuccessful) {
+      if (response.statusCode == 403) {
+        throw Exception(
+          'You do not have permission to delete courses. Please contact an administrator.',
+        );
+      }
+      if (response.statusCode >= 500) {
+        throw Exception('Server Error: Failed to delete course. Please try again later.');
+      }
+
+      String errorMsg = 'Failed to delete course';
+      if (response.error != null) {
+        final errorStr = response.error.toString();
+        try {
+          final decoded = jsonDecode(errorStr);
+          if (decoded is Map && decoded.containsKey('detail')) {
+            final detail = decoded['detail'].toString();
+            if (detail.toLowerCase().contains('not permitted') ||
+                detail.toLowerCase().contains('permission') ||
+                detail.toLowerCase().contains('only platform administrators')) {
+              errorMsg = 'You do not have permission to delete courses. Please contact an administrator.';
+            } else {
+              errorMsg = detail;
+            }
+          }
+        } catch (_) {
+          if (errorStr.trim().startsWith('<')) {
+            errorMsg = '$errorMsg (HTTP ${response.statusCode})';
+          } else {
+            errorMsg = errorStr;
+          }
+        }
+      }
+      throw Exception(errorMsg);
+    }
     debugPrint('✅ [InstructorRepository] deleteCourse SUCCESS');
   }
 
