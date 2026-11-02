@@ -31,16 +31,22 @@ class AppleIapService {
     'com.zappkode.igrow.tier1',   // Legacy fallback
   };
 
-  /// Returns the corresponding Apple In-App Purchase product ID for a given course price in INR.
+  /// Returns the exact corresponding Apple In-App Purchase product ID for an exact course price in INR.
   static String getProductIdForPrice(double price) {
-    if (price <= 350.0) {
-      return 'com.zappkode.igrow.c.tier1'; // ₹249
-    } else if (price <= 700.0) {
-      return 'com.zappkode.igrow.tier.499'; // ₹499
-    } else if (price <= 1200.0) {
-      return 'om.zappkode.igrow.tier2'; // ₹999
-    } else {
-      return 'com.zappkode.igrow.tier3'; // ₹1499
+    final int rounded = price.round();
+    switch (rounded) {
+      case 249:
+        return 'com.zappkode.igrow.c.tier1';
+      case 499:
+        return 'com.zappkode.igrow.tier.499';
+      case 999:
+        return 'om.zappkode.igrow.tier2';
+      case 1499:
+        return 'com.zappkode.igrow.tier3';
+      default:
+        // Fallback to Tier 1 if undefined
+        debugPrint('⚠️ [AppleIapService] Unmatched course price ₹$price. Defaulting to Tier 1.');
+        return 'com.zappkode.igrow.c.tier1';
     }
   }
 
