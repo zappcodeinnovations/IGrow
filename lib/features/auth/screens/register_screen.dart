@@ -37,6 +37,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  String? _phoneLiveError;
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
   bool _agreeTerms = false;
@@ -315,6 +316,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   controller: _phoneController,
                   label: tr(ref, 'Phone Number'),
                   hint: tr(ref, '10-digit mobile number'),
+                  errorText: _phoneLiveError,
                   prefixIcon: const Icon(Icons.phone_outlined),
                   keyboardType: TextInputType.phone,
                   inputFormatters: [
@@ -322,12 +324,26 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     LengthLimitingTextInputFormatter(10),
                   ],
                   textInputAction: TextInputAction.next,
+                  onChanged: (v) {
+                    setState(() {
+                      _phoneHasBeenTouched = true;
+                      final trimmed = v.trim();
+                      if (trimmed.isEmpty) {
+                        _phoneLiveError = tr(ref, 'Phone number is required');
+                      } else if (trimmed.length < 10) {
+                        _phoneLiveError = tr(ref, 'Mobile number must be exactly 10 digits.');
+                      } else {
+                        _phoneLiveError = null;
+                      }
+                    });
+                  },
                   validator: (v) {
-                    if (v == null || v.trim().isEmpty) {
+                    final trimmed = (v ?? '').trim();
+                    if (trimmed.isEmpty) {
                       return tr(ref, 'Phone number is required');
                     }
-                    if (v.trim().length != 10) {
-                      return tr(ref, 'Enter a valid 10-digit phone number');
+                    if (trimmed.length != 10) {
+                      return tr(ref, 'Mobile number must be exactly 10 digits.');
                     }
                     return null;
                   },
