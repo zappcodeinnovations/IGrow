@@ -1253,8 +1253,11 @@ class AgriLearnCourseCard extends StatelessWidget {
       badgeLabel = '• Draft';
     }
 
+    final effectiveOnTap = onViewLive ?? onManage;
+
     return AppCard(
       padding: const EdgeInsets.all(14),
+      onTap: effectiveOnTap,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
