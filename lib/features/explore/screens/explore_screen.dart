@@ -749,63 +749,180 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                     children: [
                       // Courses Tab
                       Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: ref.watch(studentCategoriesProvider).when(
+                          if (_selectedCategory == 'all' && _searchQuery.isEmpty && _activeFilterCount == 0) ...[
+                            // "What would you like to learn?" Grid View Matching Mockup
+                            Text(
+                              tr(ref, 'What would you like to learn?'),
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: -0.4,
+                                color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            ref.watch(studentCategoriesProvider).when(
                               data: (cats) {
-                                final list = [{'label': 'All', 'value': 'all'}];
-                                for (var c in cats) {
-                                  if (c.id != null) {
-                                    list.add({'label': c.name, 'value': c.id!});
-                                  }
-                                }
-                                return Row(
-                                  children: list.map((cat) {
-                                    return GestureDetector(
-                                      onTap: () {
-                                        setState(() {
-                                          _selectedCategory = cat['value']!;
-                                        });
-                                      },
-                                      child: _Tab(
-                                        label: cat['label']!,
-                                        isActive: _selectedCategory == cat['value'],
-                                      ),
-                                    );
-                                  }).toList(),
+                                if (cats.isEmpty) return const SizedBox.shrink();
+                                return SizedBox(
+                                  height: 220,
+                                  child: GridView.builder(
+                                    scrollDirection: Axis.horizontal,
+                                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                      crossAxisCount: 2,
+                                      mainAxisSpacing: 12,
+                                      crossAxisSpacing: 12,
+                                      childAspectRatio: 0.58,
+                                    ),
+                                    itemCount: cats.length,
+                                    itemBuilder: (context, index) {
+                                      final cat = cats[index];
+                                      return InkWell(
+                                        onTap: () {
+                                          setState(() {
+                                            _selectedCategory = cat.id ?? 'all';
+                                          });
+                                        },
+                                        borderRadius: BorderRadius.circular(16),
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                          decoration: BoxDecoration(
+                                            color: isDark ? AppColors.cardDark : Colors.white,
+                                            borderRadius: BorderRadius.circular(16),
+                                            border: Border.all(
+                                              color: isDark ? AppColors.lineDark : AppColors.lineLight,
+                                            ),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+                                                blurRadius: 6,
+                                                offset: const Offset(0, 2),
+                                              ),
+                                            ],
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              Container(
+                                                width: 44,
+                                                height: 44,
+                                                decoration: BoxDecoration(
+                                                  color: isDark
+                                                      ? AppColors.surfaceContainerHighDark
+                                                      : const Color(0xFFF1F8F3),
+                                                  borderRadius: BorderRadius.circular(12),
+                                                ),
+                                                child: Center(
+                                                  child: Icon(
+                                                    _getCategoryIcon(cat.name),
+                                                    size: 22,
+                                                    color: AppColors.primaryGreen,
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 12),
+                                              Expanded(
+                                                child: Text(
+                                                  cat.name,
+                                                  style: TextStyle(
+                                                    fontSize: 13,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                                                  ),
+                                                  maxLines: 2,
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
                                 );
                               },
-                              loading: () => SingleChildScrollView(
-                                scrollDirection: Axis.horizontal,
-                                child: Row(
-                                  children: List.generate(
-                                    4, 
-                                    (_) => const Padding(
-                                      padding: EdgeInsets.only(right: 8),
-                                      child: ShimmerCategoryChip(),
+                              loading: () => const SizedBox(
+                                height: 220,
+                                child: Center(child: CircularProgressIndicator(color: AppColors.primaryGreen)),
+                              ),
+                              error: (_, __) => const SizedBox.shrink(),
+                            ),
+                            const SizedBox(height: 20),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  tr(ref, 'All Courses'),
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: -0.3,
+                                    color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                          ] else ...[
+                            // Horizontal Filter Chips when viewing a specific category or searching
+                            SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: ref.watch(studentCategoriesProvider).when(
+                                data: (cats) {
+                                  final list = [{'label': 'All', 'value': 'all'}];
+                                  for (var c in cats) {
+                                    if (c.id != null) {
+                                      list.add({'label': c.name, 'value': c.id!});
+                                    }
+                                  }
+                                  return Row(
+                                    children: list.map((cat) {
+                                      return GestureDetector(
+                                        onTap: () {
+                                          setState(() {
+                                            _selectedCategory = cat['value']!;
+                                          });
+                                        },
+                                        child: _Tab(
+                                          label: cat['label']!,
+                                          isActive: _selectedCategory == cat['value'],
+                                        ),
+                                      );
+                                    }).toList(),
+                                  );
+                                },
+                                loading: () => SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  child: Row(
+                                    children: List.generate(
+                                      4, 
+                                      (_) => const Padding(
+                                        padding: EdgeInsets.only(right: 8),
+                                        child: ShimmerCategoryChip(),
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
-                              error: (err, st) => Row(
-                                children: [
-                                  GestureDetector(
-                                    onTap: () {
-                                      setState(() {
-                                        _selectedCategory = 'all';
-                                      });
-                                    },
-                                    child: _Tab(
-                                      label: 'All Courses',
-                                      isActive: _selectedCategory == 'all',
+                                error: (err, st) => Row(
+                                  children: [
+                                    GestureDetector(
+                                      onTap: () {
+                                        setState(() {
+                                          _selectedCategory = 'all';
+                                        });
+                                      },
+                                      child: _Tab(
+                                        label: 'All Courses',
+                                        isActive: _selectedCategory == 'all',
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ),
-                          ),
-                          const SizedBox(height: 12),
+                            const SizedBox(height: 12),
+                          ],
                           if (_activeFilterCount > 0 || _searchQuery.isNotEmpty) ...[
                             SingleChildScrollView(
                               scrollDirection: Axis.horizontal,
@@ -1057,6 +1174,19 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
         ),
       ),
     );
+  }
+
+  IconData _getCategoryIcon(String name) {
+    final lower = name.toLowerCase();
+    if (lower.contains('crop') || lower.contains('plant')) return Icons.grass_rounded;
+    if (lower.contains('soil') || lower.contains('land')) return Icons.landscape_rounded;
+    if (lower.contains('water') || lower.contains('irrig') || lower.contains('hydro')) return Icons.water_drop_rounded;
+    if (lower.contains('pest') || lower.contains('protect')) return Icons.pest_control_rounded;
+    if (lower.contains('organic') || lower.contains('eco')) return Icons.eco_rounded;
+    if (lower.contains('tech') || lower.contains('drone') || lower.contains('modern')) return Icons.precision_manufacturing_rounded;
+    if (lower.contains('hort') || lower.contains('fruit')) return Icons.local_florist_rounded;
+    if (lower.contains('animal') || lower.contains('dairy') || lower.contains('livestock')) return Icons.pets_rounded;
+    return Icons.eco_outlined;
   }
 }
 

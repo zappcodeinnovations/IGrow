@@ -357,9 +357,140 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
               ),
               const SizedBox(height: 18),
 
-              // ── Course Categories Section (Prominent Navigation & Discovery) ──
+              // ── Course Categories Section (Browse by category) ──
               _buildCourseCategoriesSection(context, ref, isDark),
               const SizedBox(height: 24),
+
+              // ── Featured Courses Showcase (Immediate Course Catalog on Home) ──
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        tr(ref, 'Featured courses'),
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: -0.3,
+                          color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                        ),
+                      ),
+                    ],
+                  ),
+                  InkWell(
+                    onTap: () => context.go(RouteNames.explore),
+                    borderRadius: BorderRadius.circular(6),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            tr(ref, 'See all'),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.primaryGreen,
+                            ),
+                          ),
+                          const SizedBox(width: 2),
+                          const Icon(
+                            Icons.arrow_forward_rounded,
+                            size: 14,
+                            color: AppColors.primaryGreen,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              ref.watch(studentCatalogProvider(const CatalogQuery())).when(
+                data: (courses) {
+                  if (courses.isEmpty) return const SizedBox.shrink();
+                  return Column(
+                    children: [
+                      for (int i = 0; i < courses.length; i++) ...[
+                        _CourseCard(course: courses[i], index: i),
+                        if (i < courses.length - 1) const SizedBox(height: 14),
+                      ],
+                    ],
+                  );
+                },
+                loading: () => Column(
+                  children: const [
+                    ShimmerCourseCard(),
+                    SizedBox(height: 14),
+                    ShimmerCourseCard(),
+                  ],
+                ),
+                error: (err, _) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 24),
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.wifi_off_rounded, size: 40, color: Colors.orange),
+                        const SizedBox(height: 10),
+                        Text(
+                          tr(ref, 'Unable to load courses. Please check your connection.'),
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: isDark ? Colors.white70 : AppColors.editorialOutline,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        ElevatedButton.icon(
+                          icon: const Icon(Icons.refresh_rounded, size: 16),
+                          label: Text(tr(ref, 'Try Again')),
+                          onPressed: () => ref.invalidate(studentCatalogProvider(const CatalogQuery())),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 28),
+
+              // ── Verified Faculty Showcase (Top Agricultural Instructors) ──
+              ref.watch(topInstructorsProvider).when(
+                data: (instructors) {
+                  if (instructors.isEmpty) {
+                    return const SizedBox.shrink();
+                  }
+                  return Column(
+                    children: [
+                      _TopInstructorsShowcase(instructors: instructors),
+                      const SizedBox(height: 28),
+                    ],
+                  );
+                },
+                loading: () => Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const ShimmerContainer(width: 130, height: 22, borderRadius: 12),
+                    const SizedBox(height: 8),
+                    const ShimmerContainer(width: 250, height: 24),
+                    const SizedBox(height: 14),
+                    SizedBox(
+                      height: 240,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: 2,
+                        separatorBuilder: (_, __) => const SizedBox(width: 14),
+                        itemBuilder: (context, index) => const ShimmerContainer(width: 220, height: 240, borderRadius: 18),
+                      ),
+                    ),
+                    const SizedBox(height: 28),
+                  ],
+                ),
+                error: (err, _) => const SizedBox.shrink(),
+              ),
 
               // ── 4. Academic Ledger (Stitch Exact Match) ──────────────────────
               Row(
@@ -385,9 +516,6 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                 ],
               ),
               const SizedBox(height: 10),
-
-
-
 
               // ── 4 Summary Stat Cards Grid (Compact & Distinctively Color-Coded) ──
               LayoutBuilder(
@@ -467,41 +595,6 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                 },
               ),
               const SizedBox(height: 24),
-
-              // ── Verified Faculty Showcase (Top Agricultural Instructors) ──
-              ref.watch(topInstructorsProvider).when(
-                data: (instructors) {
-                  if (instructors.isEmpty) {
-                    return const SizedBox.shrink();
-                  }
-                  return Column(
-                    children: [
-                      _TopInstructorsShowcase(instructors: instructors),
-                      const SizedBox(height: 28),
-                    ],
-                  );
-                },
-                loading: () => Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const ShimmerContainer(width: 130, height: 22, borderRadius: 12),
-                    const SizedBox(height: 8),
-                    const ShimmerContainer(width: 250, height: 24),
-                    const SizedBox(height: 14),
-                    SizedBox(
-                      height: 240,
-                      child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: 2,
-                        separatorBuilder: (_, __) => const SizedBox(width: 14),
-                        itemBuilder: (context, index) => const ShimmerContainer(width: 220, height: 240, borderRadius: 18),
-                      ),
-                    ),
-                    const SizedBox(height: 28),
-                  ],
-                ),
-                error: (err, _) => const SizedBox.shrink(),
-              ),
 
               // ── Latest Agriculture News Carousel ───────────────────────
               const HomeNewsCarousel(),
@@ -725,93 +818,6 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                 error: (_, __) => const SizedBox.shrink(),
               ),
 
-              // ── 6. Featured Courses Showcase (Stitch Exact Match Vertical Cards) ──
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Featured Courses',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: -0.3,
-                          color: isDark ? Colors.white : AppColors.editorialOnSurface,
-                        ),
-                      ),
-                    ],
-                  ),
-                  ref.watch(studentCatalogProvider(const CatalogQuery())).maybeWhen(
-                    data: (courses) => Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: isDark ? AppColors.surfaceContainerHighDark : AppColors.editorialSurfaceContainer,
-                        borderRadius: BorderRadius.circular(9999),
-                      ),
-                      child: Text(
-                        '${courses.length} Available',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.white : AppColors.editorialOnSurface,
-                        ),
-                      ),
-                    ),
-                    orElse: () => const SizedBox.shrink(),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              ref.watch(studentCatalogProvider(const CatalogQuery())).when(
-                data: (courses) {
-                  if (courses.isEmpty) return const SizedBox.shrink();
-                  return Column(
-                    children: [
-                      for (int i = 0; i < courses.length; i++) ...[
-                        _CourseCard(course: courses[i], index: i),
-                        if (i < courses.length - 1) const SizedBox(height: 14),
-                      ],
-                    ],
-                  );
-                },
-                loading: () => Column(
-                  children: const [
-                    ShimmerCourseCard(),
-                    SizedBox(height: 14),
-                    ShimmerCourseCard(),
-                  ],
-                ),
-                error: (err, _) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 24),
-                  child: Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.wifi_off_rounded, size: 40, color: Colors.orange),
-                        const SizedBox(height: 10),
-                        Text(
-                          tr(ref, 'Unable to load courses. Please check your connection.'),
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: isDark ? Colors.white70 : AppColors.editorialOutline,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        ElevatedButton.icon(
-                          icon: const Icon(Icons.refresh_rounded, size: 16),
-                          label: Text(tr(ref, 'Try Again')),
-                          onPressed: () => ref.invalidate(studentCatalogProvider(const CatalogQuery())),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
 
               // ── 7. Daily Agricultural Tip (Stitch Exact Match) ───────────
               Container(
@@ -944,32 +950,14 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Row(
-              children: [
-                Container(
-                  width: 24,
-                  height: 24,
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryGreen.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: const Icon(
-                    Icons.category_outlined,
-                    size: 15,
-                    color: AppColors.primaryGreen,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  tr(ref, 'Course Categories'),
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: -0.3,
-                    color: isDark ? Colors.white : AppColors.editorialOnSurface,
-                  ),
-                ),
-              ],
+            Text(
+              tr(ref, 'Browse by category'),
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                letterSpacing: -0.3,
+                color: isDark ? Colors.white : AppColors.editorialOnSurface,
+              ),
             ),
             InkWell(
               onTap: () => context.go(RouteNames.explore),
@@ -980,18 +968,18 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      tr(ref, 'See All'),
+                      tr(ref, 'See all'),
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.editorialSecondary,
+                        color: AppColors.primaryGreen,
                       ),
                     ),
                     const SizedBox(width: 2),
                     const Icon(
-                      Icons.chevron_right,
-                      size: 16,
-                      color: AppColors.editorialSecondary,
+                      Icons.arrow_forward_rounded,
+                      size: 14,
+                      color: AppColors.primaryGreen,
                     ),
                   ],
                 ),
@@ -999,58 +987,61 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 14),
         ref.watch(studentCategoriesProvider).when(
           data: (categories) {
             if (categories.isEmpty) return const SizedBox.shrink();
             return SizedBox(
-              height: 42,
+              height: 84,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: categories.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                separatorBuilder: (_, __) => const SizedBox(width: 14),
                 itemBuilder: (context, index) {
                   final cat = categories[index];
                   return InkWell(
                     onTap: () {
-                      context.go(RouteNames.explore);
+                      context.push('${RouteNames.explore}?category=${cat.id}');
                     },
-                    borderRadius: BorderRadius.circular(12),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: isDark ? AppColors.cardDark : Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: isDark ? AppColors.lineDark : AppColors.lineLight,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.03),
-                            blurRadius: 4,
-                            offset: const Offset(0, 1),
+                    borderRadius: BorderRadius.circular(16),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 54,
+                          height: 54,
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? AppColors.surfaceContainerHighDark
+                                : const Color(0xFFE8F3EB),
+                            borderRadius: BorderRadius.circular(16),
                           ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            _getCategoryIcon(cat.name),
-                            size: 16,
-                            color: AppColors.primaryGreen,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            cat.name,
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                          child: Center(
+                            child: Icon(
+                              _getCategoryIcon(cat.name),
+                              size: 26,
+                              color: isDark
+                                  ? AppColors.primaryGreen
+                                  : const Color(0xFF2E7D32),
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(height: 6),
+                        SizedBox(
+                          width: 64,
+                          child: Text(
+                            cat.name,
+                            textAlign: TextAlign.center,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: isDark ? Colors.white70 : AppColors.editorialOnSurface,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   );
                 },
@@ -1058,11 +1049,11 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
             );
           },
           loading: () => SizedBox(
-            height: 42,
+            height: 84,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: 4,
-              separatorBuilder: (_, __) => const SizedBox(width: 8),
+              separatorBuilder: (_, __) => const SizedBox(width: 14),
               itemBuilder: (_, __) => const ShimmerCategoryChip(),
             ),
           ),

@@ -139,3 +139,4 @@ class AppErrorState extends ConsumerWidget {
     return widgetBody;
   }
 }
+

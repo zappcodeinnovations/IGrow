@@ -41,7 +41,9 @@ class _WishlistScreenState extends ConsumerState<WishlistScreen>
     );
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.editorialSurfaceDark : AppColors.editorialSurface,
+      backgroundColor: isDark
+          ? AppColors.editorialSurfaceDark
+          : AppColors.editorialSurface,
       body: NestedScrollView(
         headerSliverBuilder: (context, innerBoxIsScrolled) {
           return [
@@ -50,7 +52,9 @@ class _WishlistScreenState extends ConsumerState<WishlistScreen>
               pinned: true,
               elevation: 0,
               scrolledUnderElevation: 0.5,
-              backgroundColor: isDark ? AppColors.editorialSurfaceDark : AppColors.editorialSurface,
+              backgroundColor: isDark
+                  ? AppColors.editorialSurfaceDark
+                  : AppColors.editorialSurface,
               leading: Padding(
                 padding: const EdgeInsets.only(left: 12),
                 child: Center(
@@ -68,12 +72,16 @@ class _WishlistScreenState extends ConsumerState<WishlistScreen>
                       height: 38,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: isDark ? AppColors.cardDark : AppColors.editorialSurfaceContainerLow,
+                        color: isDark
+                            ? AppColors.cardDark
+                            : AppColors.editorialSurfaceContainerLow,
                       ),
                       child: Icon(
                         Icons.arrow_back,
                         size: 20,
-                        color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                        color: isDark
+                            ? Colors.white
+                            : AppColors.editorialOnSurface,
                       ),
                     ),
                   ),
@@ -87,17 +95,24 @@ class _WishlistScreenState extends ConsumerState<WishlistScreen>
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 18,
-                      color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                      color: isDark
+                          ? Colors.white
+                          : AppColors.editorialOnSurface,
                       letterSpacing: -0.5,
                     ),
                   ),
                   if (totalCount > 0) ...[
                     const SizedBox(width: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: isDark
-                            ? AppColors.editorialSecondary.withValues(alpha: 0.3)
+                            ? AppColors.editorialSecondary.withValues(
+                                alpha: 0.3,
+                              )
                             : AppColors.editorialSecondaryFixed,
                         borderRadius: BorderRadius.circular(10),
                       ),
@@ -122,18 +137,29 @@ class _WishlistScreenState extends ConsumerState<WishlistScreen>
                   decoration: BoxDecoration(
                     border: Border(
                       bottom: BorderSide(
-                        color: isDark ? AppColors.lineDark : AppColors.lineLight,
+                        color: isDark
+                            ? AppColors.lineDark
+                            : AppColors.lineLight,
                         width: 1,
                       ),
                     ),
                   ),
                   child: TabBar(
                     controller: _tabController,
-                    labelColor: isDark ? Colors.white : AppColors.editorialSecondary,
-                    unselectedLabelColor: isDark ? Colors.white54 : AppColors.inkSoft,
-                    indicatorColor: isDark ? AppColors.editorialSecondaryFixedDim : AppColors.editorialSecondary,
+                    labelColor: isDark
+                        ? Colors.white
+                        : AppColors.editorialSecondary,
+                    unselectedLabelColor: isDark
+                        ? Colors.white54
+                        : AppColors.inkSoft,
+                    indicatorColor: isDark
+                        ? AppColors.editorialSecondaryFixedDim
+                        : AppColors.editorialSecondary,
                     indicatorWeight: 3,
-                    labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    labelStyle: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
                     tabs: const [
                       Tab(text: 'All'),
                       Tab(text: 'Courses'),
@@ -148,7 +174,9 @@ class _WishlistScreenState extends ConsumerState<WishlistScreen>
         body: wishlistAsync.when(
           loading: () => Center(
             child: CircularProgressIndicator(
-              color: isDark ? AppColors.editorialSecondaryFixedDim : AppColors.editorialSecondary,
+              color: isDark
+                  ? AppColors.editorialSecondaryFixedDim
+                  : AppColors.editorialSecondary,
             ),
           ),
           error: (err, _) => Center(
@@ -157,10 +185,17 @@ class _WishlistScreenState extends ConsumerState<WishlistScreen>
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.wifi_off_rounded, color: Colors.orange, size: 48),
+                  const Icon(
+                    Icons.wifi_off_rounded,
+                    color: Colors.orange,
+                    size: 48,
+                  ),
                   const SizedBox(height: 12),
                   Text(
-                    tr(ref, 'Unable to load wishlist at this time. Please check your connection.'),
+                    tr(
+                      ref,
+                      'Unable to load wishlist at this time. Please check your connection.',
+                    ),
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: isDark ? Colors.white70 : AppColors.inkSoft,
@@ -170,12 +205,15 @@ class _WishlistScreenState extends ConsumerState<WishlistScreen>
                   const SizedBox(height: 16),
                   ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: isDark ? Colors.white : AppColors.editorialPrimary,
+                      backgroundColor: isDark
+                          ? Colors.white
+                          : AppColors.editorialPrimary,
                       foregroundColor: isDark ? Colors.black : Colors.white,
                     ),
                     icon: const Icon(Icons.refresh_rounded, size: 18),
                     label: Text(tr(ref, 'Retry')),
-                    onPressed: () => ref.read(wishlistProvider.notifier).loadWishlist(),
+                    onPressed: () =>
+                        ref.read(wishlistProvider.notifier).loadWishlist(),
                   ),
                 ],
               ),
@@ -211,7 +249,9 @@ class _WishlistScreenState extends ConsumerState<WishlistScreen>
   ) {
     if (items.isEmpty) {
       return RefreshIndicator(
-        color: isDark ? AppColors.editorialSecondaryFixedDim : AppColors.editorialSecondary,
+        color: isDark
+            ? AppColors.editorialSecondaryFixedDim
+            : AppColors.editorialSecondary,
         onRefresh: () => ref.read(wishlistProvider.notifier).loadWishlist(),
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -221,7 +261,8 @@ class _WishlistScreenState extends ConsumerState<WishlistScreen>
             EmptyState(
               icon: Icons.favorite_border_rounded,
               title: 'Your wishlist is empty',
-              subtitle: "Save courses and e-books you're interested in for later.",
+              subtitle:
+                  "Save courses and e-books you're interested in for later.",
               actionLabel: 'Explore Courses',
               onAction: () => context.go('/farmer/explore'),
             ),
@@ -231,7 +272,9 @@ class _WishlistScreenState extends ConsumerState<WishlistScreen>
     }
 
     return RefreshIndicator(
-      color: isDark ? AppColors.editorialSecondaryFixedDim : AppColors.editorialSecondary,
+      color: isDark
+          ? AppColors.editorialSecondaryFixedDim
+          : AppColors.editorialSecondary,
       onRefresh: () => ref.read(wishlistProvider.notifier).loadWishlist(),
       child: ListView.separated(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -269,9 +312,13 @@ class _WishlistCard extends ConsumerWidget {
       child: InkWell(
         onTap: () {
           if (item.isCourse) {
-            context.push('/farmer/course/${item.slug.isNotEmpty ? item.slug : item.targetId}');
+            context.push(
+              '/farmer/course/${item.slug.isNotEmpty ? item.slug : item.targetId}',
+            );
           } else {
-            context.push('/farmer/ebook/${item.slug.isNotEmpty ? item.slug : item.targetId}');
+            context.push(
+              '/farmer/ebook/${item.slug.isNotEmpty ? item.slug : item.targetId}',
+            );
           }
         },
         child: Padding(
@@ -285,21 +332,28 @@ class _WishlistCard extends ConsumerWidget {
                 child: Container(
                   width: 90,
                   height: 90,
-                  color: isDark ? const Color(0xFF1A1A1A) : Colors.grey.shade100,
-                  child: item.displayImage != null && item.displayImage!.isNotEmpty
+                  color: isDark
+                      ? const Color(0xFF1A1A1A)
+                      : Colors.grey.shade100,
+                  child:
+                      item.displayImage != null && item.displayImage!.isNotEmpty
                       ? Image.network(
                           item.displayImage!,
                           fit: BoxFit.cover,
                           errorBuilder: (_, __, ___) => Icon(
                             item.isCourse ? Icons.school : Icons.menu_book,
                             size: 36,
-                            color: isDark ? AppColors.editorialSecondaryFixedDim : AppColors.editorialSecondary,
+                            color: isDark
+                                ? AppColors.editorialSecondaryFixedDim
+                                : AppColors.editorialSecondary,
                           ),
                         )
                       : Icon(
                           item.isCourse ? Icons.school : Icons.menu_book,
                           size: 36,
-                          color: isDark ? AppColors.editorialSecondaryFixedDim : AppColors.editorialSecondary,
+                          color: isDark
+                              ? AppColors.editorialSecondaryFixedDim
+                              : AppColors.editorialSecondary,
                         ),
                 ),
               ),
@@ -314,10 +368,15 @@ class _WishlistCard extends ConsumerWidget {
                     Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 3,
+                          ),
                           decoration: BoxDecoration(
                             color: isDark
-                                ? AppColors.editorialSecondary.withValues(alpha: 0.2)
+                                ? AppColors.editorialSecondary.withValues(
+                                    alpha: 0.2,
+                                  )
                                 : AppColors.editorialSecondaryFixed,
                             borderRadius: BorderRadius.circular(6),
                           ),
@@ -334,14 +393,20 @@ class _WishlistCard extends ConsumerWidget {
                           ),
                         ),
                         const Spacer(),
-                        const Icon(Icons.star_rounded, size: 16, color: Color(0xFFFFB800)),
+                        const Icon(
+                          Icons.star_rounded,
+                          size: 16,
+                          color: Color(0xFFFFB800),
+                        ),
                         const SizedBox(width: 3),
                         Text(
                           item.rating.toStringAsFixed(1),
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
-                            color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                            color: isDark
+                                ? Colors.white
+                                : AppColors.editorialOnSurface,
                           ),
                         ),
                       ],
@@ -357,7 +422,9 @@ class _WishlistCard extends ConsumerWidget {
                         fontWeight: FontWeight.bold,
                         fontSize: 14,
                         height: 1.25,
-                        color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                        color: isDark
+                            ? Colors.white
+                            : AppColors.editorialOnSurface,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -366,11 +433,15 @@ class _WishlistCard extends ConsumerWidget {
                     Row(
                       children: [
                         Text(
-                          item.price == '0.00' || item.price == '0' ? 'Free' : '₹${item.price}',
+                          item.price == '0.00' || item.price == '0'
+                              ? 'Free'
+                              : '₹${item.price}',
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.bold,
-                            color: isDark ? AppColors.editorialSecondaryFixedDim : AppColors.editorialSecondary,
+                            color: isDark
+                                ? AppColors.editorialSecondaryFixedDim
+                                : AppColors.editorialSecondary,
                           ),
                         ),
                         const Spacer(),
@@ -385,7 +456,9 @@ class _WishlistCard extends ConsumerWidget {
                           onPressed: () async {
                             final success = await ref
                                 .read(wishlistProvider.notifier)
-                                .removeItem(item.id.isNotEmpty ? item.id : item.targetId);
+                                .removeItem(
+                                  item.id.isNotEmpty ? item.id : item.targetId,
+                                );
                             if (context.mounted && success) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
@@ -398,11 +471,17 @@ class _WishlistCard extends ConsumerWidget {
                                       if (item.isCourse) {
                                         ref
                                             .read(wishlistProvider.notifier)
-                                            .toggleCourse(item.targetId, previewItem: item);
+                                            .toggleCourse(
+                                              item.targetId,
+                                              previewItem: item,
+                                            );
                                       } else {
                                         ref
                                             .read(wishlistProvider.notifier)
-                                            .toggleEbook(item.targetId, previewItem: item);
+                                            .toggleEbook(
+                                              item.targetId,
+                                              previewItem: item,
+                                            );
                                       }
                                     },
                                   ),
