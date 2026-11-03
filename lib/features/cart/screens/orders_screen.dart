@@ -7,17 +7,32 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
+import '../../../core/localization/app_strings.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/models/api_models/order_models.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../providers/cart_provider.dart';
 
-class OrdersScreen extends ConsumerWidget {
+class OrdersScreen extends ConsumerStatefulWidget {
   const OrdersScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<OrdersScreen> createState() => _OrdersScreenState();
+}
+
+class _OrdersScreenState extends ConsumerState<OrdersScreen> {
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final ordersAsync = ref.watch(ordersProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final user = ref.watch(authProvider).user;
@@ -64,7 +79,7 @@ class OrdersScreen extends ConsumerWidget {
                 ),
               ),
               title: Text(
-                'My Orders',
+                tr(ref, 'My Orders'),
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 18,
@@ -73,6 +88,66 @@ class OrdersScreen extends ConsumerWidget {
                 ),
               ),
               centerTitle: true,
+            ),
+            // Sticky Search & Filter Bar
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                child: Container(
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.cardDark : Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: isDark ? AppColors.lineDark : AppColors.lineLight,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: TextField(
+                    controller: _searchController,
+                    onChanged: (val) {
+                      setState(() {
+                        _searchQuery = val.trim().toLowerCase();
+                      });
+                    },
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: isDark ? Colors.white : AppColors.inkDark,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: tr(ref, 'Search by course name, ref ID, date...'),
+                      hintStyle: TextStyle(
+                        fontSize: 13,
+                        color: isDark ? Colors.white38 : AppColors.inkSoft,
+                      ),
+                      prefixIcon: Icon(
+                        Icons.search_rounded,
+                        size: 20,
+                        color: isDark ? Colors.white54 : AppColors.inkSoft,
+                      ),
+                      suffixIcon: _searchQuery.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear_rounded, size: 18),
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() {
+                                  _searchQuery = '';
+                                });
+                              },
+                            )
+                          : null,
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+                    ),
+                  ),
+                ),
+              ),
             ),
           ];
         },
@@ -102,7 +177,7 @@ class OrdersScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 20),
                     Text(
-                      'No Orders Found',
+                      tr(ref, 'No Orders Found'),
                       style: TextStyle(
                         fontSize: 20, 
                         fontWeight: FontWeight.bold,
@@ -111,7 +186,7 @@ class OrdersScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'You haven\'t purchased any courses yet. Once you enroll, your purchase history and invoices will appear here.',
+                      tr(ref, 'You haven\'t purchased any courses yet. Once you enroll, your purchase history and invoices will appear here.'),
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 13,
@@ -123,7 +198,7 @@ class OrdersScreen extends ConsumerWidget {
                     TextButton(
                       onPressed: () => context.go(RouteNames.explore),
                       child: Text(
-                        'Browse Courses',
+                        tr(ref, 'Browse Courses'),
                         style: TextStyle(
                           color: isDark ? AppColors.editorialSecondaryFixedDim : AppColors.editorialSecondary,
                           fontWeight: FontWeight.bold,
@@ -136,11 +211,66 @@ class OrdersScreen extends ConsumerWidget {
             );
           }
 
+          final filteredOrders = _searchQuery.isEmpty
+              ? orders
+              : orders.where((order) {
+                  final refId = (order.gatewayReference ?? order.id).toLowerCase();
+                  final status = (order.status ?? '').toLowerCase();
+                  final dateFormatted = order.createdAt != null
+                      ? DateFormat('MMMM dd, yyyy • hh:mm a').format(order.createdAt!.toLocal()).toLowerCase()
+                      : '';
+                  final itemsMatch = order.items.any((it) {
+                    final title = (it.courseTitle ?? '').toLowerCase();
+                    final slug = (it.courseSlug ?? '').toLowerCase();
+                    return title.contains(_searchQuery) || slug.contains(_searchQuery);
+                  });
+                  return refId.contains(_searchQuery) ||
+                      status.contains(_searchQuery) ||
+                      dateFormatted.contains(_searchQuery) ||
+                      itemsMatch;
+                }).toList();
+
+          if (filteredOrders.isEmpty) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.search_off_rounded,
+                      size: 56,
+                      color: isDark ? Colors.white38 : AppColors.inkSoft,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      tr(ref, 'No matching orders found'),
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '${tr(ref, 'No results for')} "$_searchQuery"',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: isDark ? Colors.white70 : AppColors.inkSoft,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
           return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: orders.length,
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+            itemCount: filteredOrders.length,
             itemBuilder: (context, index) {
-              final order = orders[index];
+              final order = filteredOrders[index];
               final dateStr = order.createdAt != null
                   ? DateFormat('MMMM dd, yyyy • hh:mm a').format(order.createdAt!.toLocal())
                   : 'Recent Purchase';
