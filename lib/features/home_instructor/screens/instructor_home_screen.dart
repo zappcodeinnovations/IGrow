@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 
+import '../../../core/localization/app_strings.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/growth_ring_progress.dart';
 import '../../../core/widgets/app_card.dart';
@@ -434,6 +435,253 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
     );
   }
 
+  void _showTransactionDetailsModal(BuildContext context, Map<String, dynamic> txn) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final id = txn['id']?.toString() ?? txn['transaction_id']?.toString() ?? 'TXN-000';
+    final item = txn['item']?.toString() ?? txn['course_title']?.toString() ?? txn['description']?.toString() ?? 'Course Purchase';
+    final buyer = txn['buyer']?.toString() ?? txn['student_name']?.toString() ?? 'Student';
+    final date = txn['date']?.toString() ?? txn['created_at']?.toString() ?? 'Recently';
+    final amount = txn['amount'] != null ? '₹${txn['amount']}' : '₹0.00';
+    final status = txn['status']?.toString() ?? 'SUCCESS';
+    final paymentMethod = txn['payment_method']?.toString() ?? txn['payment_mode']?.toString() ?? 'Online Payment';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) {
+        return Container(
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.cardDark : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: AppColors.primaryGreen.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.receipt_long_rounded, color: AppColors.primaryGreen, size: 22),
+                        ),
+                        const SizedBox(width: 12),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Transaction Receipt',
+                              style: Theme.of(sheetCtx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                            ),
+                            Text(
+                              id,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: isDark ? Colors.white60 : AppColors.inkSoft,
+                                fontFamily: 'monospace',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded),
+                      onPressed: () => Navigator.pop(sheetCtx),
+                    ),
+                  ],
+                ),
+                const Divider(height: 24),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white.withValues(alpha: 0.05) : const Color(0xFFF9FAFB),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: isDark ? Colors.white10 : AppColors.lineLight,
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Amount Credited', style: TextStyle(fontSize: 13, color: AppColors.inkSoft)),
+                          Text(
+                            amount,
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.primaryGreen,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Status', style: TextStyle(fontSize: 13, color: AppColors.inkSoft)),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: status.toUpperCase().contains('FAIL')
+                                  ? Colors.red.withValues(alpha: 0.12)
+                                  : Colors.green.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              status,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: status.toUpperCase().contains('FAIL') ? Colors.red : Colors.green.shade800,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Item / Course', style: TextStyle(fontSize: 13, color: AppColors.inkSoft)),
+                          Flexible(
+                            child: Text(
+                              item,
+                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                              textAlign: TextAlign.end,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Enrolled Student', style: TextStyle(fontSize: 13, color: AppColors.inkSoft)),
+                          Text(buyer, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Date & Time', style: TextStyle(fontSize: 13, color: AppColors.inkSoft)),
+                          Text(date, style: const TextStyle(fontSize: 12, color: AppColors.inkSoft)),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Payment Method', style: TextStyle(fontSize: 13, color: AppColors.inkSoft)),
+                          Text(paymentMethod, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      side: const BorderSide(color: AppColors.primaryGreen),
+                      foregroundColor: AppColors.primaryGreen,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    icon: const Icon(Icons.analytics_outlined, size: 18),
+                    label: const Text('View Full Financial Ledger', style: TextStyle(fontWeight: FontWeight.bold)),
+                    onPressed: () {
+                      Navigator.pop(sheetCtx);
+                      context.push(RouteNames.instructorAnalytics);
+                    },
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _deactivateCourse(ApiCourseList course) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Deactivate Course', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: Text(
+          'Are you sure you want to deactivate "${course.title}"?\n\n'
+          'The course will be moved to Draft status and hidden from the public marketplace. You can review and manage it anytime.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFFF59E0B)),
+            onPressed: () => Navigator.pop(c, true),
+            child: const Text('Deactivate'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await ref.read(instructorRepositoryProvider).updateCourse(course.id, {
+          'status': 'DRAFT',
+        });
+        if (!mounted) return;
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.clearSnackBars();
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('Course deactivated and moved to Drafts'),
+            backgroundColor: AppColors.primaryGreen,
+          ),
+        );
+        ref.invalidate(instructorCoursesProvider);
+      } catch (e) {
+        if (!mounted) return;
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.clearSnackBars();
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text('Failed to deactivate course: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -469,7 +717,7 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                   },
                   style: Theme.of(context).textTheme.bodyMedium,
                   decoration: InputDecoration(
-                    hintText: 'Search courses...',
+                    hintText: tr(ref, 'Search courses...'),
                     hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.inkSoft),
                     filled: false,
                     isDense: true,
@@ -489,13 +737,13 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
           IconButton(
             icon: const Icon(Icons.tune),
             color: AppColors.primaryGreen,
-            tooltip: 'Filter',
+            tooltip: tr(ref, 'Filter'),
             onPressed: _showFilterBottomSheet,
           ),
           IconButton(
             icon: const Icon(Icons.logout_rounded),
             color: AppColors.error,
-            tooltip: 'Logout',
+            tooltip: tr(ref, 'Logout'),
             onPressed: () => showLogoutConfirmationDialog(context, ref),
           ),
           const SizedBox(width: 8),
@@ -527,7 +775,7 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Welcome Back 👨‍🏫',
+                          '${tr(ref, 'Welcome Back')} 👨‍🏫',
                           style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.inkSoft,),
                         ),
                         const SizedBox(height: 4),
@@ -596,7 +844,7 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Manage your courses, revenue, and AI moderation status.',
+                tr(ref, 'Manage your courses, revenue, and AI moderation status.'),
                 style: TextStyle(
                   fontSize: 13,
                   color: isDark ? Colors.grey.shade400 : AppColors.inkSoft,
@@ -617,9 +865,9 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                       ),
                       onPressed: () => context.push(RouteNames.uploadCourse),
                       icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
-                      label: const Text(
-                        'Create a New Course',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                      label: Text(
+                        tr(ref, 'Create a New Course'),
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                       ),
                     ),
                   ),
@@ -633,9 +881,9 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                     ),
                     onPressed: () => context.push(RouteNames.uploadEbook),
                     icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
-                    label: const Text(
-                      'New E-Book',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                    label: Text(
+                      tr(ref, 'New E-Book'),
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                     ),
                   ),
                 ],
@@ -659,7 +907,7 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                       Expanded(
                         child: _StatCard(
                           icon: Icons.people_alt_rounded,
-                          label: 'Students',
+                          label: tr(ref, 'Students'),
                           value: '${stats['total_students'] ?? 0}',
                           color: AppColors.skyBlue,
                           onTap: () => _showStudentsBottomSheet(context, stats),
@@ -669,7 +917,7 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                       Expanded(
                         child: _StatCard(
                           icon: Icons.play_lesson_rounded,
-                          label: 'Courses',
+                          label: tr(ref, 'Courses'),
                           value: '${stats['total_courses'] ?? 0}',
                           color: AppColors.primaryGreen,
                           onTap: () => context.push(RouteNames.instructorUploads),
@@ -685,7 +933,7 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                                 0;
                             return _StatCard(
                               icon: Icons.menu_book_rounded,
-                              label: 'E-Books',
+                              label: tr(ref, 'E-Books'),
                               value: '$totalEbooks',
                               color: AppColors.accentOrange,
                               onTap: () => context.push('${RouteNames.instructorUploads}?tab=1'),
@@ -706,7 +954,7 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
 
                             return _StatCard(
                               icon: Icons.star_rounded,
-                              label: 'Reviews',
+                              label: tr(ref, 'Reviews'),
                               value: '$totalReviewsCount',
                               color: AppColors.signalYellow,
                               onTap: () => _showReviewsBottomSheet(context, stats),
@@ -789,7 +1037,7 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'Instructor Guide',
+                                    tr(ref, 'Instructor Guide'),
                                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                                       color: AppColors.white, 
                                       fontWeight: FontWeight.bold,
@@ -800,7 +1048,7 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    'Learn how to upload courses and ebooks with our AI assistant.',
+                                    tr(ref, 'Learn how to upload courses and ebooks with our AI assistant.'),
                                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                       color: AppColors.white.withValues(alpha: 0.9),
                                     ),
@@ -832,7 +1080,7 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Recent Courses',
+                          tr(ref, 'Recent Courses'),
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -861,7 +1109,7 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'My E-Books',
+                          tr(ref, 'My E-Books'),
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -889,7 +1137,7 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                       final tabParam = _selectedDashboardTab == 1 ? '?tab=1' : '';
                       context.push('${RouteNames.instructorUploads}$tabParam');
                     },
-                    child: const Text('See All'),
+                    child: Text(tr(ref, 'See All')),
                   ),
                 ],
               ),
@@ -906,13 +1154,13 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                             children: [
                               Icon(Icons.video_library_outlined, size: 48, color: Colors.grey.shade400),
                               const SizedBox(height: 10),
-                              const Text('No courses created yet.'),
+                              Text(tr(ref, 'No courses created yet.')),
                               const SizedBox(height: 10),
                               FilledButton.icon(
                                 style: FilledButton.styleFrom(backgroundColor: AppColors.accentOrange),
                                 onPressed: () => context.push(RouteNames.uploadCourse),
                                 icon: const Icon(Icons.add, size: 18),
-                                label: const Text('Create First Course'),
+                                label: Text(tr(ref, 'Create First Course')),
                               ),
                             ],
                           ),
@@ -932,6 +1180,7 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                                 context.push('/course/$target');
                               }
                             },
+                            onDeactivate: () => _deactivateCourse(course),
                           ),
                         );
                       }).toList(),
@@ -950,14 +1199,14 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Text('Failed to load courses'),
+                            Text(tr(ref, 'Failed to load courses')),
                             const SizedBox(height: 8),
                             TextButton.icon(
                               onPressed: () => ref.invalidate(instructorCoursesProvider),
                               icon: const Icon(Icons.refresh, size: 16, color: AppColors.primaryGreen),
-                              label: const Text(
-                                'Retry',
-                                style: TextStyle(color: AppColors.primaryGreen),
+                              label: Text(
+                                tr(ref, 'Retry'),
+                                style: const TextStyle(color: AppColors.primaryGreen),
                               ),
                             ),
                           ],
@@ -977,13 +1226,13 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                             children: [
                               Icon(Icons.menu_book_rounded, size: 48, color: Colors.grey.shade400),
                               const SizedBox(height: 10),
-                              const Text('No e-books uploaded yet.'),
+                              Text(tr(ref, 'No e-books uploaded yet.')),
                               const SizedBox(height: 10),
                               FilledButton.icon(
                                 style: FilledButton.styleFrom(backgroundColor: const Color(0xFF9333EA)),
                                 onPressed: () => context.push(RouteNames.uploadEbook),
                                 icon: const Icon(Icons.add, size: 18),
-                                label: const Text('Create First E-Book'),
+                                label: Text(tr(ref, 'Create First E-Book')),
                               ),
                             ],
                           ),
@@ -991,17 +1240,23 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                       );
                     }
                     return Column(
-                      children: ebooks.take(3).map((ebook) {
+                      children: ebooks.take(5).map((ebook) {
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 12),
-                          child: _CoursePerformanceCard(
-                            title: ebook.title ?? 'Untitled E-Book',
-                            students: '0',
-                            revenue: '₹0',
-                            rating: 'New',
-                            percent: 0.0,
-                            isFree: true,
-                            onTap: () => context.push('${RouteNames.instructorUploads}?tab=1'),
+                          child: _AgriLearnEbookCard(
+                            ebook: ebook,
+                            onTap: () {
+                              if (ebook.id != null && ebook.id!.isNotEmpty) {
+                                context.push('/farmer/ebook/${ebook.id}');
+                              } else {
+                                context.push('${RouteNames.instructorUploads}?tab=1');
+                              }
+                            },
+                            onViewLive: () {
+                              if (ebook.id != null && ebook.id!.isNotEmpty) {
+                                context.push('/farmer/ebook/${ebook.id}');
+                              }
+                            },
                           ),
                         );
                       }).toList(),
@@ -1014,26 +1269,27 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                     )),
                   ),
                   error: (err, _) {
-                    return const Center(child: Text('Failed to load e-books'));
+                    return Center(child: Text(tr(ref, 'Failed to load e-books')));
                   },
                 ),
               const SizedBox(height: 28),
 
               // Recent Activity (Transactions)
-              Text('Recent Transactions', style: Theme.of(context).textTheme.headlineSmall),
+              Text(tr(ref, 'Recent Transactions'), style: Theme.of(context).textTheme.headlineSmall),
               const SizedBox(height: 14),
               ref.watch(instructorTransactionsProvider).when(
                 data: (transactions) {
                   if (transactions.isEmpty) {
-                    return const Padding(
-                      padding: EdgeInsets.only(top: 16),
-                      child: Text('No recent transactions.'),
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 16),
+                      child: Text(tr(ref, 'No recent transactions.')),
                     );
                   }
                   return Column(
                     children: transactions.take(5).map((txn) {
                       final amount = txn['amount'] ?? '0';
-                      final desc = txn['description'] ?? 'Transaction';
+                      final desc = txn['description'] ?? txn['item'] ?? txn['course_title'] ?? 'Transaction';
+                      final date = txn['date'] ?? 'Recently';
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 10),
                         child: _ActivityItem(
@@ -1041,7 +1297,8 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                           color: AppColors.primaryGreen,
                           title: '₹$amount',
                           subtitle: desc,
-                          time: 'Recently',
+                          time: date,
+                          onTap: () => _showTransactionDetailsModal(context, txn),
                         ),
                       );
                     }).toList(),
@@ -1120,109 +1377,25 @@ class _StatCard extends StatelessWidget {
   }
 }
 
-class _CoursePerformanceCard extends StatelessWidget {
-  const _CoursePerformanceCard({
-    required this.title,
-    required this.students,
-    required this.revenue,
-    required this.rating,
-    required this.percent,
-    this.isFree = false,
-    this.onTap,
-  });
-
-  final String title;
-  final String students;
-  final String revenue;
-  final String rating;
-  final double percent;
-  final bool isFree;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppCard(
-      onTap: onTap,
-      child: Row(
-        children: [
-          GrowthRingProgress(
-            percent: percent,
-            size: 56,
-            strokeWidth: 5,
-            color: percent > 0.8 ? AppColors.primaryGreen : AppColors.accentOrange,
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: Theme.of(context).textTheme.titleSmall,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 6),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 4,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.people_outline, size: 14, color: AppColors.inkSoft),
-                        const SizedBox(width: 4),
-                        Text(students, style: Theme.of(context).textTheme.bodySmall),
-                      ],
-                    ),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.star_rounded, size: 14, color: AppColors.signalYellow),
-                        const SizedBox(width: 3),
-                        Text(rating, style: Theme.of(context).textTheme.bodySmall),
-                      ],
-                    ),
-                    Text(
-                      isFree ? 'Free' : revenue,
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: isFree ? AppColors.skyBlue : AppColors.primaryGreen,
-                            fontWeight: FontWeight.bold,
-                          ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          if (onTap != null)
-            const Padding(
-              padding: EdgeInsets.only(left: 8),
-              child: Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppColors.inkSoft),
-            ),
-        ],
-      ),
-    );
-  }
-}
 
 typedef _AgriLearnCourseCard = AgriLearnCourseCard;
 
-class AgriLearnCourseCard extends StatelessWidget {
+class AgriLearnCourseCard extends ConsumerWidget {
   const AgriLearnCourseCard({
     super.key,
     required this.course,
     required this.onManage,
     this.onViewLive,
+    this.onDeactivate,
   });
 
   final ApiCourseList course;
   final VoidCallback onManage;
   final VoidCallback? onViewLive;
+  final VoidCallback? onDeactivate;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final status = (course.status ?? 'DRAFT').toUpperCase();
 
@@ -1238,19 +1411,19 @@ class AgriLearnCourseCard extends StatelessWidget {
     if (isLive) {
       badgeBg = Colors.green.shade50;
       badgeText = Colors.green.shade700;
-      badgeLabel = '• Live';
+      badgeLabel = tr(ref, '• Live');
     } else if (status == 'PROCESSING') {
       badgeBg = Colors.amber.shade50;
       badgeText = Colors.amber.shade800;
-      badgeLabel = '• Processing';
+      badgeLabel = tr(ref, '• Processing');
     } else if (status == 'REJECTED') {
       badgeBg = Colors.red.shade50;
       badgeText = Colors.red.shade800;
-      badgeLabel = '• Rejected';
+      badgeLabel = tr(ref, '• Rejected');
     } else {
       badgeBg = isDark ? Colors.white10 : Colors.grey.shade100;
       badgeText = isDark ? Colors.grey.shade300 : Colors.grey.shade700;
-      badgeLabel = '• Draft';
+      badgeLabel = tr(ref, '• Draft');
     }
 
     final effectiveOnTap = onViewLive ?? onManage;
@@ -1337,7 +1510,7 @@ class AgriLearnCourseCard extends StatelessWidget {
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         Text(
-                          '₹${course.price ?? "0"}',
+                          '₹',
                           style: const TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
@@ -1352,7 +1525,7 @@ class AgriLearnCourseCard extends StatelessWidget {
                           ),
                         ),
                         Text(
-                          '${course.enrollmentCount ?? 0} Students',
+                          ' Students',
                           style: TextStyle(
                             fontSize: 11,
                             color: isDark ? Colors.grey.shade400 : AppColors.inkSoft,
@@ -1367,7 +1540,7 @@ class AgriLearnCourseCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
 
-          // Action Buttons: [Manage Course] (only if not live) [View Live]
+          // Action Buttons: [Manage Course] [View Live] [Deactivate]
           Row(
             children: [
               Expanded(
@@ -1375,25 +1548,24 @@ class AgriLearnCourseCard extends StatelessWidget {
                   spacing: 8,
                   runSpacing: 6,
                   children: [
-                    if (!isLive)
-                      OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          side: const BorderSide(color: AppColors.primaryGreen),
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                        onPressed: onManage,
-                        icon: const Icon(Icons.settings_outlined, size: 14, color: AppColors.primaryGreen),
-                        label: const Text(
-                          'Manage Course',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primaryGreen,
-                          ),
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        side: const BorderSide(color: AppColors.primaryGreen),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      onPressed: onManage,
+                      icon: const Icon(Icons.settings_outlined, size: 14, color: AppColors.primaryGreen),
+                      label: Text(
+                        tr(ref, 'Manage Course'),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primaryGreen,
                         ),
                       ),
+                    ),
                     if (isLive && onViewLive != null)
                       OutlinedButton.icon(
                         style: OutlinedButton.styleFrom(
@@ -1405,11 +1577,30 @@ class AgriLearnCourseCard extends StatelessWidget {
                         onPressed: onViewLive,
                         icon: Icon(Icons.visibility_outlined, size: 14, color: Colors.teal.shade700),
                         label: Text(
-                          'View Live',
+                          tr(ref, 'View Live'),
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.bold,
                             color: Colors.teal.shade700,
+                          ),
+                        ),
+                      ),
+                    if (isLive && onDeactivate != null)
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          side: const BorderSide(color: Color(0xFFF59E0B)),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        onPressed: onDeactivate,
+                        icon: const Icon(Icons.pause_circle_outline, size: 14, color: Color(0xFFD97706)),
+                        label: Text(
+                          tr(ref, 'Deactivate'),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFFD97706),
                           ),
                         ),
                       ),
@@ -1424,6 +1615,180 @@ class AgriLearnCourseCard extends StatelessWidget {
   }
 }
 
+class _AgriLearnEbookCard extends ConsumerWidget {
+  const _AgriLearnEbookCard({
+    required this.ebook,
+    this.onTap,
+    this.onViewLive,
+  });
+
+  final dynamic ebook;
+  final VoidCallback? onTap;
+  final VoidCallback? onViewLive;
+
+  String _resolveStatus(dynamic statusObj) {
+    if (statusObj == null) return 'DRAFT';
+    final s = statusObj.toString().toUpperCase();
+    if (s.contains('APPROV') || s.contains('LIVE')) return 'APPROVED';
+    if (s.contains('REVIEW')) return 'REVIEW';
+    if (s.contains('REJECT')) return 'REJECTED';
+    return 'DRAFT';
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final hasCover = ebook.coverImage != null && ebook.coverImage.toString().trim().isNotEmpty;
+    final status = _resolveStatus(ebook.status);
+    final isLive = status == 'APPROVED';
+
+    Color badgeBg;
+    Color badgeText;
+    String badgeLabel;
+
+    switch (status) {
+      case 'APPROVED':
+        badgeBg = isDark ? Colors.green.withValues(alpha: 0.2) : Colors.green.shade50;
+        badgeText = isDark ? Colors.greenAccent : Colors.green.shade700;
+        badgeLabel = tr(ref, '• Live');
+        break;
+      case 'REVIEW':
+        badgeBg = isDark ? Colors.amber.withValues(alpha: 0.2) : Colors.amber.shade50;
+        badgeText = isDark ? Colors.amberAccent : Colors.amber.shade900;
+        badgeLabel = tr(ref, '• Under Review');
+        break;
+      case 'REJECTED':
+        badgeBg = isDark ? Colors.red.withValues(alpha: 0.2) : Colors.red.shade50;
+        badgeText = isDark ? Colors.redAccent : Colors.red.shade800;
+        badgeLabel = tr(ref, '• Rejected');
+        break;
+      case 'DRAFT':
+      default:
+        badgeBg = isDark ? Colors.white12 : Colors.grey.shade100;
+        badgeText = isDark ? Colors.grey.shade300 : Colors.grey.shade800;
+        badgeLabel = tr(ref, '• Draft');
+        break;
+    }
+
+    return AppCard(
+      onTap: onTap,
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Cover Thumbnail or Fallback Icon
+              Container(
+                width: 60,
+                height: 75,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(10),
+                  color: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
+                  image: hasCover
+                      ? DecorationImage(
+                          image: NetworkImage(ebook.coverImage.toString()),
+                          fit: BoxFit.cover,
+                        )
+                      : null,
+                ),
+                child: !hasCover
+                    ? Icon(
+                        Icons.picture_as_pdf_rounded,
+                        color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                        size: 32,
+                      )
+                    : null,
+              ),
+              const SizedBox(width: 14),
+
+              // Title, Author, Status Badge
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            ebook.title ?? 'Untitled E-Book',
+                            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: badgeBg,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: badgeText.withValues(alpha: 0.3),
+                            ),
+                          ),
+                          child: Text(
+                            badgeLabel,
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: badgeText,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (ebook.authorName != null && ebook.authorName.toString().trim().isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        'By ${ebook.authorName}',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: isDark ? Colors.grey.shade400 : AppColors.inkSoft,
+                              fontSize: 12,
+                            ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          // Action Button: [View in Library]
+          if (isLive && onViewLive != null) ...[
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                side: BorderSide(color: Colors.teal.shade400),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              onPressed: onViewLive,
+              icon: Icon(Icons.visibility_outlined, size: 14, color: Colors.teal.shade700),
+              label: Text(
+                tr(ref, 'View in Library'),
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.teal.shade700,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 class _ActivityItem extends StatelessWidget {
   const _ActivityItem({
     required this.icon,
@@ -1431,6 +1796,7 @@ class _ActivityItem extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.time,
+    this.onTap,
   });
 
   final IconData icon;
@@ -1438,10 +1804,12 @@ class _ActivityItem extends StatelessWidget {
   final String title;
   final String subtitle;
   final String time;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     return AppCard(
+      onTap: onTap,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Row(
         children: [

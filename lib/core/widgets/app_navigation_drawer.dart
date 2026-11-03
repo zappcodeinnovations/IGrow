@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/localization/app_strings.dart';
 import '../../core/router/route_names.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/logout_dialog.dart';
 import '../../data/models/user_role.dart';
 import '../../features/auth/providers/auth_provider.dart';
 
@@ -188,6 +189,18 @@ class AppNavigationDrawer extends ConsumerWidget {
                       context.push('/privacy');
                     },
                   ),
+                  _buildDrawerItem(
+                    context: context,
+                    icon: Icons.logout_rounded,
+                    title: tr(ref, 'Log Out'),
+                    iconColor: AppColors.error,
+                    textColor: AppColors.error,
+                    isDark: isDark,
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      showLogoutConfirmationDialog(context, ref);
+                    },
+                  ),
                 ],
               ),
             ),
@@ -282,6 +295,7 @@ class AppNavigationDrawer extends ConsumerWidget {
     required String title,
     String? subtitle,
     required Color iconColor,
+    Color? textColor,
     required bool isDark,
     required VoidCallback onTap,
   }) {
@@ -312,7 +326,7 @@ class AppNavigationDrawer extends ConsumerWidget {
                     style: TextStyle(
                       fontSize: 14.5,
                       fontWeight: FontWeight.w600,
-                      color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                      color: textColor ?? (isDark ? Colors.white : AppColors.editorialOnSurface),
                     ),
                   ),
                   if (subtitle != null && subtitle.isNotEmpty) ...[

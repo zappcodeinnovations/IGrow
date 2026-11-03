@@ -50,6 +50,9 @@ class CertificateViewerDialog extends StatefulWidget {
 
 class _CertificateViewerDialogState extends State<CertificateViewerDialog> {
   bool _isGeneratingPdf = false;
+  String? _downloadSuccessMsg;
+  Uint8List? _lastGeneratedPdfBytes;
+  String? _lastGeneratedFileName;
 
   String get _studentName {
     if (widget.certificate?.studentName != null && widget.certificate!.studentName.isNotEmpty) {
@@ -407,39 +410,19 @@ class _CertificateViewerDialogState extends State<CertificateViewerDialog> {
       }
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    isPublicDownload
-                        ? 'Certificate saved to Downloads folder ($cleanFileName)'
-                        : 'Certificate saved to device ($cleanFileName)',
-                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                  ),
-                ),
-              ],
-            ),
-            backgroundColor: AppColors.primaryGreen,
-            duration: const Duration(seconds: 4),
-            action: SnackBarAction(
-              label: 'Open',
-              textColor: Colors.amberAccent,
-              onPressed: () {
-                Printing.layoutPdf(
-                  onLayout: (format) async => pdfBytes,
-                  name: cleanFileName,
-                );
-              },
-            ),
-          ),
-        );
+        setState(() {
+          _lastGeneratedPdfBytes = pdfBytes;
+          _lastGeneratedFileName = cleanFileName;
+          _downloadSuccessMsg = isPublicDownload
+              ? 'Certificate saved to Downloads folder ($cleanFileName)'
+              : 'Certificate saved to device ($cleanFileName)';
+        });
       }
     } catch (e) {
       if (mounted) {
+        setState(() {
+          _downloadSuccessMsg = null;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to generate PDF: $e')),
         );
@@ -762,6 +745,66 @@ class _CertificateViewerDialogState extends State<CertificateViewerDialog> {
               ),
             ),
             const SizedBox(height: 14),
+
+            // In-dialog download feedback toast / banner (rendered above actions, at same layer)
+            if (_downloadSuccessMsg != null)
+              Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryGreen,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.25),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _downloadSuccessMsg!,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (_lastGeneratedPdfBytes != null) ...[
+                      TextButton(
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          foregroundColor: Colors.amberAccent,
+                        ),
+                        onPressed: () {
+                          Printing.layoutPdf(
+                            onLayout: (format) async => _lastGeneratedPdfBytes!,
+                            name: _lastGeneratedFileName ?? 'Certificate.pdf',
+                          );
+                        },
+                        child: const Text('Open', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                      ),
+                    ],
+                    InkWell(
+                      onTap: () => setState(() => _downloadSuccessMsg = null),
+                      child: const Padding(
+                        padding: EdgeInsets.only(left: 4),
+                        child: Icon(Icons.close_rounded, color: Colors.white70, size: 16),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
 
             // ── Action Buttons (Responsive on all screen widths) ────
             LayoutBuilder(

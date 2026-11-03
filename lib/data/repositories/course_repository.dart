@@ -169,7 +169,12 @@ class CourseRepository {
 
   /// Fetch all reviews for a course by slug or ID.
   Future<List<ApiCourseReview>> getCourseReviews(String slugOrId) async {
-    debugPrint('⭐ [CourseRepository] getCourseReviews: slug=$slugOrId');
+    final cleanSlug = slugOrId.trim();
+    if (cleanSlug.isEmpty) {
+      debugPrint('⚠️ [CourseRepository] getCourseReviews: empty course slug/id provided. Returning empty.');
+      return [];
+    }
+    debugPrint('⭐ [CourseRepository] getCourseReviews: slug=$cleanSlug');
     try {
       final token = await tokenStorage?.getAccessToken();
       final headers = {
@@ -178,7 +183,7 @@ class CourseRepository {
       };
 
       final response = await http.get(
-        Uri.parse('$_baseUrl/courses/$slugOrId/reviews/'),
+        Uri.parse('$_baseUrl/courses/$cleanSlug/reviews/'),
         headers: headers,
       );
 
@@ -214,11 +219,15 @@ class CourseRepository {
     required int rating,
     required String comment,
   }) async {
-    debugPrint('⭐ [CourseRepository] submitCourseReview: slug=$slugOrId, rating=$rating');
+    final cleanSlug = slugOrId.trim();
+    if (cleanSlug.isEmpty) {
+      throw Exception('Course identifier is missing');
+    }
+    debugPrint('⭐ [CourseRepository] submitCourseReview: slug=$cleanSlug, rating=$rating');
     final token = await tokenStorage?.getAccessToken();
 
     final response = await http.post(
-      Uri.parse('$_baseUrl/courses/$slugOrId/reviews/'),
+      Uri.parse('$_baseUrl/courses/$cleanSlug/reviews/'),
       headers: {
         if (token != null) 'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
@@ -233,16 +242,39 @@ class CourseRepository {
     debugPrint('⭐ [CourseRepository] submit review status: ${response.statusCode}, body: ${response.body}');
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
-      final decoded = jsonDecode(response.body) as Map<String, dynamic>;
-      debugPrint('✅ [CourseRepository] submit review SUCCESS');
-      return ApiCourseReview.fromJson(decoded);
+      try {
+        final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+        debugPrint('✅ [CourseRepository] submit review SUCCESS');
+        return ApiCourseReview.fromJson(decoded);
+      } catch (e) {
+        debugPrint('⚠️ [CourseRepository] Parse review response failed: $e');
+        return ApiCourseReview(
+          id: '',
+          studentName: 'Student',
+          rating: rating,
+          comment: comment,
+          createdAt: DateTime.now(),
+        );
+      }
     } else if (response.statusCode == 403) {
       throw Exception('You must be enrolled in this course to leave a review.');
     } else {
-      final decoded = jsonDecode(response.body);
-      final errorMsg = (decoded is Map && decoded.containsKey('error'))
-          ? decoded['error']
-          : 'Failed to submit review (HTTP ${response.statusCode})';
+      String errorMsg = 'Failed to submit review (HTTP ${response.statusCode})';
+      try {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map && decoded.containsKey('error')) {
+          errorMsg = decoded['error'].toString();
+        } else if (decoded is Map && decoded.containsKey('detail')) {
+          errorMsg = decoded['detail'].toString();
+        }
+      } catch (_) {
+        // Not JSON (e.g. HTML 404/500 error page)
+        if (response.statusCode == 404) {
+          errorMsg = 'Course not found or review endpoint unavailable (404).';
+        } else if (response.statusCode >= 500) {
+          errorMsg = 'Server error occurred while submitting review. Please try again later.';
+        }
+      }
       throw Exception(errorMsg);
     }
   }

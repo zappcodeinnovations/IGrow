@@ -14,32 +14,34 @@ import '../../features/auth/providers/auth_provider.dart';
 ///
 /// If cancelled:
 /// - Closes dialog with zero side effects.
-Future<void> showLogoutConfirmationDialog(BuildContext context, WidgetRef ref) async {
+Future<void> showLogoutConfirmationDialog(BuildContext context, [WidgetRef? ref]) async {
   return showDialog<void>(
     context: context,
     barrierDismissible: true,
-    builder: (dialogContext) => LogoutConfirmationDialog(ref: ref),
+    builder: (dialogContext) => const LogoutConfirmationDialog(),
   );
 }
 
-class LogoutConfirmationDialog extends StatefulWidget {
-  const LogoutConfirmationDialog({super.key, required this.ref});
+class LogoutConfirmationDialog extends ConsumerStatefulWidget {
+  const LogoutConfirmationDialog({super.key, this.ref});
 
-  final WidgetRef ref;
+  final WidgetRef? ref;
 
   @override
-  State<LogoutConfirmationDialog> createState() => _LogoutConfirmationDialogState();
+  ConsumerState<LogoutConfirmationDialog> createState() => _LogoutConfirmationDialogState();
 }
 
-class _LogoutConfirmationDialogState extends State<LogoutConfirmationDialog> {
+class _LogoutConfirmationDialogState extends ConsumerState<LogoutConfirmationDialog> {
   bool _isLoading = false;
 
   Future<void> _handleLogout() async {
     final nav = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
 
+    setState(() => _isLoading = true);
+
     try {
-      await widget.ref.read(authProvider.notifier).logout();
+      await ref.read(authProvider.notifier).logout();
 
       if (nav.canPop()) {
         nav.pop();

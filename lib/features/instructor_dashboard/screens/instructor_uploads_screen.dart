@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/localization/app_strings.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/shimmer_placeholders.dart';
+import '../../../data/models/api_models/course_models.dart';
 import '../../home_instructor/providers/instructor_home_provider.dart';
 
 class InstructorUploadsScreen extends ConsumerStatefulWidget {
@@ -54,15 +56,15 @@ class _InstructorUploadsScreenState extends ConsumerState<InstructorUploadsScree
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Uploads'),
+        title: Text(tr(ref, 'My Uploads')),
         bottom: TabBar(
           controller: _tabController,
           labelColor: AppColors.primaryGreen,
           unselectedLabelColor: AppColors.inkSoft,
           indicatorColor: AppColors.primaryGreen,
-          tabs: const [
-            Tab(text: 'Courses'),
-            Tab(text: 'E-Books'),
+          tabs: [
+            Tab(text: tr(ref, 'Courses')),
+            Tab(text: tr(ref, 'E-Books')),
           ],
         ),
       ),
@@ -79,6 +81,62 @@ class _InstructorUploadsScreenState extends ConsumerState<InstructorUploadsScree
 
 class _CoursesTab extends ConsumerWidget {
   const _CoursesTab();
+
+  Future<void> _deactivateCourse(
+    BuildContext context,
+    WidgetRef ref,
+    ApiCourseList course,
+  ) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Deactivate Course', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: Text(
+          'Are you sure you want to deactivate "${course.title}"?\n\n'
+          'The course will be moved to Draft status and hidden from the public marketplace. You can review and manage it anytime.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFFF59E0B)),
+            onPressed: () => Navigator.pop(c, true),
+            child: const Text('Deactivate'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await ref.read(instructorRepositoryProvider).updateCourse(course.id, {
+          'status': 'DRAFT',
+        });
+        if (context.mounted) {
+          final messenger = ScaffoldMessenger.of(context);
+          messenger.clearSnackBars();
+          messenger.showSnackBar(
+            const SnackBar(
+              content: Text('Course deactivated and moved to Drafts'),
+              backgroundColor: AppColors.primaryGreen,
+            ),
+          );
+          ref.invalidate(instructorCoursesProvider);
+        }
+      } catch (e) {
+        if (context.mounted) {
+          final messenger = ScaffoldMessenger.of(context);
+          messenger.clearSnackBars();
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text('Failed to deactivate course: $e'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -243,6 +301,12 @@ class _CoursesTab extends ConsumerWidget {
                           tooltip: 'Manage Content',
                           onPressed: () => context.push('/instructor/manage-course/${course.id}'),
                         ),
+                        if (isLive)
+                          IconButton(
+                            icon: const Icon(Icons.pause_circle_outline, color: Color(0xFFD97706)),
+                            tooltip: 'Deactivate Course',
+                            onPressed: () => _deactivateCourse(context, ref, course),
+                          ),
                       ],
                     ),
                   ],
@@ -366,7 +430,7 @@ class _EBooksTab extends ConsumerWidget {
                     ? Colors.green.withValues(alpha: 0.2)
                     : Colors.green.shade50;
                 badgeText = isDark ? Colors.greenAccent : Colors.green.shade700;
-                badgeLabel = 'Live';
+                badgeLabel = tr(ref, 'Live');
                 badgeIcon = Icons.check_circle_outline;
                 break;
               case 'REVIEW':
@@ -374,7 +438,7 @@ class _EBooksTab extends ConsumerWidget {
                     ? Colors.amber.withValues(alpha: 0.2)
                     : Colors.amber.shade50;
                 badgeText = isDark ? Colors.amberAccent : Colors.amber.shade900;
-                badgeLabel = 'Under Review';
+                badgeLabel = tr(ref, 'Under Review');
                 badgeIcon = Icons.hourglass_top_rounded;
                 break;
               case 'REJECTED':
@@ -382,14 +446,14 @@ class _EBooksTab extends ConsumerWidget {
                     ? Colors.red.withValues(alpha: 0.2)
                     : Colors.red.shade50;
                 badgeText = isDark ? Colors.redAccent : Colors.red.shade800;
-                badgeLabel = 'Rejected';
+                badgeLabel = tr(ref, 'Rejected');
                 badgeIcon = Icons.cancel_outlined;
                 break;
               case 'DRAFT':
               default:
                 badgeBg = isDark ? Colors.white12 : Colors.grey.shade100;
                 badgeText = isDark ? Colors.grey.shade300 : Colors.grey.shade800;
-                badgeLabel = 'Draft';
+                badgeLabel = tr(ref, 'Draft');
                 badgeIcon = Icons.edit_note_rounded;
                 break;
             }
@@ -559,7 +623,32 @@ class _EBooksTab extends ConsumerWidget {
                     ),
 
                     // Additional action / notification depending on status
-                    if (status == 'DRAFT') ...[
+                    if (status == 'APPROVED') ...[
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.teal.shade700,
+                              side: BorderSide(color: Colors.teal.shade400, width: 1.2),
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                            icon: const Icon(Icons.visibility_outlined, size: 14),
+                            label: Text(
+                              tr(ref, 'View in Library'),
+                              style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold),
+                            ),
+                            onPressed: () {
+                              if (ebook.id != null && ebook.id!.isNotEmpty) {
+                                context.push('/farmer/ebook/${ebook.id}');
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                    ] else if (status == 'DRAFT') ...[
                       const SizedBox(height: 12),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,
@@ -580,9 +669,9 @@ class _EBooksTab extends ConsumerWidget {
                               ),
                             ),
                             icon: const Icon(Icons.send_rounded, size: 14),
-                            label: const Text(
-                              'Submit for Review',
-                              style: TextStyle(
+                            label: Text(
+                              tr(ref, 'Submit for Review'),
+                              style: const TextStyle(
                                 fontSize: 12.5,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -607,18 +696,18 @@ class _EBooksTab extends ConsumerWidget {
                           color: AppColors.accentOrange.withValues(alpha: 0.08),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Row(
+                        child: Row(
                           children: [
-                            Icon(
+                            const Icon(
                               Icons.info_outline,
                               size: 14,
                               color: AppColors.accentOrange,
                             ),
-                            SizedBox(width: 6),
+                            const SizedBox(width: 6),
                             Expanded(
                               child: Text(
-                                'Submitted to Admin. Awaiting approval before going live to students.',
-                                style: TextStyle(
+                                tr(ref, 'Submitted to Admin. Awaiting approval before going live to students.'),
+                                style: const TextStyle(
                                   fontSize: 11,
                                   color: AppColors.accentOrange,
                                   fontWeight: FontWeight.w500,

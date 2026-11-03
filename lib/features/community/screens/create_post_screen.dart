@@ -7,6 +7,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_text_field.dart';
+import '../../../core/widgets/app_time_picker.dart';
 import '../providers/community_provider.dart';
 
 class CreatePostScreen extends ConsumerStatefulWidget {
@@ -129,15 +130,17 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
     );
 
     if (pickedDate != null && mounted) {
-      final pickedTime = await showTimePicker(
+      final pickedTime = await showAppTimePicker(
         context: context,
         initialTime: _selectedEventTime ?? const TimeOfDay(hour: 10, minute: 0),
       );
 
-      setState(() {
-        _selectedEventDate = pickedDate;
-        _selectedEventTime = pickedTime;
-      });
+      if (pickedTime != null && mounted) {
+        setState(() {
+          _selectedEventDate = pickedDate;
+          _selectedEventTime = pickedTime;
+        });
+      }
     }
   }
 

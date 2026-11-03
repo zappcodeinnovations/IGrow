@@ -401,14 +401,14 @@ class _InstructorStateB extends ConsumerWidget {
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(color: AppColors.primaryGreen.withValues(alpha: 0.3)),
                           ),
-                          child: const Row(
+                          child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.verified_rounded, size: 13, color: AppColors.primaryGreen),
-                              SizedBox(width: 4),
+                              const Icon(Icons.verified_rounded, size: 13, color: AppColors.primaryGreen),
+                              const SizedBox(width: 4),
                               Text(
-                                'OFFICIAL INSTRUCTOR HUB',
-                                style: TextStyle(
+                                tr(ref, 'OFFICIAL INSTRUCTOR HUB'),
+                                style: const TextStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.w800,
                                   color: AppColors.primaryGreen,
@@ -425,14 +425,14 @@ class _InstructorStateB extends ConsumerWidget {
                             color: isDark ? Colors.white10 : const Color(0xFFF1F5F9),
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: const Row(
+                          child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.podcasts_rounded, size: 12, color: Color(0xFF2563EB)),
-                              SizedBox(width: 4),
+                              const Icon(Icons.podcasts_rounded, size: 12, color: Color(0xFF2563EB)),
+                              const SizedBox(width: 4),
                               Text(
-                                'Broadcast Channel',
-                                style: TextStyle(
+                                tr(ref, 'Broadcast Channel'),
+                                style: const TextStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.w600,
                                   color: Color(0xFF2563EB),
@@ -549,7 +549,7 @@ class _InstructorStateB extends ConsumerWidget {
                   Padding(
                     padding: const EdgeInsets.only(left: 4, bottom: 8),
                     child: Text(
-                      'CREATE BROADCAST UPDATE',
+                      tr(ref, 'CREATE BROADCAST UPDATE'),
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
@@ -562,8 +562,8 @@ class _InstructorStateB extends ConsumerWidget {
                     children: [
                       Expanded(
                         child: _QuickActionCard(
-                          title: 'General Post',
-                          subtitle: 'Tips & photo updates',
+                          title: tr(ref, 'General Post'),
+                          subtitle: tr(ref, 'Tips & photo updates'),
                           icon: Icons.edit_note_rounded,
                           color: const Color(0xFF16A34A),
                           isDark: isDark,
@@ -573,8 +573,8 @@ class _InstructorStateB extends ConsumerWidget {
                       const SizedBox(width: 10),
                       Expanded(
                         child: _QuickActionCard(
-                          title: 'Announcement',
-                          subtitle: 'Promote live course',
+                          title: tr(ref, 'Announcement'),
+                          subtitle: tr(ref, 'Promote live course'),
                           icon: Icons.campaign_rounded,
                           color: const Color(0xFF9333EA),
                           isDark: isDark,
@@ -588,8 +588,8 @@ class _InstructorStateB extends ConsumerWidget {
                     children: [
                       Expanded(
                         child: _QuickActionCard(
-                          title: 'Live Webinar',
-                          subtitle: 'Zoom / Meet session',
+                          title: tr(ref, 'Live Webinar'),
+                          subtitle: tr(ref, 'Zoom / Meet session'),
                           icon: Icons.videocam_rounded,
                           color: const Color(0xFF2563EB),
                           isDark: isDark,
@@ -599,8 +599,8 @@ class _InstructorStateB extends ConsumerWidget {
                       const SizedBox(width: 10),
                       Expanded(
                         child: _QuickActionCard(
-                          title: 'Field Seminar',
-                          subtitle: 'Venue & meetup map',
+                          title: tr(ref, 'Field Seminar'),
+                          subtitle: tr(ref, 'Venue & meetup map'),
                           icon: Icons.groups_rounded,
                           color: const Color(0xFFD97706),
                           isDark: isDark,
@@ -621,7 +621,7 @@ class _InstructorStateB extends ConsumerWidget {
               child: Row(
                 children: [
                   Text(
-                    'BROADCAST FEED',
+                    tr(ref, 'BROADCAST FEED'),
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w800,

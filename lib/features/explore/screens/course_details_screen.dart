@@ -1823,18 +1823,20 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
               // Ratings & Students Row: "4.8 ★★★★★ (417 ratings) 30,089 students"
               Builder(
                 builder: (context) {
-                  final ratingsCount = course.sections.fold<int>(0, (s, sec) => s + sec.lectures.length) * 12 + 48;
+                  final ratingValue = course.averageRating ?? 0.0;
+                  final ratingsCount = course.reviewCount ?? 0;
                   final rawEnrollment = course.enrollmentCount?.replaceAll(RegExp(r'[^0-9]'), '') ?? '';
                   final enrollmentNum = int.tryParse(rawEnrollment) ?? 0;
                   final studentText = enrollmentNum > 0
                       ? ' $enrollmentNum ${enrollmentNum == 1 ? "student" : "students"}'
                       : '';
+                  final ratingDisplay = ratingValue > 0 ? ratingValue.toStringAsFixed(1) : 'New';
 
                   return Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      const Text(
-                        '4.8',
+                      Text(
+                        ratingDisplay,
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
@@ -1856,7 +1858,9 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                       const SizedBox(width: 6),
                       Flexible(
                         child: Text(
-                          '($ratingsCount ratings)$studentText',
+                          ratingsCount > 0
+                              ? '($ratingsCount ${ratingsCount == 1 ? "rating" : "ratings"})$studentText'
+                              : (studentText.trim().isNotEmpty ? ' $studentText' : ''),
                           style: TextStyle(
                             fontSize: 12,
                             color: isDark ? Colors.white60 : Colors.grey.shade700,
@@ -2530,7 +2534,9 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
           } else {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('Preview video stream is loading...'),
+                content: Text('⚠️ No preview video has been uploaded for this lecture yet.'),
+                backgroundColor: AppColors.error,
+                duration: Duration(seconds: 3),
               ),
             );
           }
@@ -2958,6 +2964,7 @@ class _FreePreviewModalSheetState extends State<_FreePreviewModalSheet> {
   bool _isLoading = true;
   String? _error;
   bool _previewLimitReached = false;
+  bool _isReplaying = false;
 
   @override
   void initState() {
@@ -2967,6 +2974,7 @@ class _FreePreviewModalSheetState extends State<_FreePreviewModalSheet> {
 
   void _onVideoPlayerTick() {
     if (_controller == null || !_controller!.value.isInitialized) return;
+    if (_isReplaying) return;
     final currentPos = _controller!.value.position;
     final totalDuration = _controller!.value.duration;
     final limit = _effectivePreviewLimit;
@@ -2993,6 +3001,21 @@ class _FreePreviewModalSheetState extends State<_FreePreviewModalSheet> {
           _previewLimitReached = false;
         });
       }
+    }
+  }
+
+  Future<void> _replaySample() async {
+    if (_controller == null) return;
+    _isReplaying = true;
+    setState(() => _previewLimitReached = false);
+    try {
+      await _controller!.pause();
+      await _controller!.seekTo(Duration.zero);
+      await _controller!.play();
+    } catch (e) {
+      debugPrint('⚠️ [PreviewModal] Replay failed: $e');
+    } finally {
+      _isReplaying = false;
     }
   }
 
@@ -3321,11 +3344,7 @@ class _FreePreviewModalSheetState extends State<_FreePreviewModalSheet> {
                                               vertical: 6,
                                             ),
                                           ),
-                                          onPressed: () {
-                                            _controller?.seekTo(Duration.zero);
-                                            setState(() => _previewLimitReached = false);
-                                            _controller?.play();
-                                          },
+                                          onPressed: _replaySample,
                                           icon: const Icon(Icons.replay_rounded, size: 14),
                                           label: const Text(
                                             'Replay Sample',

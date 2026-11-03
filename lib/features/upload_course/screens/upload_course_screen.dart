@@ -8,7 +8,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
 
+import '../../../core/localization/app_strings.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_card.dart';
@@ -150,7 +152,26 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
         imageQuality: 85,
       );
       if (picked != null) {
-        setState(() => _coverImage = File(picked.path));
+        final originalFile = File(picked.path);
+        File persistentFile = originalFile;
+        try {
+          if (await originalFile.exists()) {
+            final appDir = await getApplicationDocumentsDirectory();
+            final mediaDir = Directory('${appDir.path}/course_covers');
+            if (!await mediaDir.exists()) {
+              await mediaDir.create(recursive: true);
+            }
+            final ext = picked.path.contains('.')
+                ? picked.path.substring(picked.path.lastIndexOf('.'))
+                : '.jpg';
+            final persistentPath =
+                '${mediaDir.path}/cover_${DateTime.now().millisecondsSinceEpoch}$ext';
+            persistentFile = await originalFile.copy(persistentPath);
+          }
+        } catch (copyErr) {
+          debugPrint('⚠️ Could not persist cover image to app storage: $copyErr');
+        }
+        setState(() => _coverImage = persistentFile);
       }
     } catch (e) {
       final errorStr = e.toString();
@@ -625,7 +646,26 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
         imageQuality: 90,
       );
       if (picked != null) {
-        setState(() => _signatureImage = File(picked.path));
+        final originalFile = File(picked.path);
+        File persistentFile = originalFile;
+        try {
+          if (await originalFile.exists()) {
+            final appDir = await getApplicationDocumentsDirectory();
+            final mediaDir = Directory('${appDir.path}/signatures');
+            if (!await mediaDir.exists()) {
+              await mediaDir.create(recursive: true);
+            }
+            final ext = picked.path.contains('.')
+                ? picked.path.substring(picked.path.lastIndexOf('.'))
+                : '.png';
+            final persistentPath =
+                '${mediaDir.path}/sig_${DateTime.now().millisecondsSinceEpoch}$ext';
+            persistentFile = await originalFile.copy(persistentPath);
+          }
+        } catch (copyErr) {
+          debugPrint('⚠️ Could not persist signature image to app storage: $copyErr');
+        }
+        setState(() => _signatureImage = persistentFile);
       }
     } catch (e) {
       _showErrorSnackbar('Failed to pick signature image: $e');
@@ -659,6 +699,18 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
         _showErrorSnackbar('Course price cannot be negative.');
         return;
       }
+
+      // Verify that cover image still exists if one was selected
+      String? validCoverImagePath;
+      if (_coverImage != null) {
+        if (await _coverImage!.exists()) {
+          validCoverImagePath = _coverImage!.path;
+        } else {
+          debugPrint('⚠️ [UploadCourse] Cached cover image path disappeared: ${_coverImage!.path}');
+          setState(() => _coverImage = null);
+        }
+      }
+
       final courseRes = await repo.createCourse(
         {
           'title': _titleController.text.trim(),
@@ -669,7 +721,7 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
           'price': priceNum.toStringAsFixed(2),
           'language': _selectedLanguage,
         },
-        imagePath: _coverImage?.path,
+        imagePath: validCoverImagePath,
       );
 
       final courseId = courseRes['id']?.toString() ?? '';
@@ -760,7 +812,7 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
       }
 
       // 5. Upload Certificate Signature if provided
-      if (_signatureImage != null) {
+      if (_signatureImage != null && await _signatureImage!.exists()) {
         setState(() {
           _submissionPercent = 0.95;
           _submissionProgressText = 'Attaching Certificate Digital Signature...';
@@ -915,6 +967,11 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
     } catch (_) {}
 
     String clean = raw.replaceAll('Exception: ', '').trim();
+    if (clean.contains('PathNotFoundException') ||
+        clean.contains('No such file or directory') ||
+        clean.contains('Cannot retrieve length of file')) {
+      return 'The selected image file was removed by your device cache. Please tap "Change Thumbnail" on Step 1 to reselect your image.';
+    }
     if (clean.contains(', uri=')) {
       clean = clean.split(', uri=').first;
     }
@@ -1065,10 +1122,10 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
           elevation: 0,
           title: Text(
             _currentStep == 1
-                ? 'Create a New Course'
+                ? tr(ref, 'Create a New Course')
                 : _currentStep == 2
-                    ? 'Build Curriculum'
-                    : 'Course Certificate',
+                    ? tr(ref, 'Build Curriculum')
+                    : tr(ref, 'Course Certificate'),
             style: const TextStyle(fontWeight: FontWeight.bold),
           ),
           centerTitle: true,
@@ -1095,10 +1152,10 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                     // Subtitle
                     Text(
                       _currentStep == 1
-                          ? 'Fill out the basic details of your agricultural course.'
+                          ? tr(ref, 'Fill out the basic details of your agricultural course.')
                           : _currentStep == 2
-                              ? 'Add your video lectures, chapters, and quizzes.'
-                              : 'Upload your signature to issue valid certificates upon completion.',
+                              ? tr(ref, 'Add your video lectures, chapters, and quizzes.')
+                              : tr(ref, 'Upload your signature to issue valid certificates upon completion.'),
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 14,
@@ -1267,7 +1324,7 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Course Title
-          _buildFieldLabel('Course Title *'),
+          _buildFieldLabel(tr(ref, 'Course Title *')),
           TextField(
             controller: _titleController,
             decoration: const InputDecoration(
@@ -1278,7 +1335,7 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
           const SizedBox(height: 18),
 
           // Short Description
-          _buildFieldLabel('Short Description'),
+          _buildFieldLabel(tr(ref, 'Short Description')),
           TextField(
             controller: _shortDescController,
             maxLines: 2,
@@ -1290,7 +1347,7 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
           const SizedBox(height: 18),
 
           // Full Description
-          _buildFieldLabel('Full Description *'),
+          _buildFieldLabel(tr(ref, 'Full Description *')),
           TextField(
             controller: _descController,
             maxLines: 4,
@@ -1302,7 +1359,7 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
           const SizedBox(height: 20),
 
           // Course Thumbnail Upload
-          _buildFieldLabel('Course Thumbnail'),
+          _buildFieldLabel(tr(ref, 'Course Thumbnail')),
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(14),
@@ -1361,10 +1418,10 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                           : const Icon(Icons.cloud_upload_outlined, size: 18),
                       label: Text(_isPickingCoverImage
                           ? 'Opening...'
-                          : (_coverImage != null ? 'Change Thumbnail' : 'Upload Thumbnail')),
+                          : (_coverImage != null ? 'Change Thumbnail' : tr(ref, 'Upload Thumbnail'))),
                     ),
                     Text(
-                      '16:9 (1280x720), JPG/PNG',
+                      tr(ref, '16:9 (1280x720), JPG/PNG'),
                       style: TextStyle(
                         fontSize: 11,
                         color: isDark ? Colors.grey.shade400 : AppColors.inkSoft,
@@ -1418,8 +1475,8 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
               border: OutlineInputBorder(),
               contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             ),
-            items: const [
-              DropdownMenuItem(value: '0', child: Text('Free (₹0)')),
+            items: [
+              DropdownMenuItem(value: '0', child: Text(tr(ref, 'Free'))),
               DropdownMenuItem(value: '249', child: Text('₹249 — Tier 1')),
               DropdownMenuItem(value: '499', child: Text('₹499 — Tier 1.5')),
               DropdownMenuItem(value: '999', child: Text('₹999 — Tier 2')),
@@ -1452,7 +1509,7 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
             children: [
               TextButton(
                 onPressed: () => context.pop(),
-                child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+                child: Text(tr(ref, 'Cancel'), style: const TextStyle(color: Colors.grey)),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -1467,7 +1524,7 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                     }
                   },
                   icon: const Icon(Icons.arrow_forward_rounded, size: 18),
-                  label: const Text('Save & Continue', style: TextStyle(fontWeight: FontWeight.bold)),
+                  label: Text(tr(ref, 'Next: Curriculum'), style: const TextStyle(fontWeight: FontWeight.bold)),
                 ),
               ),
             ],

@@ -2296,22 +2296,31 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
   }
 
   Future<void> _previewCertificateDemo() async {
+    BuildContext? loadingDialogCtx;
     try {
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (_) => const Center(child: CircularProgressIndicator(color: AppColors.primaryGreen)),
+        useRootNavigator: true,
+        builder: (dialogCtx) {
+          loadingDialogCtx = dialogCtx;
+          return const Center(child: CircularProgressIndicator(color: AppColors.primaryGreen));
+        },
       );
 
       final repo = ref.read(certificateRepositoryProvider);
       final preview = await repo.getPreviewCertificate(widget.courseId);
 
-      if (mounted) Navigator.pop(context); // Dismiss loading
+      if (loadingDialogCtx != null && loadingDialogCtx!.mounted) {
+        Navigator.of(loadingDialogCtx!).pop(); // Dismiss only the loading dialog
+      }
       if (!mounted) return;
 
       CertificateViewerDialog.show(context, certificate: preview);
     } catch (e) {
-      if (mounted) Navigator.pop(context); // Dismiss loading
+      if (loadingDialogCtx != null && loadingDialogCtx!.mounted) {
+        Navigator.of(loadingDialogCtx!).pop(); // Dismiss only the loading dialog
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to load certificate preview: $e')),

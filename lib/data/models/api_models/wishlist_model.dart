@@ -11,6 +11,7 @@ class ApiWishlistItem {
     this.cover,
     required this.price,
     required this.category,
+    this.instructorName,
     this.rating = 4.8,
     this.addedAt,
   });
@@ -24,6 +25,7 @@ class ApiWishlistItem {
   final String? cover;
   final String price;
   final String category;
+  final String? instructorName;
   final double rating;
   final DateTime? addedAt;
 
@@ -59,6 +61,7 @@ class ApiWishlistItem {
       cover: json['cover'] as String?,
       price: json['price']?.toString() ?? '0.00',
       category: json['category']?.toString() ?? 'General',
+      instructorName: json['instructor_name']?.toString() ?? json['instructor']?.toString() ?? json['author_name']?.toString(),
       rating: parsedRating,
       addedAt: added,
     );
@@ -75,6 +78,7 @@ class ApiWishlistItem {
       'cover': cover,
       'price': price,
       'category': category,
+      'instructor_name': instructorName,
       'rating': rating,
       'added_at': addedAt?.toIso8601String(),
     };

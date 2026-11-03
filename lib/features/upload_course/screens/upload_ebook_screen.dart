@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../../core/localization/app_strings.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/responsive_layout.dart';
@@ -301,7 +302,7 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
     final isKycVerified = user?.isKycVerified == true;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Upload E-Book')),
+      appBar: AppBar(title: Text(tr(ref, 'Upload E-Book'))),
       body: RefreshIndicator(
         onRefresh: () async {
           await ref.read(authProvider.notifier).refreshUserSilent();
@@ -344,7 +345,7 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
                                   ),
                                   const SizedBox(width: 12),
                                   Text(
-                                    'E-Book Information',
+                                    tr(ref, 'E-Book Information'),
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
                                       fontSize: 16,
@@ -358,7 +359,7 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
                               const SizedBox(height: 18),
                               AppTextField(
                                 controller: _titleController,
-                                label: 'E-Book Title *',
+                                label: tr(ref, 'E-Book Title *'),
                                 hint: 'e.g. Modern Drip Irrigation Handbook',
                                 prefixIcon: const Icon(
                                   Icons.title_rounded,
@@ -372,7 +373,7 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
                               const SizedBox(height: 16),
                               AppTextField(
                                 controller: _authorController,
-                                label: 'Author Name *',
+                                label: tr(ref, 'Author Name *'),
                                 hint: 'e.g. Dr. Rajesh Patel',
                                 prefixIcon: const Icon(
                                   Icons.person_outline_rounded,
@@ -386,7 +387,7 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
                               const SizedBox(height: 16),
                               AppTextField(
                                 controller: _descriptionController,
-                                label: 'Description *',
+                                label: tr(ref, 'Description *'),
                                 hint:
                                     'Provide a comprehensive overview of topics covered...',
                                 maxLines: 4,
@@ -402,9 +403,9 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
                               const SizedBox(height: 16),
                               AppTextField(
                                 controller: _priceController,
-                                label: 'Price (₹) *',
+                                label: tr(ref, 'Price (₹)'),
                                 hint: '0 for free, or enter amount (e.g. 199)',
-                                helperText: 'Enter 0 to offer this e-book for free.',
+                                helperText: tr(ref, 'Enter 0 to offer this e-book for free.'),
                                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                 prefixIcon: const Icon(
                                   Icons.currency_rupee_rounded,
@@ -458,7 +459,7 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
                                           CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          'Cover Image / Thumbnail',
+                                          tr(ref, 'Cover Image / Thumbnail'),
                                           style: TextStyle(
                                             fontWeight: FontWeight.bold,
                                             fontSize: 16,
@@ -469,7 +470,7 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
                                         ),
                                         const SizedBox(height: 2),
                                         Text(
-                                          'Front cover or thumbnail (JPG, PNG, WebP)',
+                                          tr(ref, 'Front cover or thumbnail (JPG, PNG, WebP)'),
                                           style: TextStyle(
                                             fontSize: 11,
                                             color: isDark
@@ -597,7 +598,7 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
                                         Text(
                                           _isPickingImage
                                               ? 'Opening Gallery...'
-                                              : 'Tap to upload Cover Image / Thumbnail',
+                                              : tr(ref, 'Tap to upload Cover Image / Thumbnail'),
                                           style: TextStyle(
                                             fontWeight: FontWeight.bold,
                                             fontSize: 14,
@@ -649,7 +650,7 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
                                   ),
                                   const SizedBox(width: 12),
                                   Text(
-                                    'Document File',
+                                    tr(ref, 'Document File'),
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
                                       fontSize: 16,
@@ -762,18 +763,18 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
                                           strokeWidth: 2,
                                         ),
                                       )
-                                    : const Row(
+                                    : Row(
                                         mainAxisAlignment: MainAxisAlignment.center,
                                         children: [
-                                          Icon(
+                                          const Icon(
                                             Icons.bookmark_border_rounded,
                                             size: 18,
                                             color: AppColors.primaryGreen,
                                           ),
-                                          SizedBox(width: 6),
+                                          const SizedBox(width: 6),
                                           Text(
-                                            'Save as Draft',
-                                            style: TextStyle(
+                                            tr(ref, 'Save as Draft'),
+                                            style: const TextStyle(
                                               fontSize: 14,
                                               fontWeight: FontWeight.bold,
                                               color: AppColors.primaryGreen,
@@ -805,20 +806,20 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
                                           strokeWidth: 2,
                                         ),
                                       )
-                                    : const Row(
+                                    : Row(
                                         mainAxisAlignment: MainAxisAlignment.center,
                                         children: [
-                                          Icon(
+                                          const Icon(
                                             Icons.cloud_upload_rounded,
                                             size: 18,
                                           ),
-                                          SizedBox(width: 6),
+                                          const SizedBox(width: 6),
                                           Flexible(
                                             child: Text(
-                                              'Upload & Submit E-Book',
+                                              tr(ref, 'Upload & Submit E-Book'),
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
-                                              style: TextStyle(
+                                              style: const TextStyle(
                                                 fontSize: 14,
                                                 fontWeight: FontWeight.bold,
                                               ),

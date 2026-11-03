@@ -1070,7 +1070,10 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
       body: courseAsync.when(
         data: (course) {
           _currentCourse = course;
-          _activeSlug = course.slug ?? widget.courseId;
+          final rawSlug = course.slug?.trim();
+          _activeSlug = (rawSlug != null && rawSlug.isNotEmpty)
+              ? rawSlug
+              : (widget.courseId.isNotEmpty ? widget.courseId : course.id);
           final progressAsync = ref.watch(courseProgressStateProvider(_activeSlug!));
           final completedIds = progressAsync.value ?? <String>{};
 

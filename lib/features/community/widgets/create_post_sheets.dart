@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/app_time_picker.dart';
 import '../../../data/models/api_models/course_models.dart';
 import '../../home_instructor/providers/instructor_home_provider.dart';
 import '../providers/community_provider.dart';
@@ -722,7 +723,7 @@ class _WebinarModalState extends ConsumerState<_WebinarModal> {
       lastDate: now.add(const Duration(days: 180)),
     );
     if (pickedDate != null && mounted) {
-      final pickedTime = await showTimePicker(
+      final pickedTime = await showAppTimePicker(
         context: context,
         initialTime: _eventTime ?? const TimeOfDay(hour: 11, minute: 0),
       );
@@ -935,7 +936,7 @@ class _SeminarModalState extends ConsumerState<_SeminarModal> {
       lastDate: now.add(const Duration(days: 180)),
     );
     if (pickedDate != null && mounted) {
-      final pickedTime = await showTimePicker(
+      final pickedTime = await showAppTimePicker(
         context: context,
         initialTime: _eventTime ?? const TimeOfDay(hour: 10, minute: 0),
       );

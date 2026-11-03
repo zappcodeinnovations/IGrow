@@ -48,6 +48,29 @@ class InstructorRepository {
 
   /// Get instructor transactions.
   Future<List<Map<String, dynamic>>> getTransactions() async {
+    try {
+      final token = await tokenStorage.getAccessToken();
+      final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/instructor/transactions/');
+      final rawResponse = await http.get(
+        uri,
+        headers: {
+          if (token != null) 'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+      if (rawResponse.statusCode >= 200 && rawResponse.statusCode < 300) {
+        final dynamic decoded = jsonDecode(rawResponse.body);
+        if (decoded is List) {
+          return decoded.cast<Map<String, dynamic>>();
+        } else if (decoded is Map && decoded['results'] is List) {
+          return (decoded['results'] as List).cast<Map<String, dynamic>>();
+        }
+      }
+      debugPrint('⚠️ [InstructorRepository] getTransactions HTTP ${rawResponse.statusCode}: ${rawResponse.body}');
+    } catch (e) {
+      debugPrint('⚠️ [InstructorRepository] getTransactions raw HTTP error: $e');
+    }
+
     final response = await appApi.apiV1InstructorTransactionsGet();
     final dynamic data = response.body;
     if (data is List) {

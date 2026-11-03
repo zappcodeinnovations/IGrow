@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
+import '../../../core/localization/app_strings.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/ugc_report_dialog.dart';
 import '../../../data/models/api_models/community_models.dart';
@@ -557,19 +558,25 @@ class _RichPostCardState extends ConsumerState<RichPostCard> with SingleTickerPr
                           Container(
                             padding: const EdgeInsets.all(6),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF2563EB).withValues(alpha: 0.15),
+                              color: isDark
+                                  ? const Color(0xFF60A5FA).withValues(alpha: 0.2)
+                                  : const Color(0xFF2563EB).withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            child: const Icon(Icons.alarm_on_rounded, size: 16, color: Color(0xFF2563EB)),
+                            child: Icon(
+                              Icons.alarm_on_rounded,
+                              size: 16,
+                              color: isDark ? const Color(0xFF93C5FD) : const Color(0xFF2563EB),
+                            ),
                           ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               'Live: ${widget.post.formattedEventDateTime!}',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 13.5,
-                                color: Color(0xFF2563EB),
+                                color: isDark ? const Color(0xFF93C5FD) : const Color(0xFF2563EB),
                               ),
                             ),
                           ),
@@ -639,19 +646,25 @@ class _RichPostCardState extends ConsumerState<RichPostCard> with SingleTickerPr
                           Container(
                             padding: const EdgeInsets.all(6),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFD97706).withValues(alpha: 0.15),
+                              color: isDark
+                                  ? const Color(0xFFFBBF24).withValues(alpha: 0.2)
+                                  : const Color(0xFFD97706).withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            child: const Icon(Icons.event_available_rounded, size: 16, color: Color(0xFFD97706)),
+                            child: Icon(
+                              Icons.event_available_rounded,
+                              size: 16,
+                              color: isDark ? const Color(0xFFFCD34D) : const Color(0xFFD97706),
+                            ),
                           ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               'Schedule: ${widget.post.formattedEventDateTime!}',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 13.5,
-                                color: Color(0xFFD97706),
+                                color: isDark ? const Color(0xFFFCD34D) : const Color(0xFFD97706),
                               ),
                             ),
                           ),
@@ -799,7 +812,7 @@ class _RichPostCardState extends ConsumerState<RichPostCard> with SingleTickerPr
                                       borderRadius: BorderRadius.circular(6),
                                     ),
                                     child: Text(
-                                      isCourseApproved ? 'PUBLISHED COURSE' : 'COMING SOON',
+                                      isCourseApproved ? tr(ref, 'PUBLISHED COURSE') : tr(ref, 'COMING SOON'),
                                       style: TextStyle(
                                         color: isCourseApproved ? const Color(0xFF9333EA) : Colors.amber[800],
                                         fontSize: 9.5,
@@ -871,7 +884,7 @@ class _RichPostCardState extends ConsumerState<RichPostCard> with SingleTickerPr
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Text(
-                                      isCourseApproved ? 'View Course' : 'Coming Soon',
+                                      isCourseApproved ? tr(ref, 'View Course') : tr(ref, 'Coming Soon'),
                                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5),
                                     ),
                                     const SizedBox(width: 4),

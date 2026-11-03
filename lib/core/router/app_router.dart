@@ -186,6 +186,24 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(
+        path: '/instructor/manage-course/:id',
+        builder: (context, state) => ManageCourseScreen(
+          courseId: state.pathParameters['id']!,
+        ),
+      ),
+      GoRoute(
+        path: RouteNames.uploadCourse,
+        builder: (context, state) => const UploadCourseScreen(),
+      ),
+      GoRoute(
+        path: RouteNames.uploadEbook,
+        builder: (context, state) => const UploadEbookScreen(),
+      ),
+      GoRoute(
+        path: RouteNames.uploadGuide,
+        builder: (context, state) => const InstructorChatbotScreen(),
+      ),
+      GoRoute(
         path: '/course/:id',
         redirect: (context, state) => '/farmer/course/${state.pathParameters['id']}',
       ),
@@ -456,18 +474,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             ),
           ),
           GoRoute(
-            path: RouteNames.uploadCourse,
-            builder: (context, state) => const UploadCourseScreen(),
-          ),
-          GoRoute(
-            path: RouteNames.uploadEbook,
-            builder: (context, state) => const UploadEbookScreen(),
-          ),
-          GoRoute(
-            path: RouteNames.uploadGuide,
-            builder: (context, state) => const InstructorChatbotScreen(),
-          ),
-          GoRoute(
             path: RouteNames.instructorProfile,
             pageBuilder: (context, state) => _buildSlideRightPage(
               context: context,
@@ -500,12 +506,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: RouteNames.instructorReviews,
             builder: (context, state) => const InstructorReviewsScreen(),
-          ),
-          GoRoute(
-            path: '/instructor/manage-course/:id',
-            builder: (context, state) => ManageCourseScreen(
-              courseId: state.pathParameters['id']!,
-            ),
           ),
         ],
       ),

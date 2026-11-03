@@ -158,6 +158,8 @@ class ApiCourseList {
     this.totalLectures,
     this.totalDuration,
     this.status,
+    this.averageRating,
+    this.reviewCount,
     this.createdAt,
   });
 
@@ -177,15 +179,22 @@ class ApiCourseList {
   final String? totalLectures;
   final String? totalDuration;
   final String? status;
+  final double? averageRating;
+  final int? reviewCount;
   final DateTime? createdAt;
 
   CourseCategory? get categoryEnum => CourseCategory.fromValue(category);
   CourseLevel? get levelEnum => CourseLevel.fromValue(level);
   CourseStatus? get statusEnum => CourseStatus.fromValue(status);
 
-  factory ApiCourseList.fromJson(Map<String, dynamic> json) => ApiCourseList(
-        id: json['id']?.toString() ?? '',
-        slug: json['slug']?.toString(),
+  factory ApiCourseList.fromJson(Map<String, dynamic> json) {
+    final rawSlug = json['slug']?.toString().trim();
+    final id = json['id']?.toString() ?? '';
+    final slug = (rawSlug != null && rawSlug.isNotEmpty) ? rawSlug : (id.isNotEmpty ? id : null);
+
+    return ApiCourseList(
+        id: id,
+        slug: slug,
         title: json['title']?.toString() ?? '',
         shortDescription: json['short_description']?.toString(),
         thumbnail: json['thumbnail']?.toString(),
@@ -200,10 +209,13 @@ class ApiCourseList {
         totalLectures: json['total_lectures']?.toString(),
         totalDuration: json['total_duration']?.toString(),
         status: json['status']?.toString(),
+        averageRating: json['average_rating'] is num ? (json['average_rating'] as num).toDouble() : double.tryParse(json['average_rating']?.toString() ?? ''),
+        reviewCount: json['review_count'] is num ? (json['review_count'] as num).toInt() : int.tryParse(json['review_count']?.toString() ?? ''),
         createdAt: json['created_at'] != null
             ? DateTime.tryParse(json['created_at'].toString())
             : null,
       );
+  }
 }
 
 // ── Lecture Resource ────────────────────────────────────────────
@@ -396,6 +408,8 @@ class ApiCourseDetail {
     this.totalLectures,
     this.totalDuration,
     this.status,
+    this.averageRating,
+    this.reviewCount,
     this.sections = const [],
     this.createdAt,
     this.publishedAt,
@@ -425,6 +439,8 @@ class ApiCourseDetail {
   final String? totalLectures;
   final String? totalDuration;
   final String? status;
+  final double? averageRating;
+  final int? reviewCount;
   final List<ApiCourseSection> sections;
   final DateTime? createdAt;
   final DateTime? publishedAt;
@@ -443,9 +459,13 @@ class ApiCourseDetail {
         return DateTime.tryParse(val.toString());
       }
 
+      final id = json['id']?.toString() ?? '';
+      final rawSlug = json['slug']?.toString().trim();
+      final slug = (rawSlug != null && rawSlug.isNotEmpty) ? rawSlug : (id.isNotEmpty ? id : null);
+
       return ApiCourseDetail(
-        id: json['id']?.toString() ?? '',
-        slug: json['slug']?.toString(),
+        id: id,
+        slug: slug,
         title: json['title']?.toString() ?? '',
         description: json['description']?.toString(),
         shortDescription: json['short_description']?.toString(),
@@ -478,6 +498,8 @@ class ApiCourseDetail {
         totalLectures: json['total_lectures']?.toString(),
         totalDuration: json['total_duration']?.toString(),
         status: json['status']?.toString(),
+        averageRating: json['average_rating'] is num ? (json['average_rating'] as num).toDouble() : double.tryParse(json['average_rating']?.toString() ?? ''),
+        reviewCount: json['review_count'] is num ? (json['review_count'] as num).toInt() : int.tryParse(json['review_count']?.toString() ?? ''),
         sections: (json['sections'] as List?)
                 ?.whereType<Map<String, dynamic>>()
                 .map((e) => ApiCourseSection.fromJson(e))

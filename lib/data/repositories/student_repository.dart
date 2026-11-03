@@ -290,10 +290,15 @@ class StudentRepository {
 
   /// Get course progress for all lectures in a course.
   Future<Map<String, dynamic>> getCourseProgress(String slug) async {
-    debugPrint('🔍 [StudentRepository] getCourseProgress: courseSlug=$slug');
+    final cleanSlug = slug.trim();
+    if (cleanSlug.isEmpty) {
+      debugPrint('⚠️ [StudentRepository] getCourseProgress called with empty slug/id. Returning empty.');
+      return {};
+    }
+    debugPrint('🔍 [StudentRepository] getCourseProgress: courseSlug=$cleanSlug');
     try {
       final token = await tokenStorage.getAccessToken();
-      final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/progress/course/$slug/');
+      final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/progress/course/$cleanSlug/');
       final response = await http.get(
         uri,
         headers: {
@@ -387,9 +392,15 @@ class StudentRepository {
 
   /// Get Q&A for a course.
   Future<List<Map<String, dynamic>>> getCourseQa(String slug) async {
-    final response = await appApi.apiV1ProgressCourseCourseSlugQaGet(courseSlug: slug);
+    final cleanSlug = slug.trim();
+    if (cleanSlug.isEmpty) {
+      debugPrint('⚠️ [StudentRepository] getCourseQa called with empty slug/id. Returning empty.');
+      return [];
+    }
+    final response = await appApi.apiV1ProgressCourseCourseSlugQaGet(courseSlug: cleanSlug);
     if (!response.isSuccessful) {
-      throw Exception('Failed to load course Q&A: ${response.error}');
+      debugPrint('⚠️ [StudentRepository] getCourseQa HTTP failed: ${response.statusCode}');
+      return [];
     }
     final body = response.body;
     if (body is List) return body.cast<Map<String, dynamic>>();
@@ -402,8 +413,12 @@ class StudentRepository {
 
   /// Post a question to course Q&A.
   Future<void> postCourseQa(String slug, String question, {String? lectureId}) async {
+    final cleanSlug = slug.trim();
+    if (cleanSlug.isEmpty) {
+      throw Exception('Course identifier is missing');
+    }
     final token = await tokenStorage.getAccessToken();
-    final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/progress/course/$slug/qa/');
+    final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/progress/course/$cleanSlug/qa/');
     
     final response = await http.post(
       uri,
@@ -434,9 +449,15 @@ class StudentRepository {
 
   /// Get private notes for a course.
   Future<List<Map<String, dynamic>>> getCourseNotes(String slug) async {
-    final response = await appApi.apiV1ProgressCourseCourseSlugNotesGet(courseSlug: slug);
+    final cleanSlug = slug.trim();
+    if (cleanSlug.isEmpty) {
+      debugPrint('⚠️ [StudentRepository] getCourseNotes called with empty slug/id. Returning empty.');
+      return [];
+    }
+    final response = await appApi.apiV1ProgressCourseCourseSlugNotesGet(courseSlug: cleanSlug);
     if (!response.isSuccessful) {
-      throw Exception('Failed to load course notes: ${response.error}');
+      debugPrint('⚠️ [StudentRepository] getCourseNotes HTTP failed: ${response.statusCode}');
+      return [];
     }
     final body = response.body;
     if (body is List) return body.cast<Map<String, dynamic>>();
@@ -449,8 +470,12 @@ class StudentRepository {
 
   /// Post a new private note.
   Future<void> postCourseNote(String slug, String text, int timestampSeconds) async {
+    final cleanSlug = slug.trim();
+    if (cleanSlug.isEmpty) {
+      throw Exception('Course identifier is missing');
+    }
     final token = await tokenStorage.getAccessToken();
-    final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/progress/course/$slug/notes/');
+    final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/progress/course/$cleanSlug/notes/');
     
     final response = await http.post(
       uri,
