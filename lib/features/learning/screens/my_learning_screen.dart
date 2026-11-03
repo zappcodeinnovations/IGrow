@@ -684,7 +684,32 @@ class _MyLearningScreenState extends ConsumerState<MyLearningScreen> {
         separatorBuilder: (_, __) => const SizedBox(height: 16),
         itemBuilder: (_, __) => const ShimmerCard(height: 76),
       ),
-      error: (err, _) => Center(child: Text('Error: $err')),
+      error: (err, _) => Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.wifi_off_rounded, size: 48, color: Colors.orange),
+              const SizedBox(height: 12),
+              Text(
+                tr(ref, 'Unable to load your e-books right now. Please check your connection.'),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: isDark ? Colors.white70 : AppColors.inkSoft,
+                ),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.refresh_rounded, size: 18),
+                label: Text(tr(ref, 'Try Again')),
+                onPressed: () => ref.invalidate(purchasedEbooksProvider),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 

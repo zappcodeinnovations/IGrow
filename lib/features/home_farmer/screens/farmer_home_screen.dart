@@ -782,7 +782,32 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                     ShimmerCourseCard(),
                   ],
                 ),
-                error: (err, _) => Center(child: Text('Error: $err')),
+                error: (err, _) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 24),
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.wifi_off_rounded, size: 40, color: Colors.orange),
+                        const SizedBox(height: 10),
+                        Text(
+                          tr(ref, 'Unable to load courses. Please check your connection.'),
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: isDark ? Colors.white70 : AppColors.editorialOutline,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        ElevatedButton.icon(
+                          icon: const Icon(Icons.refresh_rounded, size: 16),
+                          label: Text(tr(ref, 'Try Again')),
+                          onPressed: () => ref.invalidate(studentCatalogProvider(const CatalogQuery())),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
               const SizedBox(height: 24),
 

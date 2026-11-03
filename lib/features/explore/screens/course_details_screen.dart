@@ -1030,10 +1030,17 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
           ),
           error: (err, _) {
             final cleanErr = err.toString().replaceFirst('Exception: ', '');
-            final isNotApproved =
-                cleanErr.toLowerCase().contains('not approved') ||
-                cleanErr.toLowerCase().contains('not published') ||
-                cleanErr.toLowerCase().contains('not found');
+            final errLower = cleanErr.toLowerCase();
+            final isOffline = errLower.contains('socket') ||
+                errLower.contains('connection') ||
+                errLower.contains('network') ||
+                errLower.contains('offline') ||
+                errLower.contains('clientexception') ||
+                errLower.contains('host lookup');
+            final isNotApproved = !isOffline && (
+                errLower.contains('not approved') ||
+                errLower.contains('not published') ||
+                errLower.contains('not found'));
             return Center(
               child: Padding(
                 padding: const EdgeInsets.all(28),
@@ -1043,26 +1050,34 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: isNotApproved
-                            ? Colors.amber.withValues(alpha: 0.12)
-                            : AppColors.error.withValues(alpha: 0.12),
+                        color: isOffline
+                            ? Colors.orange.withValues(alpha: 0.12)
+                            : (isNotApproved
+                                ? Colors.amber.withValues(alpha: 0.12)
+                                : AppColors.error.withValues(alpha: 0.12)),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
-                        isNotApproved
-                            ? Icons.hourglass_empty_rounded
-                            : Icons.error_outline_rounded,
+                        isOffline
+                            ? Icons.wifi_off_rounded
+                            : (isNotApproved
+                                ? Icons.hourglass_empty_rounded
+                                : Icons.error_outline_rounded),
                         size: 48,
-                        color: isNotApproved
-                            ? Colors.amber[800]
-                            : AppColors.error,
+                        color: isOffline
+                            ? Colors.orange
+                            : (isNotApproved
+                                ? Colors.amber[800]
+                                : AppColors.error),
                       ),
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      isNotApproved
-                          ? 'Course Not Available Yet'
-                          : 'Unable to Load Course',
+                      isOffline
+                          ? tr(ref, 'Unable to load course')
+                          : (isNotApproved
+                              ? tr(ref, 'Course Not Available Yet')
+                              : tr(ref, 'Unable to Load Course')),
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -1071,9 +1086,11 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      isNotApproved
-                          ? 'This course has been announced by the instructor but is currently under draft review or awaiting admin approval.'
-                          : cleanErr,
+                      isOffline
+                          ? tr(ref, 'Unable to load course details at this time. Please check your connection.')
+                          : (isNotApproved
+                              ? tr(ref, 'This course has been announced by the instructor but is currently under draft review or awaiting admin approval.')
+                              : cleanErr),
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         fontSize: 13,

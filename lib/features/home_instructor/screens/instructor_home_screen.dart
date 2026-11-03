@@ -1194,12 +1194,18 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                   ),
                   error: (err, _) {
                     return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      padding: const EdgeInsets.symmetric(vertical: 20),
                       child: Center(
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(tr(ref, 'Failed to load courses')),
+                            const Icon(Icons.wifi_off_rounded, size: 36, color: Colors.orange),
+                            const SizedBox(height: 8),
+                            Text(
+                              tr(ref, 'Unable to load courses. Please check your connection.'),
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(fontSize: 13, color: Colors.grey),
+                            ),
                             const SizedBox(height: 8),
                             TextButton.icon(
                               onPressed: () => ref.invalidate(instructorCoursesProvider),
@@ -1269,7 +1275,32 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                     )),
                   ),
                   error: (err, _) {
-                    return Center(child: Text(tr(ref, 'Failed to load e-books')));
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 20),
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.wifi_off_rounded, size: 36, color: Colors.orange),
+                            const SizedBox(height: 8),
+                            Text(
+                              tr(ref, 'Unable to load e-books. Please check your connection.'),
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(fontSize: 13, color: Colors.grey),
+                            ),
+                            const SizedBox(height: 8),
+                            TextButton.icon(
+                              onPressed: () => ref.invalidate(instructorEbooksProvider),
+                              icon: const Icon(Icons.refresh, size: 16, color: AppColors.primaryGreen),
+                              label: Text(
+                                tr(ref, 'Retry'),
+                                style: const TextStyle(color: AppColors.primaryGreen),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
                   },
                 ),
               const SizedBox(height: 28),
@@ -1310,7 +1341,32 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                     child: ShimmerCard(height: 70),
                   )),
                 ),
-                error: (err, _) => const Center(child: Text('Failed to load transactions')),
+                error: (err, _) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.wifi_off_rounded, size: 36, color: Colors.orange),
+                        const SizedBox(height: 8),
+                        Text(
+                          tr(ref, 'Unable to load transactions. Please check your connection.'),
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontSize: 13, color: Colors.grey),
+                        ),
+                        const SizedBox(height: 8),
+                        TextButton.icon(
+                          onPressed: () => ref.invalidate(instructorTransactionsProvider),
+                          icon: const Icon(Icons.refresh, size: 16, color: AppColors.primaryGreen),
+                          label: Text(
+                            tr(ref, 'Retry'),
+                            style: const TextStyle(color: AppColors.primaryGreen),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
               const SizedBox(height: 24),
             ],

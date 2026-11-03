@@ -301,27 +301,26 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 48),
+                        const Icon(Icons.wifi_off_rounded, color: Colors.orange, size: 48),
                         const SizedBox(height: 12),
-                        const Text(
-                          'Failed to load notifications',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                        ),
-                        const SizedBox(height: 6),
                         Text(
-                          error.toString().replaceAll('Exception: ', ''),
+                          tr(ref, 'Unable to load notifications at this time. Please check your connection.'),
                           textAlign: TextAlign.center,
-                          style: TextStyle(color: isDark ? Colors.white70 : AppColors.inkSoft, fontSize: 13),
+                          style: TextStyle(
+                            color: isDark ? Colors.white70 : AppColors.inkSoft,
+                            fontSize: 14,
+                          ),
                         ),
                         const SizedBox(height: 16),
-                        ElevatedButton(
+                        ElevatedButton.icon(
                           style: ElevatedButton.styleFrom(
                             backgroundColor: isDark ? Colors.white : AppColors.editorialPrimary,
                             foregroundColor: isDark ? Colors.black : Colors.white,
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9999)),
                           ),
+                          icon: const Icon(Icons.refresh_rounded, size: 18),
+                          label: Text(tr(ref, 'Retry')),
                           onPressed: () => ref.read(notificationsProvider.notifier).loadNotifications(),
-                          child: const Text('Retry'),
                         ),
                       ],
                     ),
