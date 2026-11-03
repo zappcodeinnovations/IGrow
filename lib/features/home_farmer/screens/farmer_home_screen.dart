@@ -29,11 +29,19 @@ class FarmerHomeScreen extends ConsumerStatefulWidget {
 class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
   // Quiz history initialized clean for the farmer account, dynamically loaded from QuizService
   final List<Map<String, dynamic>> _quizHistory = [];
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
     _loadQuizHistory();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadQuizHistory() async {
@@ -327,40 +335,55 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
               const SizedBox(height: 18),
 
               // ── Search Bar on Home ──
-              InkWell(
-                onTap: () => context.go(RouteNames.explore),
-                borderRadius: BorderRadius.circular(16),
-                child: Container(
-                  height: 48,
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                  decoration: BoxDecoration(
-                    color: isDark ? AppColors.cardDark : Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: isDark ? AppColors.lineDark : const Color(0xFFE2EBE0),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.editorialSecondary.withValues(alpha: isDark ? 0.08 : 0.04),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
+              Container(
+                height: 48,
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.cardDark : Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: isDark ? AppColors.lineDark : const Color(0xFFE2EBE0),
                   ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.search_rounded, color: AppColors.inkSoft, size: 20),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          tr(ref, 'Search farming courses...'),
-                          style: TextStyle(
-                            fontSize: 14,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.editorialSecondary.withValues(alpha: isDark ? 0.08 : 0.04),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: TextField(
+                  controller: _searchController,
+                  textInputAction: TextInputAction.search,
+                  onChanged: (val) {
+                    setState(() {
+                      _searchQuery = val.trim();
+                    });
+                  },
+                  decoration: InputDecoration(
+                    hintText: tr(ref, 'Search farming courses...'),
+                    hintStyle: TextStyle(
+                      fontSize: 14,
+                      color: AppColors.inkSoft,
+                    ),
+                    prefixIcon: Icon(Icons.search_rounded, color: AppColors.inkSoft, size: 20),
+                    suffixIcon: _searchQuery.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear_rounded, size: 18),
                             color: AppColors.inkSoft,
-                          ),
-                        ),
-                      ),
-                    ],
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() {
+                                _searchQuery = '';
+                              });
+                            },
+                          )
+                        : null,
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  ),
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: isDark ? Colors.white : AppColors.editorialOnSurface,
                   ),
                 ),
               ),
@@ -375,7 +398,9 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        tr(ref, 'Courses'),
+                        _searchQuery.isNotEmpty
+                            ? '${tr(ref, "Search Results")} (${tr(ref, "Courses")})'
+                            : tr(ref, 'Courses'),
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -414,9 +439,45 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                 ],
               ),
               const SizedBox(height: 14),
-              ref.watch(studentCatalogProvider(const CatalogQuery())).when(
+              ref.watch(studentCatalogProvider(CatalogQuery(search: _searchQuery))).when(
                 data: (courses) {
-                  if (courses.isEmpty) return const SizedBox.shrink();
+                  if (courses.isEmpty) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 30),
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.search_off_rounded, size: 44, color: AppColors.inkSoft.withValues(alpha: 0.5)),
+                            const SizedBox(height: 10),
+                            Text(
+                              _searchQuery.isNotEmpty
+                                  ? 'No courses found for "$_searchQuery"'
+                                  : 'No courses available right now',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: isDark ? Colors.white70 : AppColors.editorialOnSurface,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            if (_searchQuery.isNotEmpty) ...[
+                              const SizedBox(height: 8),
+                              TextButton(
+                                onPressed: () {
+                                  _searchController.clear();
+                                  setState(() {
+                                    _searchQuery = '';
+                                  });
+                                },
+                                child: Text(tr(ref, 'Clear Search')),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    );
+                  }
                   return Column(
                     children: [
                       for (int i = 0; i < courses.length; i++) ...[
@@ -453,7 +514,7 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                         ElevatedButton.icon(
                           icon: const Icon(Icons.refresh_rounded, size: 16),
                           label: Text(tr(ref, 'Try Again')),
-                          onPressed: () => ref.invalidate(studentCatalogProvider(const CatalogQuery())),
+                          onPressed: () => ref.invalidate(studentCatalogProvider(CatalogQuery(search: _searchQuery))),
                         ),
                       ],
                     ),
