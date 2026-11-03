@@ -423,6 +423,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: RouteNames.explore,
             pageBuilder: (context, state) {
               final search = state.uri.queryParameters['search'];
+              final category = state.uri.queryParameters['category'];
               final tabParam = state.uri.queryParameters['tab'];
               final instructorId = state.uri.queryParameters['instructor_id'] ??
                   state.uri.queryParameters['instructorId'] ??
@@ -433,6 +434,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 state: state,
                 child: ExploreScreen(
                   initialSearch: search,
+                  initialCategory: category,
                   initialTab: initialTab,
                   initialInstructorId: instructorId,
                 ),

@@ -207,6 +207,91 @@ class _MyLearningScreenState extends ConsumerState<MyLearningScreen> {
               ),
             ),
 
+            // ── Academic Ledger Stats Section ────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        tr(ref, 'ACADEMIC LEDGER'),
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.6,
+                          color: isDark ? Colors.white60 : AppColors.editorialOnSurfaceVariant,
+                        ),
+                      ),
+                      Text(
+                        tr(ref, 'Active Session'),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.editorialSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final double width = constraints.maxWidth;
+                      final double aspectRatio = width < 360 ? 2.05 : (width < 420 ? 2.22 : 2.45);
+                      final enrollmentsCount = enrollmentsAsync.maybeWhen(data: (list) => list.length, orElse: () => 0);
+                      final ebooksCount = ebooksAsync.maybeWhen(data: (list) => list.length, orElse: () => 0);
+                      final completedCount = enrollmentsAsync.maybeWhen(
+                        data: (list) => list.where((e) {
+                          final pct = (e.completionPercentage ?? 0).toDouble();
+                          return pct >= 100.0;
+                        }).length,
+                        orElse: () => 0,
+                      );
+
+                      return GridView.count(
+                        crossAxisCount: 2,
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        mainAxisSpacing: 8,
+                        crossAxisSpacing: 8,
+                        childAspectRatio: aspectRatio,
+                        children: [
+                          _SummaryStatCard(
+                            icon: Icons.auto_stories_rounded,
+                            count: '$enrollmentsCount',
+                            label: tr(ref, 'Enrolled'),
+                            unit: tr(ref, 'Courses'),
+                          ),
+                          _SummaryStatCard(
+                            icon: Icons.menu_book_rounded,
+                            count: '$ebooksCount',
+                            label: tr(ref, 'E-Books'),
+                            unit: tr(ref, 'Text'),
+                            onTap: () => setState(() => _selectedFilterIndex = 3),
+                          ),
+                          _SummaryStatCard(
+                            icon: Icons.verified_rounded,
+                            count: '$completedCount',
+                            label: tr(ref, 'Completed'),
+                            unit: tr(ref, 'Units'),
+                          ),
+                          _SummaryStatCard(
+                            icon: Icons.task_alt_rounded,
+                            count: '0',
+                            label: tr(ref, 'Pending'),
+                            unit: tr(ref, 'Quizzes'),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+
             // ── Filter Chips (All, Downloaded, Archived, E-Books) ─────────────
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
@@ -732,6 +817,102 @@ class _MyLearningScreenState extends ConsumerState<MyLearningScreen> {
         Icons.auto_stories_rounded,
         size: 30,
         color: Colors.white.withValues(alpha: 0.85),
+      ),
+    );
+  }
+}
+
+// ── Custom Summary Stat Card Widget ──────────────────────────────────────────
+class _SummaryStatCard extends StatelessWidget {
+  const _SummaryStatCard({
+    required this.icon,
+    required this.count,
+    required this.label,
+    this.unit = '',
+    this.onTap,
+  });
+
+  final IconData icon;
+  final String count;
+  final String label;
+  final String unit;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.cardDark : AppColors.editorialSurfaceContainerLow,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isDark ? AppColors.lineDark : AppColors.editorialOutlineVariant.withValues(alpha: 0.3),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.02),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  label.toUpperCase(),
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.6,
+                    color: isDark ? Colors.white60 : AppColors.editorialOnSurfaceVariant,
+                  ),
+                ),
+                Icon(
+                  icon,
+                  size: 16,
+                  color: isDark ? AppColors.editorialSecondaryFixedDim : AppColors.editorialSecondary,
+                ),
+              ],
+            ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                Text(
+                  count,
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                if (unit.isNotEmpty) ...[
+                  const SizedBox(width: 4),
+                  Text(
+                    unit,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.white60 : AppColors.editorialOnSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

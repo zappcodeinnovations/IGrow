@@ -19,11 +19,13 @@ class ExploreScreen extends ConsumerStatefulWidget {
   const ExploreScreen({
     super.key,
     this.initialSearch,
+    this.initialCategory,
     this.initialTab = 0,
     this.initialInstructorId,
   });
 
   final String? initialSearch;
+  final String? initialCategory;
   final int initialTab;
   final String? initialInstructorId;
 
@@ -56,6 +58,9 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
   @override
   void initState() {
     super.initState();
+    if (widget.initialCategory != null && widget.initialCategory!.isNotEmpty) {
+      _selectedCategory = widget.initialCategory!;
+    }
     if (widget.initialInstructorId != null && widget.initialInstructorId!.isNotEmpty) {
       _selectedInstructorId = widget.initialInstructorId;
     }
@@ -68,6 +73,13 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
   @override
   void didUpdateWidget(covariant ExploreScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.initialCategory != oldWidget.initialCategory &&
+        widget.initialCategory != null &&
+        widget.initialCategory!.isNotEmpty) {
+      setState(() {
+        _selectedCategory = widget.initialCategory!;
+      });
+    }
     if (widget.initialInstructorId != oldWidget.initialInstructorId) {
       setState(() {
         _selectedInstructorId = widget.initialInstructorId;
@@ -724,17 +736,78 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SizedBox(height: 16),
-                Row(
-                  children: [
-                    const Icon(Icons.menu_book_rounded, color: AppColors.editorialSecondary, size: 22),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Agricultural Course Catalog',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
+                Builder(
+                  builder: (context) {
+                    final categories = ref.watch(studentCategoriesProvider).maybeWhen(
+                          data: (cats) => cats,
+                          orElse: () => null,
+                        );
+                    String headerTitle = 'Agricultural Course Catalog';
+                    if (_selectedCategory != 'all' && categories != null) {
+                      try {
+                        final matched = categories.firstWhere(
+                          (c) => c.id == _selectedCategory || c.name.toLowerCase() == _selectedCategory.toLowerCase(),
+                        );
+                        headerTitle = matched.name;
+                      } catch (_) {}
+                    }
+
+                    return Row(
+                      children: [
+                        if (_selectedCategory != 'all') ...[
+                          InkWell(
+                            onTap: () {
+                              setState(() {
+                                _selectedCategory = 'all';
+                              });
+                            },
+                            borderRadius: BorderRadius.circular(9999),
+                            child: Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: Icon(
+                                Icons.arrow_back_rounded,
+                                color: isDark ? Colors.white : AppColors.editorialSecondary,
+                                size: 22,
+                              ),
+                            ),
                           ),
-                    ),
-                  ],
+                        ] else ...[
+                          const Icon(Icons.menu_book_rounded, color: AppColors.editorialSecondary, size: 22),
+                          const SizedBox(width: 8),
+                        ],
+                        Expanded(
+                          child: Text(
+                            headerTitle,
+                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (_selectedCategory != 'all')
+                          TextButton(
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                              minimumSize: const Size(40, 28),
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _selectedCategory = 'all';
+                              });
+                            },
+                            child: Text(
+                              tr(ref, 'All'),
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primaryGreen,
+                              ),
+                            ),
+                          ),
+                      ],
+                    );
+                  },
                 ),
                 const SizedBox(height: 14),
                 const TabBar(
@@ -862,64 +935,6 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                                   ),
                                 ),
                               ],
-                            ),
-                            const SizedBox(height: 12),
-                          ] else ...[
-                            // Horizontal Filter Chips when viewing a specific category or searching
-                            SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              child: ref.watch(studentCategoriesProvider).when(
-                                data: (cats) {
-                                  final list = [{'label': 'All', 'value': 'all'}];
-                                  for (var c in cats) {
-                                    if (c.id != null) {
-                                      list.add({'label': c.name, 'value': c.id!});
-                                    }
-                                  }
-                                  return Row(
-                                    children: list.map((cat) {
-                                      return GestureDetector(
-                                        onTap: () {
-                                          setState(() {
-                                            _selectedCategory = cat['value']!;
-                                          });
-                                        },
-                                        child: _Tab(
-                                          label: cat['label']!,
-                                          isActive: _selectedCategory == cat['value'],
-                                        ),
-                                      );
-                                    }).toList(),
-                                  );
-                                },
-                                loading: () => SingleChildScrollView(
-                                  scrollDirection: Axis.horizontal,
-                                  child: Row(
-                                    children: List.generate(
-                                      4, 
-                                      (_) => const Padding(
-                                        padding: EdgeInsets.only(right: 8),
-                                        child: ShimmerCategoryChip(),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                error: (err, st) => Row(
-                                  children: [
-                                    GestureDetector(
-                                      onTap: () {
-                                        setState(() {
-                                          _selectedCategory = 'all';
-                                        });
-                                      },
-                                      child: _Tab(
-                                        label: 'All Courses',
-                                        isActive: _selectedCategory == 'all',
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
                             ),
                             const SizedBox(height: 12),
                           ],
@@ -1187,38 +1202,6 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
     if (lower.contains('hort') || lower.contains('fruit')) return Icons.local_florist_rounded;
     if (lower.contains('animal') || lower.contains('dairy') || lower.contains('livestock')) return Icons.pets_rounded;
     return Icons.eco_outlined;
-  }
-}
-
-class _Tab extends StatelessWidget {
-  const _Tab({required this.label, this.isActive = false});
-
-  final String label;
-  final bool isActive;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: isActive ? AppColors.editorialSecondary : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-          border: isActive
-              ? null
-              : Border.all(
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? AppColors.lineDark
-                      : AppColors.lineLight,
-                ),
-        ),
-        child: Text(
-          label,
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(color: isActive ? AppColors.white : AppColors.inkSoft,),
-        ),
-      ),
-    );
   }
 }
 

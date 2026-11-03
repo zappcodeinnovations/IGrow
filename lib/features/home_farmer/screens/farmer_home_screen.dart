@@ -84,17 +84,8 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
 
     // Fetch async data providers
     final enrollmentsAsync = ref.watch(studentEnrollmentsProvider);
-    final ebooksAsync = ref.watch(studentEbooksProvider(const EbooksQuery()));
     final weatherAsync = ref.watch(weatherProvider);
     final weatherData = weatherAsync.valueOrNull;
-
-    final enrollmentsCount = enrollmentsAsync.maybeWhen(data: (list) => list.length, orElse: () => 0);
-    final ebooksCount = ebooksAsync.maybeWhen(data: (list) => list.length, orElse: () => 0);
-    final completedCount = enrollmentsAsync.maybeWhen(
-      data: (list) => list.where((e) => (e.completionPercentage ?? 0) >= 100).length,
-      orElse: () => 0,
-    );
-    final quizzesTakenCount = _quizHistory.length;
 
     return SafeArea(
         child: RefreshIndicator(
@@ -357,11 +348,47 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
               ),
               const SizedBox(height: 18),
 
-              // ── Course Categories Section (Browse by category) ──
-              _buildCourseCategoriesSection(context, ref, isDark),
-              const SizedBox(height: 24),
+              // ── Search Bar on Home ──
+              InkWell(
+                onTap: () => context.go(RouteNames.explore),
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  height: 48,
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.cardDark : Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isDark ? AppColors.lineDark : const Color(0xFFE2EBE0),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.editorialSecondary.withValues(alpha: isDark ? 0.08 : 0.04),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.search_rounded, color: AppColors.inkSoft, size: 20),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          tr(ref, 'Search farming courses...'),
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: AppColors.inkSoft,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 22),
 
-              // ── Featured Courses Showcase (Immediate Course Catalog on Home) ──
+              // ── Courses Showcase (Immediate Course Catalog on Home) ──
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: CrossAxisAlignment.center,
@@ -370,7 +397,7 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        tr(ref, 'Featured courses'),
+                        tr(ref, 'Courses'),
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -491,110 +518,6 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                 ),
                 error: (err, _) => const SizedBox.shrink(),
               ),
-
-              // ── 4. Academic Ledger (Stitch Exact Match) ──────────────────────
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    tr(ref, 'ACADEMIC LEDGER'),
-                    style: TextStyle(
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.6,
-                      color: isDark ? Colors.white60 : AppColors.editorialOnSurfaceVariant,
-                    ),
-                  ),
-                  Text(
-                    tr(ref, 'Active Session'),
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.editorialSecondary,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-
-              // ── 4 Summary Stat Cards Grid (Compact & Distinctively Color-Coded) ──
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final double width = constraints.maxWidth;
-                  final double aspectRatio = width < 360 ? 2.05 : (width < 420 ? 2.22 : 2.45);
-
-                  return GridView.count(
-                    crossAxisCount: 2,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    mainAxisSpacing: 8,
-                    crossAxisSpacing: 8,
-                    childAspectRatio: aspectRatio,
-                    children: [
-                      // 1. Enrolled Courses
-                      _SummaryStatCard(
-                        icon: Icons.auto_stories_rounded,
-                        iconBgColor: AppColors.editorialSecondary,
-                        lightBgColor: AppColors.editorialSurfaceContainerLow,
-                        darkBgColor: AppColors.cardDark,
-                        lightBorderColor: AppColors.editorialOutlineVariant.withValues(alpha: 0.2),
-                        darkBorderColor: AppColors.lineDark,
-                        textColor: AppColors.editorialOnSurface,
-                        count: '$enrollmentsCount',
-                        label: tr(ref, 'Enrolled'),
-                        unit: tr(ref, 'Courses'),
-                        onTap: () => context.go(RouteNames.farmerLearning),
-                      ),
-
-                      // 2. Library E-Books
-                      _SummaryStatCard(
-                        icon: Icons.menu_book_rounded,
-                        iconBgColor: AppColors.editorialSecondary,
-                        lightBgColor: AppColors.editorialSurfaceContainerLow,
-                        darkBgColor: AppColors.cardDark,
-                        lightBorderColor: AppColors.editorialOutlineVariant.withValues(alpha: 0.2),
-                        darkBorderColor: AppColors.lineDark,
-                        textColor: AppColors.editorialOnSurface,
-                        count: '$ebooksCount',
-                        label: tr(ref, 'E-Books'),
-                        unit: tr(ref, 'Text'),
-                        onTap: () => context.go(RouteNames.farmerLearning),
-                      ),
-
-                      // 3. Completed Courses
-                      _SummaryStatCard(
-                        icon: Icons.verified_rounded,
-                        iconBgColor: AppColors.editorialSecondary,
-                        lightBgColor: AppColors.editorialSurfaceContainerLow,
-                        darkBgColor: AppColors.cardDark,
-                        lightBorderColor: AppColors.editorialOutlineVariant.withValues(alpha: 0.2),
-                        darkBorderColor: AppColors.lineDark,
-                        textColor: AppColors.editorialOnSurface,
-                        count: '$completedCount',
-                        label: tr(ref, 'Completed'),
-                        unit: tr(ref, 'Units'),
-                        onTap: () => context.go(RouteNames.farmerLearning),
-                      ),
-
-                      // 4. Quizzes Taken
-                      _SummaryStatCard(
-                        icon: Icons.task_alt_rounded,
-                        iconBgColor: AppColors.editorialSecondary,
-                        lightBgColor: AppColors.editorialSurfaceContainerLow,
-                        darkBgColor: AppColors.cardDark,
-                        lightBorderColor: AppColors.editorialOutlineVariant.withValues(alpha: 0.2),
-                        darkBorderColor: AppColors.lineDark,
-                        textColor: AppColors.editorialOnSurface,
-                        count: '$quizzesTakenCount',
-                        label: tr(ref, 'Pending'),
-                        unit: tr(ref, 'Quizzes'),
-                        onTap: () => context.go(RouteNames.farmerLearning),
-                      ),
-                    ],
-                  );
-                },
-              ),
-              const SizedBox(height: 24),
 
               // ── Latest Agriculture News Carousel ───────────────────────
               const HomeNewsCarousel(),
@@ -940,247 +863,6 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
         ),
       ),
     ),
-    );
-  }
-
-  Widget _buildCourseCategoriesSection(BuildContext context, WidgetRef ref, bool isDark) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              tr(ref, 'Browse by category'),
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                letterSpacing: -0.3,
-                color: isDark ? Colors.white : AppColors.editorialOnSurface,
-              ),
-            ),
-            InkWell(
-              onTap: () => context.go(RouteNames.explore),
-              borderRadius: BorderRadius.circular(6),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      tr(ref, 'See all'),
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.primaryGreen,
-                      ),
-                    ),
-                    const SizedBox(width: 2),
-                    const Icon(
-                      Icons.arrow_forward_rounded,
-                      size: 14,
-                      color: AppColors.primaryGreen,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 14),
-        ref.watch(studentCategoriesProvider).when(
-          data: (categories) {
-            if (categories.isEmpty) return const SizedBox.shrink();
-            return SizedBox(
-              height: 84,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: categories.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 14),
-                itemBuilder: (context, index) {
-                  final cat = categories[index];
-                  return InkWell(
-                    onTap: () {
-                      context.push('${RouteNames.explore}?category=${cat.id}');
-                    },
-                    borderRadius: BorderRadius.circular(16),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 54,
-                          height: 54,
-                          decoration: BoxDecoration(
-                            color: isDark
-                                ? AppColors.surfaceContainerHighDark
-                                : const Color(0xFFE8F3EB),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Center(
-                            child: Icon(
-                              _getCategoryIcon(cat.name),
-                              size: 26,
-                              color: isDark
-                                  ? AppColors.primaryGreen
-                                  : const Color(0xFF2E7D32),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        SizedBox(
-                          width: 64,
-                          child: Text(
-                            cat.name,
-                            textAlign: TextAlign.center,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: isDark ? Colors.white70 : AppColors.editorialOnSurface,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            );
-          },
-          loading: () => SizedBox(
-            height: 84,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: 4,
-              separatorBuilder: (_, __) => const SizedBox(width: 14),
-              itemBuilder: (_, __) => const ShimmerCategoryChip(),
-            ),
-          ),
-          error: (_, __) => const SizedBox.shrink(),
-        ),
-      ],
-    );
-  }
-
-  IconData _getCategoryIcon(String name) {
-    final lower = name.toLowerCase();
-    if (lower.contains('crop') || lower.contains('plant')) return Icons.grass_rounded;
-    if (lower.contains('soil') || lower.contains('land')) return Icons.landscape_rounded;
-    if (lower.contains('water') || lower.contains('irrig') || lower.contains('hydro')) return Icons.water_drop_rounded;
-    if (lower.contains('pest') || lower.contains('protect')) return Icons.shield_outlined;
-    if (lower.contains('organic') || lower.contains('eco')) return Icons.eco_rounded;
-    if (lower.contains('tech') || lower.contains('drone') || lower.contains('modern')) return Icons.smart_toy_outlined;
-    if (lower.contains('hort') || lower.contains('fruit')) return Icons.local_florist_rounded;
-    if (lower.contains('animal') || lower.contains('dairy') || lower.contains('livestock')) return Icons.pets_rounded;
-    return Icons.eco_outlined;
-  }
-}
-
-// ── Custom Summary Stat Card Widget ──────────────────────────────────────────
-class _SummaryStatCard extends StatelessWidget {
-  const _SummaryStatCard({
-    required this.icon,
-    required this.iconBgColor,
-    required this.lightBgColor,
-    required this.darkBgColor,
-    required this.lightBorderColor,
-    required this.darkBorderColor,
-    required this.textColor,
-    required this.count,
-    required this.label,
-    this.unit = '',
-    this.onTap,
-  });
-
-  final IconData icon;
-  final Color iconBgColor;
-  final Color lightBgColor;
-  final Color darkBgColor;
-  final Color lightBorderColor;
-  final Color darkBorderColor;
-  final Color textColor;
-  final String count;
-  final String label;
-  final String unit;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: isDark ? AppColors.cardDark : AppColors.editorialSurfaceContainerLow,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isDark ? AppColors.lineDark : AppColors.editorialOutlineVariant.withValues(alpha: 0.3),
-            width: 1,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.02),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  label.toUpperCase(),
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.6,
-                    color: isDark ? Colors.white60 : AppColors.editorialOnSurfaceVariant,
-                  ),
-                ),
-                Icon(
-                  icon,
-                  size: 16,
-                  color: isDark ? AppColors.editorialSecondaryFixedDim : AppColors.editorialSecondary,
-                ),
-              ],
-            ),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
-              children: [
-                Text(
-                  count,
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.white : AppColors.editorialOnSurface,
-                    letterSpacing: -0.5,
-                  ),
-                ),
-                if (unit.isNotEmpty) ...[
-                  const SizedBox(width: 4),
-                  Text(
-                    unit,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: isDark ? Colors.white60 : AppColors.editorialOnSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
