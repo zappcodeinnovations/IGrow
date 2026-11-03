@@ -704,7 +704,7 @@ class _MyLearningScreenState extends ConsumerState<MyLearningScreen> {
               ElevatedButton.icon(
                 icon: const Icon(Icons.refresh_rounded, size: 18),
                 label: Text(tr(ref, 'Try Again')),
-                onPressed: () => ref.invalidate(purchasedEbooksProvider),
+                onPressed: () => ref.invalidate(studentEbooksProvider),
               ),
             ],
           ),
