@@ -355,9 +355,11 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                   color: isDark ? Colors.white : AppColors.editorialOnSurface,
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 18),
 
-
+              // ── Course Categories Section (Prominent Navigation & Discovery) ──
+              _buildCourseCategoriesSection(context, ref, isDark),
+              const SizedBox(height: 24),
 
               // ── 4. Academic Ledger (Stitch Exact Match) ──────────────────────
               Row(
@@ -933,6 +935,154 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
       ),
     ),
     );
+  }
+
+  Widget _buildCourseCategoriesSection(BuildContext context, WidgetRef ref, bool isDark) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryGreen.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Icon(
+                    Icons.category_outlined,
+                    size: 15,
+                    color: AppColors.primaryGreen,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  tr(ref, 'Course Categories'),
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: -0.3,
+                    color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                  ),
+                ),
+              ],
+            ),
+            InkWell(
+              onTap: () => context.go(RouteNames.explore),
+              borderRadius: BorderRadius.circular(6),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      tr(ref, 'See All'),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.editorialSecondary,
+                      ),
+                    ),
+                    const SizedBox(width: 2),
+                    const Icon(
+                      Icons.chevron_right,
+                      size: 16,
+                      color: AppColors.editorialSecondary,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        ref.watch(studentCategoriesProvider).when(
+          data: (categories) {
+            if (categories.isEmpty) return const SizedBox.shrink();
+            return SizedBox(
+              height: 42,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: categories.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                itemBuilder: (context, index) {
+                  final cat = categories[index];
+                  return InkWell(
+                    onTap: () {
+                      context.go(RouteNames.explore);
+                    },
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: isDark ? AppColors.cardDark : Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isDark ? AppColors.lineDark : AppColors.lineLight,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.03),
+                            blurRadius: 4,
+                            offset: const Offset(0, 1),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            _getCategoryIcon(cat.name),
+                            size: 16,
+                            color: AppColors.primaryGreen,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            cat.name,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            );
+          },
+          loading: () => SizedBox(
+            height: 42,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: 4,
+              separatorBuilder: (_, __) => const SizedBox(width: 8),
+              itemBuilder: (_, __) => const ShimmerCategoryChip(),
+            ),
+          ),
+          error: (_, __) => const SizedBox.shrink(),
+        ),
+      ],
+    );
+  }
+
+  IconData _getCategoryIcon(String name) {
+    final lower = name.toLowerCase();
+    if (lower.contains('crop') || lower.contains('plant')) return Icons.grass_rounded;
+    if (lower.contains('soil') || lower.contains('land')) return Icons.landscape_rounded;
+    if (lower.contains('water') || lower.contains('irrig') || lower.contains('hydro')) return Icons.water_drop_rounded;
+    if (lower.contains('pest') || lower.contains('protect')) return Icons.shield_outlined;
+    if (lower.contains('organic') || lower.contains('eco')) return Icons.eco_rounded;
+    if (lower.contains('tech') || lower.contains('drone') || lower.contains('modern')) return Icons.smart_toy_outlined;
+    if (lower.contains('hort') || lower.contains('fruit')) return Icons.local_florist_rounded;
+    if (lower.contains('animal') || lower.contains('dairy') || lower.contains('livestock')) return Icons.pets_rounded;
+    return Icons.eco_outlined;
   }
 }
 
