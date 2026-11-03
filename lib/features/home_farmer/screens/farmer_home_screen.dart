@@ -299,28 +299,6 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                       ),
                     ),
                   ),
-                  Row(
-                    children: [
-                      Container(
-                        width: 7,
-                        height: 7,
-                        decoration: const BoxDecoration(
-                          color: AppColors.editorialSecondary,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        tr(ref, 'SEMESTER 04'),
-                        style: TextStyle(
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 0.6,
-                          color: isDark ? Colors.white60 : AppColors.editorialOnSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
                 ],
               ),
               const SizedBox(height: 10),
