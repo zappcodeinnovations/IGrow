@@ -26,6 +26,7 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
   final _titleController = TextEditingController();
   final _authorController = TextEditingController();
   final _descriptionController = TextEditingController();
+  final _priceController = TextEditingController(text: '0');
 
   PlatformFile? _selectedFile;
   File? _coverImage;
@@ -41,6 +42,7 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
     _titleController.dispose();
     _authorController.dispose();
     _descriptionController.dispose();
+    _priceController.dispose();
     super.dispose();
   }
 
@@ -211,12 +213,13 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
     try {
       final repo = ref.read(instructorRepositoryProvider);
 
+      final priceNum = double.tryParse(_priceController.text.trim()) ?? 0.0;
       final response = await repo.createEBook(
         {
           'title': _titleController.text.trim(),
           'author_name': _authorController.text.trim(),
           'description': _descriptionController.text.trim(),
-          'price': '0.00', // Assuming free for now, can be updated later
+          'price': priceNum.toStringAsFixed(2),
         },
         filePath: _selectedFile!.path,
         coverImagePath: _coverImage?.path,
@@ -250,11 +253,32 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
       }
     } catch (e) {
       if (mounted) {
+        String cleanError = e.toString();
+        if (cleanError.startsWith('Exception: ')) {
+          cleanError = cleanError.substring('Exception: '.length);
+        }
+        final lower = cleanError.toLowerCase();
+        if (lower.contains('socketexception') ||
+            lower.contains('clientexception') ||
+            lower.contains('connection abort') ||
+            lower.contains('connection refused') ||
+            lower.contains('connection reset') ||
+            lower.contains('connection closed') ||
+            lower.contains('failed host lookup') ||
+            lower.contains('network is unreachable') ||
+            lower.contains('handshake') ||
+            lower.contains('timed out') ||
+            lower.contains('timeoutexception') ||
+            lower.contains('network error') ||
+            lower.contains('no internet')) {
+          cleanError = 'No internet connection. Please check your network and try again.';
+        }
+
         final messenger = ScaffoldMessenger.of(context);
         messenger.clearSnackBars();
         messenger.showSnackBar(
           SnackBar(
-            content: Text('Failed to ${submitForReview ? "submit" : "save"} ebook: $e'),
+            content: Text(cleanError),
             backgroundColor: AppColors.error,
             duration: const Duration(seconds: 4),
           ),
@@ -374,6 +398,31 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
                                     (val == null || val.trim().isEmpty)
                                     ? 'Description is required'
                                     : null,
+                              ),
+                              const SizedBox(height: 16),
+                              AppTextField(
+                                controller: _priceController,
+                                label: 'Price (₹) *',
+                                hint: '0 for free, or enter amount (e.g. 199)',
+                                helperText: 'Enter 0 to offer this e-book for free.',
+                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                prefixIcon: const Icon(
+                                  Icons.currency_rupee_rounded,
+                                  color: AppColors.primaryGreen,
+                                ),
+                                validator: (val) {
+                                  if (val == null || val.trim().isEmpty) {
+                                    return 'Price is required';
+                                  }
+                                  final numVal = double.tryParse(val.trim());
+                                  if (numVal == null) {
+                                    return 'Please enter a valid price';
+                                  }
+                                  if (numVal < 0) {
+                                    return 'Price cannot be negative';
+                                  }
+                                  return null;
+                                },
                               ),
                             ],
                           ),

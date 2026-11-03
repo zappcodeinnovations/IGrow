@@ -275,10 +275,20 @@ class _InstructorChatbotScreenState extends State<InstructorChatbotScreen> {
                         padding: const EdgeInsets.only(right: 8),
                         child: ActionChip(
                           label: Text(faq['q']!),
-                          backgroundColor: AppColors.primaryGreen.withValues(alpha: 0.1),
-                          side: BorderSide.none,
+                          backgroundColor: isDark
+                              ? AppColors.primaryGreen.withValues(alpha: 0.16)
+                              : AppColors.primaryGreen.withValues(alpha: 0.1),
+                          side: BorderSide(
+                            color: isDark
+                                ? AppColors.greenLight.withValues(alpha: 0.6)
+                                : AppColors.primaryGreen.withValues(alpha: 0.35),
+                            width: 1.2,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
                           labelStyle: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppColors.primaryGreen,
+                            color: isDark ? AppColors.greenLight : AppColors.primaryGreen,
                             fontWeight: FontWeight.w600,
                           ),
                           onPressed: () => _askQuestion(faq['q']!, faq['a']!),

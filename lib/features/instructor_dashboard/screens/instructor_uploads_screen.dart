@@ -131,6 +131,9 @@ class _CoursesTab extends ConsumerWidget {
               cBadgeLabel = 'Draft';
             }
 
+            final hasThumbnail = course.thumbnail != null &&
+                course.thumbnail!.trim().isNotEmpty;
+
             return Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: AppCard(
@@ -138,17 +141,33 @@ class _CoursesTab extends ConsumerWidget {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      width: 60,
-                      height: 60,
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryGreen.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(
-                        Icons.play_circle_fill,
-                        color: AppColors.primaryGreen,
-                        size: 32,
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        width: 60,
+                        height: 60,
+                        color: isDark ? Colors.white10 : Colors.grey.shade200,
+                        child: hasThumbnail
+                            ? Image.network(
+                                course.thumbnail!,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Container(
+                                  color: AppColors.primaryGreen.withValues(alpha: 0.1),
+                                  child: const Icon(
+                                    Icons.play_circle_fill,
+                                    color: AppColors.primaryGreen,
+                                    size: 32,
+                                  ),
+                                ),
+                              )
+                            : Container(
+                                color: AppColors.primaryGreen.withValues(alpha: 0.1),
+                                child: const Icon(
+                                  Icons.play_circle_fill,
+                                  color: AppColors.primaryGreen,
+                                  size: 32,
+                                ),
+                              ),
                       ),
                     ),
                     const SizedBox(width: 16),

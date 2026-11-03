@@ -187,10 +187,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/course/:id',
-        builder: (context, state) {
-          final id = state.pathParameters['id']!;
-          return CourseDetailsScreen(courseId: id);
-        },
+        redirect: (context, state) => '/farmer/course/${state.pathParameters['id']}',
       ),
       GoRoute(
         path: '/farmer/courses/:id',
@@ -361,7 +358,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/wishlist',
-        builder: (context, state) => const WishlistScreen(),
+        redirect: (context, state) => RouteNames.wishlist,
       ),
       GoRoute(
         path: RouteNames.certificates,
@@ -482,7 +479,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: RouteNames.instructorUploads,
             builder: (context, state) {
               final tab = int.tryParse(state.uri.queryParameters['tab'] ?? '') ?? 0;
-              return InstructorUploadsScreen(initialTabIndex: tab);
+              return InstructorUploadsScreen(
+                key: ValueKey('instructor_uploads_tab_$tab'),
+                initialTabIndex: tab,
+              );
             },
           ),
           GoRoute(

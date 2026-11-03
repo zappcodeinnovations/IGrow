@@ -2058,18 +2058,25 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
 
   Widget _buildCertificatesTab(ApiCourseDetail course, bool isLocked) {
     final certificatesAsync = ref.watch(instructorCourseCertificatesProvider(widget.courseId));
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
         Text(
           'Course Certificate Template',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: isDark ? Colors.white : AppColors.inkDark,
+          ),
         ),
         const SizedBox(height: 6),
         Text(
           'Upload a certificate template that students will receive upon successfully completing this course. A certificate is recommended before publishing.',
-          style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+          style: TextStyle(
+            fontSize: 13,
+            color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+          ),
         ),
         const SizedBox(height: 24),
 
@@ -2106,8 +2113,14 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
               return Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: AppColors.primaryGreen.withValues(alpha: 0.05),
-                  border: Border.all(color: AppColors.primaryGreen.withValues(alpha: 0.3)),
+                  color: isDark
+                      ? AppColors.cardDark
+                      : AppColors.primaryGreen.withValues(alpha: 0.05),
+                  border: Border.all(
+                    color: isDark
+                        ? AppColors.lineDark
+                        : AppColors.primaryGreen.withValues(alpha: 0.3),
+                  ),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Row(
@@ -2148,12 +2161,22 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                          Text(
+                            title,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                              color: isDark ? Colors.white : AppColors.inkDark,
+                            ),
+                          ),
                           if (createdAt.isNotEmpty) ...[
                             const SizedBox(height: 4),
                             Text(
                               'Uploaded: ${createdAt.length >= 10 ? createdAt.substring(0, 10) : createdAt}',
-                              style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                              ),
                             ),
                           ],
                         ],
@@ -2173,22 +2196,36 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
             return Container(
               padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
               decoration: BoxDecoration(
-                color: Colors.grey.shade50,
+                color: isDark ? AppColors.cardDark : Colors.grey.shade50,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.grey.shade300, style: BorderStyle.solid),
+                border: Border.all(
+                  color: isDark ? AppColors.lineDark : Colors.grey.shade300,
+                  style: BorderStyle.solid,
+                ),
               ),
               child: Column(
                 children: [
-                  Icon(Icons.workspace_premium_outlined, size: 54, color: Colors.grey.shade400),
+                  Icon(
+                    Icons.workspace_premium_outlined,
+                    size: 54,
+                    color: isDark ? Colors.grey.shade500 : Colors.grey.shade400,
+                  ),
                   const SizedBox(height: 14),
-                  const Text(
+                  Text(
                     'No Certificate Template Attached',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : AppColors.inkDark,
+                    ),
                   ),
                   const SizedBox(height: 6),
                   Text(
                     'Upload a PDF or high-resolution image template (Max 5MB).',
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                    ),
                   ),
                   const SizedBox(height: 20),
                   if (!isLocked)

@@ -21,6 +21,8 @@ class AppButton extends StatelessWidget {
     this.isExpanded = true,
     this.height = 54,
     this.borderRadius = 16,
+    this.backgroundColor,
+    this.foregroundColor,
   });
 
   final String label;
@@ -31,9 +33,12 @@ class AppButton extends StatelessWidget {
   final bool isExpanded;
   final double height;
   final double borderRadius;
+  final Color? backgroundColor;
+  final Color? foregroundColor;
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final shape = RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(borderRadius),
     );
@@ -43,14 +48,19 @@ class AppButton extends StatelessWidget {
 
     switch (variant) {
       case AppButtonVariant.primary:
+        final defaultBg = isDark ? AppColors.primaryGreen : AppColors.editorialPrimary;
+        final defaultFg = isDark ? Colors.white : AppColors.editorialOnPrimary;
+        final effectiveBg = backgroundColor ?? defaultBg;
+        final effectiveFg = foregroundColor ?? defaultFg;
+
         return ElevatedButton(
           onPressed: isLoading ? null : onPressed,
           style: ElevatedButton.styleFrom(
             minimumSize: minSize,
             shape: shape,
-            backgroundColor: AppColors.editorialPrimary,
-            foregroundColor: AppColors.editorialOnPrimary,
-            disabledBackgroundColor: AppColors.editorialPrimary.withValues(alpha: 0.5),
+            backgroundColor: effectiveBg,
+            foregroundColor: effectiveFg,
+            disabledBackgroundColor: effectiveBg.withValues(alpha: 0.5),
             elevation: 0,
           ),
           child: child,
@@ -61,8 +71,8 @@ class AppButton extends StatelessWidget {
           style: ElevatedButton.styleFrom(
             minimumSize: minSize,
             shape: shape,
-            backgroundColor: AppColors.editorialSecondaryFixed,
-            foregroundColor: AppColors.editorialOnSecondaryFixed,
+            backgroundColor: backgroundColor ?? AppColors.editorialSecondaryFixed,
+            foregroundColor: foregroundColor ?? AppColors.editorialOnSecondaryFixed,
             elevation: 0,
           ),
           child: child,
@@ -73,8 +83,8 @@ class AppButton extends StatelessWidget {
           style: OutlinedButton.styleFrom(
             minimumSize: minSize,
             shape: shape,
-            side: const BorderSide(color: AppColors.editorialPrimary, width: 1.5),
-            foregroundColor: AppColors.editorialPrimary,
+            side: BorderSide(color: backgroundColor ?? AppColors.editorialPrimary, width: 1.5),
+            foregroundColor: foregroundColor ?? AppColors.editorialPrimary,
           ),
           child: child,
         );
@@ -84,7 +94,7 @@ class AppButton extends StatelessWidget {
           style: TextButton.styleFrom(
             minimumSize: minSize,
             shape: shape,
-            foregroundColor: AppColors.editorialSecondary,
+            foregroundColor: foregroundColor ?? AppColors.editorialSecondary,
           ),
           child: child,
         );
@@ -92,12 +102,14 @@ class AppButton extends StatelessWidget {
   }
 
   Widget _buildChild(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final defaultPrimaryFg = isDark ? Colors.white : AppColors.editorialOnPrimary;
     final textStyle = AppTypography.labelLarge(
-      color: variant == AppButtonVariant.primary
-          ? AppColors.editorialOnPrimary
+      color: foregroundColor ?? (variant == AppButtonVariant.primary
+          ? defaultPrimaryFg
           : (variant == AppButtonVariant.secondary 
               ? AppColors.editorialOnSecondaryFixed 
-              : AppColors.editorialPrimary),
+              : AppColors.editorialPrimary)),
     );
 
     if (isLoading) {
@@ -110,9 +122,9 @@ class AppButton extends StatelessWidget {
             child: CircularProgressIndicator(
               strokeWidth: 2.5,
               valueColor: AlwaysStoppedAnimation(
-                variant == AppButtonVariant.primary
-                    ? AppColors.editorialOnPrimary
-                    : AppColors.editorialSecondary,
+                foregroundColor ?? (variant == AppButtonVariant.primary
+                    ? defaultPrimaryFg
+                    : AppColors.editorialSecondary),
               ),
             ),
           ),

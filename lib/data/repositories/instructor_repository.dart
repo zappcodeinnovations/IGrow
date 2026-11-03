@@ -263,7 +263,42 @@ class InstructorRepository {
   /// Delete a course.
   Future<void> deleteCourse(String courseId) async {
     debugPrint('🗑️ [InstructorRepository] deleteCourse: courseId=$courseId');
-    await appApi.apiV1InstructorCoursesIdDelete(id: courseId);
+    final response = await appApi.apiV1InstructorCoursesIdDelete(id: courseId);
+    if (!response.isSuccessful) {
+      if (response.statusCode == 403) {
+        throw Exception(
+          'You do not have permission to delete courses. Please contact an administrator.',
+        );
+      }
+      if (response.statusCode >= 500) {
+        throw Exception('Server Error: Failed to delete course. Please try again later.');
+      }
+
+      String errorMsg = 'Failed to delete course';
+      if (response.error != null) {
+        final errorStr = response.error.toString();
+        try {
+          final decoded = jsonDecode(errorStr);
+          if (decoded is Map && decoded.containsKey('detail')) {
+            final detail = decoded['detail'].toString();
+            if (detail.toLowerCase().contains('not permitted') ||
+                detail.toLowerCase().contains('permission') ||
+                detail.toLowerCase().contains('only platform administrators')) {
+              errorMsg = 'You do not have permission to delete courses. Please contact an administrator.';
+            } else {
+              errorMsg = detail;
+            }
+          }
+        } catch (_) {
+          if (errorStr.trim().startsWith('<')) {
+            errorMsg = '$errorMsg (HTTP ${response.statusCode})';
+          } else {
+            errorMsg = errorStr;
+          }
+        }
+      }
+      throw Exception(errorMsg);
+    }
     debugPrint('✅ [InstructorRepository] deleteCourse SUCCESS');
   }
 
@@ -573,15 +608,31 @@ class InstructorRepository {
         request.files.add(await http.MultipartFile.fromPath('cover_image', coverImagePath));
       }
       
-      final streamedResponse = await request.send();
-      final response = await http.Response.fromStream(streamedResponse);
-      
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        debugPrint('✅ [InstructorRepository] createEBook MULTIPART SUCCESS: ${response.body}');
-        return jsonDecode(response.body) as Map<String, dynamic>;
-      } else {
-        debugPrint('❌ [InstructorRepository] createEBook MULTIPART ERROR (${response.statusCode}): ${response.body}');
-        throw Exception('Failed to create ebook (${response.statusCode}): ${response.body}');
+      try {
+        final streamedResponse = await request.send();
+        final response = await http.Response.fromStream(streamedResponse);
+        
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+          debugPrint('✅ [InstructorRepository] createEBook MULTIPART SUCCESS: ${response.body}');
+          return jsonDecode(response.body) as Map<String, dynamic>;
+        } else {
+          debugPrint('❌ [InstructorRepository] createEBook MULTIPART ERROR (${response.statusCode}): ${response.body}');
+          throw Exception('Failed to create ebook (${response.statusCode}): ${response.body}');
+        }
+      } on SocketException catch (_) {
+        throw Exception('No internet connection. Please check your network and try again.');
+      } on TimeoutException catch (_) {
+        throw Exception('Connection timed out. Please check your internet connection and try again.');
+      } on http.ClientException catch (e) {
+        final s = e.toString().toLowerCase();
+        if (s.contains('socket') ||
+            s.contains('abort') ||
+            s.contains('connection') ||
+            s.contains('handshake') ||
+            s.contains('host lookup')) {
+          throw Exception('No internet connection. Please check your network and try again.');
+        }
+        rethrow;
       }
     } else {
       final response = await appApi.apiV1InstructorEbooksPost(
