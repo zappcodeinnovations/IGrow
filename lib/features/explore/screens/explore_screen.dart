@@ -821,358 +821,353 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                   child: TabBarView(
                     children: [
                       // Courses Tab
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (_selectedCategory == 'all' && _searchQuery.isEmpty && _activeFilterCount == 0) ...[
-                            // "What would you like to learn?" Grid View Matching Mockup
-                            Text(
-                              tr(ref, 'What would you like to learn?'),
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: -0.4,
-                                color: isDark ? Colors.white : AppColors.editorialOnSurface,
-                              ),
-                            ),
-                            const SizedBox(height: 14),
-                            ref.watch(studentCategoriesProvider).when(
-                              data: (cats) {
-                                if (cats.isEmpty) return const SizedBox.shrink();
-                                return SizedBox(
-                                  height: 220,
-                                  child: GridView.builder(
-                                    scrollDirection: Axis.horizontal,
-                                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                                      crossAxisCount: 2,
-                                      mainAxisSpacing: 12,
-                                      crossAxisSpacing: 12,
-                                      childAspectRatio: 0.58,
-                                    ),
-                                    itemCount: cats.length,
-                                    itemBuilder: (context, index) {
-                                      final cat = cats[index];
-                                      return InkWell(
-                                        onTap: () {
-                                          setState(() {
-                                            _selectedCategory = cat.id ?? 'all';
-                                          });
-                                        },
-                                        borderRadius: BorderRadius.circular(16),
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                                          decoration: BoxDecoration(
-                                            color: isDark ? AppColors.cardDark : Colors.white,
-                                            borderRadius: BorderRadius.circular(16),
-                                            border: Border.all(
-                                              color: isDark ? AppColors.lineDark : AppColors.lineLight,
-                                            ),
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
-                                                blurRadius: 6,
-                                                offset: const Offset(0, 2),
-                                              ),
-                                            ],
-                                          ),
-                                          child: Row(
-                                            children: [
-                                              Container(
-                                                width: 44,
-                                                height: 44,
-                                                decoration: BoxDecoration(
-                                                  color: isDark
-                                                      ? AppColors.surfaceContainerHighDark
-                                                      : const Color(0xFFF1F8F3),
-                                                  borderRadius: BorderRadius.circular(12),
-                                                ),
-                                                child: Center(
-                                                  child: Icon(
-                                                    _getCategoryIcon(cat.name),
-                                                    size: 22,
-                                                    color: AppColors.primaryGreen,
-                                                  ),
-                                                ),
-                                              ),
-                                              const SizedBox(width: 12),
-                                              Expanded(
-                                                child: Text(
-                                                  cat.name,
-                                                  style: TextStyle(
-                                                    fontSize: 13,
-                                                    fontWeight: FontWeight.w600,
-                                                    color: isDark ? Colors.white : AppColors.editorialOnSurface,
-                                                  ),
-                                                  maxLines: 2,
-                                                  overflow: TextOverflow.ellipsis,
-                                                ),
-                                              ),
-                                            ],
+                      ref.watch(studentCatalogProvider(CatalogQuery(
+                        search: _searchQuery,
+                        category: _selectedCategory == 'all' ? '' : _selectedCategory,
+                        level: _selectedLevel,
+                        minPrice: _minPrice,
+                        maxPrice: _maxPrice,
+                        ordering: _selectedOrdering,
+                        minRating: _minRating,
+                        instructor: _selectedInstructorId,
+                      ))).when(
+                        data: (courses) {
+                          return RefreshIndicator(
+                            color: AppColors.editorialSecondary,
+                            onRefresh: () async {
+                              ref.invalidate(studentCatalogProvider);
+                              ref.invalidate(studentCategoriesProvider);
+                            },
+                            child: CustomScrollView(
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              slivers: [
+                                if (_selectedCategory == 'all' && _searchQuery.isEmpty && _activeFilterCount == 0) ...[
+                                  SliverToBoxAdapter(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          tr(ref, 'What would you like to learn?'),
+                                          style: TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                            letterSpacing: -0.4,
+                                            color: isDark ? Colors.white : AppColors.editorialOnSurface,
                                           ),
                                         ),
-                                      );
-                                    },
-                                  ),
-                                );
-                              },
-                              loading: () => const SizedBox(
-                                height: 220,
-                                child: Center(child: CircularProgressIndicator(color: AppColors.primaryGreen)),
-                              ),
-                              error: (_, __) => const SizedBox.shrink(),
-                            ),
-                            const SizedBox(height: 20),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  tr(ref, 'All Courses'),
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: -0.3,
-                                    color: isDark ? Colors.white : AppColors.editorialOnSurface,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                          ],
-                          if (_activeFilterCount > 0 || _searchQuery.isNotEmpty) ...[
-                            SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              child: Row(
-                                children: [
-                                  if (_searchQuery.isNotEmpty)
-                                    Padding(
-                                      padding: const EdgeInsets.only(right: 6),
-                                      child: InputChip(
-                                        label: Text('Search: "$_searchQuery"'),
-                                        avatar: const Icon(Icons.search_rounded, size: 14, color: AppColors.editorialSecondary),
-                                        onDeleted: () {
-                                          _searchController.clear();
-                                          setState(() {
-                                            _searchQuery = '';
-                                          });
-                                        },
-                                        deleteIconColor: AppColors.editorialSecondary,
-                                        backgroundColor: AppColors.editorialSecondary.withValues(alpha: 0.1),
-                                        labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.editorialSecondary),
-                                      ),
+                                        const SizedBox(height: 12),
+                                        ref.watch(studentCategoriesProvider).when(
+                                          data: (cats) {
+                                            if (cats.isEmpty) return const SizedBox.shrink();
+                                            return SizedBox(
+                                              height: 140,
+                                              child: GridView.builder(
+                                                scrollDirection: Axis.horizontal,
+                                                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                                  crossAxisCount: 2,
+                                                  mainAxisSpacing: 10,
+                                                  crossAxisSpacing: 10,
+                                                  mainAxisExtent: 180,
+                                                ),
+                                                itemCount: cats.length,
+                                                itemBuilder: (context, index) {
+                                                  final cat = cats[index];
+                                                  return InkWell(
+                                                    onTap: () {
+                                                      setState(() {
+                                                        _selectedCategory = cat.id ?? 'all';
+                                                      });
+                                                    },
+                                                    borderRadius: BorderRadius.circular(14),
+                                                    child: Container(
+                                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                                      decoration: BoxDecoration(
+                                                        color: isDark ? AppColors.cardDark : Colors.white,
+                                                        borderRadius: BorderRadius.circular(14),
+                                                        border: Border.all(
+                                                          color: isDark ? AppColors.lineDark : AppColors.lineLight,
+                                                        ),
+                                                        boxShadow: [
+                                                          BoxShadow(
+                                                            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+                                                            blurRadius: 4,
+                                                            offset: const Offset(0, 1),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                      child: Row(
+                                                        children: [
+                                                          Container(
+                                                            width: 36,
+                                                            height: 36,
+                                                            decoration: BoxDecoration(
+                                                              color: isDark
+                                                                  ? AppColors.surfaceContainerHighDark
+                                                                  : const Color(0xFFF1F8F3),
+                                                              borderRadius: BorderRadius.circular(10),
+                                                            ),
+                                                            child: Center(
+                                                              child: Icon(
+                                                                _getCategoryIcon(cat.name),
+                                                                size: 18,
+                                                                color: AppColors.primaryGreen,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                          const SizedBox(width: 8),
+                                                          Expanded(
+                                                            child: Text(
+                                                              cat.name,
+                                                              style: TextStyle(
+                                                                fontSize: 12,
+                                                                fontWeight: FontWeight.w600,
+                                                                color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                                                              ),
+                                                              maxLines: 2,
+                                                              overflow: TextOverflow.ellipsis,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  );
+                                                },
+                                              ),
+                                            );
+                                          },
+                                          loading: () => const SizedBox(
+                                            height: 140,
+                                            child: Center(child: CircularProgressIndicator(color: AppColors.primaryGreen)),
+                                          ),
+                                          error: (_, __) => const SizedBox.shrink(),
+                                        ),
+                                        const SizedBox(height: 16),
+                                        Text(
+                                          tr(ref, 'All Courses'),
+                                          style: TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                            letterSpacing: -0.3,
+                                            color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 12),
+                                      ],
                                     ),
-                                  if (_selectedLevel.isNotEmpty)
-                                    Padding(
-                                      padding: const EdgeInsets.only(right: 6),
-                                      child: InputChip(
-                                        label: Text(_selectedLevel[0].toUpperCase() + _selectedLevel.substring(1)),
-                                        avatar: const Icon(Icons.signal_cellular_alt_rounded, size: 14),
-                                        onDeleted: () => setState(() => _selectedLevel = ''),
-                                        deleteIconColor: AppColors.editorialSecondary,
-                                        backgroundColor: AppColors.editorialSecondary.withValues(alpha: 0.1),
-                                        labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.editorialSecondary),
-                                      ),
-                                    ),
-                                  if (_selectedPricePreset != 'all')
-                                    Padding(
-                                      padding: const EdgeInsets.only(right: 6),
-                                      child: InputChip(
-                                        label: Text(_selectedPricePreset == 'free'
-                                            ? 'Free'
-                                            : _selectedPricePreset == 'under_500'
-                                                ? '< ₹500'
-                                                : _selectedPricePreset == '500_1000'
-                                                    ? '₹500 - ₹1,000'
-                                                    : '> ₹1,000'),
-                                        avatar: const Icon(Icons.payments_outlined, size: 14),
-                                        onDeleted: () => setState(() {
-                                          _selectedPricePreset = 'all';
-                                          _minPrice = null;
-                                          _maxPrice = null;
-                                        }),
-                                        deleteIconColor: AppColors.editorialSecondary,
-                                        backgroundColor: AppColors.editorialSecondary.withValues(alpha: 0.1),
-                                        labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.editorialSecondary),
-                                      ),
-                                    ),
-                                  if (_minRating != null && _minRating! > 0)
-                                    Padding(
-                                      padding: const EdgeInsets.only(right: 6),
-                                      child: InputChip(
-                                        label: Text('$_minRating+ ★'),
-                                        avatar: const Icon(Icons.star_rounded, size: 14, color: Colors.amber),
-                                        onDeleted: () => setState(() => _minRating = null),
-                                        deleteIconColor: AppColors.editorialSecondary,
-                                        backgroundColor: AppColors.editorialSecondary.withValues(alpha: 0.1),
-                                        labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.editorialSecondary),
-                                      ),
-                                    ),
-                                  if (_selectedOrdering.isNotEmpty && _selectedOrdering != '-created_at')
-                                    Padding(
-                                      padding: const EdgeInsets.only(right: 6),
-                                      child: InputChip(
-                                        label: Text(_selectedOrdering == '-views_count'
-                                            ? 'Most Popular'
-                                            : _selectedOrdering == 'price'
-                                                ? 'Price: Low to High'
-                                                : 'Price: High to Low'),
-                                        avatar: const Icon(Icons.sort_rounded, size: 14),
-                                        onDeleted: () => setState(() => _selectedOrdering = ''),
-                                        deleteIconColor: AppColors.editorialSecondary,
-                                        backgroundColor: AppColors.editorialSecondary.withValues(alpha: 0.1),
-                                        labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.editorialSecondary),
-                                      ),
-                                    ),
-                                  if (_selectedInstructorId != null && _selectedInstructorId!.isNotEmpty)
-                                    Padding(
-                                      padding: const EdgeInsets.only(right: 6),
-                                      child: InputChip(
-                                        label: Text('Instructor: ${_selectedInstructorId!.length > 10 ? "${_selectedInstructorId!.substring(0, 8)}..." : _selectedInstructorId}'),
-                                        avatar: const Icon(Icons.person_rounded, size: 14, color: AppColors.editorialSecondary),
-                                        onDeleted: () => setState(() => _selectedInstructorId = null),
-                                        deleteIconColor: AppColors.editorialSecondary,
-                                        backgroundColor: AppColors.editorialSecondary.withValues(alpha: 0.1),
-                                        labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.editorialSecondary),
-                                      ),
-                                    ),
-                                  TextButton(
-                                    style: TextButton.styleFrom(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                                      minimumSize: const Size(50, 30),
-                                    ),
-                                    onPressed: () {
-                                      setState(() {
-                                        _selectedLevel = '';
-                                        _selectedOrdering = '';
-                                        _selectedPricePreset = 'all';
-                                        _minPrice = null;
-                                        _maxPrice = null;
-                                        _minRating = null;
-                                        _selectedInstructorId = null;
-                                      });
-                                    },
-                                    child: const Text('Clear All', style: TextStyle(fontSize: 12, color: Colors.redAccent)),
                                   ),
                                 ],
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                          ],
-                          Expanded(
-                            child: ref.watch(studentCatalogProvider(CatalogQuery(
-                              search: _searchQuery, 
-                              category: _selectedCategory == 'all' ? '' : _selectedCategory,
-                              level: _selectedLevel,
-                              minPrice: _minPrice,
-                              maxPrice: _maxPrice,
-                              ordering: _selectedOrdering,
-                              minRating: _minRating,
-                              instructor: _selectedInstructorId,
-                            ))).when(
-                              data: (courses) {
-                                if (courses.isEmpty) {
-                                  return RefreshIndicator(
-                                    color: AppColors.editorialSecondary,
-                                    onRefresh: () async {
-                                      ref.invalidate(studentCatalogProvider);
-                                      ref.invalidate(studentCategoriesProvider);
-                                    },
-                                    child: ListView(
-                                      physics: const AlwaysScrollableScrollPhysics(),
-                                      children: [
-                                        const SizedBox(height: 60),
-                                        Center(
-                                          child: Padding(
-                                            padding: const EdgeInsets.all(24.0),
-                                            child: Column(
-                                              mainAxisAlignment: MainAxisAlignment.center,
-                                              children: [
-                                                Icon(Icons.search_off_rounded, size: 56, color: AppColors.inkSoft.withValues(alpha: 0.5)),
-                                                const SizedBox(height: 12),
-                                                Text(
-                                                  'No courses found',
-                                                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                                                ),
-                                                const SizedBox(height: 6),
-                                                Text(
-                                                  'Try adjusting your search keywords, price, or rating filters.',
-                                                  textAlign: TextAlign.center,
-                                                  style: TextStyle(color: AppColors.inkSoft, fontSize: 13),
-                                                ),
-                                                const SizedBox(height: 16),
-                                                TextButton.icon(
-                                                  icon: const Icon(Icons.refresh_rounded, size: 18),
-                                                  label: const Text('Show All Courses'),
-                                                  onPressed: () {
+                                if (_activeFilterCount > 0 || _searchQuery.isNotEmpty) ...[
+                                  SliverToBoxAdapter(
+                                    child: Padding(
+                                      padding: const EdgeInsets.only(bottom: 12),
+                                      child: SingleChildScrollView(
+                                        scrollDirection: Axis.horizontal,
+                                        child: Row(
+                                          children: [
+                                            if (_searchQuery.isNotEmpty)
+                                              Padding(
+                                                padding: const EdgeInsets.only(right: 6),
+                                                child: InputChip(
+                                                  label: Text('Search: "$_searchQuery"'),
+                                                  avatar: const Icon(Icons.search_rounded, size: 14, color: AppColors.editorialSecondary),
+                                                  onDeleted: () {
                                                     _searchController.clear();
                                                     setState(() {
                                                       _searchQuery = '';
-                                                      _selectedLevel = '';
-                                                      _selectedOrdering = '';
-                                                      _selectedPricePreset = 'all';
-                                                      _minPrice = null;
-                                                      _maxPrice = null;
-                                                      _minRating = null;
-                                                      _selectedCategory = 'all';
                                                     });
                                                   },
+                                                  deleteIconColor: AppColors.editorialSecondary,
+                                                  backgroundColor: AppColors.editorialSecondary.withValues(alpha: 0.1),
+                                                  labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.editorialSecondary),
                                                 ),
-                                              ],
+                                              ),
+                                            if (_selectedLevel.isNotEmpty)
+                                              Padding(
+                                                padding: const EdgeInsets.only(right: 6),
+                                                child: InputChip(
+                                                  label: Text(_selectedLevel[0].toUpperCase() + _selectedLevel.substring(1)),
+                                                  avatar: const Icon(Icons.signal_cellular_alt_rounded, size: 14),
+                                                  onDeleted: () => setState(() => _selectedLevel = ''),
+                                                  deleteIconColor: AppColors.editorialSecondary,
+                                                  backgroundColor: AppColors.editorialSecondary.withValues(alpha: 0.1),
+                                                  labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.editorialSecondary),
+                                                ),
+                                              ),
+                                            if (_selectedPricePreset != 'all')
+                                              Padding(
+                                                padding: const EdgeInsets.only(right: 6),
+                                                child: InputChip(
+                                                  label: Text(_selectedPricePreset == 'free'
+                                                      ? 'Free'
+                                                      : _selectedPricePreset == 'under_500'
+                                                          ? '< ₹500'
+                                                          : _selectedPricePreset == '500_1000'
+                                                              ? '₹500 - ₹1,000'
+                                                              : '> ₹1,000'),
+                                                  avatar: const Icon(Icons.payments_outlined, size: 14),
+                                                  onDeleted: () => setState(() {
+                                                    _selectedPricePreset = 'all';
+                                                    _minPrice = null;
+                                                    _maxPrice = null;
+                                                  }),
+                                                  deleteIconColor: AppColors.editorialSecondary,
+                                                  backgroundColor: AppColors.editorialSecondary.withValues(alpha: 0.1),
+                                                  labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.editorialSecondary),
+                                                ),
+                                              ),
+                                            if (_minRating != null && _minRating! > 0)
+                                              Padding(
+                                                padding: const EdgeInsets.only(right: 6),
+                                                child: InputChip(
+                                                  label: Text('$_minRating+ ★'),
+                                                  avatar: const Icon(Icons.star_rounded, size: 14, color: Colors.amber),
+                                                  onDeleted: () => setState(() => _minRating = null),
+                                                  deleteIconColor: AppColors.editorialSecondary,
+                                                  backgroundColor: AppColors.editorialSecondary.withValues(alpha: 0.1),
+                                                  labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.editorialSecondary),
+                                                ),
+                                              ),
+                                            if (_selectedOrdering.isNotEmpty && _selectedOrdering != '-created_at')
+                                              Padding(
+                                                padding: const EdgeInsets.only(right: 6),
+                                                child: InputChip(
+                                                  label: Text(_selectedOrdering == '-views_count'
+                                                      ? 'Most Popular'
+                                                      : _selectedOrdering == 'price'
+                                                          ? 'Price: Low to High'
+                                                          : 'Price: High to Low'),
+                                                  avatar: const Icon(Icons.sort_rounded, size: 14),
+                                                  onDeleted: () => setState(() => _selectedOrdering = ''),
+                                                  deleteIconColor: AppColors.editorialSecondary,
+                                                  backgroundColor: AppColors.editorialSecondary.withValues(alpha: 0.1),
+                                                  labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.editorialSecondary),
+                                                ),
+                                              ),
+                                            if (_selectedInstructorId != null && _selectedInstructorId!.isNotEmpty)
+                                              Padding(
+                                                padding: const EdgeInsets.only(right: 6),
+                                                child: InputChip(
+                                                  label: Text('Instructor: ${_selectedInstructorId!.length > 10 ? "${_selectedInstructorId!.substring(0, 8)}..." : _selectedInstructorId}'),
+                                                  avatar: const Icon(Icons.person_rounded, size: 14, color: AppColors.editorialSecondary),
+                                                  onDeleted: () => setState(() => _selectedInstructorId = null),
+                                                  deleteIconColor: AppColors.editorialSecondary,
+                                                  backgroundColor: AppColors.editorialSecondary.withValues(alpha: 0.1),
+                                                  labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.editorialSecondary),
+                                                ),
+                                              ),
+                                            TextButton(
+                                              style: TextButton.styleFrom(
+                                                padding: const EdgeInsets.symmetric(horizontal: 8),
+                                                minimumSize: const Size(50, 30),
+                                              ),
+                                              onPressed: () {
+                                                setState(() {
+                                                  _selectedLevel = '';
+                                                  _selectedOrdering = '';
+                                                  _selectedPricePreset = 'all';
+                                                  _minPrice = null;
+                                                  _maxPrice = null;
+                                                  _minRating = null;
+                                                  _selectedInstructorId = null;
+                                                });
+                                              },
+                                              child: const Text('Clear All', style: TextStyle(fontSize: 12, color: Colors.redAccent)),
                                             ),
-                                          ),
+                                          ],
                                         ),
-                                      ],
+                                      ),
                                     ),
-                                  );
-                                }
-                                return RefreshIndicator(
-                                  color: AppColors.editorialSecondary,
-                                  onRefresh: () async {
-                                    ref.invalidate(studentCatalogProvider);
-                                    ref.invalidate(studentCategoriesProvider);
-                                  },
-                                  child: ListView.separated(
-                                    physics: const AlwaysScrollableScrollPhysics(),
+                                  ),
+                                ],
+                                if (courses.isEmpty)
+                                  SliverFillRemaining(
+                                    hasScrollBody: false,
+                                    child: Center(
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(24.0),
+                                        child: Column(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Icon(Icons.search_off_rounded, size: 56, color: AppColors.inkSoft.withValues(alpha: 0.5)),
+                                            const SizedBox(height: 12),
+                                            Text(
+                                              'No courses found',
+                                              style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                                            ),
+                                            const SizedBox(height: 6),
+                                            Text(
+                                              'Try adjusting your search keywords, price, or rating filters.',
+                                              textAlign: TextAlign.center,
+                                              style: TextStyle(color: AppColors.inkSoft, fontSize: 13),
+                                            ),
+                                            const SizedBox(height: 16),
+                                            TextButton.icon(
+                                              icon: const Icon(Icons.refresh_rounded, size: 18),
+                                              label: const Text('Show All Courses'),
+                                              onPressed: () {
+                                                _searchController.clear();
+                                                setState(() {
+                                                  _searchQuery = '';
+                                                  _selectedLevel = '';
+                                                  _selectedOrdering = '';
+                                                  _selectedPricePreset = 'all';
+                                                  _minPrice = null;
+                                                  _maxPrice = null;
+                                                  _minRating = null;
+                                                  _selectedCategory = 'all';
+                                                });
+                                              },
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                else
+                                  SliverList.separated(
                                     itemCount: courses.length,
                                     separatorBuilder: (_, __) => const SizedBox(height: 16),
                                     itemBuilder: (context, index) {
                                       return _CatalogCourseCard(course: courses[index]);
                                     },
                                   ),
-                                );
-                              },
-                              loading: () => ListView.separated(
-                                itemCount: 4,
-                                separatorBuilder: (_, __) => const SizedBox(height: 16),
-                                itemBuilder: (context, index) => const ShimmerListTile(),
-                              ),
-                              error: (err, st) => Center(
-                                child: Padding(
-                                  padding: const EdgeInsets.all(24.0),
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      const Icon(Icons.wifi_off_rounded, size: 48, color: Colors.orange),
-                                      const SizedBox(height: 12),
-                                      Text(
-                                        tr(ref, 'Unable to load courses at this time. Please check your connection.'),
-                                        textAlign: TextAlign.center,
-                                        style: const TextStyle(color: AppColors.inkSoft, fontSize: 14),
-                                      ),
-                                      const SizedBox(height: 16),
-                                      ElevatedButton.icon(
-                                        icon: const Icon(Icons.refresh_rounded, size: 18),
-                                        label: Text(tr(ref, 'Try Again')),
-                                        onPressed: () {
-                                          ref.invalidate(studentCatalogProvider);
-                                        },
-                                      ),
-                                    ],
-                                  ),
+                                const SliverToBoxAdapter(
+                                  child: SizedBox(height: 24),
                                 ),
-                              ),
+                              ],
+                            ),
+                          );
+                        },
+                        loading: () => ListView.separated(
+                          itemCount: 4,
+                          separatorBuilder: (_, __) => const SizedBox(height: 16),
+                          itemBuilder: (context, index) => const ShimmerListTile(),
+                        ),
+                        error: (err, st) => Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(24.0),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.wifi_off_rounded, size: 48, color: Colors.orange),
+                                const SizedBox(height: 12),
+                                Text(
+                                  tr(ref, 'Unable to load courses at this time. Please check your connection.'),
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(color: AppColors.inkSoft, fontSize: 14),
+                                ),
+                                const SizedBox(height: 16),
+                                ElevatedButton.icon(
+                                  icon: const Icon(Icons.refresh_rounded, size: 18),
+                                  label: Text(tr(ref, 'Try Again')),
+                                  onPressed: () {
+                                    ref.invalidate(studentCatalogProvider);
+                                  },
+                                ),
+                              ],
                             ),
                           ),
-                        ],
+                        ),
                       ),
                       // E-Books Tab
                       EbooksTab(
