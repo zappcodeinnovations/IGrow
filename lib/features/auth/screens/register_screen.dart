@@ -39,6 +39,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  String? _emailLiveError;
   String? _phoneLiveError;
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
@@ -205,7 +206,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       }
     });
 
-    final authState = ref.watch(authProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
@@ -295,9 +295,22 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   controller: _emailController,
                   label: tr(ref, 'Email'),
                   hint: tr(ref, 'Enter your email address'),
+                  errorText: _emailLiveError,
                   prefixIcon: const Icon(Icons.email_outlined),
                   keyboardType: TextInputType.emailAddress,
                   textInputAction: TextInputAction.next,
+                  onChanged: (v) {
+                    setState(() {
+                      final trimmed = v.trim();
+                      if (trimmed.isEmpty) {
+                        _emailLiveError = null;
+                      } else if (RegExp(r'[A-Z]').hasMatch(trimmed)) {
+                        _emailLiveError = tr(ref, 'Email must contain lowercase letters only');
+                      } else {
+                        _emailLiveError = null;
+                      }
+                    });
+                  },
                   validator: (v) {
                     if (v == null || v.trim().isEmpty) {
                       return tr(ref, 'Email is required');
