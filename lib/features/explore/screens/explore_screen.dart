@@ -1018,22 +1018,17 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                                   child: Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      const Icon(Icons.error_outline_rounded, size: 48, color: Colors.orange),
+                                      const Icon(Icons.wifi_off_rounded, size: 48, color: Colors.orange),
                                       const SizedBox(height: 12),
                                       Text(
-                                        'Unable to load courses',
-                                        style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                                      ),
-                                      const SizedBox(height: 6),
-                                      Text(
-                                        err.toString().replaceAll('Exception: ', ''),
+                                        tr(ref, 'Unable to load courses at this time. Please check your connection.'),
                                         textAlign: TextAlign.center,
-                                        style: TextStyle(color: AppColors.inkSoft, fontSize: 13),
+                                        style: const TextStyle(color: AppColors.inkSoft, fontSize: 14),
                                       ),
                                       const SizedBox(height: 16),
                                       ElevatedButton.icon(
                                         icon: const Icon(Icons.refresh_rounded, size: 18),
-                                        label: const Text('Try Again'),
+                                        label: Text(tr(ref, 'Try Again')),
                                         onPressed: () {
                                           ref.invalidate(studentCatalogProvider);
                                         },

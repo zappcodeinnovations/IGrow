@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/localization/app_strings.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../home_farmer/providers/student_provider.dart';
 import '../../../core/widgets/shimmer_placeholders.dart';
@@ -165,13 +166,28 @@ class EbooksTab extends ConsumerWidget {
         separatorBuilder: (_, __) => const SizedBox(height: 16),
         itemBuilder: (context, index) => const ShimmerListTile(),
       ),
-      error: (err, _) => const Center(
+      error: (err, _) => Center(
         child: Padding(
-          padding: EdgeInsets.all(24),
-          child: Text(
-            'Unable to load e-books at this time. Please check your connection.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: AppColors.inkSoft),
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.wifi_off_rounded, size: 48, color: Colors.orange),
+              const SizedBox(height: 12),
+              Text(
+                tr(ref, 'Unable to load e-books at this time. Please check your connection.'),
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: AppColors.inkSoft, fontSize: 14),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.refresh_rounded, size: 18),
+                label: Text(tr(ref, 'Try Again')),
+                onPressed: () {
+                  ref.invalidate(studentEbooksProvider);
+                },
+              ),
+            ],
           ),
         ),
       ),

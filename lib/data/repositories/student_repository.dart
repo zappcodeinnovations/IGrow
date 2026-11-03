@@ -25,19 +25,31 @@ class StudentRepository {
     num? maxPrice,
     String? ordering,
   }) async {
-    final response = await appApi.apiV1CoursesCatalogGet(
-      page: page,
-      search: search,
-      category: category,
-      level: level != null && level.isNotEmpty ? level.toLowerCase() : null,
-      minPrice: minPrice,
-      maxPrice: maxPrice,
-      ordering: ordering != null && ordering.isNotEmpty ? ordering : null,
-    );
-    if (!response.isSuccessful) {
-      throw Exception('Failed to load courses catalog: ${response.error}');
+    try {
+      final response = await appApi.apiV1CoursesCatalogGet(
+        page: page,
+        search: search,
+        category: category,
+        level: level != null && level.isNotEmpty ? level.toLowerCase() : null,
+        minPrice: minPrice,
+        maxPrice: maxPrice,
+        ordering: ordering != null && ordering.isNotEmpty ? ordering : null,
+      );
+      if (!response.isSuccessful) {
+        throw Exception('Failed to load courses catalog: ${response.error}');
+      }
+      return response.body!;
+    } on Exception catch (e) {
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('socket') ||
+          errStr.contains('handshake') ||
+          errStr.contains('network') ||
+          errStr.contains('connection') ||
+          errStr.contains('clientexception')) {
+        throw Exception('Unable to load courses at this time. Please check your connection.');
+      }
+      rethrow;
     }
-    return response.body!;
   }
 
   /// Fetch ebooks catalog with search, category, and instructor filtering.
