@@ -68,7 +68,16 @@ class CommunityRepository {
             .map((json) => CommunityHub.fromJson(json))
             .toList();
       }
-    } catch (_) {}
+    } catch (e) {
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('socket') ||
+          errStr.contains('handshake') ||
+          errStr.contains('network') ||
+          errStr.contains('connection') ||
+          errStr.contains('clientexception')) {
+        throw Exception('Unable to load community hubs. Please check your connection.');
+      }
+    }
     // Fallback to district-based hubs query if suggestions endpoint is unavailable
     return getHubs(district: district);
   }
@@ -78,35 +87,47 @@ class CommunityRepository {
     String? district,
     String? search,
   }) async {
-    final queryParams = <String, String>{};
-    if (state != null && state.isNotEmpty) {
-      queryParams['state'] = state;
+    try {
+      final queryParams = <String, String>{};
+      if (state != null && state.isNotEmpty) {
+        queryParams['state'] = state;
+      }
+      if (district != null && district.isNotEmpty) {
+        queryParams['district'] = district;
+      }
+      if (search != null && search.isNotEmpty) {
+        queryParams['search'] = search;
+      }
+
+      final uri = Uri.parse('$baseUrl/hubs/').replace(
+        queryParameters: queryParams.isNotEmpty ? queryParams : null,
+      );
+
+      final response = await http.get(uri, headers: await _getHeaders());
+      _handleError(response);
+
+      final data = jsonDecode(response.body);
+      final results = data is List
+          ? data
+          : (data is Map && data.containsKey('results')
+              ? data['results'] as List? ?? []
+              : (data is Map && data.containsKey('data') ? data['data'] as List? ?? [] : []));
+
+      return results
+          .whereType<Map<String, dynamic>>()
+          .map((json) => CommunityHub.fromJson(json))
+          .toList();
+    } on Exception catch (e) {
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('socket') ||
+          errStr.contains('handshake') ||
+          errStr.contains('network') ||
+          errStr.contains('connection') ||
+          errStr.contains('clientexception')) {
+        throw Exception('Unable to load community hubs. Please check your connection.');
+      }
+      rethrow;
     }
-    if (district != null && district.isNotEmpty) {
-      queryParams['district'] = district;
-    }
-    if (search != null && search.isNotEmpty) {
-      queryParams['search'] = search;
-    }
-
-    final uri = Uri.parse('$baseUrl/hubs/').replace(
-      queryParameters: queryParams.isNotEmpty ? queryParams : null,
-    );
-
-    final response = await http.get(uri, headers: await _getHeaders());
-    _handleError(response);
-
-    final data = jsonDecode(response.body);
-    final results = data is List
-        ? data
-        : (data is Map && data.containsKey('results')
-            ? data['results'] as List? ?? []
-            : (data is Map && data.containsKey('data') ? data['data'] as List? ?? [] : []));
-
-    return results
-        .whereType<Map<String, dynamic>>()
-        .map((json) => CommunityHub.fromJson(json))
-        .toList();
   }
 
   Future<CommunityHub> getHubDetails(String hubId) async {

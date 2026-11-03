@@ -397,29 +397,25 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 48),
+                      const Icon(Icons.wifi_off_rounded, color: Colors.orange, size: 48),
                       const SizedBox(height: 12),
-                      const Text(
-                        'Failed to load certificates',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                      ),
-                      const SizedBox(height: 6),
                       Text(
-                        err.toString().replaceAll('Exception: ', ''),
+                        tr(ref, 'Unable to load certificates at this time. Please check your connection.'),
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          color: isDark ? Colors.white60 : AppColors.inkSoft,
-                          fontSize: 13,
+                          color: isDark ? Colors.white70 : AppColors.inkSoft,
+                          fontSize: 14,
                         ),
                       ),
                       const SizedBox(height: 16),
-                      ElevatedButton(
+                      ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.editorialSecondary,
                           foregroundColor: Colors.white,
                         ),
+                        icon: const Icon(Icons.refresh_rounded, size: 18),
+                        label: Text(tr(ref, 'Retry')),
                         onPressed: () => ref.invalidate(myCertificatesProvider),
-                        child: const Text('Retry'),
                       ),
                     ],
                   ),

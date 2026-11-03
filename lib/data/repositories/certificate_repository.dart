@@ -32,28 +32,40 @@ class CertificateRepository {
     final uri = Uri.parse('$_baseUrl/my/');
     debugPrint('🎓 [CertificateRepository] Fetching my certificates: $uri');
 
-    final headers = await _authHeaders();
-    final response = await _http.get(uri, headers: headers);
+    try {
+      final headers = await _authHeaders();
+      final response = await _http.get(uri, headers: headers);
 
-    debugPrint('🎓 [CertificateRepository] my certificates response: ${response.statusCode}');
+      debugPrint('🎓 [CertificateRepository] my certificates response: ${response.statusCode}');
 
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      if (response.body.isEmpty) return [];
-      final dynamic decoded = jsonDecode(response.body);
-      if (decoded is List) {
-        return decoded
-            .map((item) => CertificateModel.fromJson(item as Map<String, dynamic>))
-            .toList();
-      } else if (decoded is Map<String, dynamic> && decoded.containsKey('results')) {
-        final list = decoded['results'] as List;
-        return list
-            .map((item) => CertificateModel.fromJson(item as Map<String, dynamic>))
-            .toList();
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        if (response.body.isEmpty) return [];
+        final dynamic decoded = jsonDecode(response.body);
+        if (decoded is List) {
+          return decoded
+              .map((item) => CertificateModel.fromJson(item as Map<String, dynamic>))
+              .toList();
+        } else if (decoded is Map<String, dynamic> && decoded.containsKey('results')) {
+          final list = decoded['results'] as List;
+          return list
+              .map((item) => CertificateModel.fromJson(item as Map<String, dynamic>))
+              .toList();
+        }
+        return [];
+      } else {
+        debugPrint('❌ [CertificateRepository] getMyCertificates failed: ${response.body}');
+        throw Exception('Failed to load certificates: ${response.statusCode}');
       }
-      return [];
-    } else {
-      debugPrint('❌ [CertificateRepository] getMyCertificates failed: ${response.body}');
-      throw Exception('Failed to load certificates: ${response.statusCode}');
+    } on Exception catch (e) {
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('socket') ||
+          errStr.contains('handshake') ||
+          errStr.contains('network') ||
+          errStr.contains('connection') ||
+          errStr.contains('clientexception')) {
+        throw Exception('Unable to load certificates at this time. Please check your connection.');
+      }
+      rethrow;
     }
   }
 

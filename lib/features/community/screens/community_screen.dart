@@ -1132,7 +1132,34 @@ class _RecommendedHubsList extends ConsumerWidget {
         ),
       ),
       error: (e, _) => SliverToBoxAdapter(
-        child: Center(child: Padding(padding: const EdgeInsets.all(20), child: Text('Error: $e'))),
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.wifi_off_rounded, size: 48, color: Colors.orange),
+                const SizedBox(height: 12),
+                Text(
+                  tr(ref, 'Unable to load community hubs at this time. Please check your connection.'),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: isDark ? Colors.white70 : AppColors.inkSoft,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.refresh_rounded, size: 18),
+                  label: Text(tr(ref, 'Try Again')),
+                  onPressed: () {
+                    ref.read(communityHubsProvider.notifier).fetchHubs();
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -1172,7 +1199,34 @@ class _AllHubsList extends ConsumerWidget {
         ),
       ),
       error: (e, _) => SliverToBoxAdapter(
-        child: Center(child: Padding(padding: const EdgeInsets.all(20), child: Text('Error: $e'))),
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.wifi_off_rounded, size: 48, color: Colors.orange),
+                const SizedBox(height: 12),
+                Text(
+                  tr(ref, 'Unable to load community hubs at this time. Please check your connection.'),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: isDark ? Colors.white70 : AppColors.inkSoft,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.refresh_rounded, size: 18),
+                  label: Text(tr(ref, 'Try Again')),
+                  onPressed: () {
+                    ref.read(communityHubsProvider.notifier).fetchHubs();
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -1215,7 +1269,34 @@ class _MyHubsList extends ConsumerWidget {
         ),
       ),
       error: (e, _) => SliverToBoxAdapter(
-        child: Center(child: Padding(padding: const EdgeInsets.all(20), child: Text('Error: $e'))),
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.wifi_off_rounded, size: 48, color: Colors.orange),
+                const SizedBox(height: 12),
+                Text(
+                  tr(ref, 'Unable to load community hubs at this time. Please check your connection.'),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: isDark ? Colors.white70 : AppColors.inkSoft,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.refresh_rounded, size: 18),
+                  label: Text(tr(ref, 'Try Again')),
+                  onPressed: () {
+                    ref.read(communityHubsProvider.notifier).fetchHubs();
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
