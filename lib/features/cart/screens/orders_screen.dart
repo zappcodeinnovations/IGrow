@@ -968,7 +968,10 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                       pw.Text('Invoice No:', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey)),
                       pw.Text('INV-$safeShortId',
                           style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                      pw.Text(dateStr, style: const pw.TextStyle(fontSize: 10)),
+                      pw.Text(
+                        dateStr.replaceAll('•', '-').replaceAll('  ', ' ').trim(),
+                        style: const pw.TextStyle(fontSize: 10),
+                      ),
                     ],
                   ),
                 ],
@@ -1050,7 +1053,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                     borderRadius: pw.BorderRadius.circular(8),
                   ),
                   child: pw.Text(
-                    'PAID & VERIFIED  •  iAGROW',
+                    'PAID & VERIFIED  |  iAGROW',
                     style: pw.TextStyle(
                       fontWeight: pw.FontWeight.bold,
                       color: PdfColors.green800,

@@ -1045,7 +1045,10 @@ class _CheckoutSuccessScreenState extends ConsumerState<CheckoutSuccessScreen> {
                       pw.Text('Invoice No:', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey)),
                       pw.Text('INV-$safeShortId',
                           style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                      pw.Text(dateStr, style: const pw.TextStyle(fontSize: 10)),
+                      pw.Text(
+                        dateStr.replaceAll('•', '-').replaceAll('  ', ' ').trim(),
+                        style: const pw.TextStyle(fontSize: 10),
+                      ),
                     ],
                   ),
                 ],
@@ -1124,7 +1127,7 @@ class _CheckoutSuccessScreenState extends ConsumerState<CheckoutSuccessScreen> {
                     borderRadius: pw.BorderRadius.circular(8),
                   ),
                   child: pw.Text(
-                    'PAID & VERIFIED  •  iAGROW',
+                    'PAID & VERIFIED  |  iAGROW',
                     style: pw.TextStyle(
                       fontWeight: pw.FontWeight.bold,
                       color: PdfColors.green800,
