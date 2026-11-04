@@ -12,11 +12,15 @@ class EbooksTab extends ConsumerWidget {
     this.searchQuery = '',
     this.category,
     this.instructorId,
+    this.shrinkWrap = false,
+    this.physics,
   });
 
   final String searchQuery;
   final String? category;
   final String? instructorId;
+  final bool shrinkWrap;
+  final ScrollPhysics? physics;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -40,9 +44,10 @@ class EbooksTab extends ConsumerWidget {
                 (instructorId != null && instructorId!.isNotEmpty);
 
             return ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
+              shrinkWrap: shrinkWrap,
+              physics: physics ?? const AlwaysScrollableScrollPhysics(),
               children: [
-                const SizedBox(height: 80),
+                const SizedBox(height: 60),
                 Center(
                   child: Padding(
                     padding: const EdgeInsets.all(32),
@@ -75,7 +80,8 @@ class EbooksTab extends ConsumerWidget {
             );
           }
           return ListView.separated(
-            physics: const AlwaysScrollableScrollPhysics(),
+            shrinkWrap: shrinkWrap,
+            physics: physics ?? const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.only(top: 16, bottom: 20),
             itemCount: ebooks.length,
             separatorBuilder: (_, __) => const SizedBox(height: 16),
@@ -161,6 +167,8 @@ class EbooksTab extends ConsumerWidget {
         );
       },
       loading: () => ListView.separated(
+        shrinkWrap: shrinkWrap,
+        physics: physics ?? const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.only(top: 16, bottom: 20),
         itemCount: 4,
         separatorBuilder: (_, __) => const SizedBox(height: 16),

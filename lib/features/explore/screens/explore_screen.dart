@@ -8,6 +8,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/shell_scaffold.dart';
 import '../../../core/widgets/shimmer_placeholders.dart';
 import '../../home_farmer/providers/student_provider.dart';
+import 'ebooks_tab.dart';
 
 /// Explore screen matching prototype Screen 12 ("Explore Categories")
 /// and Screen 13 ("Search Courses / Filtered Results").
@@ -30,6 +31,7 @@ class ExploreScreen extends ConsumerStatefulWidget {
 }
 
 class _ExploreScreenState extends ConsumerState<ExploreScreen> {
+  int _selectedTab = 0; // 0 = Courses, 1 = E-Books
   String _searchQuery = '';
   String _selectedCategory = 'all';
   String? _selectedInstructorId;
@@ -44,6 +46,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
 
   /// Returns true when user is browsing the category grid (Screen 12)
   bool get _isCategoriesView =>
+      _selectedTab == 0 &&
       _selectedCategory == 'all' &&
       _searchQuery.isEmpty &&
       _activeFilterCount == 0 &&
@@ -63,6 +66,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
   @override
   void initState() {
     super.initState();
+    _selectedTab = widget.initialTab.clamp(0, 1);
     if (widget.initialCategory != null && widget.initialCategory!.isNotEmpty) {
       _selectedCategory = widget.initialCategory!;
     }
@@ -78,6 +82,11 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
   @override
   void didUpdateWidget(covariant ExploreScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.initialTab != oldWidget.initialTab) {
+      setState(() {
+        _selectedTab = widget.initialTab.clamp(0, 1);
+      });
+    }
     if (widget.initialCategory != oldWidget.initialCategory &&
         widget.initialCategory != null &&
         widget.initialCategory!.isNotEmpty) {
@@ -107,6 +116,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
   void _clearSearchAndFilters() {
     _searchController.clear();
     setState(() {
+      _selectedTab = 0;
       _searchQuery = '';
       _selectedCategory = 'all';
       _selectedQuickFilter = 'All';
@@ -622,7 +632,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
 
     final headerTitle = (categoryDisplayName != null && categoryDisplayName.isNotEmpty)
         ? categoryDisplayName
-        : tr(ref, 'Search Courses');
+        : (_selectedTab == 1 ? tr(ref, 'Search E-Books') : tr(ref, 'Search Courses'));
 
     // ── Screen 13 App Bar: Selected Category Name or "Search Courses" ──
     return AppBar(
@@ -730,7 +740,11 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                 color: isDark ? Colors.white : const Color(0xFF1B4D2E),
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
+
+            // Segmented switch between Courses and E-Books
+            _buildTabSelector(isDark),
+            const SizedBox(height: 18),
 
             // 2-Column Categories Grid
             categoriesAsync.when(
@@ -880,6 +894,136 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
     );
   }
 
+  Widget _buildTabSelector(bool isDark) {
+    return Container(
+      height: 44,
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.cardDark : const Color(0xFFEFF4F0),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isDark ? AppColors.lineDark : const Color(0xFFE0ECE2),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: InkWell(
+              onTap: () {
+                if (_selectedTab != 0) {
+                  setState(() {
+                    _selectedTab = 0;
+                  });
+                }
+              },
+              borderRadius: BorderRadius.circular(10),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                decoration: BoxDecoration(
+                  color: _selectedTab == 0
+                      ? const Color(0xFF1B4D2E)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: _selectedTab == 0
+                      ? [
+                          BoxShadow(
+                            color: const Color(0xFF1B4D2E).withValues(alpha: 0.28),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ]
+                      : null,
+                ),
+                child: Center(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.school_rounded,
+                        size: 16,
+                        color: _selectedTab == 0
+                            ? Colors.white
+                            : (isDark ? Colors.white60 : const Color(0xFF556559)),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        tr(ref, 'Courses'),
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: _selectedTab == 0 ? FontWeight.w700 : FontWeight.w600,
+                          color: _selectedTab == 0
+                              ? Colors.white
+                              : (isDark ? Colors.white70 : const Color(0xFF2C3E30)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: InkWell(
+              onTap: () {
+                if (_selectedTab != 1) {
+                  setState(() {
+                    _selectedTab = 1;
+                  });
+                }
+              },
+              borderRadius: BorderRadius.circular(10),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                decoration: BoxDecoration(
+                  color: _selectedTab == 1
+                      ? const Color(0xFF1B4D2E)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: _selectedTab == 1
+                      ? [
+                          BoxShadow(
+                            color: const Color(0xFF1B4D2E).withValues(alpha: 0.28),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ]
+                      : null,
+                ),
+                child: Center(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.auto_stories_rounded,
+                        size: 16,
+                        color: _selectedTab == 1
+                            ? Colors.white
+                            : (isDark ? Colors.white60 : const Color(0xFF556559)),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        tr(ref, 'E-Books'),
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: _selectedTab == 1 ? FontWeight.w700 : FontWeight.w600,
+                          color: _selectedTab == 1
+                              ? Colors.white
+                              : (isDark ? Colors.white70 : const Color(0xFF2C3E30)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // ═════════════════════════════════════════════════════════════════════════════
   // SCREEN 13: SEARCH COURSES / FILTERED RESULTS
   // ═════════════════════════════════════════════════════════════════════════════
@@ -898,7 +1042,11 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
     return RefreshIndicator(
       color: const Color(0xFF1B4D2E),
       onRefresh: () async {
-        ref.invalidate(studentCatalogProvider);
+        if (_selectedTab == 1) {
+          ref.invalidate(studentEbooksProvider);
+        } else {
+          ref.invalidate(studentCatalogProvider);
+        }
       },
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -906,9 +1054,13 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Tab Switcher (Courses vs E-Books)
+            _buildTabSelector(isDark),
+            const SizedBox(height: 16),
+
             // Search Input Field matching Prototype Screen 13
             Text(
-              tr(ref, 'Search courses'),
+              _selectedTab == 1 ? tr(ref, 'Search e-books') : tr(ref, 'Search courses'),
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
@@ -955,7 +1107,9 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                         color: isDark ? Colors.white : const Color(0xFF192A1D),
                       ),
                       decoration: InputDecoration(
-                        hintText: tr(ref, 'Search wheat, soil, irrigation...'),
+                        hintText: _selectedTab == 1
+                            ? tr(ref, 'Search farming guides, manuals...')
+                            : tr(ref, 'Search wheat, soil, irrigation...'),
                         hintStyle: TextStyle(
                           fontSize: 14,
                           color: isDark ? Colors.white38 : const Color(0xFF9CA3AF),
@@ -990,8 +1144,18 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
             ),
             const SizedBox(height: 16),
 
-            // Results List of Large Course Cards
-            catalogAsync.when(
+            // Content based on selected tab
+            if (_selectedTab == 1)
+              EbooksTab(
+                searchQuery: _searchQuery,
+                category: _selectedCategory == 'all' ? null : _selectedCategory,
+                instructorId: _selectedInstructorId,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+              )
+            else
+              // Results List of Large Course Cards
+              catalogAsync.when(
               data: (courses) {
                 // Apply language filter if Hindi or Marathi is selected
                 var filteredCourses = courses;
