@@ -1361,46 +1361,6 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
                               } catch (_) {}
                             },
                           ),
-                          const SizedBox(width: 2),
-                          // Quality Selector Chip Button
-                          InkWell(
-                            borderRadius: BorderRadius.circular(8),
-                            onTap: () => _showQualitySelectionSheet(context),
-                            child: Tooltip(
-                              message: 'Playback Quality ($_selectedQuality)',
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 7, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: AppColors.primaryGreen
-                                      .withValues(alpha: 0.12),
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(
-                                    color: AppColors.primaryGreen
-                                        .withValues(alpha: 0.35),
-                                    width: 1,
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(Icons.tune_rounded,
-                                        size: 13,
-                                        color: AppColors.primaryGreen),
-                                    const SizedBox(width: 3),
-                                    Text(
-                                      _selectedQuality,
-                                      style: const TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.bold,
-                                        color: AppColors.primaryGreen,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
                           if (_hasNextLecture(course)) ...[
                             IconButton(
                               visualDensity: VisualDensity.compact,
