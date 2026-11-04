@@ -451,6 +451,8 @@ class _MyLearningScreenState extends ConsumerState<MyLearningScreen> {
           );
         }
 
+        final catalog = ref.watch(studentCatalogProvider(const CatalogQuery())).valueOrNull;
+
         return ListView.separated(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           itemCount: items.length,
@@ -461,6 +463,25 @@ class _MyLearningScreenState extends ConsumerState<MyLearningScreen> {
             final courseTarget = (item.courseSlug != null && item.courseSlug!.isNotEmpty)
                 ? item.courseSlug!
                 : item.course;
+
+            // Resolve thumbnail from enrollment or catalog fallback
+            var rawThumb = item.courseThumbnail;
+            if ((rawThumb == null || rawThumb.isEmpty) && catalog != null) {
+              final matched = catalog.cast<CourseList?>().firstWhere(
+                (c) =>
+                    c != null &&
+                    (((c.id?.isNotEmpty ?? false) && c.id == item.course) ||
+                        (item.courseSlug != null &&
+                            item.courseSlug!.isNotEmpty &&
+                            (c.slug?.isNotEmpty ?? false) &&
+                            c.slug == item.courseSlug)),
+                orElse: () => null,
+              );
+              if (matched != null && matched.thumbnail != null && matched.thumbnail!.isNotEmpty) {
+                rawThumb = matched.thumbnail;
+              }
+            }
+            final normalizedThumb = _normalizeImageUrl(rawThumb);
 
             return InkWell(
               onTap: () async {
@@ -483,9 +504,9 @@ class _MyLearningScreenState extends ConsumerState<MyLearningScreen> {
                       child: Stack(
                         alignment: Alignment.center,
                         children: [
-                          if (item.courseThumbnail != null && item.courseThumbnail!.isNotEmpty)
+                          if (normalizedThumb.isNotEmpty)
                             Image.network(
-                              item.courseThumbnail!,
+                              normalizedThumb,
                               fit: BoxFit.cover,
                               width: 68,
                               height: 68,
@@ -699,6 +720,7 @@ class _MyLearningScreenState extends ConsumerState<MyLearningScreen> {
           itemBuilder: (context, index) {
             final ebook = items[index];
             final target = (ebook.slug != null && ebook.slug!.isNotEmpty) ? ebook.slug! : ebook.id;
+            final coverUrl = _normalizeImageUrl(ebook.coverImage);
 
             return InkWell(
               onTap: () => context.push('/farmer/ebook/$target'),
@@ -706,17 +728,26 @@ class _MyLearningScreenState extends ConsumerState<MyLearningScreen> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // Book Cover Icon Container
-                  Container(
-                    width: 60,
-                    height: 72,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFEF3C7),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFFFCD34D)),
-                    ),
-                    child: const Center(
-                      child: Icon(Icons.menu_book_rounded, color: Color(0xFFD97706), size: 28),
+                  // Book Cover Container
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      width: 60,
+                      height: 72,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFEF3C7),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFFFCD34D)),
+                      ),
+                      child: coverUrl.isNotEmpty
+                          ? Image.network(
+                              coverUrl,
+                              width: 60,
+                              height: 72,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => _buildFallbackEbookCover(),
+                            )
+                          : _buildFallbackEbookCover(),
                     ),
                   ),
                   const SizedBox(width: 14),
@@ -819,6 +850,22 @@ class _MyLearningScreenState extends ConsumerState<MyLearningScreen> {
         color: Colors.white.withValues(alpha: 0.85),
       ),
     );
+  }
+
+  Widget _buildFallbackEbookCover() {
+    return const Center(
+      child: Icon(Icons.menu_book_rounded, color: Color(0xFFD97706), size: 28),
+    );
+  }
+
+  static String _normalizeImageUrl(String? url) {
+    if (url == null || url.trim().isEmpty) return '';
+    final trimmed = url.trim();
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      return trimmed;
+    }
+    final clean = trimmed.startsWith('/') ? trimmed : '/$trimmed';
+    return 'https://iagrow.zappcode.in$clean';
   }
 }
 
