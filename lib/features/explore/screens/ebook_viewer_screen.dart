@@ -133,10 +133,23 @@ class _EbookViewerScreenState extends ConsumerState<EbookViewerScreen> {
             ],
           ),
         ),
+        actionsPadding: const EdgeInsets.only(right: 16, bottom: 16, top: 8),
         actions: [
-          TextButton(
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF1B4D2E),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              elevation: 0,
+            ),
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Close', style: TextStyle(color: AppColors.primaryGreen, fontWeight: FontWeight.bold)),
+            child: const Text(
+              'Close',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+            ),
           ),
         ],
       ),
