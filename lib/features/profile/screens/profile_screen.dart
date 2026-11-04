@@ -116,13 +116,8 @@ class ProfileScreen extends ConsumerWidget {
             color: isDark ? Colors.white : const Color(0xFF1B4D2E),
           ),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.more_vert_rounded),
-            color: isDark ? Colors.white70 : const Color(0xFF1B4D2E),
-            onPressed: () => _showProfileMenuSheet(context, ref),
-          ),
-          const SizedBox(width: 8),
+        actions: const [
+          SizedBox(width: 8),
         ],
       ),
       body: SafeArea(
@@ -230,7 +225,32 @@ class ProfileScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 12),
 
-              // ── Action Row 2: Settings ──
+              // ── Action Row 2: Wishlist ──
+              _buildPrototypeMenuCard(
+                context: context,
+                icon: Icons.favorite_rounded,
+                iconColor: Colors.redAccent,
+                iconBgColor: isDark ? const Color(0xFF332024) : const Color(0xFFFDE8E8),
+                title: tr(ref, 'My Wishlist'),
+                subtitle: tr(ref, 'Saved courses and ebooks'),
+                isDark: isDark,
+                onTap: () => context.push(RouteNames.wishlist),
+              ),
+              const SizedBox(height: 12),
+
+              // ── Action Row 3: Order History ──
+              _buildPrototypeMenuCard(
+                context: context,
+                icon: Icons.receipt_long_rounded,
+                iconColor: const Color(0xFF1B4D2E),
+                title: tr(ref, 'Order History'),
+                subtitle: tr(ref, 'Past purchases, invoices and receipts'),
+                isDark: isDark,
+                onTap: () => context.push('/orders'),
+              ),
+              const SizedBox(height: 12),
+
+              // ── Action Row 4: Settings ──
               _buildPrototypeMenuCard(
                 context: context,
                 icon: Icons.settings_rounded,
@@ -242,7 +262,7 @@ class ProfileScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 12),
 
-              // ── Action Row 3: Help & Support ──
+              // ── Action Row 5: Help & Support ──
               _buildPrototypeMenuCard(
                 context: context,
                 icon: Icons.help_outline_rounded,
@@ -254,7 +274,7 @@ class ProfileScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 12),
 
-              // ── Action Row 4: Log Out ──
+              // ── Action Row 6: Log Out ──
               _buildPrototypeMenuCard(
                 context: context,
                 icon: Icons.replay_rounded,
@@ -263,6 +283,20 @@ class ProfileScreen extends ConsumerWidget {
                 subtitle: tr(ref, 'Sign out securely'),
                 isDark: isDark,
                 onTap: () => showLogoutConfirmationDialog(context, ref),
+              ),
+              const SizedBox(height: 12),
+
+              // ── Action Row 7: Delete Account ──
+              _buildPrototypeMenuCard(
+                context: context,
+                icon: Icons.delete_forever_rounded,
+                iconColor: AppColors.error,
+                iconBgColor: isDark ? const Color(0xFF351D1D) : const Color(0xFFFDE8E8),
+                title: tr(ref, 'Delete Account'),
+                subtitle: tr(ref, 'Permanently remove account and data'),
+                isDark: isDark,
+                titleColor: AppColors.error,
+                onTap: () => showDeleteAccountConfirmationDialog(context, ref),
               ),
               const SizedBox(height: 32),
             ],
@@ -332,8 +366,10 @@ class ProfileScreen extends ConsumerWidget {
     required BuildContext context,
     required IconData icon,
     required Color iconColor,
+    Color? iconBgColor,
     required String title,
     required String subtitle,
+    Color? titleColor,
     required bool isDark,
     required VoidCallback onTap,
   }) {
@@ -364,14 +400,14 @@ class ProfileScreen extends ConsumerWidget {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF243026) : const Color(0xFFE8F2EA),
+                color: iconBgColor ?? (isDark ? const Color(0xFF243026) : const Color(0xFFE8F2EA)),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Center(
                 child: Icon(
                   icon,
                   size: 22,
-                  color: isDark ? const Color(0xFF86EFAC) : iconColor,
+                  color: isDark && iconBgColor == null ? const Color(0xFF86EFAC) : iconColor,
                 ),
               ),
             ),
@@ -388,7 +424,7 @@ class ProfileScreen extends ConsumerWidget {
                       fontSize: 14.5,
                       fontWeight: FontWeight.w700,
                       letterSpacing: -0.2,
-                      color: isDark ? Colors.white : const Color(0xFF1B4D2E),
+                      color: titleColor ?? (isDark ? Colors.white : const Color(0xFF1B4D2E)),
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -520,71 +556,6 @@ class ProfileScreen extends ConsumerWidget {
               ),
             );
           },
-        );
-      },
-    );
-  }
-
-  // ═════════════════════════════════════════════════════════════════════════════
-  // MORE ACTIONS SHEET (Wishlist, Orders, Delete Account)
-  // ═════════════════════════════════════════════════════════════════════════════
-  void _showProfileMenuSheet(BuildContext context, WidgetRef ref) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      backgroundColor: isDark ? const Color(0xFF1A1C1B) : Colors.white,
-      builder: (sheetContext) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: isDark ? Colors.white24 : Colors.grey.shade300,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                ListTile(
-                  leading: const Icon(Icons.favorite_rounded, color: Colors.redAccent),
-                  title: Text(tr(ref, 'My Wishlist')),
-                  onTap: () {
-                    Navigator.pop(sheetContext);
-                    context.push(RouteNames.wishlist);
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.receipt_long_rounded, color: Color(0xFF1B4D2E)),
-                  title: Text(tr(ref, 'Order History')),
-                  onTap: () {
-                    Navigator.pop(sheetContext);
-                    context.push('/orders');
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.delete_forever_rounded, color: AppColors.error),
-                  title: Text(
-                    tr(ref, 'Delete Account'),
-                    style: const TextStyle(color: AppColors.error, fontWeight: FontWeight.bold),
-                  ),
-                  onTap: () {
-                    Navigator.pop(sheetContext);
-                    showDeleteAccountConfirmationDialog(context, ref);
-                  },
-                ),
-              ],
-            ),
-          ),
         );
       },
     );
