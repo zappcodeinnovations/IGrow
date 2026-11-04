@@ -1,20 +1,16 @@
 import 'package:flutter/material.dart';
-
-import '../../../core/localization/app_strings.dart';
-import '../../../core/theme/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/widgets/shell_scaffold.dart';
-import '../../cart/providers/cart_provider.dart';
-import '../../home_farmer/providers/student_provider.dart';
-import '../../wishlist/providers/wishlist_provider.dart';
-import '../../../data/models/api_models/wishlist_model.dart';
-import '../../../core/network/swagger_generated/app_api.swagger.dart';
-import 'ebooks_tab.dart';
-import '../../../core/widgets/shimmer_placeholders.dart';
-import '../../../core/utils/app_toast.dart';
 
-/// Explore screen for courses.
+import '../../../core/localization/app_strings.dart';
+import '../../../core/network/swagger_generated/app_api.swagger.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/shell_scaffold.dart';
+import '../../../core/widgets/shimmer_placeholders.dart';
+import '../../home_farmer/providers/student_provider.dart';
+
+/// Explore screen matching prototype Screen 12 ("Explore Categories")
+/// and Screen 13 ("Search Courses / Filtered Results").
 class ExploreScreen extends ConsumerStatefulWidget {
   const ExploreScreen({
     super.key,
@@ -39,11 +35,20 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
   String? _selectedInstructorId;
   String _selectedLevel = '';
   String _selectedOrdering = '';
-  String _selectedPricePreset = 'all'; // all, free, under_500, 500_1000, above_1000
+  String _selectedPricePreset = 'all';
+  String _selectedQuickFilter = 'All';
   num? _minPrice;
   num? _maxPrice;
   double? _minRating;
   final _searchController = TextEditingController();
+
+  /// Returns true when user is browsing the category grid (Screen 12)
+  bool get _isCategoriesView =>
+      _selectedCategory == 'all' &&
+      _searchQuery.isEmpty &&
+      _activeFilterCount == 0 &&
+      _selectedQuickFilter == 'All' &&
+      (_selectedInstructorId == null || _selectedInstructorId!.isEmpty);
 
   int get _activeFilterCount {
     int count = 0;
@@ -99,6 +104,41 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
     super.dispose();
   }
 
+  void _clearSearchAndFilters() {
+    _searchController.clear();
+    setState(() {
+      _searchQuery = '';
+      _selectedCategory = 'all';
+      _selectedQuickFilter = 'All';
+      _selectedLevel = '';
+      _selectedOrdering = '';
+      _selectedPricePreset = 'all';
+      _minPrice = null;
+      _maxPrice = null;
+      _minRating = null;
+      _selectedInstructorId = null;
+    });
+  }
+
+  void _applyQuickFilter(String filter) {
+    setState(() {
+      _selectedQuickFilter = filter;
+      if (filter == 'All') {
+        _selectedPricePreset = 'all';
+        _minPrice = null;
+        _maxPrice = null;
+      } else if (filter == 'Free') {
+        _selectedPricePreset = 'free';
+        _minPrice = 0;
+        _maxPrice = 0;
+      } else if (filter == 'Paid') {
+        _selectedPricePreset = 'paid';
+        _minPrice = 1;
+        _maxPrice = null;
+      }
+    });
+  }
+
   void _showFilterBottomSheet() {
     String tempLevel = _selectedLevel;
     String tempOrdering = _selectedOrdering;
@@ -141,7 +181,6 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Header with Handle & Title
                       Center(
                         child: Container(
                           width: 40,
@@ -161,14 +200,14 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                               Container(
                                 padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
-                                  color: AppColors.editorialSecondary.withValues(alpha: 0.12),
+                                  color: const Color(0xFF1B4D2E).withValues(alpha: 0.12),
                                   borderRadius: BorderRadius.circular(10),
                                 ),
-                                child: const Icon(Icons.tune_rounded, color: AppColors.editorialSecondary, size: 20),
+                                child: const Icon(Icons.tune_rounded, color: Color(0xFF1B4D2E), size: 20),
                               ),
                               const SizedBox(width: 10),
                               Text(
-                                'Filter & Sort Courses',
+                                tr(ref, 'Filter & Sort Courses'),
                                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
                                       fontWeight: FontWeight.bold,
                                       fontSize: 18,
@@ -180,7 +219,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                               decoration: BoxDecoration(
-                                color: AppColors.editorialSecondary,
+                                color: const Color(0xFF1B4D2E),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text(
@@ -196,7 +235,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                       ),
                       const SizedBox(height: 20),
 
-                      // 1. Rating Filter (4.5★+, 4.0★+, 3.5★+, 3.0★+)
+                      // Rating Filter
                       Row(
                         children: [
                           const Icon(Icons.star_rounded, size: 18, color: Colors.amber),
@@ -212,9 +251,9 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                           ChoiceChip(
                             label: const Text('All Ratings'),
                             selected: tempMinRating == null,
-                            selectedColor: AppColors.editorialSecondary.withValues(alpha: 0.15),
+                            selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
                             labelStyle: TextStyle(
-                              color: tempMinRating == null ? AppColors.editorialSecondary : null,
+                              color: tempMinRating == null ? const Color(0xFF1B4D2E) : null,
                               fontWeight: tempMinRating == null ? FontWeight.bold : FontWeight.normal,
                             ),
                             onSelected: (val) {
@@ -235,9 +274,9 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                                 ],
                               ),
                               selected: isSelected,
-                              selectedColor: AppColors.editorialSecondary.withValues(alpha: 0.15),
+                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
                               labelStyle: TextStyle(
-                                color: isSelected ? AppColors.editorialSecondary : null,
+                                color: isSelected ? const Color(0xFF1B4D2E) : null,
                                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                               ),
                               onSelected: (val) {
@@ -249,12 +288,12 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                       ),
                       const SizedBox(height: 20),
 
-                      // 2. Price Range Presets
+                      // Price Preset Filter
                       Row(
                         children: [
-                          const Icon(Icons.payments_outlined, size: 18, color: AppColors.editorialSecondary),
+                          const Icon(Icons.payments_outlined, size: 18, color: Color(0xFF1B4D2E)),
                           const SizedBox(width: 6),
-                          Text('Price Range', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, fontSize: 14)),
+                          Text('Price Filter', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, fontSize: 14)),
                         ],
                       ),
                       const SizedBox(height: 8),
@@ -265,9 +304,9 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                           ChoiceChip(
                             label: const Text('All Prices'),
                             selected: tempPricePreset == 'all',
-                            selectedColor: AppColors.editorialSecondary.withValues(alpha: 0.15),
+                            selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
                             labelStyle: TextStyle(
-                              color: tempPricePreset == 'all' ? AppColors.editorialSecondary : null,
+                              color: tempPricePreset == 'all' ? const Color(0xFF1B4D2E) : null,
                               fontWeight: tempPricePreset == 'all' ? FontWeight.bold : FontWeight.normal,
                             ),
                             onSelected: (val) {
@@ -281,79 +320,69 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                             },
                           ),
                           ChoiceChip(
-                            label: const Text('Free (₹0)'),
+                            label: const Text('Free Courses'),
                             selected: tempPricePreset == 'free',
-                            selectedColor: AppColors.editorialSecondary.withValues(alpha: 0.15),
+                            selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
                             labelStyle: TextStyle(
-                              color: tempPricePreset == 'free' ? AppColors.editorialSecondary : null,
+                              color: tempPricePreset == 'free' ? const Color(0xFF1B4D2E) : null,
                               fontWeight: tempPricePreset == 'free' ? FontWeight.bold : FontWeight.normal,
                             ),
                             onSelected: (val) {
-                              setModalState(() {
-                                tempPricePreset = val ? 'free' : 'all';
-                                tempMinPrice = val ? 0 : null;
-                                tempMaxPrice = val ? 0 : null;
-                              });
+                              if (val) {
+                                setModalState(() {
+                                  tempPricePreset = 'free';
+                                  tempMinPrice = 0;
+                                  tempMaxPrice = 0;
+                                });
+                              }
+                            },
+                          ),
+                          ChoiceChip(
+                            label: const Text('Paid Courses'),
+                            selected: tempPricePreset == 'paid',
+                            selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
+                            labelStyle: TextStyle(
+                              color: tempPricePreset == 'paid' ? const Color(0xFF1B4D2E) : null,
+                              fontWeight: tempPricePreset == 'paid' ? FontWeight.bold : FontWeight.normal,
+                            ),
+                            onSelected: (val) {
+                              if (val) {
+                                setModalState(() {
+                                  tempPricePreset = 'paid';
+                                  tempMinPrice = 1;
+                                  tempMaxPrice = null;
+                                });
+                              }
                             },
                           ),
                           ChoiceChip(
                             label: const Text('Under ₹500'),
                             selected: tempPricePreset == 'under_500',
-                            selectedColor: AppColors.editorialSecondary.withValues(alpha: 0.15),
+                            selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
                             labelStyle: TextStyle(
-                              color: tempPricePreset == 'under_500' ? AppColors.editorialSecondary : null,
+                              color: tempPricePreset == 'under_500' ? const Color(0xFF1B4D2E) : null,
                               fontWeight: tempPricePreset == 'under_500' ? FontWeight.bold : FontWeight.normal,
                             ),
                             onSelected: (val) {
-                              setModalState(() {
-                                tempPricePreset = val ? 'under_500' : 'all';
-                                tempMinPrice = val ? 0 : null;
-                                tempMaxPrice = val ? 500 : null;
-                              });
-                            },
-                          ),
-                          ChoiceChip(
-                            label: const Text('₹500 - ₹1,000'),
-                            selected: tempPricePreset == '500_1000',
-                            selectedColor: AppColors.editorialSecondary.withValues(alpha: 0.15),
-                            labelStyle: TextStyle(
-                              color: tempPricePreset == '500_1000' ? AppColors.editorialSecondary : null,
-                              fontWeight: tempPricePreset == '500_1000' ? FontWeight.bold : FontWeight.normal,
-                            ),
-                            onSelected: (val) {
-                              setModalState(() {
-                                tempPricePreset = val ? '500_1000' : 'all';
-                                tempMinPrice = val ? 500 : null;
-                                tempMaxPrice = val ? 1000 : null;
-                              });
-                            },
-                          ),
-                          ChoiceChip(
-                            label: const Text('Above ₹1,000'),
-                            selected: tempPricePreset == 'above_1000',
-                            selectedColor: AppColors.editorialSecondary.withValues(alpha: 0.15),
-                            labelStyle: TextStyle(
-                              color: tempPricePreset == 'above_1000' ? AppColors.editorialSecondary : null,
-                              fontWeight: tempPricePreset == 'above_1000' ? FontWeight.bold : FontWeight.normal,
-                            ),
-                            onSelected: (val) {
-                              setModalState(() {
-                                tempPricePreset = val ? 'above_1000' : 'all';
-                                tempMinPrice = val ? 1000 : null;
-                                tempMaxPrice = null;
-                              });
+                              if (val) {
+                                setModalState(() {
+                                  tempPricePreset = 'under_500';
+                                  tempMinPrice = 1;
+                                  tempMaxPrice = 500;
+                                });
+                              }
                             },
                           ),
                         ],
                       ),
                       const SizedBox(height: 20),
 
-                      // 3. Difficulty Level
+                      // Skill Level
                       Row(
                         children: [
-                          const Icon(Icons.signal_cellular_alt_rounded, size: 18, color: AppColors.editorialSecondary),
+                          const Icon(Icons.signal_cellular_alt_rounded, size: 18, color: Color(0xFF1B4D2E)),
                           const SizedBox(width: 6),
-                          Text('Difficulty Level', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, fontSize: 14)),
+                          Text('Skill Level', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, fontSize: 14)),
                         ],
                       ),
                       const SizedBox(height: 8),
@@ -364,23 +393,21 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                           ChoiceChip(
                             label: const Text('All Levels'),
                             selected: tempLevel.isEmpty,
-                            selectedColor: AppColors.editorialSecondary.withValues(alpha: 0.15),
+                            selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
                             labelStyle: TextStyle(
-                              color: tempLevel.isEmpty ? AppColors.editorialSecondary : null,
+                              color: tempLevel.isEmpty ? const Color(0xFF1B4D2E) : null,
                               fontWeight: tempLevel.isEmpty ? FontWeight.bold : FontWeight.normal,
                             ),
                             onSelected: (val) {
-                              if (val) {
-                                setModalState(() => tempLevel = '');
-                              }
+                              if (val) setModalState(() => tempLevel = '');
                             },
                           ),
                           ChoiceChip(
                             label: const Text('Beginner'),
                             selected: tempLevel == 'beginner',
-                            selectedColor: AppColors.editorialSecondary.withValues(alpha: 0.15),
+                            selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
                             labelStyle: TextStyle(
-                              color: tempLevel == 'beginner' ? AppColors.editorialSecondary : null,
+                              color: tempLevel == 'beginner' ? const Color(0xFF1B4D2E) : null,
                               fontWeight: tempLevel == 'beginner' ? FontWeight.bold : FontWeight.normal,
                             ),
                             onSelected: (val) {
@@ -390,9 +417,9 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                           ChoiceChip(
                             label: const Text('Intermediate'),
                             selected: tempLevel == 'intermediate',
-                            selectedColor: AppColors.editorialSecondary.withValues(alpha: 0.15),
+                            selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
                             labelStyle: TextStyle(
-                              color: tempLevel == 'intermediate' ? AppColors.editorialSecondary : null,
+                              color: tempLevel == 'intermediate' ? const Color(0xFF1B4D2E) : null,
                               fontWeight: tempLevel == 'intermediate' ? FontWeight.bold : FontWeight.normal,
                             ),
                             onSelected: (val) {
@@ -402,9 +429,9 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                           ChoiceChip(
                             label: const Text('Advanced'),
                             selected: tempLevel == 'advanced',
-                            selectedColor: AppColors.editorialSecondary.withValues(alpha: 0.15),
+                            selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
                             labelStyle: TextStyle(
-                              color: tempLevel == 'advanced' ? AppColors.editorialSecondary : null,
+                              color: tempLevel == 'advanced' ? const Color(0xFF1B4D2E) : null,
                               fontWeight: tempLevel == 'advanced' ? FontWeight.bold : FontWeight.normal,
                             ),
                             onSelected: (val) {
@@ -415,10 +442,10 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                       ),
                       const SizedBox(height: 20),
 
-                      // 4. Sort By Ordering
+                      // Sort By
                       Row(
                         children: [
-                          const Icon(Icons.sort_rounded, size: 18, color: AppColors.editorialSecondary),
+                          const Icon(Icons.sort_rounded, size: 18, color: Color(0xFF1B4D2E)),
                           const SizedBox(width: 6),
                           Text('Sort by', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, fontSize: 14)),
                         ],
@@ -431,66 +458,38 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                           ChoiceChip(
                             label: const Text('Newest'),
                             selected: tempOrdering == '-created_at' || tempOrdering == '',
-                            selectedColor: AppColors.editorialSecondary.withValues(alpha: 0.15),
+                            selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
                             labelStyle: TextStyle(
-                              color: (tempOrdering == '-created_at' || tempOrdering == '') ? AppColors.editorialSecondary : null,
+                              color: (tempOrdering == '-created_at' || tempOrdering == '') ? const Color(0xFF1B4D2E) : null,
                               fontWeight: (tempOrdering == '-created_at' || tempOrdering == '') ? FontWeight.bold : FontWeight.normal,
                             ),
                             onSelected: (val) {
-                              if (val) {
-                                setModalState(() => tempOrdering = '-created_at');
-                              }
+                              if (val) setModalState(() => tempOrdering = '-created_at');
                             },
                           ),
                           ChoiceChip(
                             label: const Text('Most Popular'),
                             selected: tempOrdering == '-views_count',
-                            selectedColor: AppColors.editorialSecondary.withValues(alpha: 0.15),
+                            selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
                             labelStyle: TextStyle(
-                              color: tempOrdering == '-views_count' ? AppColors.editorialSecondary : null,
+                              color: tempOrdering == '-views_count' ? const Color(0xFF1B4D2E) : null,
                               fontWeight: tempOrdering == '-views_count' ? FontWeight.bold : FontWeight.normal,
                             ),
                             onSelected: (val) {
-                              setModalState(() => tempOrdering = val ? '-views_count' : '');
-                            },
-                          ),
-                          ChoiceChip(
-                            label: const Text('Price: Low to High'),
-                            selected: tempOrdering == 'price',
-                            selectedColor: AppColors.editorialSecondary.withValues(alpha: 0.15),
-                            labelStyle: TextStyle(
-                              color: tempOrdering == 'price' ? AppColors.editorialSecondary : null,
-                              fontWeight: tempOrdering == 'price' ? FontWeight.bold : FontWeight.normal,
-                            ),
-                            onSelected: (val) {
-                              setModalState(() => tempOrdering = val ? 'price' : '');
-                            },
-                          ),
-                          ChoiceChip(
-                            label: const Text('Price: High to Low'),
-                            selected: tempOrdering == '-price',
-                            selectedColor: AppColors.editorialSecondary.withValues(alpha: 0.15),
-                            labelStyle: TextStyle(
-                              color: tempOrdering == '-price' ? AppColors.editorialSecondary : null,
-                              fontWeight: tempOrdering == '-price' ? FontWeight.bold : FontWeight.normal,
-                            ),
-                            onSelected: (val) {
-                              setModalState(() => tempOrdering = val ? '-price' : '');
+                              if (val) setModalState(() => tempOrdering = '-views_count');
                             },
                           ),
                         ],
                       ),
                       const SizedBox(height: 28),
 
-                      // Action Buttons
+                      // Reset & Apply Buttons
                       Row(
                         children: [
                           Expanded(
-                            flex: 1,
                             child: OutlinedButton(
                               style: OutlinedButton.styleFrom(
                                 padding: const EdgeInsets.symmetric(vertical: 14),
-                                side: BorderSide(color: isDark ? AppColors.lineDark : Colors.grey.shade300),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                               ),
                               onPressed: () {
@@ -511,8 +510,8 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                             flex: 2,
                             child: ElevatedButton(
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.editorialSecondary,
-                                foregroundColor: AppColors.white,
+                                backgroundColor: const Color(0xFF1B4D2E),
+                                foregroundColor: Colors.white,
                                 padding: const EdgeInsets.symmetric(vertical: 14),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                                 elevation: 0,
@@ -549,637 +548,680 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return DefaultTabController(
-      length: 2,
-      initialIndex: widget.initialTab.clamp(0, 1),
-      child: Scaffold(
+    return Scaffold(
+      backgroundColor: isDark ? const Color(0xFF121413) : const Color(0xFFFBFBFA),
+      appBar: _buildAppBar(context, isDark),
+      body: SafeArea(
+        child: _isCategoriesView
+            ? _buildExploreCategoriesScreen(context, isDark)
+            : _buildSearchResultsScreen(context, isDark),
+      ),
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar(BuildContext context, bool isDark) {
+    if (_isCategoriesView) {
+      // ── Screen 12 App Bar: "Explore farming topics" ──
+      return AppBar(
+        elevation: 0,
         backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          elevation: 0,
-          backgroundColor: Colors.transparent,
-          leadingWidth: 54,
-          leading: Padding(
-            padding: const EdgeInsets.only(left: 12),
+        leadingWidth: 56,
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 16),
+          child: Center(
             child: InkWell(
               onTap: () {
-                if (shellScaffoldKey.currentState != null) {
+                if (Navigator.of(context).canPop()) {
+                  context.pop();
+                } else if (shellScaffoldKey.currentState != null) {
                   shellScaffoldKey.currentState!.openDrawer();
                 } else {
                   Scaffold.of(context).openDrawer();
                 }
               },
-              borderRadius: BorderRadius.circular(9999),
+              borderRadius: BorderRadius.circular(20),
               child: Container(
-                width: 42,
-                height: 42,
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: isDark ? AppColors.cardDark : AppColors.editorialSurfaceContainerLow,
+                  color: isDark ? AppColors.cardDark : const Color(0xFFE8EFE8),
                 ),
                 child: Icon(
-                  Icons.menu_rounded,
-                  size: 22,
-                  color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                  Icons.arrow_back_rounded,
+                  size: 20,
+                  color: isDark ? Colors.white : const Color(0xFF1B4D2E),
                 ),
               ),
             ),
           ),
-          title: Container(
-            height: 44,
-            decoration: BoxDecoration(
-              color: isDark ? AppColors.cardDark : Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: isDark ? AppColors.lineDark : const Color(0xFFE2EBE0),
+        ),
+        titleSpacing: 12,
+        title: Text(
+          tr(ref, 'Explore farming topics'),
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.2,
+            color: isDark ? Colors.white : const Color(0xFF1B4D2E),
+          ),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.more_vert_rounded),
+            color: isDark ? Colors.white70 : const Color(0xFF1B4D2E),
+            onPressed: () {
+              // Quick action: switch directly to Search view
+              setState(() {
+                _searchQuery = ' ';
+                _searchController.text = '';
+              });
+            },
+          ),
+          const SizedBox(width: 8),
+        ],
+      );
+    }
+
+    // ── Screen 13 App Bar: "Search Courses" ──
+    return AppBar(
+      elevation: 0,
+      backgroundColor: Colors.transparent,
+      leadingWidth: 56,
+      leading: Padding(
+        padding: const EdgeInsets.only(left: 16),
+        child: Center(
+          child: InkWell(
+            onTap: _clearSearchAndFilters,
+            borderRadius: BorderRadius.circular(20),
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isDark ? AppColors.cardDark : const Color(0xFFE8EFE8),
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.editorialSecondary.withValues(alpha: isDark ? 0.08 : 0.05),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+              child: Icon(
+                Icons.arrow_back_rounded,
+                size: 20,
+                color: isDark ? Colors.white : const Color(0xFF1B4D2E),
+              ),
             ),
-            child: Row(
-              children: [
-                const SizedBox(width: 12),
-                Icon(Icons.search_rounded, color: AppColors.inkSoft, size: 20),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TextField(
-                    controller: _searchController,
-                    onChanged: (value) {
-                      setState(() {
-                        _searchQuery = value.trim();
-                      });
-                    },
-                    onSubmitted: (value) {
-                      setState(() {
-                        _searchQuery = value.trim();
-                      });
-                    },
-                    style: Theme.of(context).textTheme.bodyMedium,
-                    decoration: InputDecoration(
-                      hintText: 'Search courses...',
-                      hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.inkSoft),
-                      filled: false,
-                      isDense: true,
-                      border: InputBorder.none,
-                      enabledBorder: InputBorder.none,
-                      focusedBorder: InputBorder.none,
-                      errorBorder: InputBorder.none,
-                      focusedErrorBorder: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(vertical: 10),
+          ),
+        ),
+      ),
+      titleSpacing: 12,
+      title: Text(
+        tr(ref, 'Search Courses'),
+        style: TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.w700,
+          letterSpacing: -0.2,
+          color: isDark ? Colors.white : const Color(0xFF1B4D2E),
+        ),
+      ),
+      actions: [
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.tune_rounded),
+              color: _activeFilterCount > 0 ? AppColors.accentOrange : const Color(0xFF1B4D2E),
+              tooltip: 'Filter Courses',
+              onPressed: _showFilterBottomSheet,
+            ),
+            if (_activeFilterCount > 0)
+              Positioned(
+                right: 8,
+                top: 8,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: const BoxDecoration(
+                    color: AppColors.accentOrange,
+                    shape: BoxShape.circle,
+                  ),
+                  constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                  child: Text(
+                    '$_activeFilterCount',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
                     ),
+                    textAlign: TextAlign.center,
                   ),
                 ),
-                if (_searchController.text.isNotEmpty)
-                  IconButton(
-                    icon: const Icon(Icons.close_rounded, size: 18, color: AppColors.inkSoft),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                    tooltip: 'Clear search',
-                    onPressed: () {
-                      _searchController.clear();
-                      setState(() {
-                        _searchQuery = '';
-                      });
-                    },
-                  ),
-                const SizedBox(width: 6),
-              ],
+              ),
+          ],
+        ),
+        const SizedBox(width: 8),
+      ],
+    );
+  }
+
+  // ═════════════════════════════════════════════════════════════════════════════
+  // SCREEN 12: EXPLORE CATEGORIES (Clean Grid View, NO courses below)
+  // ═════════════════════════════════════════════════════════════════════════════
+  Widget _buildExploreCategoriesScreen(BuildContext context, bool isDark) {
+    final categoriesAsync = ref.watch(studentCategoriesProvider);
+
+    return RefreshIndicator(
+      color: const Color(0xFF1B4D2E),
+      onRefresh: () async {
+        ref.invalidate(studentCategoriesProvider);
+        ref.invalidate(studentCatalogProvider);
+      },
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Headline matching Screen 12 Prototype
+            Text(
+              tr(ref, 'What would you like to learn?'),
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.4,
+                color: isDark ? Colors.white : const Color(0xFF1B4D2E),
+              ),
             ),
-          ),
-          actions: [
-            Stack(
-              clipBehavior: Clip.none,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.tune_rounded),
-                  color: _activeFilterCount > 0 ? AppColors.accentOrange : AppColors.editorialSecondary,
-                  tooltip: 'Filter Courses',
-                  onPressed: _showFilterBottomSheet,
-                ),
-                if (_activeFilterCount > 0)
-                  Positioned(
-                    right: 8,
-                    top: 8,
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: const BoxDecoration(
-                        color: AppColors.accentOrange,
-                        shape: BoxShape.circle,
+            const SizedBox(height: 20),
+
+            // 2-Column Categories Grid
+            categoriesAsync.when(
+              data: (categories) {
+                if (categories.isEmpty) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 40),
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.category_outlined, size: 48, color: Colors.grey.shade400),
+                          const SizedBox(height: 12),
+                          Text(
+                            tr(ref, 'No categories found'),
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: isDark ? Colors.white70 : Colors.black87,
+                            ),
+                          ),
+                        ],
                       ),
-                      constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
-                      child: Text(
-                        '$_activeFilterCount',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 9,
-                          fontWeight: FontWeight.bold,
+                    ),
+                  );
+                }
+
+                return GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    mainAxisSpacing: 14,
+                    crossAxisSpacing: 14,
+                    mainAxisExtent: 82,
+                  ),
+                  itemCount: categories.length,
+                  itemBuilder: (context, index) {
+                    final cat = categories[index];
+                    final iconData = _getCategoryIcon(cat.name);
+                    final iconBg = _getCategoryBg(index, isDark);
+                    final iconColor = _getCategoryColor(index, isDark);
+
+                    return InkWell(
+                      onTap: () {
+                        // Transitions into Screen 13 Search / Filtered View for this category
+                        setState(() {
+                          _selectedCategory = cat.id ?? 'all';
+                          _selectedQuickFilter = 'All';
+                        });
+                      },
+                      borderRadius: BorderRadius.circular(18),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: isDark ? AppColors.cardDark : Colors.white,
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(
+                            color: isDark ? AppColors.lineDark : const Color(0xFFE8EFE8),
+                            width: 1,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.035),
+                              blurRadius: 10,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
                         ),
-                        textAlign: TextAlign.center,
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: iconBg,
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: Center(
+                                child: Icon(
+                                  iconData,
+                                  size: 22,
+                                  color: iconColor,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                cat.name,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: -0.2,
+                                  height: 1.25,
+                                  color: isDark ? Colors.white : const Color(0xFF1B4D2E),
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+              loading: () => GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  mainAxisSpacing: 14,
+                  crossAxisSpacing: 14,
+                  mainAxisExtent: 82,
+                ),
+                itemCount: 8,
+                itemBuilder: (context, index) => const ShimmerContainer(
+                  width: double.infinity,
+                  height: 82,
+                  borderRadius: 18,
+                ),
+              ),
+              error: (err, _) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 40),
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.wifi_off_rounded, size: 40, color: Colors.grey),
+                      const SizedBox(height: 10),
+                      Text(tr(ref, 'Unable to load categories')),
+                      const SizedBox(height: 8),
+                      TextButton(
+                        onPressed: () => ref.invalidate(studentCategoriesProvider),
+                        child: Text(tr(ref, 'Retry')),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ═════════════════════════════════════════════════════════════════════════════
+  // SCREEN 13: SEARCH COURSES / FILTERED RESULTS
+  // ═════════════════════════════════════════════════════════════════════════════
+  Widget _buildSearchResultsScreen(BuildContext context, bool isDark) {
+    // Determine category display name if filtered
+    final categories = ref.watch(studentCategoriesProvider).maybeWhen(
+          data: (cats) => cats,
+          orElse: () => null,
+        );
+    String? categoryDisplayName;
+    if (_selectedCategory != 'all' && categories != null) {
+      try {
+        categoryDisplayName = categories
+            .firstWhere((c) => c.id == _selectedCategory || c.name.toLowerCase() == _selectedCategory.toLowerCase())
+            .name;
+      } catch (_) {
+        categoryDisplayName = _selectedCategory;
+      }
+    }
+
+    final catalogAsync = ref.watch(studentCatalogProvider(CatalogQuery(
+      search: _searchQuery.trim(),
+      category: _selectedCategory == 'all' ? '' : _selectedCategory,
+      level: _selectedLevel,
+      minPrice: _minPrice,
+      maxPrice: _maxPrice,
+      ordering: _selectedOrdering,
+      minRating: _minRating,
+      instructor: _selectedInstructorId,
+    )));
+
+    return RefreshIndicator(
+      color: const Color(0xFF1B4D2E),
+      onRefresh: () async {
+        ref.invalidate(studentCatalogProvider);
+      },
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Search Input Field matching Prototype Screen 13
+            Text(
+              tr(ref, 'Search courses'),
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: isDark ? Colors.white60 : const Color(0xFF4B5563),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              height: 50,
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.cardDark : Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isDark ? AppColors.lineDark : const Color(0xFFE5ECE5),
+                  width: 1,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  const SizedBox(width: 14),
+                  Icon(
+                    Icons.search_rounded,
+                    color: isDark ? Colors.white54 : const Color(0xFF9CA3AF),
+                    size: 20,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: (val) {
+                        setState(() {
+                          _searchQuery = val;
+                        });
+                      },
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: isDark ? Colors.white : const Color(0xFF192A1D),
+                      ),
+                      decoration: InputDecoration(
+                        hintText: tr(ref, 'Search wheat, soil, irrigation...'),
+                        hintStyle: TextStyle(
+                          fontSize: 14,
+                          color: isDark ? Colors.white38 : const Color(0xFF9CA3AF),
+                        ),
+                        border: InputBorder.none,
+                        isDense: true,
+                        contentPadding: EdgeInsets.zero,
                       ),
                     ),
                   ),
-              ],
-            ),
-            Consumer(
-              builder: (context, ref, child) {
-                final cartState = ref.watch(cartProvider);
-                final itemCount = cartState.maybeWhen(
-                  data: (cart) => cart.items.length,
-                  orElse: () => 0,
-                );
-                
-                return Stack(
-                  clipBehavior: Clip.none,
-                  alignment: Alignment.center,
-                  children: [
+                  if (_searchController.text.isNotEmpty)
                     IconButton(
-                      icon: const Icon(Icons.shopping_cart_outlined),
+                      icon: const Icon(Icons.close_rounded, size: 18),
+                      color: isDark ? Colors.white60 : Colors.black54,
                       onPressed: () {
-                        context.push('/cart');
+                        _searchController.clear();
+                        setState(() {
+                          _searchQuery = '';
+                        });
                       },
                     ),
-                    if (itemCount > 0)
-                      Positioned(
-                        right: 8,
-                        top: 8,
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: const BoxDecoration(
-                            color: Colors.red,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Text(
-                            itemCount.toString(),
+                  const SizedBox(width: 8),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Horizontal Quick-Filter Pill Row (All, Free, Paid, Hindi, Marathi, + active category)
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  if (categoryDisplayName != null) ...[
+                    Container(
+                      margin: const EdgeInsets.only(right: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1B4D2E),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            categoryDisplayName,
                             style: const TextStyle(
                               color: Colors.white,
-                              fontSize: 10,
+                              fontSize: 12,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                        ),
-                      ),
-                  ],
-                );
-              },
-            ),
-            const SizedBox(width: 12),
-          ],
-        ),
-        body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 16),
-                Builder(
-                  builder: (context) {
-                    final categories = ref.watch(studentCategoriesProvider).maybeWhen(
-                          data: (cats) => cats,
-                          orElse: () => null,
-                        );
-                    String headerTitle = 'Agricultural Course Catalog';
-                    if (_selectedCategory != 'all' && categories != null) {
-                      try {
-                        final matched = categories.firstWhere(
-                          (c) => c.id == _selectedCategory || c.name.toLowerCase() == _selectedCategory.toLowerCase(),
-                        );
-                        headerTitle = matched.name;
-                      } catch (_) {}
-                    }
-
-                    return Row(
-                      children: [
-                        if (_selectedCategory != 'all') ...[
+                          const SizedBox(width: 4),
                           InkWell(
                             onTap: () {
                               setState(() {
                                 _selectedCategory = 'all';
                               });
                             },
-                            borderRadius: BorderRadius.circular(9999),
-                            child: Padding(
-                              padding: const EdgeInsets.only(right: 8),
-                              child: Icon(
-                                Icons.arrow_back_rounded,
-                                color: isDark ? Colors.white : AppColors.editorialSecondary,
-                                size: 22,
-                              ),
+                            child: const Icon(
+                              Icons.close_rounded,
+                              size: 14,
+                              color: Colors.white,
                             ),
                           ),
-                        ] else ...[
-                          const Icon(Icons.menu_book_rounded, color: AppColors.editorialSecondary, size: 22),
-                          const SizedBox(width: 8),
                         ],
-                        Expanded(
-                          child: Text(
-                            headerTitle,
-                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        if (_selectedCategory != 'all')
-                          TextButton(
-                            style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(horizontal: 8),
-                              minimumSize: const Size(40, 28),
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                _selectedCategory = 'all';
-                              });
-                            },
-                            child: Text(
-                              tr(ref, 'All'),
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.primaryGreen,
-                              ),
-                            ),
-                          ),
-                      ],
-                    );
-                  },
-                ),
-                const SizedBox(height: 14),
-                const TabBar(
-                  tabs: [
-                    Tab(text: 'Courses'),
-                    Tab(text: 'E-Books'),
+                      ),
+                    ),
                   ],
+                  _buildQuickFilterPill('All', isDark),
+                  const SizedBox(width: 8),
+                  _buildQuickFilterPill('Free', isDark),
+                  const SizedBox(width: 8),
+                  _buildQuickFilterPill('Paid', isDark),
+                  const SizedBox(width: 8),
+                  _buildQuickFilterPill('Hindi', isDark),
+                  const SizedBox(width: 8),
+                  _buildQuickFilterPill('Marathi', isDark),
+                ],
+              ),
+            ),
+            const SizedBox(height: 22),
+
+            // Section Header: "Recommended results" + "Clear filters"
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Text(
+                  tr(ref, 'Recommended results'),
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.3,
+                    color: isDark ? Colors.white : const Color(0xFF1B4D2E),
+                  ),
                 ),
-                const SizedBox(height: 16),
-                Expanded(
-                  child: TabBarView(
-                    children: [
-                      // Courses Tab
-                      ref.watch(studentCatalogProvider(CatalogQuery(
-                        search: _searchQuery,
-                        category: _selectedCategory == 'all' ? '' : _selectedCategory,
-                        level: _selectedLevel,
-                        minPrice: _minPrice,
-                        maxPrice: _maxPrice,
-                        ordering: _selectedOrdering,
-                        minRating: _minRating,
-                        instructor: _selectedInstructorId,
-                      ))).when(
-                        data: (courses) {
-                          return RefreshIndicator(
-                            color: AppColors.editorialSecondary,
-                            onRefresh: () async {
-                              ref.invalidate(studentCatalogProvider);
-                              ref.invalidate(studentCategoriesProvider);
-                            },
-                            child: CustomScrollView(
-                              physics: const AlwaysScrollableScrollPhysics(),
-                              slivers: [
-                                if (_selectedCategory == 'all' && _searchQuery.isEmpty && _activeFilterCount == 0) ...[
-                                  SliverToBoxAdapter(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          tr(ref, 'What would you like to learn?'),
-                                          style: TextStyle(
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.bold,
-                                            letterSpacing: -0.4,
-                                            color: isDark ? Colors.white : AppColors.editorialOnSurface,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 12),
-                                        ref.watch(studentCategoriesProvider).when(
-                                          data: (cats) {
-                                            if (cats.isEmpty) return const SizedBox.shrink();
-                                            return SizedBox(
-                                              height: 140,
-                                              child: GridView.builder(
-                                                scrollDirection: Axis.horizontal,
-                                                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                                                  crossAxisCount: 2,
-                                                  mainAxisSpacing: 10,
-                                                  crossAxisSpacing: 10,
-                                                  mainAxisExtent: 180,
-                                                ),
-                                                itemCount: cats.length,
-                                                itemBuilder: (context, index) {
-                                                  final cat = cats[index];
-                                                  return InkWell(
-                                                    onTap: () {
-                                                      setState(() {
-                                                        _selectedCategory = cat.id ?? 'all';
-                                                      });
-                                                    },
-                                                    borderRadius: BorderRadius.circular(14),
-                                                    child: Container(
-                                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                                      decoration: BoxDecoration(
-                                                        color: isDark ? AppColors.cardDark : Colors.white,
-                                                        borderRadius: BorderRadius.circular(14),
-                                                        border: Border.all(
-                                                          color: isDark ? AppColors.lineDark : AppColors.lineLight,
-                                                        ),
-                                                        boxShadow: [
-                                                          BoxShadow(
-                                                            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
-                                                            blurRadius: 4,
-                                                            offset: const Offset(0, 1),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                      child: Row(
-                                                        children: [
-                                                          Container(
-                                                            width: 36,
-                                                            height: 36,
-                                                            decoration: BoxDecoration(
-                                                              color: isDark
-                                                                  ? AppColors.surfaceContainerHighDark
-                                                                  : const Color(0xFFF1F8F3),
-                                                              borderRadius: BorderRadius.circular(10),
-                                                            ),
-                                                            child: Center(
-                                                              child: Icon(
-                                                                _getCategoryIcon(cat.name),
-                                                                size: 18,
-                                                                color: AppColors.primaryGreen,
-                                                              ),
-                                                            ),
-                                                          ),
-                                                          const SizedBox(width: 8),
-                                                          Expanded(
-                                                            child: Text(
-                                                              cat.name,
-                                                              style: TextStyle(
-                                                                fontSize: 12,
-                                                                fontWeight: FontWeight.w600,
-                                                                color: isDark ? Colors.white : AppColors.editorialOnSurface,
-                                                              ),
-                                                              maxLines: 2,
-                                                              overflow: TextOverflow.ellipsis,
-                                                            ),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    ),
-                                                  );
-                                                },
-                                              ),
-                                            );
-                                          },
-                                          loading: () => const SizedBox(
-                                            height: 140,
-                                            child: Center(child: CircularProgressIndicator(color: AppColors.primaryGreen)),
-                                          ),
-                                          error: (_, __) => const SizedBox.shrink(),
-                                        ),
-                                        const SizedBox(height: 16),
-                                        Text(
-                                          tr(ref, 'All Courses'),
-                                          style: TextStyle(
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.bold,
-                                            letterSpacing: -0.3,
-                                            color: isDark ? Colors.white : AppColors.editorialOnSurface,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 12),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                                if (_activeFilterCount > 0 || _searchQuery.isNotEmpty) ...[
-                                  SliverToBoxAdapter(
-                                    child: Padding(
-                                      padding: const EdgeInsets.only(bottom: 12),
-                                      child: SingleChildScrollView(
-                                        scrollDirection: Axis.horizontal,
-                                        child: Row(
-                                          children: [
-                                            if (_searchQuery.isNotEmpty)
-                                              Padding(
-                                                padding: const EdgeInsets.only(right: 6),
-                                                child: InputChip(
-                                                  label: Text('Search: "$_searchQuery"'),
-                                                  avatar: const Icon(Icons.search_rounded, size: 14, color: AppColors.editorialSecondary),
-                                                  onDeleted: () {
-                                                    _searchController.clear();
-                                                    setState(() {
-                                                      _searchQuery = '';
-                                                    });
-                                                  },
-                                                  deleteIconColor: AppColors.editorialSecondary,
-                                                  backgroundColor: AppColors.editorialSecondary.withValues(alpha: 0.1),
-                                                  labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.editorialSecondary),
-                                                ),
-                                              ),
-                                            if (_selectedLevel.isNotEmpty)
-                                              Padding(
-                                                padding: const EdgeInsets.only(right: 6),
-                                                child: InputChip(
-                                                  label: Text(_selectedLevel[0].toUpperCase() + _selectedLevel.substring(1)),
-                                                  avatar: const Icon(Icons.signal_cellular_alt_rounded, size: 14),
-                                                  onDeleted: () => setState(() => _selectedLevel = ''),
-                                                  deleteIconColor: AppColors.editorialSecondary,
-                                                  backgroundColor: AppColors.editorialSecondary.withValues(alpha: 0.1),
-                                                  labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.editorialSecondary),
-                                                ),
-                                              ),
-                                            if (_selectedPricePreset != 'all')
-                                              Padding(
-                                                padding: const EdgeInsets.only(right: 6),
-                                                child: InputChip(
-                                                  label: Text(_selectedPricePreset == 'free'
-                                                      ? 'Free'
-                                                      : _selectedPricePreset == 'under_500'
-                                                          ? '< ₹500'
-                                                          : _selectedPricePreset == '500_1000'
-                                                              ? '₹500 - ₹1,000'
-                                                              : '> ₹1,000'),
-                                                  avatar: const Icon(Icons.payments_outlined, size: 14),
-                                                  onDeleted: () => setState(() {
-                                                    _selectedPricePreset = 'all';
-                                                    _minPrice = null;
-                                                    _maxPrice = null;
-                                                  }),
-                                                  deleteIconColor: AppColors.editorialSecondary,
-                                                  backgroundColor: AppColors.editorialSecondary.withValues(alpha: 0.1),
-                                                  labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.editorialSecondary),
-                                                ),
-                                              ),
-                                            if (_minRating != null && _minRating! > 0)
-                                              Padding(
-                                                padding: const EdgeInsets.only(right: 6),
-                                                child: InputChip(
-                                                  label: Text('$_minRating+ ★'),
-                                                  avatar: const Icon(Icons.star_rounded, size: 14, color: Colors.amber),
-                                                  onDeleted: () => setState(() => _minRating = null),
-                                                  deleteIconColor: AppColors.editorialSecondary,
-                                                  backgroundColor: AppColors.editorialSecondary.withValues(alpha: 0.1),
-                                                  labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.editorialSecondary),
-                                                ),
-                                              ),
-                                            if (_selectedOrdering.isNotEmpty && _selectedOrdering != '-created_at')
-                                              Padding(
-                                                padding: const EdgeInsets.only(right: 6),
-                                                child: InputChip(
-                                                  label: Text(_selectedOrdering == '-views_count'
-                                                      ? 'Most Popular'
-                                                      : _selectedOrdering == 'price'
-                                                          ? 'Price: Low to High'
-                                                          : 'Price: High to Low'),
-                                                  avatar: const Icon(Icons.sort_rounded, size: 14),
-                                                  onDeleted: () => setState(() => _selectedOrdering = ''),
-                                                  deleteIconColor: AppColors.editorialSecondary,
-                                                  backgroundColor: AppColors.editorialSecondary.withValues(alpha: 0.1),
-                                                  labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.editorialSecondary),
-                                                ),
-                                              ),
-                                            if (_selectedInstructorId != null && _selectedInstructorId!.isNotEmpty)
-                                              Padding(
-                                                padding: const EdgeInsets.only(right: 6),
-                                                child: InputChip(
-                                                  label: Text('Instructor: ${_selectedInstructorId!.length > 10 ? "${_selectedInstructorId!.substring(0, 8)}..." : _selectedInstructorId}'),
-                                                  avatar: const Icon(Icons.person_rounded, size: 14, color: AppColors.editorialSecondary),
-                                                  onDeleted: () => setState(() => _selectedInstructorId = null),
-                                                  deleteIconColor: AppColors.editorialSecondary,
-                                                  backgroundColor: AppColors.editorialSecondary.withValues(alpha: 0.1),
-                                                  labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.editorialSecondary),
-                                                ),
-                                              ),
-                                            TextButton(
-                                              style: TextButton.styleFrom(
-                                                padding: const EdgeInsets.symmetric(horizontal: 8),
-                                                minimumSize: const Size(50, 30),
-                                              ),
-                                              onPressed: () {
-                                                setState(() {
-                                                  _selectedLevel = '';
-                                                  _selectedOrdering = '';
-                                                  _selectedPricePreset = 'all';
-                                                  _minPrice = null;
-                                                  _maxPrice = null;
-                                                  _minRating = null;
-                                                  _selectedInstructorId = null;
-                                                });
-                                              },
-                                              child: const Text('Clear All', style: TextStyle(fontSize: 12, color: Colors.redAccent)),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                                if (courses.isEmpty)
-                                  SliverFillRemaining(
-                                    hasScrollBody: false,
-                                    child: Center(
-                                      child: Padding(
-                                        padding: const EdgeInsets.all(24.0),
-                                        child: Column(
-                                          mainAxisAlignment: MainAxisAlignment.center,
-                                          children: [
-                                            Icon(Icons.search_off_rounded, size: 56, color: AppColors.inkSoft.withValues(alpha: 0.5)),
-                                            const SizedBox(height: 12),
-                                            Text(
-                                              'No courses found',
-                                              style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                                            ),
-                                            const SizedBox(height: 6),
-                                            Text(
-                                              'Try adjusting your search keywords, price, or rating filters.',
-                                              textAlign: TextAlign.center,
-                                              style: TextStyle(color: AppColors.inkSoft, fontSize: 13),
-                                            ),
-                                            const SizedBox(height: 16),
-                                            TextButton.icon(
-                                              icon: const Icon(Icons.refresh_rounded, size: 18),
-                                              label: const Text('Show All Courses'),
-                                              onPressed: () {
-                                                _searchController.clear();
-                                                setState(() {
-                                                  _searchQuery = '';
-                                                  _selectedLevel = '';
-                                                  _selectedOrdering = '';
-                                                  _selectedPricePreset = 'all';
-                                                  _minPrice = null;
-                                                  _maxPrice = null;
-                                                  _minRating = null;
-                                                  _selectedCategory = 'all';
-                                                });
-                                              },
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  )
-                                else
-                                  SliverList.separated(
-                                    itemCount: courses.length,
-                                    separatorBuilder: (_, __) => const SizedBox(height: 16),
-                                    itemBuilder: (context, index) {
-                                      return _CatalogCourseCard(course: courses[index]);
-                                    },
-                                  ),
-                                const SliverToBoxAdapter(
-                                  child: SizedBox(height: 24),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                        loading: () => ListView.separated(
-                          itemCount: 4,
-                          separatorBuilder: (_, __) => const SizedBox(height: 16),
-                          itemBuilder: (context, index) => const ShimmerListTile(),
-                        ),
-                        error: (err, st) => Center(
-                          child: Padding(
-                            padding: const EdgeInsets.all(24.0),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(Icons.wifi_off_rounded, size: 48, color: Colors.orange),
-                                const SizedBox(height: 12),
-                                Text(
-                                  tr(ref, 'Unable to load courses at this time. Please check your connection.'),
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(color: AppColors.inkSoft, fontSize: 14),
-                                ),
-                                const SizedBox(height: 16),
-                                ElevatedButton.icon(
-                                  icon: const Icon(Icons.refresh_rounded, size: 18),
-                                  label: Text(tr(ref, 'Try Again')),
-                                  onPressed: () {
-                                    ref.invalidate(studentCatalogProvider);
-                                  },
-                                ),
-                              ],
-                            ),
+                InkWell(
+                  onTap: _clearSearchAndFilters,
+                  borderRadius: BorderRadius.circular(6),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          tr(ref, 'Clear filters'),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? const Color(0xFF86EFAC) : const Color(0xFF1B4D2E),
                           ),
                         ),
-                      ),
-                      // E-Books Tab
-                      EbooksTab(
-                        searchQuery: _searchQuery,
-                        category: _selectedCategory != 'all' ? _selectedCategory : null,
-                        instructorId: _selectedInstructorId,
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ],
             ),
+            const SizedBox(height: 14),
+
+            // Results List of Large Course Cards
+            catalogAsync.when(
+              data: (courses) {
+                // Apply language filter if Hindi or Marathi is selected
+                var filteredCourses = courses;
+                if (_selectedQuickFilter == 'Hindi') {
+                  filteredCourses = courses.where((c) {
+                    final t = c.title.toLowerCase();
+                    return t.contains('hindi') || t.contains('हिंदी') || t.contains('हिन्दी');
+                  }).toList();
+                } else if (_selectedQuickFilter == 'Marathi') {
+                  filteredCourses = courses.where((c) {
+                    final t = c.title.toLowerCase();
+                    return t.contains('marathi') || t.contains('मराठी');
+                  }).toList();
+                }
+
+                if (filteredCourses.isEmpty) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 40),
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.search_off_rounded, size: 54, color: AppColors.inkSoft.withValues(alpha: 0.4)),
+                          const SizedBox(height: 12),
+                          Text(
+                            tr(ref, 'No matching courses found'),
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: isDark ? Colors.white70 : const Color(0xFF374151),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            tr(ref, 'Try adjusting your search terms or filters.'),
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              color: isDark ? Colors.white54 : const Color(0xFF6B7280),
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF1B4D2E),
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                            onPressed: _clearSearchAndFilters,
+                            child: Text(tr(ref, 'Back to Categories')),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+
+                return Column(
+                  children: [
+                    for (int i = 0; i < filteredCourses.length; i++) ...[
+                      _PrototypeCourseCard(course: filteredCourses[i], index: i),
+                      if (i < filteredCourses.length - 1) const SizedBox(height: 16),
+                    ],
+                  ],
+                );
+              },
+              loading: () => Column(
+                children: const [
+                  ShimmerCourseCard(),
+                  SizedBox(height: 14),
+                  ShimmerCourseCard(),
+                ],
+              ),
+              error: (err, _) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 30),
+                child: Center(
+                  child: Column(
+                    children: [
+                      const Icon(Icons.error_outline_rounded, size: 36, color: Colors.redAccent),
+                      const SizedBox(height: 10),
+                      Text(tr(ref, 'Unable to load results')),
+                      const SizedBox(height: 8),
+                      TextButton(
+                        onPressed: () => ref.invalidate(studentCatalogProvider),
+                        child: Text(tr(ref, 'Try Again')),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 30),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickFilterPill(String title, bool isDark) {
+    final isSelected = _selectedQuickFilter == title;
+    return InkWell(
+      onTap: () => _applyQuickFilter(title),
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? const Color(0xFF1B4D2E)
+              : (isDark ? AppColors.cardDark : Colors.white),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected
+                ? const Color(0xFF1B4D2E)
+                : (isDark ? AppColors.lineDark : const Color(0xFFE5ECE5)),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Text(
+          title,
+          style: TextStyle(
+            fontSize: 12.5,
+            fontWeight: FontWeight.w700,
+            color: isSelected
+                ? Colors.white
+                : (isDark ? Colors.white70 : const Color(0xFF374151)),
           ),
         ),
       ),
@@ -1188,37 +1230,75 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
 
   IconData _getCategoryIcon(String name) {
     final lower = name.toLowerCase();
-    if (lower.contains('crop') || lower.contains('plant')) return Icons.grass_rounded;
-    if (lower.contains('soil') || lower.contains('land')) return Icons.landscape_rounded;
-    if (lower.contains('water') || lower.contains('irrig') || lower.contains('hydro')) return Icons.water_drop_rounded;
-    if (lower.contains('pest') || lower.contains('protect')) return Icons.pest_control_rounded;
-    if (lower.contains('organic') || lower.contains('eco')) return Icons.eco_rounded;
-    if (lower.contains('tech') || lower.contains('drone') || lower.contains('modern')) return Icons.precision_manufacturing_rounded;
-    if (lower.contains('hort') || lower.contains('fruit')) return Icons.local_florist_rounded;
-    if (lower.contains('animal') || lower.contains('dairy') || lower.contains('livestock')) return Icons.pets_rounded;
+    if (lower.contains('crop') || lower.contains('plant') || lower.contains('prod')) {
+      return Icons.agriculture_rounded;
+    } else if (lower.contains('water') || lower.contains('irrig') || lower.contains('hydro')) {
+      return Icons.water_drop_rounded;
+    } else if (lower.contains('pest') || lower.contains('protect')) {
+      return Icons.pest_control_rounded;
+    } else if (lower.contains('organic') || lower.contains('soil')) {
+      return Icons.eco_rounded;
+    } else if (lower.contains('animal') || lower.contains('dairy') || lower.contains('husbandry')) {
+      return Icons.pets_rounded;
+    } else if (lower.contains('tech') || lower.contains('machin')) {
+      return Icons.precision_manufacturing_rounded;
+    } else if (lower.contains('horticult') || lower.contains('fruit') || lower.contains('veget')) {
+      return Icons.local_florist_rounded;
+    } else if (lower.contains('climate') || lower.contains('weather')) {
+      return Icons.cloud_outlined;
+    }
     return Icons.eco_outlined;
+  }
+
+  Color _getCategoryBg(int index, bool isDark) {
+    if (isDark) return const Color(0xFF1F2D24);
+    const tints = [
+      Color(0xFFE8F5E9), // Crops / light green
+      Color(0xFFE1F5FE), // Water / light cyan
+      Color(0xFFE8F8F5), // Pests / light teal
+      Color(0xFFF1F8E9), // Organic / light lime
+      Color(0xFFFFF3E0), // Animal / light orange
+      Color(0xFFF3E5F5), // Tech / light purple
+      Color(0xFFFFEBEE), // Horticulture / light pink
+      Color(0xFFECEFF1), // Climate / light blue-grey
+    ];
+    return tints[index % tints.length];
+  }
+
+  Color _getCategoryColor(int index, bool isDark) {
+    if (isDark) return const Color(0xFF86EFAC);
+    const colors = [
+      Color(0xFF2E7D32), // Crops
+      Color(0xFF0288D1), // Water
+      Color(0xFF00897B), // Pests
+      Color(0xFF558B2F), // Organic
+      Color(0xFFE65100), // Animal
+      Color(0xFF7B1FA2), // Tech
+      Color(0xFFC2185B), // Horticulture
+      Color(0xFF455A64), // Climate
+    ];
+    return colors[index % colors.length];
   }
 }
 
-class _CatalogCourseCard extends ConsumerWidget {
-  const _CatalogCourseCard({required this.course});
+// ═════════════════════════════════════════════════════════════════════════════
+// PROTOTYPE COURSE CARD (Matches Screen 11 & Screen 13 Large Card)
+// ═════════════════════════════════════════════════════════════════════════════
+class _PrototypeCourseCard extends StatelessWidget {
+  const _PrototypeCourseCard({required this.course, required this.index});
 
   final CourseList course;
+  final int index;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final isWishlisted = ref.watch(isWishlistedProvider(course.id ?? ''));
-    final isEnrolled = ref.watch(isCourseEnrolledProvider(course.id ?? '')) ||
-        (course.slug != null && ref.watch(isCourseEnrolledProvider(course.slug!)));
-
-    final priceText = course.price == null || course.price == '0' || course.price == '0.00'
-        ? 'Free'
-        : '₹${course.price}';
-
-    final categoryName = course.category?.name ?? 'Agriculture';
-    final instructorName = course.instructorName ?? 'Instructor';
-    final totalLectures = course.totalLectures ?? 1;
+    final isFree = course.price == null ||
+        course.price == '0' ||
+        course.price == '0.00' ||
+        course.price == '0.0';
+    final priceText = isFree ? 'FREE' : '₹${course.price}';
+    final badgeLabel = isFree ? 'Free course' : (index % 2 == 0 ? 'Beginner' : 'Bestseller');
 
     return Material(
       color: Colors.transparent,
@@ -1226,73 +1306,80 @@ class _CatalogCourseCard extends ConsumerWidget {
         onTap: () {
           context.push('/farmer/course/${course.id}');
         },
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         child: Container(
-          padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
             color: isDark ? AppColors.cardDark : Colors.white,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: isDark
-                  ? AppColors.lineDark
-                  : AppColors.editorialOutlineVariant.withValues(alpha: 0.25),
+              color: isDark ? AppColors.lineDark : const Color(0xFFE5ECE5),
               width: 1,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.035),
-                blurRadius: 10,
-                offset: const Offset(0, 3),
+                color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
               ),
             ],
           ),
-          child: Row(
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Left: Compact Thumbnail with rounded corners & Category badge
+              // Top Thumbnail Container with Bestseller/Free Badge
               ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: SizedBox(
-                  width: 88,
-                  height: 88,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                child: AspectRatio(
+                  aspectRatio: 16 / 9,
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
                       Container(
-                        color: const Color(0xFF1B2E21),
+                        color: isDark ? const Color(0xFF24242A) : const Color(0xFFE9EFE9),
                         child: course.thumbnail != null && course.thumbnail!.isNotEmpty
                             ? Image.network(
                                 course.thumbnail!,
                                 fit: BoxFit.cover,
                                 errorBuilder: (_, __, ___) => const Center(
-                                  child: Icon(Icons.school, size: 32, color: AppColors.editorialSecondary),
+                                  child: Icon(
+                                    Icons.spa_rounded,
+                                    size: 48,
+                                    color: Color(0xFF86EFAC),
+                                  ),
                                 ),
                               )
                             : const Center(
-                                child: Icon(Icons.school, size: 32, color: AppColors.editorialSecondary),
+                                child: Icon(
+                                  Icons.spa_rounded,
+                                  size: 48,
+                                  color: Color(0xFF86EFAC),
+                                ),
                               ),
                       ),
-                      // Category Tag bottom of thumbnail
+                      // Top Left Badge Pill
                       Positioned(
-                        bottom: 4,
-                        left: 4,
-                        right: 4,
+                        top: 12,
+                        left: 12,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                           decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.72),
-                            borderRadius: BorderRadius.circular(4),
+                            color: isFree ? const Color(0xFFFEF3C7) : const Color(0xFFFDE68A),
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.08),
+                                blurRadius: 4,
+                                offset: const Offset(0, 1),
+                              ),
+                            ],
                           ),
                           child: Text(
-                            categoryName,
+                            badgeLabel,
                             style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 8.5,
+                              color: Color(0xFF92400E),
+                              fontSize: 11,
                               fontWeight: FontWeight.w700,
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.center,
                           ),
                         ),
                       ),
@@ -1300,170 +1387,76 @@ class _CatalogCourseCard extends ConsumerWidget {
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
 
-              // Right: Udemy Compact Course Info
-              Expanded(
-                child: SizedBox(
-                  height: 88,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      // Title & Wishlist Heart Row
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              course.title,
-                              style: TextStyle(
-                                fontSize: 13.5,
-                                fontWeight: FontWeight.w700,
-                                height: 1.25,
-                                letterSpacing: -0.2,
-                                color: isDark ? Colors.white : AppColors.editorialOnSurface,
-                              ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              onTap: () async {
-                                final preview = ApiWishlistItem(
-                                  id: '',
-                                  targetId: course.id ?? '',
-                                  type: 'course',
-                                  title: course.title,
-                                  slug: course.slug ?? '',
-                                  thumbnail: course.thumbnail,
-                                  price: course.price ?? '0.00',
-                                  category: categoryName,
-                                  rating: 4.8,
-                                );
-                                final inWishlist = await ref
-                                    .read(wishlistProvider.notifier)
-                                    .toggleCourse(course.id ?? '', previewItem: preview);
-                                if (context.mounted) {
-                                  AppToast.showWishlistToast(
-                                    context,
-                                    isAdded: inWishlist,
-                                  );
-                                }
-                              },
-                              borderRadius: BorderRadius.circular(16),
-                              child: Padding(
-                                padding: const EdgeInsets.all(2),
-                                child: Icon(
-                                  isWishlisted ? Icons.favorite : Icons.favorite_border,
-                                  color: isWishlisted ? Colors.redAccent : (isDark ? Colors.white54 : Colors.grey.shade500),
-                                  size: 18,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
+              // Bottom Details Section
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Course Title
+                    Text(
+                      course.title,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        height: 1.25,
+                        letterSpacing: -0.3,
+                        color: isDark ? Colors.white : const Color(0xFF192A1D),
                       ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 6),
 
-                      // Instructor & Enrolled Badge
-                      Row(
-                        children: [
-                          Text(
-                            instructorName,
-                            style: TextStyle(
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w500,
-                              color: isDark ? Colors.white60 : AppColors.editorialOnSurfaceVariant,
+                    // Instructor Row
+                    Text(
+                      'By ${course.instructorName ?? "IAGROW Agriculture Experts"}',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w500,
+                        color: isDark ? Colors.white60 : const Color(0xFF6B7280),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Rating & Price Row
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.star_rounded,
+                              size: 17,
+                              color: Color(0xFFF59E0B),
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          if (isEnrolled) ...[
-                            const SizedBox(width: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-                              decoration: BoxDecoration(
-                                color: AppColors.editorialSecondary.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: const Text(
-                                'Enrolled',
-                                style: TextStyle(
-                                  fontSize: 9.5,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.editorialSecondary,
-                                ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '4.8 (248)',
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.bold,
+                                color: isDark ? Colors.white70 : const Color(0xFF374151),
                               ),
                             ),
                           ],
-                        ],
-                      ),
-
-                      // Meta Specs & Price
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            children: [
-                              const Icon(Icons.star_rounded, size: 14, color: Color(0xFFFBBF24)),
-                              const SizedBox(width: 2),
-                              Text(
-                                '4.8',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                  color: isDark ? Colors.white : AppColors.editorialOnSurface,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                '•',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: isDark ? Colors.white38 : Colors.grey.shade400,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                '$totalLectures lec',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: isDark ? Colors.white54 : AppColors.editorialOnSurfaceVariant,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                '•',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: isDark ? Colors.white38 : Colors.grey.shade400,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                _formatCourseDuration(course.totalDuration),
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: isDark ? Colors.white54 : AppColors.editorialOnSurfaceVariant,
-                                ),
-                              ),
-                            ],
+                        ),
+                        Text(
+                          priceText,
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w800,
+                            color: isFree
+                                ? const Color(0xFF1B4D2E)
+                                : (isDark ? const Color(0xFF86EFAC) : const Color(0xFF1B4D2E)),
                           ),
-                          Text(
-                            priceText,
-                            style: TextStyle(
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.w800,
-                              color: isDark ? Colors.white : AppColors.editorialOnSurface,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -1471,21 +1464,5 @@ class _CatalogCourseCard extends ConsumerWidget {
         ),
       ),
     );
-  }
-
-  String _formatCourseDuration(String? totalDuration) {
-    if (totalDuration == null || totalDuration.trim().isEmpty) return '0 mins';
-    final parsed = double.tryParse(totalDuration.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0.0;
-    final totalMinutes = parsed.round();
-    if (totalMinutes <= 0) return '0 mins';
-    if (totalMinutes < 60) {
-      return '$totalMinutes mins';
-    }
-    final hours = totalMinutes ~/ 60;
-    final remainingMinutes = totalMinutes % 60;
-    if (remainingMinutes == 0) {
-      return '$hours ${hours == 1 ? "hr" : "hrs"}';
-    }
-    return '$hours hr $remainingMinutes mins';
   }
 }
