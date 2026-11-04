@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -535,11 +537,23 @@ class GoRouterRefreshStream extends ChangeNotifier {
 
 /// Builds a smooth right-to-left slide transition page with an opaque background
 /// so that old screens do not shine through during transitions.
-CustomTransitionPage<T> _buildSlideRightPage<T>({
+/// On iOS (or macOS), returns a [CupertinoPage] to guarantee native left-edge
+/// swipe-to-pop gesture navigation across the entire application.
+Page<T> _buildSlideRightPage<T>({
   required BuildContext context,
   required GoRouterState state,
   required Widget child,
 }) {
+  final isApplePlatform = defaultTargetPlatform == TargetPlatform.iOS ||
+      defaultTargetPlatform == TargetPlatform.macOS;
+
+  if (isApplePlatform) {
+    return CupertinoPage<T>(
+      key: state.pageKey,
+      child: child,
+    );
+  }
+
   final isDark = Theme.of(context).brightness == Brightness.dark;
   final surfaceColor = isDark ? Colors.black : const Color(0xFFFBF9F9);
 
