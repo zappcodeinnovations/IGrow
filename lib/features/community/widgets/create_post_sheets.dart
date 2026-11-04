@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
+import '../../../core/localization/app_strings.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_time_picker.dart';
 import '../../../data/models/api_models/course_models.dart';
@@ -238,7 +239,7 @@ class _GeneralPostModalState extends ConsumerState<_GeneralPostModal> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return _ModalWrapper(
-      title: 'Create General Post',
+      title: tr(ref, 'Create General Post'),
       icon: Icons.edit_note_rounded,
       badgeColor: const Color(0xFF16A34A),
       child: Column(
@@ -248,9 +249,9 @@ class _GeneralPostModalState extends ConsumerState<_GeneralPostModal> {
             controller: _titleController,
             style: TextStyle(color: isDark ? Colors.white : AppColors.inkDark),
             decoration: InputDecoration(
-              labelText: 'Topic / Title (Optional)',
+              labelText: tr(ref, 'Topic / Title (Optional)'),
               labelStyle: TextStyle(color: isDark ? Colors.white70 : AppColors.inkSoft),
-              hintText: 'e.g. Winter crop sowing tips',
+              hintText: tr(ref, 'e.g. Winter crop sowing tips'),
               filled: true,
               fillColor: isDark ? Colors.black26 : const Color(0xFFF7FAF6),
               border: OutlineInputBorder(
@@ -269,10 +270,10 @@ class _GeneralPostModalState extends ConsumerState<_GeneralPostModal> {
             maxLines: 5,
             style: TextStyle(color: isDark ? Colors.white : AppColors.inkDark),
             decoration: InputDecoration(
-              labelText: 'Share advice, tips or updates with farmers *',
+              labelText: tr(ref, 'Share advice, tips or updates with farmers *'),
               alignLabelWithHint: true,
               labelStyle: TextStyle(color: isDark ? Colors.white70 : AppColors.inkSoft),
-              hintText: 'Write your agricultural guidance here...',
+              hintText: tr(ref, 'Write your agricultural guidance here...'),
               filled: true,
               fillColor: isDark ? Colors.black26 : const Color(0xFFF7FAF6),
               border: OutlineInputBorder(
@@ -329,7 +330,7 @@ class _GeneralPostModalState extends ConsumerState<_GeneralPostModal> {
                     ),
                     onPressed: () => _pickImage(ImageSource.gallery),
                     icon: const Icon(Icons.photo_library_outlined, size: 18, color: Color(0xFF16A34A)),
-                    label: const Text('Add Image'),
+                    label: Text(tr(ref, 'Add Image')),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -343,7 +344,7 @@ class _GeneralPostModalState extends ConsumerState<_GeneralPostModal> {
                     ),
                     onPressed: () => _pickImage(ImageSource.camera),
                     icon: const Icon(Icons.camera_alt_outlined, size: 18, color: Color(0xFF16A34A)),
-                    label: const Text('Take Photo'),
+                    label: Text(tr(ref, 'Take Photo')),
                   ),
                 ),
               ],
@@ -365,7 +366,7 @@ class _GeneralPostModalState extends ConsumerState<_GeneralPostModal> {
                       height: 22,
                       child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                     )
-                  : const Text('Publish Post', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                  : Text(tr(ref, 'Publish Post'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
             ),
           ),
         ],
@@ -457,7 +458,7 @@ class _AnnouncementModalState extends ConsumerState<_AnnouncementModal> {
     final coursesAsync = ref.watch(instructorCoursesProvider((search: '', ordering: '')));
 
     return _ModalWrapper(
-      title: 'Publish Course Announcement',
+      title: tr(ref, 'Publish Course Announcement'),
       icon: Icons.campaign_rounded,
       badgeColor: const Color(0xFF9333EA),
       child: Column(
@@ -465,7 +466,7 @@ class _AnnouncementModalState extends ConsumerState<_AnnouncementModal> {
         children: [
           // Course Selector Dropdown
           Text(
-            'Select Live Course *',
+            tr(ref, 'Select Live Course *'),
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
@@ -520,7 +521,7 @@ class _AnnouncementModalState extends ConsumerState<_AnnouncementModal> {
                     isExpanded: true,
                     dropdownColor: isDark ? const Color(0xFF1D2B22) : Colors.white,
                     value: _selectedCourse,
-                    hint: Text('Choose an approved course...', style: TextStyle(color: isDark ? Colors.white54 : AppColors.inkSoft)),
+                    hint: Text(tr(ref, 'Choose an approved course...'), style: TextStyle(color: isDark ? Colors.white54 : AppColors.inkSoft)),
                     items: approvedCourses.map((course) {
                       return DropdownMenuItem<ApiCourseList>(
                         value: course,
@@ -624,9 +625,9 @@ class _AnnouncementModalState extends ConsumerState<_AnnouncementModal> {
             controller: _titleController,
             style: TextStyle(color: isDark ? Colors.white : AppColors.inkDark),
             decoration: InputDecoration(
-              labelText: 'Announcement Title (Optional)',
+              labelText: tr(ref, 'Announcement Title (Optional)'),
               labelStyle: TextStyle(color: isDark ? Colors.white70 : AppColors.inkSoft),
-              hintText: 'e.g. Special Discount on Drip Irrigation Course!',
+              hintText: tr(ref, 'e.g. Special Discount on Drip Irrigation Course!'),
               filled: true,
               fillColor: isDark ? Colors.black26 : const Color(0xFFF7FAF6),
               border: OutlineInputBorder(
@@ -645,10 +646,10 @@ class _AnnouncementModalState extends ConsumerState<_AnnouncementModal> {
             maxLines: 4,
             style: TextStyle(color: isDark ? Colors.white : AppColors.inkDark),
             decoration: InputDecoration(
-              labelText: 'Announcement Message *',
+              labelText: tr(ref, 'Announcement Message *'),
               alignLabelWithHint: true,
               labelStyle: TextStyle(color: isDark ? Colors.white70 : AppColors.inkSoft),
-              hintText: 'e.g. Enroll today and learn precision soil care with practical video modules.',
+              hintText: tr(ref, 'e.g. Enroll today and learn precision soil care with practical video modules.'),
               filled: true,
               fillColor: isDark ? Colors.black26 : const Color(0xFFF7FAF6),
               border: OutlineInputBorder(
@@ -678,7 +679,7 @@ class _AnnouncementModalState extends ConsumerState<_AnnouncementModal> {
                       height: 22,
                       child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                     )
-                  : const Text('Post Announcement', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                  : Text(tr(ref, 'Post Announcement'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
             ),
           ),
         ],
@@ -793,7 +794,7 @@ class _WebinarModalState extends ConsumerState<_WebinarModal> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return _ModalWrapper(
-      title: 'Schedule Online Webinar',
+      title: tr(ref, 'Schedule Online Webinar'),
       icon: Icons.videocam_rounded,
       badgeColor: const Color(0xFF2563EB),
       child: Column(
@@ -803,9 +804,9 @@ class _WebinarModalState extends ConsumerState<_WebinarModal> {
             controller: _titleController,
             style: TextStyle(color: isDark ? Colors.white : AppColors.inkDark),
             decoration: InputDecoration(
-              labelText: 'Webinar Topic / Title *',
+              labelText: tr(ref, 'Webinar Topic / Title *'),
               labelStyle: TextStyle(color: isDark ? Colors.white70 : AppColors.inkSoft),
-              hintText: 'e.g. Live Q&A: Controlling Pink Bollworm in Cotton',
+              hintText: tr(ref, 'e.g. Live Q&A: Controlling Pink Bollworm in Cotton'),
               filled: true,
               fillColor: isDark ? Colors.black26 : const Color(0xFFF7FAF6),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
@@ -831,7 +832,7 @@ class _WebinarModalState extends ConsumerState<_WebinarModal> {
                     child: Text(
                       _eventDate != null && _eventTime != null
                           ? '${_eventDate!.day}/${_eventDate!.month}/${_eventDate!.year} at ${_eventTime!.format(context)}'
-                          : 'Select Scheduled Date & Time *',
+                          : tr(ref, 'Select Scheduled Date & Time *'),
                       style: TextStyle(
                         fontWeight: _eventDate != null ? FontWeight.bold : FontWeight.normal,
                         color: _eventDate != null
@@ -850,7 +851,7 @@ class _WebinarModalState extends ConsumerState<_WebinarModal> {
             controller: _linkController,
             style: TextStyle(color: isDark ? Colors.white : AppColors.inkDark),
             decoration: InputDecoration(
-              labelText: 'Meeting Link (Zoom, Meet, YouTube Live) *',
+              labelText: tr(ref, 'Meeting Link (Zoom, Meet, YouTube Live) *'),
               labelStyle: TextStyle(color: isDark ? Colors.white70 : AppColors.inkSoft),
               hintText: 'https://meet.google.com/xyz-abcd-efg',
               filled: true,
@@ -864,9 +865,9 @@ class _WebinarModalState extends ConsumerState<_WebinarModal> {
             maxLines: 3,
             style: TextStyle(color: isDark ? Colors.white : AppColors.inkDark),
             decoration: InputDecoration(
-              labelText: 'Webinar Agenda & Details (Optional)',
+              labelText: tr(ref, 'Webinar Agenda & Details (Optional)'),
               labelStyle: TextStyle(color: isDark ? Colors.white70 : AppColors.inkSoft),
-              hintText: 'Join me live to discuss seasonal prevention techniques...',
+              hintText: tr(ref, 'Join me live to discuss seasonal prevention techniques...'),
               filled: true,
               fillColor: isDark ? Colors.black26 : const Color(0xFFF7FAF6),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
@@ -889,7 +890,7 @@ class _WebinarModalState extends ConsumerState<_WebinarModal> {
                       height: 22,
                       child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                     )
-                  : const Text('Schedule Webinar', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                  : Text(tr(ref, 'Schedule Webinar'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
             ),
           ),
         ],
@@ -1007,7 +1008,7 @@ class _SeminarModalState extends ConsumerState<_SeminarModal> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return _ModalWrapper(
-      title: 'Host Offline Farmer Seminar',
+      title: tr(ref, 'Host Offline Farmer Seminar'),
       icon: Icons.groups_rounded,
       badgeColor: const Color(0xFFD97706),
       child: Column(
@@ -1017,9 +1018,9 @@ class _SeminarModalState extends ConsumerState<_SeminarModal> {
             controller: _titleController,
             style: TextStyle(color: isDark ? Colors.white : AppColors.inkDark),
             decoration: InputDecoration(
-              labelText: 'Event Title *',
+              labelText: tr(ref, 'Event Title *'),
               labelStyle: TextStyle(color: isDark ? Colors.white70 : AppColors.inkSoft),
-              hintText: 'e.g. District Krishi Melawa & Soil Testing Camp',
+              hintText: tr(ref, 'e.g. District Krishi Melawa & Soil Testing Camp'),
               filled: true,
               fillColor: isDark ? Colors.black26 : const Color(0xFFF7FAF6),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
@@ -1045,7 +1046,7 @@ class _SeminarModalState extends ConsumerState<_SeminarModal> {
                     child: Text(
                       _eventDate != null && _eventTime != null
                           ? '${_eventDate!.day}/${_eventDate!.month}/${_eventDate!.year} at ${_eventTime!.format(context)}'
-                          : 'Select Event Date & Time *',
+                          : tr(ref, 'Select Event Date & Time *'),
                       style: TextStyle(
                         fontWeight: _eventDate != null ? FontWeight.bold : FontWeight.normal,
                         color: _eventDate != null
@@ -1065,10 +1066,10 @@ class _SeminarModalState extends ConsumerState<_SeminarModal> {
             maxLines: 2,
             style: TextStyle(color: isDark ? Colors.white : AppColors.inkDark),
             decoration: InputDecoration(
-              labelText: 'Venue Name & Physical Address *',
+              labelText: tr(ref, 'Venue Name & Physical Address *'),
               alignLabelWithHint: true,
               labelStyle: TextStyle(color: isDark ? Colors.white70 : AppColors.inkSoft),
-              hintText: 'e.g. APMC Mandi Hall, Market Yard, Nagpur Road',
+              hintText: tr(ref, 'e.g. APMC Mandi Hall, Market Yard, Nagpur Road'),
               filled: true,
               fillColor: isDark ? Colors.black26 : const Color(0xFFF7FAF6),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
@@ -1079,7 +1080,7 @@ class _SeminarModalState extends ConsumerState<_SeminarModal> {
             controller: _mapsLinkController,
             style: TextStyle(color: isDark ? Colors.white : AppColors.inkDark),
             decoration: InputDecoration(
-              labelText: 'Google Maps Link / URL (Optional)',
+              labelText: tr(ref, 'Google Maps Link / URL (Optional)'),
               labelStyle: TextStyle(color: isDark ? Colors.white70 : AppColors.inkSoft),
               hintText: 'https://maps.google.com/?q=...',
               filled: true,
@@ -1093,9 +1094,9 @@ class _SeminarModalState extends ConsumerState<_SeminarModal> {
             maxLines: 3,
             style: TextStyle(color: isDark ? Colors.white : AppColors.inkDark),
             decoration: InputDecoration(
-              labelText: 'Event Highlights & Instructions (Optional)',
+              labelText: tr(ref, 'Event Highlights & Instructions (Optional)'),
               labelStyle: TextStyle(color: isDark ? Colors.white70 : AppColors.inkSoft),
-              hintText: 'Bring soil samples for complimentary pH testing...',
+              hintText: tr(ref, 'Bring soil samples for complimentary pH testing...'),
               filled: true,
               fillColor: isDark ? Colors.black26 : const Color(0xFFF7FAF6),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
@@ -1118,7 +1119,7 @@ class _SeminarModalState extends ConsumerState<_SeminarModal> {
                       height: 22,
                       child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                     )
-                  : const Text('Publish Seminar', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                  : Text(tr(ref, 'Publish Seminar'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
             ),
           ),
         ],

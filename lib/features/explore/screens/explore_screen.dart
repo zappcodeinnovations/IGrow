@@ -622,11 +622,12 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
     String? categoryDisplayName;
     if (_selectedCategory != 'all' && categories != null) {
       try {
-        categoryDisplayName = categories
+        final catName = categories
             .firstWhere((c) => c.id == _selectedCategory || c.name.toLowerCase() == _selectedCategory.toLowerCase())
             .name;
+        categoryDisplayName = tr(ref, catName);
       } catch (_) {
-        categoryDisplayName = _selectedCategory;
+        categoryDisplayName = tr(ref, _selectedCategory);
       }
     }
 
@@ -834,7 +835,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                             const SizedBox(width: 12),
                             Expanded(
                               child: Text(
-                                cat.name,
+                                tr(ref, cat.name),
                                 style: TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w700,

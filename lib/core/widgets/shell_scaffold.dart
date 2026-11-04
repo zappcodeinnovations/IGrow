@@ -229,8 +229,8 @@ class _ShellScaffoldState extends ConsumerState<ShellScaffold> {
                     children: [
                       ListTile(
                         leading: const Icon(Icons.video_library, color: AppColors.primaryGreen),
-                        title: const Text('Upload Course'),
-                        subtitle: const Text('Upload video lectures and create a new course.'),
+                        title: Text(tr(ref, 'Upload Course')),
+                        subtitle: Text(tr(ref, 'Upload video lectures and create a new course.')),
                         onTap: () {
                           Navigator.pop(context);
                           context.push('/instructor/upload');
@@ -238,8 +238,8 @@ class _ShellScaffoldState extends ConsumerState<ShellScaffold> {
                       ),
                       ListTile(
                         leading: const Icon(Icons.menu_book, color: AppColors.primaryGreen),
-                        title: const Text('Upload Ebook'),
-                        subtitle: const Text('Upload a PDF or Word document.'),
+                        title: Text(tr(ref, 'Upload Ebook')),
+                        subtitle: Text(tr(ref, 'Upload a PDF or Word document.')),
                         onTap: () {
                           Navigator.pop(context);
                           context.push('/instructor/upload-ebook');

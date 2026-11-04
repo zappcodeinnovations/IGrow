@@ -61,14 +61,14 @@ class EbooksTab extends ConsumerWidget {
                         ),
                         const SizedBox(height: 12),
                         Text(
-                          isFiltering ? 'No Matching E-Books' : 'No E-Books Available',
+                          isFiltering ? tr(ref, 'No Matching E-Books') : tr(ref, 'No E-Books Available'),
                           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 6),
                         Text(
                           isFiltering
-                              ? 'No e-books found matching the selected instructor or search keywords.'
-                              : 'Agricultural e-books and farming guides will appear here soon.',
+                              ? tr(ref, 'No e-books found matching the selected instructor or search keywords.')
+                              : tr(ref, 'Agricultural e-books and farming guides will appear here soon.'),
                           textAlign: TextAlign.center,
                           style: const TextStyle(fontSize: 13, color: AppColors.inkSoft),
                         ),

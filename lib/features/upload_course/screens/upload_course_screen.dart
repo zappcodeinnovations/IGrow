@@ -1286,9 +1286,9 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
           _buildFieldLabel(tr(ref, 'Course Title *')),
           TextField(
             controller: _titleController,
-            decoration: const InputDecoration(
-              hintText: 'e.g., Advanced Hydroponics for Urban Farmers',
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              hintText: tr(ref, 'e.g., Advanced Hydroponics for Urban Farmers'),
+              border: const OutlineInputBorder(),
             ),
           ),
           const SizedBox(height: 18),
@@ -1298,9 +1298,9 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
           TextField(
             controller: _shortDescController,
             maxLines: 2,
-            decoration: const InputDecoration(
-              hintText: 'A brief 1-2 sentence overview of the course...',
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              hintText: tr(ref, 'A brief 1-2 sentence overview of the course...'),
+              border: const OutlineInputBorder(),
             ),
           ),
           const SizedBox(height: 18),
@@ -1310,9 +1310,9 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
           TextField(
             controller: _descController,
             maxLines: 4,
-            decoration: const InputDecoration(
-              hintText: 'Provide a detailed description of what students will learn...',
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              hintText: tr(ref, 'Provide a detailed description of what students will learn...'),
+              border: const OutlineInputBorder(),
             ),
           ),
           const SizedBox(height: 20),

@@ -193,8 +193,8 @@ class AppNavigationDrawer extends ConsumerWidget {
                     context: context,
                     icon: Icons.logout_rounded,
                     title: tr(ref, 'Log Out'),
-                    iconColor: AppColors.error,
-                    textColor: AppColors.error,
+                    iconColor: isDark ? Colors.white70 : AppColors.editorialOnSurfaceVariant,
+                    textColor: isDark ? Colors.white : AppColors.editorialOnSurface,
                     isDark: isDark,
                     onTap: () {
                       Navigator.of(context).pop();
