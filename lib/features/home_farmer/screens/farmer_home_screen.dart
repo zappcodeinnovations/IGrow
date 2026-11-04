@@ -95,431 +95,350 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
     final weatherAsync = ref.watch(weatherProvider);
     final weatherData = weatherAsync.valueOrNull;
 
-    return RefreshIndicator(
-      onRefresh: _refreshDashboard,
-      color: AppColors.primaryGreen,
-      backgroundColor: isDark ? AppColors.cardDark : AppColors.white,
-      displacement: 60,
-      child: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── 1. Curved Forest Green Header matching Screen 11 ──────────────────────
-            Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF143E24) : const Color(0xFF1B4D2E),
-                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(32)),
-              ),
-              padding: EdgeInsets.only(
-                top: MediaQuery.of(context).padding.top + 12,
-                left: 20,
-                right: 20,
-                bottom: 24,
-              ),
+    return SafeArea(
+        child: RefreshIndicator(
+          onRefresh: _refreshDashboard,
+          color: AppColors.primaryGreen,
+          backgroundColor: isDark ? AppColors.cardDark : AppColors.white,
+          displacement: 60,
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            child: ResponsiveContentConstraint(
+              maxWidth: 1040,
+              padding: EdgeInsets.zero,
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ── 1. Top Navigation Bar (Stitch Exact Match) ──────────────────────
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Brand Header Row: Menu/Sprout Icon + "iAGROW ACADEMY" + Actions (Bell, Cart, Profile)
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
-                        children: [
-                          InkWell(
-                            onTap: () {
-                              if (shellScaffoldKey.currentState != null) {
-                                shellScaffoldKey.currentState!.openDrawer();
-                              } else {
-                                Scaffold.of(context).openDrawer();
-                              }
-                            },
+                      InkWell(
+                        onTap: () {
+                          if (shellScaffoldKey.currentState != null) {
+                            shellScaffoldKey.currentState!.openDrawer();
+                          } else {
+                            Scaffold.of(context).openDrawer();
+                          }
+                        },
                             borderRadius: BorderRadius.circular(9999),
                             child: Container(
-                              width: 36,
-                              height: 36,
+                              width: 42,
+                              height: 42,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: Colors.white.withValues(alpha: 0.12),
+                                color: isDark ? AppColors.cardDark : AppColors.editorialSurfaceContainerLow,
                               ),
-                              child: const Icon(
+                              child: Icon(
                                 Icons.menu_rounded,
-                                size: 20,
-                                color: Colors.white,
+                                size: 22,
+                                color: isDark ? Colors.white : AppColors.editorialOnSurface,
                               ),
                             ),
                           ),
-                          const SizedBox(width: 10),
-                          const Icon(
-                            Icons.eco_rounded,
-                            size: 18,
-                            color: Color(0xFF86EFAC),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            'IAGROW ACADEMY',
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 1.1,
-                              color: Color(0xFF86EFAC),
-                            ),
-                          ),
-                        ],
+                      const SizedBox(width: 8),
+                      Text(
+                        'iAgrow',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                          letterSpacing: -0.5,
+                        ),
                       ),
-                      Row(
-                        children: [
-                          // Notification Bell
-                          InkWell(
-                            onTap: () => context.push(RouteNames.notifications),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      // Notification Bell Badge Button
+                      InkWell(
+                        onTap: () => context.push(RouteNames.notifications),
+                        borderRadius: BorderRadius.circular(9999),
+                        child: Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: isDark ? AppColors.cardDark : AppColors.editorialSurfaceContainerLow,
+                          ),
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              Icon(
+                                Icons.notifications_outlined,
+                                size: 21,
+                                color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                              ),
+                              if (ref.watch(unreadNotificationsCountProvider) > 0)
+                                Positioned(
+                                  top: 10,
+                                  right: 10,
+                                  child: Container(
+                                    width: 7,
+                                    height: 7,
+                                    decoration: const BoxDecoration(
+                                      color: AppColors.editorialSecondary,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+
+                      // Wishlist Heart Badge Button
+                      Consumer(
+                        builder: (context, ref, child) {
+                          final wishlistCount = ref.watch(wishlistProvider).maybeWhen(
+                            data: (items) => items.length,
+                            orElse: () => 0,
+                          );
+                          return InkWell(
+                            onTap: () => context.push(RouteNames.wishlist),
                             borderRadius: BorderRadius.circular(9999),
                             child: Container(
-                              width: 36,
-                              height: 36,
+                              width: 42,
+                              height: 42,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: Colors.white.withValues(alpha: 0.12),
+                                color: isDark ? AppColors.cardDark : AppColors.editorialSurfaceContainerLow,
                               ),
                               child: Stack(
                                 alignment: Alignment.center,
                                 children: [
-                                  const Icon(
-                                    Icons.notifications_outlined,
-                                    size: 20,
-                                    color: Colors.white,
+                                  Icon(
+                                    Icons.favorite_border_rounded,
+                                    size: 21,
+                                    color: isDark ? Colors.white : AppColors.editorialOnSurface,
                                   ),
-                                  if (ref.watch(unreadNotificationsCountProvider) > 0)
+                                  if (wishlistCount > 0)
                                     Positioned(
                                       top: 8,
                                       right: 8,
                                       child: Container(
-                                        width: 7,
-                                        height: 7,
+                                        padding: const EdgeInsets.all(2.5),
                                         decoration: const BoxDecoration(
-                                          color: Color(0xFFFBBF24),
+                                          color: Colors.redAccent,
                                           shape: BoxShape.circle,
+                                        ),
+                                        constraints: const BoxConstraints(minWidth: 14, minHeight: 14),
+                                        child: Text(
+                                          '$wishlistCount',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 8.5,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                          textAlign: TextAlign.center,
                                         ),
                                       ),
                                     ),
                                 ],
                               ),
                             ),
+                          );
+                        },
+                      ),
+                      const SizedBox(width: 8),
+
+                      // Profile Avatar Pill
+                      InkWell(
+                        onTap: () => context.go(RouteNames.farmerProfile),
+                        borderRadius: BorderRadius.circular(9999),
+                        child: Container(
+                          width: 34,
+                          height: 34,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: isDark ? Colors.white : AppColors.editorialPrimary,
                           ),
-                          const SizedBox(width: 8),
-                          // Wishlist / Heart
-                          Consumer(
-                            builder: (context, ref, child) {
-                              final wishlistCount = ref.watch(wishlistProvider).maybeWhen(
-                                    data: (items) => items.length,
-                                    orElse: () => 0,
-                                  );
-                              return InkWell(
-                                onTap: () => context.push(RouteNames.wishlist),
-                                borderRadius: BorderRadius.circular(9999),
-                                child: Container(
-                                  width: 36,
-                                  height: 36,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: Colors.white.withValues(alpha: 0.12),
-                                  ),
-                                  child: Stack(
-                                    alignment: Alignment.center,
-                                    children: [
-                                      const Icon(
-                                        Icons.favorite_border_rounded,
-                                        size: 19,
-                                        color: Colors.white,
-                                      ),
-                                      if (wishlistCount > 0)
-                                        Positioned(
-                                          top: 6,
-                                          right: 6,
-                                          child: Container(
-                                            padding: const EdgeInsets.all(2.5),
-                                            decoration: const BoxDecoration(
-                                              color: Colors.redAccent,
-                                              shape: BoxShape.circle,
-                                            ),
-                                            constraints: const BoxConstraints(minWidth: 13, minHeight: 13),
-                                            child: Text(
-                                              '$wishlistCount',
-                                              style: const TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 8,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                              textAlign: TextAlign.center,
-                                            ),
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                          const SizedBox(width: 8),
-                          // Profile Avatar Pill
-                          InkWell(
-                            onTap: () => context.go(RouteNames.farmerProfile),
-                            borderRadius: BorderRadius.circular(9999),
-                            child: Container(
-                              width: 32,
-                              height: 32,
-                              decoration: const BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.white,
-                              ),
-                              child: const Center(
-                                child: Icon(
-                                  Icons.person,
-                                  size: 18,
-                                  color: Color(0xFF1B4D2E),
-                                ),
-                              ),
+                          child: Center(
+                            child: Icon(
+                              Icons.person,
+                              size: 18,
+                              color: isDark ? Colors.black : Colors.white,
                             ),
                           ),
-                        ],
+                        ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 20),
+                ],
+              ),
+              const SizedBox(height: 18),
 
-                  // Greeting Title with Namaste / Waving Hand
-                  Text(
-                    'Namaste, grow with knowledge',
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
-                      letterSpacing: -0.5,
-                      height: 1.2,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  const Text(
-                    '👋',
-                    style: TextStyle(fontSize: 22),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Learn farming from the best',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w400,
-                      color: Colors.white.withValues(alpha: 0.85),
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-
-                  // White Rounded Search Bar inside the Header
-                  Container(
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.12),
-                          blurRadius: 10,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: TextField(
-                      controller: _searchController,
-                      textInputAction: TextInputAction.search,
-                      onChanged: (val) {
-                        setState(() {
-                          _searchQuery = val.trim();
-                        });
-                      },
-                      decoration: InputDecoration(
-                        hintText: tr(ref, 'Search farming courses...'),
-                        hintStyle: const TextStyle(
-                          fontSize: 13.5,
-                          color: Color(0xFF888888),
-                        ),
-                        prefixIcon: const Icon(
-                          Icons.search_rounded,
-                          color: Color(0xFF666666),
-                          size: 20,
-                        ),
-                        suffixIcon: _searchQuery.isNotEmpty
-                            ? IconButton(
-                                icon: const Icon(Icons.clear_rounded, size: 18),
-                                color: const Color(0xFF666666),
-                                onPressed: () {
-                                  _searchController.clear();
-                                  setState(() {
-                                    _searchQuery = '';
-                                  });
-                                },
-                              )
-                            : null,
-                        border: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              // ── 2. Editorial Header & Micro Weather Indicator (Stitch Exact Match) ──
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  InkWell(
+                    onTap: () => ref.read(weatherProvider.notifier).refresh(),
+                    borderRadius: BorderRadius.circular(9999),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: isDark ? AppColors.cardDark : AppColors.editorialSurfaceContainerLow,
+                        borderRadius: BorderRadius.circular(9999),
                       ),
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: Color(0xFF1E1E1E),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            weatherData?.weatherIcon ?? Icons.wb_sunny,
+                            size: 16,
+                            color: AppColors.editorialSecondary,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            '${weatherData?.temperatureFormatted ?? "32°C"} ${(weatherData != null && weatherData.locationName.trim().isNotEmpty) ? weatherData.locationName : "Nagpur"}',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5,
+                              color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
                 ],
               ),
-            ),
+              const SizedBox(height: 10),
 
-            // ── 2. Body Content on Light/Dark Canvas ──────────────────────
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
-              child: ResponsiveContentConstraint(
-                maxWidth: 1040,
-                padding: EdgeInsets.zero,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // ── "Browse by category" Section (Matching Screen 11) ──────
-                    if (_searchQuery.isEmpty) ...[
+              // Time greeting and Title
+              Text(
+                '${tr(ref, _getTimeBasedGreeting())},',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w400,
+                  color: isDark ? Colors.white70 : AppColors.editorialOnSurfaceVariant,
+                  letterSpacing: -0.2,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                firstName,
+                style: TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                  height: 1.12,
+                  letterSpacing: -0.8,
+                  color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                ),
+              ),
+              const SizedBox(height: 18),
+
+              // ── Search Bar on Home ──
+              Container(
+                height: 48,
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.cardDark : Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: isDark ? AppColors.lineDark : const Color(0xFFE2EBE0),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.editorialSecondary.withValues(alpha: isDark ? 0.08 : 0.04),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: TextField(
+                  controller: _searchController,
+                  textInputAction: TextInputAction.search,
+                  onChanged: (val) {
+                    setState(() {
+                      _searchQuery = val.trim();
+                    });
+                  },
+                  decoration: InputDecoration(
+                    hintText: tr(ref, 'Search farming courses...'),
+                    hintStyle: TextStyle(
+                      fontSize: 14,
+                      color: AppColors.inkSoft,
+                    ),
+                    prefixIcon: Icon(Icons.search_rounded, color: AppColors.inkSoft, size: 20),
+                    suffixIcon: _searchQuery.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear_rounded, size: 18),
+                            color: AppColors.inkSoft,
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() {
+                                _searchQuery = '';
+                              });
+                            },
+                          )
+                        : null,
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  ),
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 22),
+
+              // ── Courses Showcase (Immediate Course Catalog on Home) ──
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       Text(
-                        tr(ref, 'Browse by category'),
+                        _searchQuery.isNotEmpty
+                            ? '${tr(ref, "Search Results")} (${tr(ref, "Courses")})'
+                            : tr(ref, 'Courses'),
                         style: TextStyle(
-                          fontSize: 17,
+                          fontSize: 18,
                           fontWeight: FontWeight.bold,
                           letterSpacing: -0.3,
-                          color: isDark ? Colors.white : const Color(0xFF1B4D2E),
+                          color: isDark ? Colors.white : AppColors.editorialOnSurface,
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      ref.watch(studentCategoriesProvider).when(
-                        data: (categories) {
-                          if (categories.isEmpty) return const SizedBox.shrink();
-                          return SizedBox(
-                            height: 98,
-                            child: ListView.separated(
-                              scrollDirection: Axis.horizontal,
-                              itemCount: categories.length,
-                              separatorBuilder: (_, __) => const SizedBox(width: 14),
-                              itemBuilder: (context, index) {
-                                final cat = categories[index];
-                                final iconData = _getCategoryIcon(cat.name);
-                                final pastelBg = _getCategoryBg(index, isDark);
-
-                                return InkWell(
-                                  onTap: () {
-                                    context.push('/farmer/explore?category=${cat.id}');
-                                  },
-                                  borderRadius: BorderRadius.circular(16),
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Container(
-                                        width: 62,
-                                        height: 62,
-                                        decoration: BoxDecoration(
-                                          color: pastelBg,
-                                          borderRadius: BorderRadius.circular(16),
-                                          border: Border.all(
-                                            color: isDark ? AppColors.lineDark : Colors.transparent,
-                                          ),
-                                        ),
-                                        child: Center(
-                                          child: Icon(
-                                            iconData,
-                                            size: 28,
-                                            color: _getCategoryColor(index, isDark),
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 6),
-                                      SizedBox(
-                                        width: 66,
-                                        child: Text(
-                                          cat.name,
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w600,
-                                            color: isDark ? Colors.white70 : const Color(0xFF333333),
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          textAlign: TextAlign.center,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              },
-                            ),
-                          );
-                        },
-                        loading: () => SizedBox(
-                          height: 98,
-                          child: ListView.separated(
-                            scrollDirection: Axis.horizontal,
-                            itemCount: 4,
-                            separatorBuilder: (_, __) => const SizedBox(width: 14),
-                            itemBuilder: (context, index) => Column(
-                              children: const [
-                                ShimmerContainer(width: 62, height: 62, borderRadius: 16),
-                                SizedBox(height: 6),
-                                ShimmerContainer(width: 48, height: 10, borderRadius: 4),
-                              ],
-                            ),
-                          ),
-                        ),
-                        error: (_, __) => const SizedBox.shrink(),
-                      ),
-                      const SizedBox(height: 20),
                     ],
-
-                    // ── "Featured courses" Section Header ────────────────────
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Text(
-                          _searchQuery.isNotEmpty
-                              ? '${tr(ref, "Search Results")} (${tr(ref, "Courses")})'
-                              : tr(ref, 'Featured courses'),
-                          style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: -0.3,
-                            color: isDark ? Colors.white : const Color(0xFF1B4D2E),
-                          ),
-                        ),
-                        InkWell(
-                          onTap: () => context.go(RouteNames.explore),
-                          borderRadius: BorderRadius.circular(6),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  tr(ref, 'See all'),
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFF1B4D2E),
-                                  ),
-                                ),
-                                const SizedBox(width: 2),
-                                const Icon(
-                                  Icons.arrow_forward_rounded,
-                                  size: 14,
-                                  color: Color(0xFF1B4D2E),
-                                ),
-                              ],
+                  ),
+                  InkWell(
+                    onTap: () => context.go(RouteNames.explore),
+                    borderRadius: BorderRadius.circular(6),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            tr(ref, 'See all'),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.primaryGreen,
                             ),
                           ),
-                        ),
-                      ],
+                          const SizedBox(width: 2),
+                          const Icon(
+                            Icons.arrow_forward_rounded,
+                            size: 14,
+                            color: AppColors.primaryGreen,
+                          ),
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 14),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
               ref.watch(studentCatalogProvider(CatalogQuery(search: _searchQuery))).when(
                 data: (courses) {
                   if (courses.isEmpty) {
@@ -987,60 +906,7 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
   }
 }
 
-// ── Category Icon & Color Helpers ─────────────────────────────
-IconData _getCategoryIcon(String name) {
-  final lower = name.toLowerCase();
-  if (lower.contains('crop') || lower.contains('field')) {
-    return Icons.grass_rounded;
-  } else if (lower.contains('water') || lower.contains('irrigat')) {
-    return Icons.water_drop_rounded;
-  } else if (lower.contains('pest') || lower.contains('protect')) {
-    return Icons.pest_control_rounded;
-  } else if (lower.contains('organic') || lower.contains('soil')) {
-    return Icons.eco_rounded;
-  } else if (lower.contains('animal') || lower.contains('dairy') || lower.contains('husbandry')) {
-    return Icons.pets_rounded;
-  } else if (lower.contains('tech') || lower.contains('machin')) {
-    return Icons.agriculture_rounded;
-  } else if (lower.contains('horticult') || lower.contains('fruit') || lower.contains('veget')) {
-    return Icons.yard_rounded;
-  } else if (lower.contains('climate') || lower.contains('weather')) {
-    return Icons.cloud_outlined;
-  }
-  return Icons.menu_book_rounded;
-}
-
-Color _getCategoryBg(int index, bool isDark) {
-  if (isDark) return const Color(0xFF1F2D24);
-  const tints = [
-    Color(0xFFE8F5E9), // Crops / light green
-    Color(0xFFE1F5FE), // Water / light cyan
-    Color(0xFFE8F8F5), // Pests / light teal
-    Color(0xFFF1F8E9), // Organic / light lime
-    Color(0xFFFFF3E0), // Animal / light orange
-    Color(0xFFF3E5F5), // Tech / light purple
-    Color(0xFFFFEBEE), // Horticulture / light pink
-    Color(0xFFECEFF1), // Climate / light blue-grey
-  ];
-  return tints[index % tints.length];
-}
-
-Color _getCategoryColor(int index, bool isDark) {
-  if (isDark) return const Color(0xFF86EFAC);
-  const colors = [
-    Color(0xFF2E7D32), // Crops
-    Color(0xFF0288D1), // Water
-    Color(0xFF00897B), // Pests
-    Color(0xFF558B2F), // Organic
-    Color(0xFFE65100), // Animal
-    Color(0xFF7B1FA2), // Tech
-    Color(0xFFC2185B), // Horticulture
-    Color(0xFF455A64), // Climate
-  ];
-  return colors[index % colors.length];
-}
-
-// ── Course Card Component (Matching Prototype Screen 11 Large Card) ───────────────
+// ── Course Card Component (Udemy Mobile-Style Compact Layout) ───────────────
 class _CourseCard extends StatelessWidget {
   const _CourseCard({required this.course, required this.index});
 
@@ -1050,9 +916,10 @@ class _CourseCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final isFree = course.price == null || course.price == '0' || course.price == '0.00' || course.price == '0.0';
-    final priceText = isFree ? 'FREE' : '₹${course.price}';
-    final badgeLabel = isFree ? 'Free course' : (index % 2 == 0 ? 'Bestseller' : 'Popular');
+    final tagLabel = index % 2 == 0 ? 'Core Agrotech' : 'Specialization';
+    final priceText = course.price == null || course.price == '0' || course.price == '0.00'
+        ? 'Free'
+        : '₹${course.price}';
 
     return Material(
       color: Colors.transparent,
@@ -1060,82 +927,80 @@ class _CourseCard extends StatelessWidget {
         onTap: () {
           context.push('/farmer/course/${course.id}');
         },
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         child: Container(
+          padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
             color: isDark ? AppColors.cardDark : Colors.white,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: isDark
                   ? AppColors.lineDark
-                  : const Color(0xFFE5ECE5),
+                  : AppColors.editorialOutlineVariant.withValues(alpha: 0.25),
               width: 1,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
+                color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.035),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
               ),
             ],
           ),
-          child: Column(
+          child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Top Thumbnail Container with Bestseller/Free Badge
+              // Left: Compact Thumbnail with rounded corners
               ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                child: AspectRatio(
-                  aspectRatio: 16 / 9,
+                borderRadius: BorderRadius.circular(12),
+                child: SizedBox(
+                  width: 86,
+                  height: 86,
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
                       Container(
-                        color: isDark ? const Color(0xFF24242A) : const Color(0xFFE9EFE9),
+                        color: isDark ? const Color(0xFF24242A) : AppColors.editorialSurfaceContainer,
                         child: course.thumbnail != null && course.thumbnail!.isNotEmpty
                             ? Image.network(
                                 course.thumbnail!,
                                 fit: BoxFit.cover,
                                 errorBuilder: (_, __, ___) => const Center(
                                   child: Icon(
-                                    Icons.spa_rounded,
-                                    size: 48,
-                                    color: Color(0xFF86EFAC),
+                                    Icons.play_circle_fill_rounded,
+                                    size: 32,
+                                    color: AppColors.editorialSecondary,
                                   ),
                                 ),
                               )
                             : const Center(
                                 child: Icon(
-                                  Icons.spa_rounded,
-                                  size: 48,
-                                  color: Color(0xFF86EFAC),
+                                  Icons.play_circle_fill_rounded,
+                                  size: 32,
+                                  color: AppColors.editorialSecondary,
                                 ),
                               ),
                       ),
-                      // Top Left Badge Pill
                       Positioned(
-                        top: 12,
-                        left: 12,
+                        bottom: 4,
+                        left: 4,
+                        right: 4,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                           decoration: BoxDecoration(
-                            color: isFree ? const Color(0xFFFEF3C7) : const Color(0xFFFDE68A),
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.08),
-                                blurRadius: 4,
-                                offset: const Offset(0, 1),
-                              ),
-                            ],
+                            color: Colors.black.withValues(alpha: 0.7),
+                            borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
-                            badgeLabel,
+                            tagLabel,
                             style: const TextStyle(
-                              color: Color(0xFF92400E),
-                              fontSize: 11,
+                              color: Colors.white,
+                              fontSize: 8.5,
                               fontWeight: FontWeight.w700,
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
                           ),
                         ),
                       ),
@@ -1143,76 +1008,86 @@ class _CourseCard extends StatelessWidget {
                   ),
                 ),
               ),
+              const SizedBox(width: 12),
 
-              // Bottom Details Section
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Course Title
-                    Text(
-                      course.title,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                        height: 1.25,
-                        letterSpacing: -0.3,
-                        color: isDark ? Colors.white : const Color(0xFF192A1D),
+              // Right: Course Info in Udemy Format
+              Expanded(
+                child: SizedBox(
+                  height: 86,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // Title (Clean 2-line max)
+                      Text(
+                        course.title,
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w700,
+                          height: 1.25,
+                          letterSpacing: -0.2,
+                          color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 6),
 
-                    // Instructor & Language Row
-                    Text(
-                      'By ${course.instructorName ?? "IAGROW Agriculture Experts"} • ${course.language ?? "Hindi"}',
-                      style: TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w500,
-                        color: isDark ? Colors.white60 : const Color(0xFF6B7280),
+                      // Instructor / Category
+                      Text(
+                        course.instructorName ?? course.category?.name ?? 'Agricultural Faculty',
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w500,
+                          color: isDark ? Colors.white60 : AppColors.editorialOnSurfaceVariant,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 12),
 
-                    // Rating & Price Row
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.star_rounded,
-                              size: 17,
-                              color: Color(0xFFF59E0B),
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              '4.8 (248)',
-                              style: TextStyle(
-                                fontSize: 12.5,
-                                fontWeight: FontWeight.bold,
-                                color: isDark ? Colors.white70 : const Color(0xFF374151),
+                      // Bottom Row: Rating, Duration & Price
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.star_rounded, size: 14, color: Color(0xFFFBBF24)),
+                              const SizedBox(width: 2),
+                              Text(
+                                '4.8',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                        Text(
-                          priceText,
-                          style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w800,
-                            color: isFree
-                                ? const Color(0xFF1B4D2E)
-                                : (isDark ? const Color(0xFF86EFAC) : const Color(0xFF1B4D2E)),
+                              const SizedBox(width: 8),
+                              Icon(
+                                Icons.schedule_rounded,
+                                size: 12,
+                                color: isDark ? Colors.white54 : AppColors.editorialOnSurfaceVariant,
+                              ),
+                              const SizedBox(width: 3),
+                              Text(
+                                '14 hrs',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: isDark ? Colors.white54 : AppColors.editorialOnSurfaceVariant,
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                      ],
-                    ),
-                  ],
+                          Text(
+                            priceText,
+                            style: TextStyle(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w800,
+                              color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
