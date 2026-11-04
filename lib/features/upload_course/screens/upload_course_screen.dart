@@ -1466,24 +1466,57 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
           // Actions
           Row(
             children: [
-              TextButton(
-                onPressed: () => context.pop(),
-                child: Text(tr(ref, 'Cancel'), style: const TextStyle(color: Colors.grey)),
+              SizedBox(
+                height: 52,
+                child: OutlinedButton.icon(
+                  onPressed: () => context.pop(),
+                  icon: const Icon(Icons.close_rounded, size: 18),
+                  label: Text(
+                    tr(ref, 'Cancel'),
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      color: isDark ? Colors.white70 : AppColors.inkDark,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: isDark ? Colors.white70 : AppColors.inkDark,
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    side: BorderSide(
+                      color: isDark ? AppColors.lineDark : Colors.grey.shade300,
+                      width: 1.2,
+                    ),
+                  ),
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: FilledButton.icon(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primaryGreen,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                child: SizedBox(
+                  height: 52,
+                  child: FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primaryGreen,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      elevation: 0,
+                    ),
+                    onPressed: () {
+                      if (_validateStep1()) {
+                        setState(() => _currentStep = 2);
+                      }
+                    },
+                    icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+                    label: Text(
+                      tr(ref, 'Next: Curriculum'),
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    ),
                   ),
-                  onPressed: () {
-                    if (_validateStep1()) {
-                      setState(() => _currentStep = 2);
-                    }
-                  },
-                  icon: const Icon(Icons.arrow_forward_rounded, size: 18),
-                  label: Text(tr(ref, 'Next: Curriculum'), style: const TextStyle(fontWeight: FontWeight.bold)),
                 ),
               ),
             ],
@@ -1966,25 +1999,57 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
         // Actions
         Row(
           children: [
-            OutlinedButton.icon(
-              onPressed: () => setState(() => _currentStep = 1),
-              icon: const Icon(Icons.arrow_back, size: 16),
-              label: const Text('Back'),
+            SizedBox(
+              height: 52,
+              child: OutlinedButton.icon(
+                onPressed: () => setState(() => _currentStep = 1),
+                icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                label: Text(
+                  tr(ref, 'Back'),
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                    color: isDark ? Colors.white70 : AppColors.inkDark,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: isDark ? Colors.white70 : AppColors.inkDark,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  side: BorderSide(
+                    color: isDark ? AppColors.lineDark : Colors.grey.shade300,
+                    width: 1.2,
+                  ),
+                ),
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: FilledButton.icon(
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.primaryGreen,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              child: SizedBox(
+                height: 52,
+                child: FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primaryGreen,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    elevation: 0,
+                  ),
+                  onPressed: () {
+                    if (_validateStep2()) {
+                      setState(() => _currentStep = 3);
+                    }
+                  },
+                  icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+                  label: Text(
+                    tr(ref, 'Save & Continue'),
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
                 ),
-                onPressed: () {
-                  if (_validateStep2()) {
-                    setState(() => _currentStep = 3);
-                  }
-                },
-                icon: const Icon(Icons.arrow_forward_rounded, size: 18),
-                label: const Text('Save & Continue', style: TextStyle(fontWeight: FontWeight.bold)),
               ),
             ),
           ],
@@ -2170,24 +2235,53 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
           // Actions
           Row(
             children: [
-              OutlinedButton.icon(
-                onPressed: () => setState(() => _currentStep = 2),
-                icon: const Icon(Icons.arrow_back, size: 16),
-                label: const Text('Back'),
+              SizedBox(
+                height: 52,
+                child: OutlinedButton.icon(
+                  onPressed: () => setState(() => _currentStep = 2),
+                  icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                  label: Text(
+                    tr(ref, 'Back'),
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      color: isDark ? Colors.white70 : AppColors.inkDark,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: isDark ? Colors.white70 : AppColors.inkDark,
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    side: BorderSide(
+                      color: isDark ? AppColors.lineDark : Colors.grey.shade300,
+                      width: 1.2,
+                    ),
+                  ),
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: FilledButton.icon(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primaryGreen,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  ),
-                  onPressed: _submitCreateCourseDraft,
-                  icon: const Icon(Icons.assignment_outlined, size: 18),
-                  label: const Text(
-                    'Create Course Draft',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                    overflow: TextOverflow.ellipsis,
+                child: SizedBox(
+                  height: 52,
+                  child: FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primaryGreen,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      elevation: 0,
+                    ),
+                    onPressed: _submitCreateCourseDraft,
+                    icon: const Icon(Icons.assignment_outlined, size: 18),
+                    label: Text(
+                      tr(ref, 'Create Course Draft'),
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ),
               ),
