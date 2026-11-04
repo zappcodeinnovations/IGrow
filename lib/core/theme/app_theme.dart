@@ -220,6 +220,26 @@ class AppTheme {
         thickness: 1,
         space: 1,
       ),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return AppColors.primaryGreen;
+          }
+          return Colors.white;
+        }),
+        trackColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return AppColors.primaryGreen.withValues(alpha: 0.5);
+          }
+          return const Color(0xFFD1D5DB); // Neutral gray-300 track in light mode
+        }),
+        trackOutlineColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return Colors.transparent;
+          }
+          return const Color(0xFF9CA3AF); // Neutral gray-400 border outline in light mode
+        }),
+      ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
         backgroundColor: Colors.white,
@@ -383,6 +403,26 @@ class AppTheme {
         color: AppColors.lineDark,
         thickness: 1,
         space: 1,
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return AppColors.primaryGreen;
+          }
+          return const Color(0xFF9E9E9E); // Clear visible off-thumb in dark mode
+        }),
+        trackColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return AppColors.primaryGreen.withValues(alpha: 0.5);
+          }
+          return const Color(0xFF2A2E2B); // Visible dark surface track in dark mode
+        }),
+        trackOutlineColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return Colors.transparent;
+          }
+          return const Color(0xFF4B5563); // Noticeable gray-600 outline in dark mode
+        }),
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,

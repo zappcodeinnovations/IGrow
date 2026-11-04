@@ -173,8 +173,22 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
                 ),
               );
             },
-            activeThumbColor: AppColors.editorialSecondary,
-            activeTrackColor: AppColors.editorialSecondary.withValues(alpha: 0.45),
+            activeThumbColor: AppColors.primaryGreen,
+            activeTrackColor: AppColors.primaryGreen.withValues(alpha: 0.5),
+            inactiveThumbColor: Theme.of(context).brightness == Brightness.dark
+                ? const Color(0xFF9E9E9E)
+                : Colors.white,
+            inactiveTrackColor: Theme.of(context).brightness == Brightness.dark
+                ? const Color(0xFF2A2E2B)
+                : const Color(0xFFD1D5DB),
+            trackOutlineColor: WidgetStateProperty.resolveWith((states) {
+              if (states.contains(WidgetState.selected)) {
+                return Colors.transparent;
+              }
+              return Theme.of(context).brightness == Brightness.dark
+                  ? const Color(0xFF4B5563)
+                  : const Color(0xFF9CA3AF);
+            }),
           ),
         ],
       ),
