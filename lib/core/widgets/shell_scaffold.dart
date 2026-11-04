@@ -45,7 +45,8 @@ class _ShellScaffoldState extends ConsumerState<ShellScaffold> {
     final user = ref.read(authProvider).user;
     if (user != null &&
         (user.phone.trim().isEmpty ||
-            (user.locationState == null || user.locationState!.trim().isEmpty))) {
+            (user.locationState == null ||
+                user.locationState!.trim().isEmpty))) {
       CompleteSocialProfileDialog.show(context, user);
     }
   }
@@ -53,13 +54,15 @@ class _ShellScaffoldState extends ConsumerState<ShellScaffold> {
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(authProvider).user;
-    final isInstructor = user?.activeRole == UserRole.instructor || user?.activeRole == UserRole.admin;
+    final isInstructor =
+        user?.activeRole == UserRole.instructor ||
+        user?.activeRole == UserRole.admin;
     final isFarmer = !isInstructor;
-    
+
     // Determine current index based on route
     final location = GoRouterState.of(context).uri.toString();
     int currentIndex = 0;
-    
+
     if (isFarmer) {
       if (location.startsWith('/farmer/home')) {
         currentIndex = 0;
@@ -105,7 +108,8 @@ class _ShellScaffoldState extends ConsumerState<ShellScaffold> {
 
         // Double tap back confirmation
         final now = DateTime.now();
-        if (_lastBackPressed == null || now.difference(_lastBackPressed!) > const Duration(seconds: 2)) {
+        if (_lastBackPressed == null ||
+            now.difference(_lastBackPressed!) > const Duration(seconds: 2)) {
           _lastBackPressed = now;
           AppToast.show(
             context,
@@ -179,7 +183,12 @@ class _ShellScaffoldState extends ConsumerState<ShellScaffold> {
     );
   }
 
-  void _onTap(BuildContext context, int index, bool isFarmer, int currentIndex) {
+  void _onTap(
+    BuildContext context,
+    int index,
+    bool isFarmer,
+    int currentIndex,
+  ) {
     // Ignore tap if already on this tab (except for action items like upload)
     if (index == currentIndex && (isFarmer || index != 2)) {
       return;
@@ -187,7 +196,8 @@ class _ShellScaffoldState extends ConsumerState<ShellScaffold> {
 
     // Debounce rapid successive taps to prevent animation queuing/glitches
     final now = DateTime.now();
-    if (_lastNavTap != null && now.difference(_lastNavTap!) < const Duration(milliseconds: 350)) {
+    if (_lastNavTap != null &&
+        now.difference(_lastNavTap!) < const Duration(milliseconds: 350)) {
       return;
     }
     _lastNavTap = now;
@@ -228,18 +238,31 @@ class _ShellScaffoldState extends ConsumerState<ShellScaffold> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       ListTile(
-                        leading: const Icon(Icons.video_library, color: AppColors.primaryGreen),
+                        leading: const Icon(
+                          Icons.video_library,
+                          color: AppColors.primaryGreen,
+                        ),
                         title: Text(tr(ref, 'Upload Course')),
-                        subtitle: Text(tr(ref, 'Upload video lectures and create a new course.')),
+                        subtitle: Text(
+                          tr(
+                            ref,
+                            'Upload video lectures and create a new course.',
+                          ),
+                        ),
                         onTap: () {
                           Navigator.pop(context);
                           context.push('/instructor/upload');
                         },
                       ),
                       ListTile(
-                        leading: const Icon(Icons.menu_book, color: AppColors.primaryGreen),
+                        leading: const Icon(
+                          Icons.menu_book,
+                          color: AppColors.primaryGreen,
+                        ),
                         title: Text(tr(ref, 'Upload Ebook')),
-                        subtitle: Text(tr(ref, 'Upload a PDF or Word document.')),
+                        subtitle: Text(
+                          tr(ref, 'Upload a PDF or Word document.'),
+                        ),
                         onTap: () {
                           Navigator.pop(context);
                           context.push('/instructor/upload-ebook');

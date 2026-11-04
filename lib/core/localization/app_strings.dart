@@ -408,7 +408,6 @@ class AppStrings {
       // Categories
       'Organic Farming': 'Organic Farming',
       'Soil Science & Fertility': 'Soil Science & Fertility',
-      'Soil Science': 'Soil Science',
       'Water & Irrigation': 'Water & Irrigation',
       'Pest & Disease Control': 'Pest & Disease Control',
       'Crop Protection': 'Crop Protection',
@@ -804,7 +803,6 @@ class AppStrings {
       // Categories
       'Organic Farming': 'जैविक खेती',
       'Soil Science & Fertility': 'मृदा विज्ञान और उर्वरता',
-      'Soil Science': 'मृदा विज्ञान',
       'Water & Irrigation': 'जल एवं सिंचाई',
       'Pest & Disease Control': 'कीट एवं रोग नियंत्रण',
       'Crop Protection': 'फसल सुरक्षा',
@@ -1200,7 +1198,6 @@ class AppStrings {
       // Categories
       'Organic Farming': 'सेंद्रिय शेती',
       'Soil Science & Fertility': 'मृदा विज्ञान आणि सुपीकता',
-      'Soil Science': 'मृदा विज्ञान',
       'Water & Irrigation': 'पाणी आणि सिंचन',
       'Pest & Disease Control': 'कीड आणि रोग नियंत्रण',
       'Crop Protection': 'पीक संरक्षण',
