@@ -28,12 +28,13 @@ class MyLearningScreen extends ConsumerStatefulWidget {
 }
 
 class _MyLearningScreenState extends ConsumerState<MyLearningScreen> {
-  int _selectedFilterIndex = 0; // 0: All, 1: Downloaded, 2: Archived, 3: E-Books
+  // 0: All, 1: In Progress, 2: Completed, 3: E-Books
+  int _selectedFilterIndex = 0;
   final _searchController = TextEditingController();
   bool _isSearching = false;
   String _searchQuery = '';
 
-  final List<String> _filters = ['All', 'Downloaded', 'Archived', 'E-Books'];
+  final List<String> _filters = ['All', 'In Progress', 'Completed', 'E-Books'];
 
   @override
   void dispose() {
@@ -247,12 +248,15 @@ class _MyLearningScreenState extends ConsumerState<MyLearningScreen> {
                             count: '$enrollmentsCount',
                             label: tr(ref, 'Enrolled'),
                             unit: tr(ref, 'Courses'),
+                            isSelected: _selectedFilterIndex == 0,
+                            onTap: () => setState(() => _selectedFilterIndex = 0),
                           ),
                           _SummaryStatCard(
                             icon: Icons.menu_book_rounded,
                             count: '$ebooksCount',
                             label: tr(ref, 'E-Books'),
                             unit: tr(ref, 'Text'),
+                            isSelected: _selectedFilterIndex == 3,
                             onTap: () => setState(() => _selectedFilterIndex = 3),
                           ),
                           _SummaryStatCard(
@@ -260,12 +264,16 @@ class _MyLearningScreenState extends ConsumerState<MyLearningScreen> {
                             count: '$completedCount',
                             label: tr(ref, 'Completed'),
                             unit: tr(ref, 'Units'),
+                            isSelected: _selectedFilterIndex == 2,
+                            onTap: () => setState(() => _selectedFilterIndex = 2),
                           ),
                           _SummaryStatCard(
                             icon: Icons.task_alt_rounded,
-                            count: '0',
+                            count: '${enrollmentsCount > completedCount ? enrollmentsCount - completedCount : 0}',
                             label: tr(ref, 'Pending'),
-                            unit: tr(ref, 'Quizzes'),
+                            unit: tr(ref, 'Courses'),
+                            isSelected: _selectedFilterIndex == 1,
+                            onTap: () => setState(() => _selectedFilterIndex = 1),
                           ),
                         ],
                       );
@@ -366,13 +374,13 @@ class _MyLearningScreenState extends ConsumerState<MyLearningScreen> {
   ) {
     return enrollmentsAsync.when(
       data: (enrollments) {
-        // Filter by downloaded/archived if needed
+        // Filter by In Progress / Completed
         var items = enrollments;
         if (_selectedFilterIndex == 1) {
-          // Downloaded mock filter
-          items = items.where((e) => (e.completionPercentage ?? 0) > 0).toList();
+          // Pending / In-progress courses (completion < 100%)
+          items = items.where((e) => (e.completionPercentage ?? 0) < 100).toList();
         } else if (_selectedFilterIndex == 2) {
-          // Archived mock filter
+          // Completed courses (completion >= 100%)
           items = items.where((e) => (e.completionPercentage ?? 0) >= 100).toList();
         }
 
@@ -393,16 +401,16 @@ class _MyLearningScreenState extends ConsumerState<MyLearningScreen> {
                 children: [
                   Icon(
                     _selectedFilterIndex == 1
-                        ? Icons.download_done_rounded
-                        : (_selectedFilterIndex == 2 ? Icons.archive_outlined : Icons.school_outlined),
+                        ? Icons.pending_actions_rounded
+                        : (_selectedFilterIndex == 2 ? Icons.verified_rounded : Icons.school_outlined),
                     size: 56,
                     color: isDark ? Colors.white24 : AppColors.editorialOutlineVariant,
                   ),
                   const SizedBox(height: 16),
                   Text(
                     _selectedFilterIndex == 1
-                        ? tr(ref, 'No Downloaded Courses')
-                        : (_selectedFilterIndex == 2 ? tr(ref, 'No Archived Courses') : tr(ref, 'No Courses Found')),
+                        ? tr(ref, 'No Pending Courses')
+                        : (_selectedFilterIndex == 2 ? tr(ref, 'No Completed Courses') : tr(ref, 'No Courses Found')),
                     style: TextStyle(
                       fontSize: 17,
                       fontWeight: FontWeight.bold,
@@ -860,6 +868,7 @@ class _SummaryStatCard extends StatelessWidget {
     required this.count,
     required this.label,
     this.unit = '',
+    this.isSelected = false,
     this.onTap,
   });
 
@@ -867,6 +876,7 @@ class _SummaryStatCard extends StatelessWidget {
   final String count;
   final String label;
   final String unit;
+  final bool isSelected;
   final VoidCallback? onTap;
 
   @override
@@ -879,16 +889,22 @@ class _SummaryStatCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: isDark ? AppColors.cardDark : AppColors.editorialSurfaceContainerLow,
+          color: isSelected
+              ? (isDark ? AppColors.cardDarkElevated : Colors.white)
+              : (isDark ? AppColors.cardDark : AppColors.editorialSurfaceContainerLow),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isDark ? AppColors.lineDark : AppColors.editorialOutlineVariant.withValues(alpha: 0.3),
-            width: 1,
+            color: isSelected
+                ? AppColors.primaryGreen
+                : (isDark ? AppColors.lineDark : AppColors.editorialOutlineVariant.withValues(alpha: 0.3)),
+            width: isSelected ? 1.5 : 1,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.02),
-              blurRadius: 8,
+              color: isSelected
+                  ? AppColors.primaryGreen.withValues(alpha: 0.15)
+                  : Colors.black.withValues(alpha: isDark ? 0.2 : 0.02),
+              blurRadius: isSelected ? 10 : 8,
               offset: const Offset(0, 2),
             ),
           ],
