@@ -140,22 +140,6 @@ class _MyLearningScreenState extends ConsumerState<MyLearningScreen> {
                         ),
                       ),
                     ),
-                    // Cast icon (Udemy exact feature)
-                    IconButton(
-                      icon: Icon(
-                        Icons.cast_rounded,
-                        color: isDark ? Colors.white : AppColors.editorialOnSurface,
-                        size: 22,
-                      ),
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(tr(ref, 'Searching for wireless display devices...')),
-                            duration: const Duration(seconds: 2),
-                          ),
-                        );
-                      },
-                    ),
                     // Search icon
                     IconButton(
                       icon: Icon(

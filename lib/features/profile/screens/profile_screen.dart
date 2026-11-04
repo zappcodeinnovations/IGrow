@@ -457,101 +457,134 @@ class ProfileScreen extends ConsumerWidget {
   // SETTINGS BOTTOM SHEET (Language, Dark Mode, Privacy, Notifications)
   // ═════════════════════════════════════════════════════════════════════════════
   void _showSettingsSheet(BuildContext context, WidgetRef ref) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      backgroundColor: isDark ? const Color(0xFF1A1C1B) : Colors.white,
+      backgroundColor: Colors.transparent,
       builder: (sheetContext) {
         return Consumer(
           builder: (context, sheetRef, _) {
+            final themeMode = sheetRef.watch(themeProvider);
+            final sheetIsDark = themeMode == ThemeMode.dark ||
+                (themeMode == ThemeMode.system &&
+                    MediaQuery.platformBrightnessOf(context) == Brightness.dark);
+
             final activeLang = sheetRef.watch(languageProvider);
             final langDisplay = activeLang == 'hi'
                 ? 'हिंदी'
                 : (activeLang == 'mr' ? 'मराठी' : 'English');
 
-            return SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Center(
-                      child: Container(
-                        width: 40,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: isDark ? Colors.white24 : Colors.grey.shade300,
-                          borderRadius: BorderRadius.circular(2),
+            final textColor = sheetIsDark ? Colors.white : const Color(0xFF1B4D2E);
+            final subtitleColor = sheetIsDark ? Colors.white60 : const Color(0xFF6B7280);
+            final iconColor = sheetIsDark ? const Color(0xFF86EFAC) : const Color(0xFF1B4D2E);
+            final chevronColor = sheetIsDark ? Colors.white38 : const Color(0xFF9CA3AF);
+
+            return Container(
+              decoration: BoxDecoration(
+                color: sheetIsDark ? const Color(0xFF1A1C1B) : Colors.white,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 40,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: sheetIsDark ? Colors.white24 : Colors.grey.shade300,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      tr(sheetRef, 'Settings & Preferences'),
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: isDark ? Colors.white : const Color(0xFF1B4D2E),
+                      const SizedBox(height: 16),
+                      Text(
+                        tr(sheetRef, 'Settings & Preferences'),
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: textColor,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 14),
+                      const SizedBox(height: 14),
 
-                    // Language
-                    ListTile(
-                      leading: const Icon(Icons.language_rounded, color: Color(0xFF1B4D2E)),
-                      title: Text(tr(sheetRef, 'App Language')),
-                      subtitle: Text(langDisplay),
-                      trailing: const Icon(Icons.chevron_right_rounded),
-                      onTap: () {
-                        Navigator.pop(sheetContext);
-                        _showLanguageBottomSheet(context, ref);
-                      },
-                    ),
-
-                    // Dark Mode Toggle
-                    ListTile(
-                      leading: Icon(
-                        isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
-                        color: const Color(0xFF1B4D2E),
-                      ),
-                      title: Text(isDark ? tr(sheetRef, 'Light Mode') : tr(sheetRef, 'Dark Mode')),
-                      trailing: Switch(
-                        value: isDark,
-                        activeThumbColor: const Color(0xFF1B4D2E),
-                        onChanged: (val) {
-                          final newTheme = val ? ThemeMode.dark : ThemeMode.light;
-                          ref.read(themeProvider.notifier).setTheme(newTheme);
+                      // Language
+                      ListTile(
+                        leading: Icon(Icons.language_rounded, color: iconColor),
+                        title: Text(
+                          tr(sheetRef, 'App Language'),
+                          style: TextStyle(color: textColor, fontWeight: FontWeight.w600),
+                        ),
+                        subtitle: Text(
+                          langDisplay,
+                          style: TextStyle(color: subtitleColor, fontSize: 13),
+                        ),
+                        trailing: Icon(Icons.chevron_right_rounded, color: chevronColor),
+                        onTap: () {
+                          Navigator.pop(sheetContext);
+                          _showLanguageBottomSheet(context, ref);
                         },
                       ),
-                    ),
 
-                    // Privacy
-                    ListTile(
-                      leading: const Icon(Icons.privacy_tip_outlined, color: Color(0xFF1B4D2E)),
-                      title: Text(tr(sheetRef, 'Privacy & Permissions')),
-                      trailing: const Icon(Icons.chevron_right_rounded),
-                      onTap: () {
-                        Navigator.pop(sheetContext);
-                        context.push('/privacy');
-                      },
-                    ),
+                      // Dark Mode Toggle
+                      ListTile(
+                        leading: Icon(
+                          sheetIsDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+                          color: iconColor,
+                        ),
+                        title: Text(
+                          sheetIsDark ? tr(sheetRef, 'Light Mode') : tr(sheetRef, 'Dark Mode'),
+                          style: TextStyle(color: textColor, fontWeight: FontWeight.w600),
+                        ),
+                        subtitle: Text(
+                          sheetIsDark ? tr(sheetRef, 'Tap switch for light theme') : tr(sheetRef, 'Tap switch for dark theme'),
+                          style: TextStyle(color: subtitleColor, fontSize: 13),
+                        ),
+                        trailing: Switch(
+                          value: sheetIsDark,
+                          activeThumbColor: const Color(0xFF1B4D2E),
+                          onChanged: (val) {
+                            final newTheme = val ? ThemeMode.dark : ThemeMode.light;
+                            sheetRef.read(themeProvider.notifier).setTheme(newTheme);
+                          },
+                        ),
+                      ),
 
-                    // Notifications
-                    ListTile(
-                      leading: const Icon(Icons.notifications_outlined, color: Color(0xFF1B4D2E)),
-                      title: Text(tr(sheetRef, 'Notifications')),
-                      trailing: const Icon(Icons.chevron_right_rounded),
-                      onTap: () {
-                        Navigator.pop(sheetContext);
-                        context.push(RouteNames.notifications);
-                      },
-                    ),
-                  ],
+                      // Privacy
+                      ListTile(
+                        leading: Icon(Icons.privacy_tip_outlined, color: iconColor),
+                        title: Text(
+                          tr(sheetRef, 'Privacy & Permissions'),
+                          style: TextStyle(color: textColor, fontWeight: FontWeight.w600),
+                        ),
+                        trailing: Icon(Icons.chevron_right_rounded, color: chevronColor),
+                        onTap: () {
+                          Navigator.pop(sheetContext);
+                          context.push('/privacy');
+                        },
+                      ),
+
+                      // Notifications
+                      ListTile(
+                        leading: Icon(Icons.notifications_outlined, color: iconColor),
+                        title: Text(
+                          tr(sheetRef, 'Notifications'),
+                          style: TextStyle(color: textColor, fontWeight: FontWeight.w600),
+                        ),
+                        trailing: Icon(Icons.chevron_right_rounded, color: chevronColor),
+                        onTap: () {
+                          Navigator.pop(sheetContext);
+                          context.push(RouteNames.notifications);
+                        },
+                      ),
+                    ],
+                  ),
                 ),
               ),
             );
