@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/localization/app_strings.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/app_toast.dart';
 import '../../../core/utils/responsive_layout.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_text_field.dart';
@@ -186,14 +187,7 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
       return;
     }
     if (_selectedFile == null) {
-      final messenger = ScaffoldMessenger.of(context);
-      messenger.clearSnackBars();
-      messenger.showSnackBar(
-        const SnackBar(
-          content: Text('Please select a file to upload'),
-          duration: Duration(milliseconds: 1800),
-        ),
-      );
+      AppToast.showWarning(context, 'Please select a file to upload');
       return;
     }
 
@@ -237,18 +231,12 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
       ref.invalidate(instructorEbooksProvider);
 
       if (mounted) {
-        final messenger = ScaffoldMessenger.of(context);
-        messenger.clearSnackBars();
-        messenger.showSnackBar(
-          SnackBar(
-            content: Text(
-              submitForReview
-                  ? 'E-Book uploaded and submitted for Admin review!'
-                  : 'E-Book saved as Draft successfully! You can submit it anytime from My Uploads.',
-            ),
-            backgroundColor: AppColors.primaryGreen,
-            duration: const Duration(seconds: 3),
-          ),
+        AppToast.showSuccess(
+          context,
+          submitForReview
+              ? 'E-Book uploaded and submitted for Admin review!'
+              : 'E-Book saved as Draft successfully! You can submit it anytime from My Uploads.',
+          duration: const Duration(seconds: 3),
         );
         context.pop();
       }
@@ -275,14 +263,9 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
           cleanError = 'No internet connection. Please check your network and try again.';
         }
 
-        final messenger = ScaffoldMessenger.of(context);
-        messenger.clearSnackBars();
-        messenger.showSnackBar(
-          SnackBar(
-            content: Text(cleanError),
-            backgroundColor: AppColors.error,
-            duration: const Duration(seconds: 4),
-          ),
+        AppToast.showError(
+          context,
+          cleanError,
         );
       }
     } finally {

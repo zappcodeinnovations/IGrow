@@ -13,6 +13,7 @@ import 'package:path_provider/path_provider.dart';
 import '../../../core/localization/app_strings.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/app_toast.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/kyc_restricted_view.dart';
 import '../../../data/models/api_models/certificate_model.dart';
@@ -859,41 +860,17 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
 
       if (mounted) {
         setState(() => _isSubmitting = false);
-        final messenger = ScaffoldMessenger.of(context);
-        messenger.clearSnackBars();
         if (uploadWarnings.isNotEmpty) {
-          messenger.showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  const Icon(Icons.warning_amber_rounded, color: Colors.white),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'Course Draft Created, but ${uploadWarnings.length} video(s) failed to upload (${uploadWarnings.join(", ")}). You can re-upload them in Course Manager.',
-                    ),
-                  ),
-                ],
-              ),
-              backgroundColor: Colors.orange.shade800,
-              duration: const Duration(seconds: 6),
-            ),
+          AppToast.show(
+            context,
+            'Course Draft Created, but ${uploadWarnings.length} video(s) failed to upload (${uploadWarnings.join(", ")}). You can re-upload them in Course Manager.',
+            severity: ToastSeverity.warning,
+            duration: const Duration(seconds: 6),
           );
         } else {
-          messenger.showSnackBar(
-            const SnackBar(
-              content: Row(
-                children: [
-                  Icon(Icons.check_circle, color: Colors.white),
-                  SizedBox(width: 10),
-                  Expanded(
-                    child: Text('Course Draft Created! Review it on your dashboard.'),
-                  ),
-                ],
-              ),
-              backgroundColor: AppColors.primaryGreen,
-              duration: Duration(seconds: 3),
-            ),
+          AppToast.showSuccess(
+            context,
+            'Course Draft Created! Review it on your dashboard.',
           );
         }
         context.go(RouteNames.instructorHome);
@@ -908,6 +885,7 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
           friendlyMsg,
           icon: isOffline ? Icons.wifi_off_rounded : Icons.error_outline_rounded,
           onRetry: () => _submitCreateCourseDraft(),
+          isCritical: true,
         );
       }
     }
@@ -985,43 +963,24 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
     String msg, {
     VoidCallback? onRetry,
     IconData? icon,
+    bool isCritical = false,
   }) {
     if (!mounted) return;
-    final messenger = ScaffoldMessenger.of(context);
-    messenger.clearSnackBars();
-    messenger.showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            if (icon != null) ...[
-              Icon(icon, color: Colors.white, size: 20),
-              const SizedBox(width: 10),
-            ],
-            Expanded(
-              child: Text(
-                msg,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: AppColors.error,
-        duration: Duration(seconds: onRetry != null ? 6 : 3),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        action: onRetry != null
-            ? SnackBarAction(
-                label: 'Retry',
-                textColor: Colors.white,
-                backgroundColor: Colors.white.withValues(alpha: 0.2),
-                onPressed: onRetry,
-              )
-            : null,
-      ),
+    AppToast.show(
+      context,
+      msg,
+      severity: isCritical ? ToastSeverity.error : ToastSeverity.warning,
+      customIcon: icon,
+      duration: Duration(seconds: onRetry != null ? 6 : (isCritical ? 4 : 3)),
+      action: onRetry != null
+          ? SnackBarAction(
+              label: 'Retry',
+              textColor: Theme.of(context).brightness == Brightness.dark
+                  ? AppColors.greenLight
+                  : AppColors.primaryGreen,
+              onPressed: onRetry,
+            )
+          : null,
     );
   }
 

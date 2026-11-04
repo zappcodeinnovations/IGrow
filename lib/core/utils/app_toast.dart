@@ -5,46 +5,112 @@ import '../router/app_router.dart';
 import '../router/route_names.dart';
 import '../theme/app_colors.dart';
 
+/// Severity level for toast and notification banners.
+enum ToastSeverity {
+  /// Polite validation notices, guidance, non-blocking form warnings.
+  /// Uses a soft, warm amber/orange accent with dark rounded styling.
+  warning,
+
+  /// Severe/critical system failures, network crashes, payment or account errors.
+  /// Uses an elegant dark surface with soft crimson accent borders.
+  error,
+
+  /// Success affirmations with agricultural green accent.
+  success,
+
+  /// General informative messages.
+  info,
+}
+
 /// Centralized utility for fast, auto-clearing toast notifications & error messages.
 class AppToast {
   AppToast._();
 
-  static const Duration defaultDuration = Duration(milliseconds: 1800);
+  static const Duration defaultDuration = Duration(milliseconds: 2400);
 
-  /// Shows a quick, floating toast message that clears previous ones instantly.
+  /// Shows a quick, floating toast message with elegant dark-mode rounded styling.
+  /// [isError] is maintained for backward compatibility.
+  /// [severity] specifies whether this is a gentle validation notice ([ToastSeverity.warning]),
+  /// a severe system failure ([ToastSeverity.error]), or a positive success ([ToastSeverity.success]).
   static ScaffoldFeatureController<SnackBar, SnackBarClosedReason> show(
     BuildContext context,
     String message, {
     bool isError = false,
+    ToastSeverity? severity,
     Duration duration = defaultDuration,
     SnackBarAction? action,
+    IconData? customIcon,
   }) {
     final messenger = ScaffoldMessenger.of(context);
     messenger.clearSnackBars();
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final ToastSeverity effectiveSeverity = severity ??
+        (isError ? ToastSeverity.warning : ToastSeverity.success);
+
+    // Compute semantic palette tailored for the app's aesthetic:
+    final (
+      Color iconBg,
+      Color iconColor,
+      IconData icon,
+      Color bg,
+      Color borderColor,
+    ) = switch (effectiveSeverity) {
+      ToastSeverity.warning => (
+          isDark
+              ? const Color(0xFFF59E0B).withValues(alpha: 0.16)
+              : const Color(0xFFFFFBEB),
+          isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
+          customIcon ?? Icons.info_outline_rounded,
+          isDark ? const Color(0xFF1E201B) : Colors.white,
+          isDark
+              ? const Color(0xFFF59E0B).withValues(alpha: 0.38)
+              : const Color(0xFFFDE68A),
+        ),
+      ToastSeverity.error => (
+          isDark
+              ? const Color(0xFFEF4444).withValues(alpha: 0.16)
+              : const Color(0xFFFEF2F2),
+          isDark ? const Color(0xFFF87171) : const Color(0xFFDC2626),
+          customIcon ?? Icons.error_outline_rounded,
+          isDark ? const Color(0xFF231B1C) : Colors.white,
+          isDark
+              ? const Color(0xFFEF4444).withValues(alpha: 0.40)
+              : const Color(0xFFFECACA),
+        ),
+      ToastSeverity.success => (
+          isDark
+              ? AppColors.primaryGreen.withValues(alpha: 0.2)
+              : const Color(0xFFE8F5E9),
+          isDark ? AppColors.greenLight : const Color(0xFF2E7D32),
+          customIcon ?? Icons.check_circle_rounded,
+          isDark ? const Color(0xFF1B231D) : Colors.white,
+          isDark ? const Color(0xFF2E4334) : const Color(0xFFD6E2D0),
+        ),
+      ToastSeverity.info => (
+          isDark
+              ? Colors.white.withValues(alpha: 0.1)
+              : const Color(0xFFF3F4F6),
+          isDark ? Colors.white70 : const Color(0xFF4B5563),
+          customIcon ?? Icons.info_outline_rounded,
+          isDark ? const Color(0xFF1E1E1E) : Colors.white,
+          isDark ? AppColors.lineDark : const Color(0xFFE5E7EB),
+        ),
+    };
 
     return messenger.showSnackBar(
       SnackBar(
         content: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(4),
+              padding: const EdgeInsets.all(5),
               decoration: BoxDecoration(
-                color: isError
-                    ? const Color(0xFFEF4444).withValues(alpha: 0.18)
-                    : (isDark
-                        ? AppColors.primaryGreen.withValues(alpha: 0.2)
-                        : const Color(0xFFE8F5E9)),
+                color: iconBg,
                 shape: BoxShape.circle,
               ),
               child: Icon(
-                isError
-                    ? Icons.error_outline_rounded
-                    : Icons.check_circle_rounded,
-                color: isError
-                    ? const Color(0xFFF87171)
-                    : (isDark ? AppColors.greenLight : const Color(0xFF2E7D32)),
+                icon,
+                color: iconColor,
                 size: 18,
               ),
             ),
@@ -66,24 +132,63 @@ class AppToast {
         behavior: SnackBarBehavior.floating,
         showCloseIcon: action == null,
         closeIconColor: isDark ? Colors.white70 : AppColors.inkSoft,
-        backgroundColor: isDark
-            ? (isError ? const Color(0xFF1F241F) : const Color(0xFF1E2822))
-            : (isError ? const Color(0xFFFDF2F2) : Colors.white),
+        backgroundColor: bg,
         action: action,
         dismissDirection: DismissDirection.horizontal,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-          side: BorderSide(
-            color: isError
-                ? (isDark
-                    ? const Color(0xFFEF4444).withValues(alpha: 0.45)
-                    : const Color(0xFFFCA5A5))
-                : (isDark ? AppColors.lineDark : const Color(0xFFD6E2D0)),
-            width: 1.2,
-          ),
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: borderColor, width: 1.2),
         ),
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       ),
+    );
+  }
+
+  /// Polite validation warning toast (non-threatening, rounded dark container with subtle amber highlight).
+  static ScaffoldFeatureController<SnackBar, SnackBarClosedReason> showWarning(
+    BuildContext context,
+    String message, {
+    Duration duration = defaultDuration,
+    SnackBarAction? action,
+  }) {
+    return show(
+      context,
+      message,
+      severity: ToastSeverity.warning,
+      duration: duration,
+      action: action,
+    );
+  }
+
+  /// Critical/heavy error toast (system crash, payment failure, server outage).
+  static ScaffoldFeatureController<SnackBar, SnackBarClosedReason> showError(
+    BuildContext context,
+    String message, {
+    Duration duration = const Duration(seconds: 4),
+    SnackBarAction? action,
+  }) {
+    return show(
+      context,
+      message,
+      severity: ToastSeverity.error,
+      duration: duration,
+      action: action,
+    );
+  }
+
+  /// Positive action confirmation toast.
+  static ScaffoldFeatureController<SnackBar, SnackBarClosedReason> showSuccess(
+    BuildContext context,
+    String message, {
+    Duration duration = defaultDuration,
+    SnackBarAction? action,
+  }) {
+    return show(
+      context,
+      message,
+      severity: ToastSeverity.success,
+      duration: duration,
+      action: action,
     );
   }
 
