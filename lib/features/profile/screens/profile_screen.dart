@@ -742,11 +742,11 @@ class ProfileScreen extends ConsumerWidget {
                   ),
               const SizedBox(height: 18),
 
-              // Basic Info
+              // Consolidated Profile & Instructor Details Card
               _buildMenuSection(
                 context: context,
                 ref: ref,
-                title: tr(ref, 'Basic Info'),
+                title: tr(ref, 'Profile & Instructor Details'),
                 isDark: isDark,
                 items: [
                   _MenuItemData(
@@ -763,17 +763,6 @@ class ProfileScreen extends ConsumerWidget {
                     showChevron: false,
                     onTap: () => _showComingSoon(context, ref),
                   ),
-                ],
-              ),
-              const SizedBox(height: 16),
-
-              // Instructor Details
-              _buildMenuSection(
-                context: context,
-                ref: ref,
-                title: tr(ref, 'Instructor Details'),
-                isDark: isDark,
-                items: [
                   if (user?.bio != null && user!.bio!.isNotEmpty)
                     _MenuItemData(
                       icon: Icons.info_rounded,
@@ -812,17 +801,6 @@ class ProfileScreen extends ConsumerWidget {
                     showChevron: false,
                     onTap: () => _showComingSoon(context, ref),
                   ),
-                ],
-              ),
-              const SizedBox(height: 16),
-
-              // Verification & Payouts
-              _buildMenuSection(
-                context: context,
-                ref: ref,
-                title: tr(ref, 'Verification & Payouts'),
-                isDark: isDark,
-                items: [
                   _MenuItemData(
                     icon: Icons.verified_user_rounded,
                     label: tr(ref, 'KYC & Bank Verification'),
