@@ -519,16 +519,33 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
     final isEditing = existingLecture != null;
     final titleController = TextEditingController(text: existingLecture?.title ?? '');
     final descController = TextEditingController(text: existingLecture?.description ?? '');
-    final durationController = TextEditingController(
-      text: existingLecture?.duration != null && existingLecture!.duration! > 0
-          ? existingLecture.duration.toString()
-          : '10',
-    );
-    final previewDurationController = TextEditingController(
-      text: existingLecture?.previewDuration != null && existingLecture!.previewDuration! > 0
-          ? existingLecture.previewDuration.toString()
-          : '30',
-    );
+    final durationFocusNode = FocusNode();
+    final durationText = existingLecture?.duration != null && existingLecture!.duration! > 0
+        ? existingLecture.duration.toString()
+        : '10';
+    final durationController = TextEditingController(text: durationText);
+    durationFocusNode.addListener(() {
+      if (durationFocusNode.hasFocus) {
+        durationController.selection = TextSelection(
+          baseOffset: 0,
+          extentOffset: durationController.text.length,
+        );
+      }
+    });
+
+    final previewDurationFocusNode = FocusNode();
+    final previewDurationText = existingLecture?.previewDuration != null && existingLecture!.previewDuration! > 0
+        ? existingLecture.previewDuration.toString()
+        : '30';
+    final previewDurationController = TextEditingController(text: previewDurationText);
+    previewDurationFocusNode.addListener(() {
+      if (previewDurationFocusNode.hasFocus) {
+        previewDurationController.selection = TextSelection(
+          baseOffset: 0,
+          extentOffset: previewDurationController.text.length,
+        );
+      }
+    });
     bool isPreview = existingLecture?.isPreview ?? false;
 
     XFile? pickedVideo;
@@ -606,7 +623,14 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                         Expanded(
                           child: TextField(
                             controller: durationController,
+                            focusNode: durationFocusNode,
                             keyboardType: TextInputType.number,
+                            onTap: () {
+                              durationController.selection = TextSelection(
+                                baseOffset: 0,
+                                extentOffset: durationController.text.length,
+                              );
+                            },
                             decoration: const InputDecoration(
                               labelText: 'Duration (Minutes)',
                               suffixText: 'min',
@@ -638,7 +662,14 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                       const SizedBox(height: 14),
                       TextField(
                         controller: previewDurationController,
+                        focusNode: previewDurationFocusNode,
                         keyboardType: TextInputType.number,
+                        onTap: () {
+                          previewDurationController.selection = TextSelection(
+                            baseOffset: 0,
+                            extentOffset: previewDurationController.text.length,
+                          );
+                        },
                         decoration: const InputDecoration(
                           labelText: 'Preview Limit (Seconds)',
                           hintText: 'e.g., 30, 45, or 60',
