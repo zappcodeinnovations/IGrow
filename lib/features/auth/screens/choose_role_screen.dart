@@ -31,6 +31,26 @@ class _ChooseRoleScreenState extends ConsumerState<ChooseRoleScreen> {
   UserRole _selectedRole = UserRole.farmer;
 
   @override
+  void initState() {
+    super.initState();
+    _loadPersistedRole();
+  }
+
+  Future<void> _loadPersistedRole() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedRole = prefs.getString('selected_auth_role') ?? prefs.getString('active_user_role');
+      if (mounted && savedRole != null) {
+        if (savedRole.toLowerCase() == 'instructor') {
+          setState(() => _selectedRole = UserRole.instructor);
+        } else if (savedRole.toLowerCase() == 'farmer') {
+          setState(() => _selectedRole = UserRole.farmer);
+        }
+      }
+    } catch (_) {}
+  }
+
+  @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 

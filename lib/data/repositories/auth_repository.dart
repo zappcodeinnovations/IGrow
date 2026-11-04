@@ -536,8 +536,10 @@ class ApiAuthRepository implements AuthRepository {
     await tokenStorage.clearTokens();
     try {
       final prefs = await SharedPreferences.getInstance();
+      if (_currentUser?.activeRole != null) {
+        await prefs.setString('selected_auth_role', _currentUser!.activeRole.name);
+      }
       await prefs.remove('active_user_role');
-      await prefs.remove('selected_auth_role');
     } catch (_) {}
     _currentUser = null;
   }

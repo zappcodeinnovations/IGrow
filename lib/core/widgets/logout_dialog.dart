@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../theme/app_colors.dart';
+import '../../data/models/user_role.dart';
 import '../../features/auth/providers/auth_provider.dart';
 
 /// Shows a confirmation dialog before logging out across all panels.
@@ -41,6 +42,7 @@ class _LogoutConfirmationDialogState extends ConsumerState<LogoutConfirmationDia
     setState(() => _isLoading = true);
 
     try {
+      final activeRole = ref.read(authProvider).user?.activeRole ?? UserRole.farmer;
       await ref.read(authProvider.notifier).logout();
 
       if (nav.canPop()) {
@@ -57,7 +59,7 @@ class _LogoutConfirmationDialogState extends ConsumerState<LogoutConfirmationDia
       );
 
       if (!mounted) return;
-      context.go('/login');
+      context.go('/login?role=${activeRole.name}');
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
