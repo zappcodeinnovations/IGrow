@@ -696,9 +696,32 @@ class ProfileScreen extends ConsumerWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                tr(ref, 'Total Revenue'),
-                                style: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    tr(ref, 'Total Revenue'),
+                                    style: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(alpha: 0.2),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          tr(ref, 'View Analytics'),
+                                          style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        const Icon(Icons.arrow_forward_ios_rounded, size: 10, color: Colors.white),
+                                      ],
+                                    ),
+                                  ),
+                                ],
                               ),
                               const SizedBox(height: 12),
                               Text(
@@ -718,6 +741,200 @@ class ProfileScreen extends ConsumerWidget {
                     error: (_, __) => const SizedBox.shrink(),
                   ),
               const SizedBox(height: 18),
+
+              // Basic Info
+              _buildMenuSection(
+                context: context,
+                ref: ref,
+                title: tr(ref, 'Basic Info'),
+                isDark: isDark,
+                items: [
+                  _MenuItemData(
+                    icon: Icons.phone_rounded,
+                    label: tr(ref, 'Phone'),
+                    value: user?.phone.isNotEmpty == true ? user!.phone : tr(ref, 'Not provided'),
+                    showChevron: false,
+                    onTap: () => _showComingSoon(context, ref),
+                  ),
+                  _MenuItemData(
+                    icon: Icons.location_on_rounded,
+                    label: tr(ref, 'Location'),
+                    value: user?.location ?? tr(ref, 'Not provided'),
+                    showChevron: false,
+                    onTap: () => _showComingSoon(context, ref),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Instructor Details
+              _buildMenuSection(
+                context: context,
+                ref: ref,
+                title: tr(ref, 'Instructor Details'),
+                isDark: isDark,
+                items: [
+                  if (user?.bio != null && user!.bio!.isNotEmpty)
+                    _MenuItemData(
+                      icon: Icons.info_rounded,
+                      label: tr(ref, 'Bio'),
+                      value: user!.bio,
+                      showChevron: false,
+                      onTap: () => _showComingSoon(context, ref),
+                    ),
+                  _MenuItemData(
+                    icon: Icons.star_rounded,
+                    label: tr(ref, 'Expertise Tags'),
+                    value: user?.expertiseTags ?? tr(ref, 'Not provided'),
+                    showChevron: false,
+                    onTap: () => _showComingSoon(context, ref),
+                  ),
+                  _MenuItemData(
+                    icon: Icons.work_rounded,
+                    label: tr(ref, 'Years of Experience'),
+                    value: user?.yearsOfExperience != null
+                        ? '${user!.yearsOfExperience} ${tr(ref, 'years')}'
+                        : tr(ref, 'Not provided'),
+                    showChevron: false,
+                    onTap: () => _showComingSoon(context, ref),
+                  ),
+                  _MenuItemData(
+                    icon: Icons.grass_rounded,
+                    label: tr(ref, 'Specialty Crops'),
+                    value: user?.specialtyCrops ?? tr(ref, 'Not provided'),
+                    showChevron: false,
+                    onTap: () => _showComingSoon(context, ref),
+                  ),
+                  _MenuItemData(
+                    icon: Icons.link_rounded,
+                    label: tr(ref, 'Social Link'),
+                    value: user?.socialLink ?? tr(ref, 'Not provided'),
+                    showChevron: false,
+                    onTap: () => _showComingSoon(context, ref),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Verification & Payouts
+              _buildMenuSection(
+                context: context,
+                ref: ref,
+                title: tr(ref, 'Verification & Payouts'),
+                isDark: isDark,
+                items: [
+                  _MenuItemData(
+                    icon: Icons.verified_user_rounded,
+                    label: tr(ref, 'KYC & Bank Verification'),
+                    value: user?.isKycVerified == true
+                        ? tr(ref, 'Verified')
+                        : (user?.isKycPending == true ? tr(ref, 'Under Review') : tr(ref, 'Incomplete')),
+                    onTap: () => context.push(RouteNames.instructorKyc),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Settings Section
+              _buildMenuSection(
+                context: context,
+                ref: ref,
+                title: tr(ref, 'Settings'),
+                isDark: isDark,
+                items: [
+                  _MenuItemData(
+                    icon: Icons.language_rounded,
+                    label: tr(ref, 'Language'),
+                    value: ref.watch(languageProvider) == 'hi'
+                        ? 'हिंदी'
+                        : (ref.watch(languageProvider) == 'mr' ? 'मराठी' : 'English'),
+                    onTap: () => _showLanguageBottomSheet(context, ref),
+                  ),
+                  _MenuItemData(
+                    icon: isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+                    label: isDark ? tr(ref, 'Light Mode') : tr(ref, 'Dark Mode'),
+                    trailingWidget: Switch(
+                      value: isDark,
+                      activeThumbColor: AppColors.primaryGreen,
+                      onChanged: (val) {
+                        final newTheme = val ? ThemeMode.dark : ThemeMode.light;
+                        ref.read(themeProvider.notifier).setTheme(newTheme);
+                      },
+                    ),
+                    onTap: () {
+                      final newTheme = isDark ? ThemeMode.light : ThemeMode.dark;
+                      ref.read(themeProvider.notifier).setTheme(newTheme);
+                    },
+                  ),
+                  _MenuItemData(
+                    icon: Icons.notifications_outlined,
+                    label: tr(ref, 'Notifications'),
+                    onTap: () => context.push(RouteNames.notifications),
+                  ),
+                  _MenuItemData(
+                    icon: Icons.privacy_tip_outlined,
+                    label: tr(ref, 'Privacy'),
+                    onTap: () => context.push('/privacy'),
+                  ),
+                  _MenuItemData(
+                    icon: Icons.help_outline_rounded,
+                    label: tr(ref, 'Help & Support'),
+                    onTap: () => context.push('/support'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Danger Zone: Delete Account
+              AppCard(
+                onTap: () => showDeleteAccountConfirmationDialog(context, ref),
+                padding: const EdgeInsets.all(18),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: AppColors.error.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: const Icon(
+                        Icons.delete_forever_rounded,
+                        color: AppColors.error,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            tr(ref, 'Delete Account'),
+                            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                  color: AppColors.error,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            tr(ref, 'Permanently remove account and data'),
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: AppColors.inkSoft,
+                                  fontSize: 11.5,
+                                ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(
+                      Icons.chevron_right_rounded,
+                      color: AppColors.error,
+                      size: 20,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
               AppCard(
                 onTap: () => showLogoutConfirmationDialog(context, ref),
                 padding: const EdgeInsets.all(18),
@@ -746,11 +963,155 @@ class ProfileScreen extends ConsumerWidget {
       ),
     );
   }
+  Widget _buildMenuSection({
+    required BuildContext context,
+    required WidgetRef ref,
+    required String title,
+    required bool isDark,
+    required List<_MenuItemData> items,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 10),
+          child: Text(
+            title,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white : const Color(0xFF1B4D2E),
+            ),
+          ),
+        ),
+        AppCard(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Column(
+            children: items.map((item) {
+              final isLast = item == items.last;
+              return Column(
+                children: [
+                  InkWell(
+                    onTap: item.onTap,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 38,
+                            height: 38,
+                            decoration: BoxDecoration(
+                              color: isDark ? const Color(0xFF222228) : AppColors.editorialSurfaceContainerLow,
+                              borderRadius: BorderRadius.circular(9999),
+                            ),
+                            child: Icon(
+                              item.icon,
+                              size: 19,
+                              color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Row(
+                              children: [
+                                Text(
+                                  item.label,
+                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                        fontWeight: FontWeight.w500,
+                                        fontSize: 13.5,
+                                      ),
+                                ),
+                                const SizedBox(width: 8),
+                                if (item.value != null)
+                                  Expanded(
+                                    child: Align(
+                                      alignment: Alignment.centerRight,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3.5),
+                                        decoration: BoxDecoration(
+                                          color: isDark
+                                              ? AppColors.editorialSecondary.withValues(alpha: 0.2)
+                                              : AppColors.editorialSecondaryFixed,
+                                          borderRadius: BorderRadius.circular(9999),
+                                        ),
+                                        child: Text(
+                                          item.value!,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                                color: isDark
+                                                    ? AppColors.editorialSecondaryFixedDim
+                                                    : AppColors.editorialOnSecondaryFixed,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          if (item.showChevron || item.trailingWidget != null)
+                            const SizedBox(width: 8),
+                          if (item.trailingWidget != null)
+                            item.trailingWidget!
+                          else if (item.showChevron)
+                            const Icon(
+                              Icons.chevron_right_rounded,
+                              color: AppColors.inkSoft,
+                              size: 20,
+                            )
+                          else
+                            const SizedBox.shrink(),
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (!isLast)
+                    Divider(
+                      height: 1,
+                      indent: 70,
+                      color: isDark ? AppColors.lineDark : AppColors.lineLight,
+                    ),
+                ],
+              );
+            }).toList(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showComingSoon(BuildContext context, WidgetRef ref) {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.clearSnackBars();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(tr(ref, 'Feature coming soon')),
+        duration: const Duration(milliseconds: 1800),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
 }
 
-// ═════════════════════════════════════════════════════════════════════════════
-// HELPER: LANGUAGE BOTTOM SHEET
-// ═════════════════════════════════════════════════════════════════════════════
+class _MenuItemData {
+  const _MenuItemData({
+    required this.icon,
+    required this.label,
+    this.value,
+    this.onTap,
+    this.trailingWidget,
+    this.showChevron = true,
+  });
+
+  final IconData icon;
+  final String label;
+  final String? value;
+  final VoidCallback? onTap;
+  final Widget? trailingWidget;
+  final bool showChevron;
+}
 void _showLanguageBottomSheet(BuildContext context, WidgetRef ref) {
   final isDark = Theme.of(context).brightness == Brightness.dark;
 
