@@ -64,6 +64,12 @@ class ProfileScreen extends ConsumerWidget {
         ? user.email.trim()
         : 'learner@iagrow.in';
 
+    final displayName = (user?.fullName != null && user!.fullName.trim().isNotEmpty)
+        ? user.fullName.trim()
+        : (user?.name != null && user!.name.trim().isNotEmpty)
+            ? user.name.trim()
+            : tr(ref, 'Farmer');
+
     return Scaffold(
       backgroundColor: isDark ? const Color(0xFF121413) : const Color(0xFFFBFBFA),
       appBar: AppBar(
@@ -161,9 +167,9 @@ class ProfileScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 18),
 
-              // ── Header Text ("Your learning profile") ──
+              // ── User's Name ──
               Text(
-                tr(ref, 'Your learning profile'),
+                displayName,
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 22,
