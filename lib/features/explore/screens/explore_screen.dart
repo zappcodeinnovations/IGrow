@@ -120,25 +120,6 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
     });
   }
 
-  void _applyQuickFilter(String filter) {
-    setState(() {
-      _selectedQuickFilter = filter;
-      if (filter == 'All') {
-        _selectedPricePreset = 'all';
-        _minPrice = null;
-        _maxPrice = null;
-      } else if (filter == 'Free') {
-        _selectedPricePreset = 'free';
-        _minPrice = 0;
-        _maxPrice = 0;
-      } else if (filter == 'Paid') {
-        _selectedPricePreset = 'paid';
-        _minPrice = 1;
-        _maxPrice = null;
-      }
-    });
-  }
-
   void _showFilterBottomSheet() {
     String tempLevel = _selectedLevel;
     String tempOrdering = _selectedOrdering;
@@ -623,7 +604,27 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
       );
     }
 
-    // ── Screen 13 App Bar: "Search Courses" ──
+    // Determine category display name if filtered
+    final categories = ref.watch(studentCategoriesProvider).maybeWhen(
+          data: (cats) => cats,
+          orElse: () => null,
+        );
+    String? categoryDisplayName;
+    if (_selectedCategory != 'all' && categories != null) {
+      try {
+        categoryDisplayName = categories
+            .firstWhere((c) => c.id == _selectedCategory || c.name.toLowerCase() == _selectedCategory.toLowerCase())
+            .name;
+      } catch (_) {
+        categoryDisplayName = _selectedCategory;
+      }
+    }
+
+    final headerTitle = (categoryDisplayName != null && categoryDisplayName.isNotEmpty)
+        ? categoryDisplayName
+        : tr(ref, 'Search Courses');
+
+    // ── Screen 13 App Bar: Selected Category Name or "Search Courses" ──
     return AppBar(
       elevation: 0,
       backgroundColor: Colors.transparent,
@@ -652,7 +653,9 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
       ),
       titleSpacing: 12,
       title: Text(
-        tr(ref, 'Search Courses'),
+        headerTitle,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
         style: TextStyle(
           fontSize: 18,
           fontWeight: FontWeight.w700,
@@ -881,22 +884,6 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
   // SCREEN 13: SEARCH COURSES / FILTERED RESULTS
   // ═════════════════════════════════════════════════════════════════════════════
   Widget _buildSearchResultsScreen(BuildContext context, bool isDark) {
-    // Determine category display name if filtered
-    final categories = ref.watch(studentCategoriesProvider).maybeWhen(
-          data: (cats) => cats,
-          orElse: () => null,
-        );
-    String? categoryDisplayName;
-    if (_selectedCategory != 'all' && categories != null) {
-      try {
-        categoryDisplayName = categories
-            .firstWhere((c) => c.id == _selectedCategory || c.name.toLowerCase() == _selectedCategory.toLowerCase())
-            .name;
-      } catch (_) {
-        categoryDisplayName = _selectedCategory;
-      }
-    }
-
     final catalogAsync = ref.watch(studentCatalogProvider(CatalogQuery(
       search: _searchQuery.trim(),
       category: _selectedCategory == 'all' ? '' : _selectedCategory,
@@ -974,6 +961,13 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                           color: isDark ? Colors.white38 : const Color(0xFF9CA3AF),
                         ),
                         border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        errorBorder: InputBorder.none,
+                        disabledBorder: InputBorder.none,
+                        focusedErrorBorder: InputBorder.none,
+                        filled: false,
+                        fillColor: Colors.transparent,
                         isDense: true,
                         contentPadding: EdgeInsets.zero,
                       ),
@@ -995,99 +989,6 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
               ),
             ),
             const SizedBox(height: 16),
-
-            // Horizontal Quick-Filter Pill Row (All, Free, Paid, Hindi, Marathi, + active category)
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  if (categoryDisplayName != null) ...[
-                    Container(
-                      margin: const EdgeInsets.only(right: 8),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF1B4D2E),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            categoryDisplayName,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          InkWell(
-                            onTap: () {
-                              setState(() {
-                                _selectedCategory = 'all';
-                              });
-                            },
-                            child: const Icon(
-                              Icons.close_rounded,
-                              size: 14,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                  _buildQuickFilterPill('All', isDark),
-                  const SizedBox(width: 8),
-                  _buildQuickFilterPill('Free', isDark),
-                  const SizedBox(width: 8),
-                  _buildQuickFilterPill('Paid', isDark),
-                  const SizedBox(width: 8),
-                  _buildQuickFilterPill('Hindi', isDark),
-                  const SizedBox(width: 8),
-                  _buildQuickFilterPill('Marathi', isDark),
-                ],
-              ),
-            ),
-            const SizedBox(height: 22),
-
-            // Section Header: "Recommended results" + "Clear filters"
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Text(
-                  tr(ref, 'Recommended results'),
-                  style: TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.3,
-                    color: isDark ? Colors.white : const Color(0xFF1B4D2E),
-                  ),
-                ),
-                InkWell(
-                  onTap: _clearSearchAndFilters,
-                  borderRadius: BorderRadius.circular(6),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          tr(ref, 'Clear filters'),
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: isDark ? const Color(0xFF86EFAC) : const Color(0xFF1B4D2E),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
 
             // Results List of Large Course Cards
             catalogAsync.when(
@@ -1113,14 +1014,28 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.search_off_rounded, size: 54, color: AppColors.inkSoft.withValues(alpha: 0.4)),
-                          const SizedBox(height: 12),
+                          Container(
+                            width: 80,
+                            height: 80,
+                            decoration: BoxDecoration(
+                              color: isDark ? const Color(0xFF1E2820) : const Color(0xFFE8F3EA),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Center(
+                              child: Icon(
+                                Icons.menu_book_rounded,
+                                size: 38,
+                                color: Color(0xFF1B4D2E),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
                           Text(
                             tr(ref, 'No matching courses found'),
                             style: TextStyle(
-                              fontSize: 15,
+                              fontSize: 16,
                               fontWeight: FontWeight.w700,
-                              color: isDark ? Colors.white70 : const Color(0xFF374151),
+                              color: isDark ? Colors.white : const Color(0xFF1B4D2E),
                             ),
                           ),
                           const SizedBox(height: 6),
@@ -1131,15 +1046,20 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                               color: isDark ? Colors.white54 : const Color(0xFF6B7280),
                             ),
                           ),
-                          const SizedBox(height: 14),
+                          const SizedBox(height: 18),
                           ElevatedButton(
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF1B4D2E),
                               foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                              elevation: 0,
                             ),
                             onPressed: _clearSearchAndFilters,
-                            child: Text(tr(ref, 'Back to Categories')),
+                            child: Text(
+                              tr(ref, 'Back to Categories'),
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                            ),
                           ),
                         ],
                       ),
@@ -1183,46 +1103,6 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
             ),
             const SizedBox(height: 30),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildQuickFilterPill(String title, bool isDark) {
-    final isSelected = _selectedQuickFilter == title;
-    return InkWell(
-      onTap: () => _applyQuickFilter(title),
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? const Color(0xFF1B4D2E)
-              : (isDark ? AppColors.cardDark : Colors.white),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected
-                ? const Color(0xFF1B4D2E)
-                : (isDark ? AppColors.lineDark : const Color(0xFFE5ECE5)),
-            width: 1,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Text(
-          title,
-          style: TextStyle(
-            fontSize: 12.5,
-            fontWeight: FontWeight.w700,
-            color: isSelected
-                ? Colors.white
-                : (isDark ? Colors.white70 : const Color(0xFF374151)),
-          ),
         ),
       ),
     );
