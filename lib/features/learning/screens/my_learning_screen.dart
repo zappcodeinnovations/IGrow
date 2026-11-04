@@ -890,7 +890,7 @@ class _SummaryStatCard extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
           color: isSelected
-              ? (isDark ? AppColors.cardDarkElevated : Colors.white)
+              ? (isDark ? const Color(0xFF1A261B) : Colors.white)
               : (isDark ? AppColors.cardDark : AppColors.editorialSurfaceContainerLow),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
