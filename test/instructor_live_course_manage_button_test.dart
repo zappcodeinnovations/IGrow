@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:krushi_siksha/data/models/api_models/course_models.dart';
 import 'package:krushi_siksha/features/home_instructor/screens/instructor_home_screen.dart';
@@ -7,7 +8,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('Instructor Live Course Manage Button Tests', () {
-    testWidgets('Live/Approved course does NOT display Manage Course button', (tester) async {
+    testWidgets('Live/Approved course DOES display Manage Course and View Live buttons', (tester) async {
       const liveCourse = ApiCourseList(
         id: 'course-101',
         title: 'Hydroponics Farming Masterclass',
@@ -19,23 +20,24 @@ void main() {
         MaterialApp(
           home: Scaffold(
             body: SingleChildScrollView(
-              child: Builder(
-                builder: (context) {
-                  // Testing via CourseCard UI in instructor home
-                  return AgriLearnCourseCard(
-                    course: liveCourse,
-                    onManage: () {},
-                    onViewLive: () {},
-                    onDelete: () {},
-                  );
-                },
+              child: ProviderScope(
+                child: Builder(
+                  builder: (context) {
+                    // Testing via CourseCard UI in instructor home
+                    return AgriLearnCourseCard(
+                      course: liveCourse,
+                      onManage: () {},
+                      onViewLive: () {},
+                    );
+                  },
+                ),
               ),
             ),
           ),
         ),
       );
 
-      expect(find.text('Manage Course'), findsNothing);
+      expect(find.text('Manage Course'), findsOneWidget);
       expect(find.text('View Live'), findsOneWidget);
     });
 
@@ -51,15 +53,16 @@ void main() {
         MaterialApp(
           home: Scaffold(
             body: SingleChildScrollView(
-              child: Builder(
-                builder: (context) {
-                  return AgriLearnCourseCard(
-                    course: draftCourse,
-                    onManage: () {},
-                    onViewLive: () {},
-                    onDelete: () {},
-                  );
-                },
+              child: ProviderScope(
+                child: Builder(
+                  builder: (context) {
+                    return AgriLearnCourseCard(
+                      course: draftCourse,
+                      onManage: () {},
+                      onViewLive: () {},
+                    );
+                  },
+                ),
               ),
             ),
           ),
