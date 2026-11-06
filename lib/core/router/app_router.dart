@@ -544,18 +544,21 @@ Page<T> _buildSlideRightPage<T>({
   required GoRouterState state,
   required Widget child,
 }) {
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+  final surfaceColor = isDark ? Colors.black : const Color(0xFFFBF9F9);
+
   final isApplePlatform = defaultTargetPlatform == TargetPlatform.iOS ||
       defaultTargetPlatform == TargetPlatform.macOS;
 
   if (isApplePlatform) {
     return CupertinoPage<T>(
       key: state.pageKey,
-      child: child,
+      child: ColoredBox(
+        color: surfaceColor,
+        child: child,
+      ),
     );
   }
-
-  final isDark = Theme.of(context).brightness == Brightness.dark;
-  final surfaceColor = isDark ? Colors.black : const Color(0xFFFBF9F9);
 
   return CustomTransitionPage<T>(
     key: state.pageKey,
