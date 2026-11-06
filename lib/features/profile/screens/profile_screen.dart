@@ -611,64 +611,69 @@ class ProfileScreen extends ConsumerWidget {
           child: Column(
             children: [
               AppCard(
-                padding: const EdgeInsets.all(22),
-                child: Column(
+                padding: const EdgeInsets.all(20),
+                child: Row(
                   children: [
-                    Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 32,
-                          backgroundColor: AppColors.editorialPrimary,
-                          backgroundImage: user?.avatarUrl != null
-                              ? NetworkImage(user!.avatarUrl!) as ImageProvider
-                              : null,
-                          child: user?.avatarUrl == null
-                              ? Text(
-                                  user?.fullName.isNotEmpty == true
-                                      ? user!.fullName[0].toUpperCase()
-                                      : 'U',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 22,
-                                  ),
-                                )
-                              : null,
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                user?.fullName ?? 'Instructor',
-                                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 17,
-                                    ),
+                    CircleAvatar(
+                      radius: 30,
+                      backgroundColor: AppColors.editorialPrimary,
+                      backgroundImage: user?.avatarUrl != null
+                          ? NetworkImage(user!.avatarUrl!) as ImageProvider
+                          : null,
+                      child: user?.avatarUrl == null
+                          ? Text(
+                              user?.fullName.isNotEmpty == true
+                                  ? user!.fullName[0].toUpperCase()
+                                  : 'U',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 20,
                               ),
-                              const SizedBox(height: 2),
-                              Text(
-                                user?.email ?? '',
-                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      color: AppColors.editorialOnSurfaceVariant,
-                                      fontSize: 12,
-                                    ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                            )
+                          : null,
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            user?.fullName ?? 'Instructor',
+                            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            user?.email ?? '',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: AppColors.editorialOnSurfaceVariant,
+                                  fontSize: 12,
+                                ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 10),
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF1B4D2E),
                         foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        visualDensity: VisualDensity.compact,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),
                       onPressed: () => context.push('/edit-profile'),
-                      child: Text(tr(ref, 'Edit Profile')),
+                      child: Text(
+                        tr(ref, 'Edit Profile'),
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ],
                 ),
