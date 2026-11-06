@@ -152,12 +152,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> login({
     required String email,
     required String password,
+    String? expectedRole,
   }) async {
     state = state.copyWith(status: AuthStatus.loading);
     try {
       final user = await _repo.login(
         email: email,
         password: password,
+        expectedRole: expectedRole,
       );
       state = AuthState(status: AuthStatus.authenticated, user: user);
       _startPeriodicSync();
@@ -174,6 +176,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     required String idToken,
     String? fullName,
     String? fcmToken,
+    String? expectedRole,
   }) async {
     state = state.copyWith(status: AuthStatus.loading);
     try {
@@ -182,6 +185,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         idToken: idToken,
         fullName: fullName,
         fcmToken: fcmToken,
+        expectedRole: expectedRole,
       );
       state = AuthState(status: AuthStatus.authenticated, user: user);
       _startPeriodicSync();
