@@ -9,6 +9,7 @@ import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
 import '../../core/network/token_storage.dart';
 import '../../core/services/notification_service.dart';
+import '../../core/services/social_auth_service.dart';
 import '../models/user_model.dart';
 import '../models/user_role.dart';
 
@@ -562,19 +563,42 @@ class ApiAuthRepository implements AuthRepository {
 
   @override
   Future<void> deleteAccount() async {
+    // 1. Revoke Google OAuth session locally so re-authenticating doesn't auto-pick cached credential
     try {
-      final accessToken = await tokenStorage.getAccessToken();
-      final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/auth/delete-account/');
-      await http.delete(
-        uri,
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          if (accessToken != null) 'Authorization': 'Bearer $accessToken',
-        },
-      ).timeout(const Duration(seconds: 6), onTimeout: () => http.Response('{}', 408));
+      await SocialAuthService.instance.disconnectGoogle();
     } catch (_) {}
 
+    // 2. Call backend deletion endpoints
+    try {
+      final accessToken = await tokenStorage.getAccessToken();
+      if (accessToken != null && accessToken.isNotEmpty) {
+        final headers = {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $accessToken',
+        };
+
+        // Try primary delete-account endpoint first
+        final deleteUri = Uri.parse('https://iagrow.zappcode.in/api/v1/auth/delete-account/');
+        final res = await http.delete(deleteUri, headers: headers).timeout(
+          const Duration(seconds: 8),
+          onTimeout: () => http.Response('{"detail":"Timeout"}', 408),
+        );
+
+        // If 404/405, fallback to DELETE /api/v1/auth/me/ in case backend supports it
+        if (res.statusCode == 404 || res.statusCode == 405) {
+          final meUri = Uri.parse('https://iagrow.zappcode.in/api/v1/auth/me/');
+          await http.delete(meUri, headers: headers).timeout(
+            const Duration(seconds: 8),
+            onTimeout: () => http.Response('{"detail":"Timeout"}', 408),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ [AuthRepo] Error during backend deleteAccount call: $e');
+    }
+
+    // 3. Clear all local user credentials, cache, preferences and tokens
     await logout();
   }
 

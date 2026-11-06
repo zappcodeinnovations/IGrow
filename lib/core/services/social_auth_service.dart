@@ -29,6 +29,22 @@ class SocialAuthService {
     return _googleSignIn!;
   }
 
+  /// Disconnects and signs out from Google and clears OAuth tokens.
+  /// This ensures that on account deletion or full sign out, Google revokes the cached app session.
+  Future<void> disconnectGoogle() async {
+    try {
+      final googleSignIn = _getGoogleSignIn();
+      await googleSignIn.disconnect();
+    } catch (e) {
+      if (kDebugMode) {
+        print('⚠️ [SOCIAL_AUTH] Google disconnect error (can be safely ignored): $e');
+      }
+      try {
+        await _googleSignIn?.signOut();
+      } catch (_) {}
+    }
+  }
+
   /// Triggers simple native Google Sign-In and returns:
   /// - `id_token`: The JWT identity token from Google
   /// - `full_name`: User's display name
