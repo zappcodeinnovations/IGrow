@@ -1957,19 +1957,23 @@ class _KycPromptBanner extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: (isPending ? AppColors.accentOrange : AppColors.primaryGreen)
-                  .withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              isPending ? 'Status' : 'Verify',
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: isPending ? AppColors.accentOrange : AppColors.primaryGreen,
-                    fontWeight: FontWeight.bold,
-                  ),
+          GestureDetector(
+            onTap: onTap,
+            behavior: HitTestBehavior.opaque,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: (isPending ? AppColors.accentOrange : AppColors.primaryGreen)
+                    .withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                isPending ? 'Status' : 'Verify',
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: isPending ? AppColors.accentOrange : AppColors.primaryGreen,
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
             ),
           ),
         ],

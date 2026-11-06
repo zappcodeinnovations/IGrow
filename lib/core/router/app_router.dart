@@ -497,7 +497,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: RouteNames.instructorKyc,
-            builder: (context, state) => const InstructorKycScreen(),
+            pageBuilder: (context, state) => _buildSlideRightPage(
+              context: context,
+              state: state,
+              child: const InstructorKycScreen(),
+            ),
           ),
           GoRoute(
             path: RouteNames.instructorAnalytics,
