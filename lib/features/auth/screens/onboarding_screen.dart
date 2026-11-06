@@ -204,11 +204,11 @@ class _FirstOnboardingSlide extends StatelessWidget {
 
           // Main Title
           Text(
-            'IGROW',
+            'iAgrow',
             style: GoogleFonts.plusJakartaSans(
               fontSize: 38,
               fontWeight: FontWeight.w900,
-              letterSpacing: 3.0,
+              letterSpacing: 2.0,
               color: isDark ? AppColors.white : AppColors.inkDark,
             ),
           ),

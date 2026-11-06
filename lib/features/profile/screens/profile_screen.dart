@@ -71,7 +71,7 @@ class ProfileScreen extends ConsumerWidget {
             : tr(ref, 'Farmer');
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF121413) : const Color(0xFFFBFBFA),
+      backgroundColor: isDark ? AppColors.bgDark : const Color(0xFFFBFBFA),
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.transparent,
