@@ -7,6 +7,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:http/http.dart' as http;
+import 'package:pdf/pdf.dart';
 import 'package:printing/printing.dart';
 import '../network/token_storage.dart';
 
@@ -236,6 +237,8 @@ class NotificationService {
             if (await file.exists()) {
               final bytes = await file.readAsBytes();
               await Printing.layoutPdf(
+                format: PdfPageFormat.a4.landscape,
+                dynamicLayout: false,
                 onLayout: (_) async => bytes,
                 name: file.uri.pathSegments.last,
               );

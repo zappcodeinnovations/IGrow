@@ -155,6 +155,7 @@ class _CertificateViewerDialogState extends State<CertificateViewerDialog> {
       pdf.addPage(
         pw.Page(
           pageFormat: PdfPageFormat.a4.landscape,
+          orientation: pw.PageOrientation.landscape,
           margin: const pw.EdgeInsets.all(32),
           build: (pw.Context pCtx) {
             return pw.Container(
@@ -788,6 +789,8 @@ class _CertificateViewerDialogState extends State<CertificateViewerDialog> {
                         ),
                         onPressed: () {
                           Printing.layoutPdf(
+                            format: PdfPageFormat.a4.landscape,
+                            dynamicLayout: false,
                             onLayout: (format) async => _lastGeneratedPdfBytes!,
                             name: _lastGeneratedFileName ?? 'Certificate.pdf',
                           );
