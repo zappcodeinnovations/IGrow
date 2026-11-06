@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -226,11 +227,20 @@ class _CompleteSocialProfileDialogState
                   prefixIcon: Icons.phone_android_rounded,
                   keyboardType: TextInputType.phone,
                   textInputAction: TextInputAction.next,
+                  maxLength: 10,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(10),
+                  ],
                   validator: (value) {
-                    final trimmed = (value ?? '').trim();
-                    if (trimmed.isNotEmpty &&
-                        trimmed.replaceAll(RegExp(r'\D'), '').length < 10) {
-                      return tr(ref, 'Enter a valid 10-digit phone number');
+                    final digitsOnly = (value ?? '').trim().replaceAll(RegExp(r'\D'), '');
+                    if (digitsOnly.isNotEmpty) {
+                      if (digitsOnly.length != 10) {
+                        return tr(ref, 'Phone number must be exactly 10 digits');
+                      }
+                      if (!RegExp(r'^[6-9]\d{9}$').hasMatch(digitsOnly)) {
+                        return tr(ref, 'Enter a valid 10-digit mobile number');
+                      }
                     }
                     return null;
                   },

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../theme/app_colors.dart';
@@ -22,6 +23,8 @@ class AppPillTextField extends StatefulWidget {
   final Iterable<String>? autofillHints;
   final ValueChanged<String>? onSubmitted;
   final FormFieldValidator<String>? validator;
+  final int? maxLength;
+  final List<TextInputFormatter>? inputFormatters;
 
   const AppPillTextField({
     super.key,
@@ -35,6 +38,8 @@ class AppPillTextField extends StatefulWidget {
     this.autofillHints,
     this.onSubmitted,
     this.validator,
+    this.maxLength,
+    this.inputFormatters,
   });
 
   @override
@@ -131,6 +136,11 @@ class _AppPillTextFieldState extends State<AppPillTextField> {
                       keyboardType: widget.keyboardType,
                       textInputAction: widget.textInputAction,
                       autofillHints: widget.autofillHints,
+                      maxLength: widget.maxLength,
+                      buildCounter: widget.maxLength != null
+                          ? (context, {required currentLength, required isFocused, maxLength}) => null
+                          : null,
+                      inputFormatters: widget.inputFormatters,
                       onSubmitted: widget.onSubmitted,
                       onChanged: (val) {
                         fieldState.didChange(val);
