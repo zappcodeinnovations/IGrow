@@ -960,7 +960,9 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
             Icon(
               icon,
               size: 20,
-              color: isSelected ? AppColors.primaryGreen : AppColors.inkSoft,
+              color: isSelected
+                  ? AppColors.primaryGreen
+                  : (isDark ? Colors.white70 : AppColors.inkSoft),
             ),
             const SizedBox(width: 8),
             Flexible(
@@ -968,8 +970,10 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
                 label,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: isSelected ? AppColors.primaryGreen : AppColors.inkDark,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                      color: isSelected
+                          ? AppColors.primaryGreen
+                          : (isDark ? Colors.white : AppColors.inkDark),
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
                     ),
               ),
             ),
