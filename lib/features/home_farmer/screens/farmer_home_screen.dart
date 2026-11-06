@@ -1318,7 +1318,7 @@ class _TopInstructorsShowcase extends ConsumerWidget {
 
         // Instructors Horizontal List
         SizedBox(
-          height: 295,
+          height: 254,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: instructors.length,
@@ -1363,10 +1363,10 @@ class _InstructorCard extends StatelessWidget {
         : '${inst.totalStudents}';
 
     return Container(
-      width: 220,
+      width: 200,
       decoration: BoxDecoration(
         color: isDark ? AppColors.cardDark : Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(
           color: isDark ? AppColors.lineDark : const Color(0xFFE5E7EB),
           width: 1,
@@ -1374,32 +1374,33 @@ class _InstructorCard extends StatelessWidget {
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.05),
-            blurRadius: 14,
-            offset: const Offset(0, 4),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(18),
           onTap: () {
             context.push('/farmer/explore?instructor=${Uri.encodeComponent(inst.id.isNotEmpty ? inst.id : inst.fullName)}');
           },
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
             children: [
               // ── Top Image Container with Colored Backdrop & Overlay Action Button ──
               Padding(
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.fromLTRB(10, 10, 10, 4),
                 child: Stack(
                   clipBehavior: Clip.none,
                   children: [
                     Container(
-                      height: 125,
+                      height: 110,
                       decoration: BoxDecoration(
                         color: backdropColor,
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(14),
                       ),
                       clipBehavior: Clip.antiAlias,
                       child: Center(
@@ -1417,22 +1418,22 @@ class _InstructorCard extends StatelessWidget {
                     ),
                     // Blue Circle Plus Button pinned at bottom-right corner of photo
                     Positioned(
-                      bottom: -12,
-                      right: 12,
+                      bottom: -10,
+                      right: 10,
                       child: Container(
-                        width: 28,
-                        height: 28,
+                        width: 26,
+                        height: 26,
                         decoration: BoxDecoration(
                           color: const Color(0xFF1E5BB8),
                           shape: BoxShape.circle,
                           border: Border.all(
                             color: isDark ? AppColors.cardDark : Colors.white,
-                            width: 2.2,
+                            width: 2.0,
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF1E5BB8).withValues(alpha: 0.4),
-                              blurRadius: 6,
+                              color: const Color(0xFF1E5BB8).withValues(alpha: 0.35),
+                              blurRadius: 5,
                               offset: const Offset(0, 2),
                             ),
                           ],
@@ -1440,26 +1441,27 @@ class _InstructorCard extends StatelessWidget {
                         child: const Icon(
                           Icons.add,
                           color: Colors.white,
-                          size: 16,
+                          size: 15,
                         ),
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 4),
 
               // ── Instructor Info & Metrics ──
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14),
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     // Instructor Name
                     Text(
                       inst.fullName,
                       style: TextStyle(
-                        fontSize: 15,
+                        fontSize: 14.5,
                         fontWeight: FontWeight.w800,
                         letterSpacing: -0.2,
                         color: isDark ? Colors.white : const Color(0xFF111827),
@@ -1467,18 +1469,18 @@ class _InstructorCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 5),
 
                     // Row 1: Specialty / Role & Course Count
                     Row(
                       children: [
-                        const Icon(Icons.school_outlined, size: 13, color: Color(0xFF6B7280)),
+                        const Icon(Icons.school_outlined, size: 12.5, color: Color(0xFF6B7280)),
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
                             specialty,
                             style: const TextStyle(
-                              fontSize: 11,
+                              fontSize: 10.5,
                               fontWeight: FontWeight.w500,
                               color: Color(0xFF6B7280),
                             ),
@@ -1487,30 +1489,30 @@ class _InstructorCard extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 6),
-                        const Icon(Icons.menu_book_outlined, size: 13, color: Color(0xFF6B7280)),
+                        const Icon(Icons.menu_book_outlined, size: 12.5, color: Color(0xFF6B7280)),
                         const SizedBox(width: 4),
                         Text(
                           '${inst.totalCourses} ${inst.totalCourses == 1 ? "Course" : "Courses"}',
                           style: const TextStyle(
-                            fontSize: 11,
+                            fontSize: 10.5,
                             fontWeight: FontWeight.w600,
                             color: Color(0xFF6B7280),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 5),
+                    const SizedBox(height: 4),
 
                     // Row 2: Students Count & Rating
                     Row(
                       children: [
-                        const Icon(Icons.people_alt_outlined, size: 13, color: Color(0xFF6B7280)),
+                        const Icon(Icons.people_alt_outlined, size: 12.5, color: Color(0xFF6B7280)),
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
                             '$studentCountFormatted Students',
                             style: const TextStyle(
-                              fontSize: 11,
+                              fontSize: 10.5,
                               fontWeight: FontWeight.w500,
                               color: Color(0xFF6B7280),
                             ),
@@ -1518,12 +1520,12 @@ class _InstructorCard extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        const Icon(Icons.star_rounded, size: 15, color: Color(0xFFF59E0B)),
+                        const Icon(Icons.star_rounded, size: 14, color: Color(0xFFF59E0B)),
                         const SizedBox(width: 2),
                         Text(
                           inst.rating.toStringAsFixed(1),
                           style: TextStyle(
-                            fontSize: 11.5,
+                            fontSize: 11,
                             fontWeight: FontWeight.w800,
                             color: isDark ? Colors.white : const Color(0xFF111827),
                           ),
@@ -1532,13 +1534,13 @@ class _InstructorCard extends StatelessWidget {
                           Text(
                             ' (${inst.reviewCount})',
                             style: const TextStyle(
-                              fontSize: 10,
+                              fontSize: 9.5,
                               color: Color(0xFF9CA3AF),
                             ),
                           ),
                       ],
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 8),
 
                     // Divider & "View Profile ->" link
                     Divider(
@@ -1552,7 +1554,7 @@ class _InstructorCard extends StatelessWidget {
                         Text(
                           'View Profile',
                           style: TextStyle(
-                            fontSize: 11.5,
+                            fontSize: 11,
                             fontWeight: FontWeight.w700,
                             color: isDark ? AppColors.greenLight : const Color(0xFF1B5E20),
                           ),
@@ -1560,7 +1562,7 @@ class _InstructorCard extends StatelessWidget {
                         const SizedBox(width: 3),
                         Icon(
                           Icons.arrow_forward_rounded,
-                          size: 13,
+                          size: 12,
                           color: isDark ? AppColors.greenLight : const Color(0xFF1B5E20),
                         ),
                       ],
