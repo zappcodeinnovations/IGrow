@@ -56,9 +56,9 @@ class ProfileScreen extends ConsumerWidget {
       orElse: () => 0,
     );
 
-    // Format numbers with 2-digit padding like in prototype ("02", "01")
-    final coursesDisplay = coursesCount.toString().padLeft(2, '0');
-    final certsDisplay = certsCount.toString().padLeft(2, '0');
+    // Display counts as single digit (e.g. "0", "1", "2") without leading zero
+    final coursesDisplay = coursesCount.toString();
+    final certsDisplay = certsCount.toString();
 
     final email = (user?.email != null && user!.email.trim().isNotEmpty)
         ? user.email.trim()
