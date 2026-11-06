@@ -329,15 +329,23 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                   ),
                   const SizedBox(height: 18),
 
-                  // White Rounded Search Bar inside Green Header
+                  // Search Bar inside Green Header
                   Container(
                     height: 48,
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: isDark
+                          ? const Color(0xFF0F2618)
+                          : Colors.white,
                       borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.15)
+                            : Colors.transparent,
+                        width: 1,
+                      ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.12),
+                          color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.12),
                           blurRadius: 10,
                           offset: const Offset(0, 3),
                         ),
@@ -353,19 +361,19 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                       },
                       decoration: InputDecoration(
                         hintText: tr(ref, 'Search farming courses...'),
-                        hintStyle: const TextStyle(
+                        hintStyle: TextStyle(
                           fontSize: 13.5,
-                          color: Color(0xFF888888),
+                          color: isDark ? Colors.white60 : const Color(0xFF888888),
                         ),
-                        prefixIcon: const Icon(
+                        prefixIcon: Icon(
                           Icons.search_rounded,
-                          color: Color(0xFF666666),
+                          color: isDark ? Colors.white70 : const Color(0xFF666666),
                           size: 20,
                         ),
                         suffixIcon: _searchQuery.isNotEmpty
                             ? IconButton(
                                 icon: const Icon(Icons.clear_rounded, size: 18),
-                                color: const Color(0xFF666666),
+                                color: isDark ? Colors.white70 : const Color(0xFF666666),
                                 onPressed: () {
                                   _searchController.clear();
                                   setState(() {
@@ -375,14 +383,20 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                               )
                             : null,
                         border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        filled: true,
+                        fillColor: Colors.transparent,
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: 14,
                           vertical: 12,
                         ),
                       ),
-                      style: const TextStyle(
+                      cursorColor: isDark ? Colors.white : AppColors.primaryGreen,
+                      style: TextStyle(
                         fontSize: 14,
-                        color: Color(0xFF1E1E1E),
+                        fontWeight: FontWeight.w500,
+                        color: isDark ? Colors.white : const Color(0xFF1E1E1E),
                       ),
                     ),
                   ),
