@@ -141,6 +141,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     // Listen for auth state changes so we can navigate as soon as checkSession finishes
     // (if the minimum splash delay has already passed).
     ref.listen<AuthState>(authProvider, (previous, next) {
@@ -177,7 +179,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                       blurRadius: 30,
                       offset: const Offset(0, 12),
                       opacity: 0.3,
-                    ),
+                     ),
                   ),
                   clipBehavior: Clip.antiAlias,
                   child: Image.asset(
@@ -191,7 +193,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                 Text(
                   'iAgrow',
                   style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                        color: Colors.white,
+                        color: isDark ? Colors.white : AppColors.greenDark,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 0.5,
                       ),
@@ -200,7 +202,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                 Text(
                   'Learn • Grow • Achieve',
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: AppColors.greenLight,
+                        color: isDark ? AppColors.greenLight : const Color(0xFF2E6E34),
                         fontWeight: FontWeight.w600,
                         letterSpacing: 1.1,
                       ),
