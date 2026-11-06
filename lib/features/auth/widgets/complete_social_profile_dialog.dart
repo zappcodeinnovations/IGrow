@@ -1,8 +1,10 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
 
 import '../../../core/localization/app_strings.dart';
 import '../../../core/network/api_client.dart';
@@ -13,6 +15,95 @@ import '../../../core/widgets/app_gradient_button.dart';
 import '../../../core/widgets/app_pill_text_field.dart';
 import '../../../data/models/user_model.dart';
 import '../providers/auth_provider.dart';
+
+/// Provider caching the location mapping {state: [districts]}
+final locationsMapProvider = FutureProvider<Map<String, List<String>>>((ref) async {
+  try {
+    final response = await http.get(
+      Uri.parse('https://iagrow.zappcode.in/api/v1/auth/locations/'),
+      headers: {'Accept': 'application/json'},
+    ).timeout(const Duration(seconds: 8));
+    if (response.statusCode == 200) {
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map<String, dynamic>) {
+        final result = <String, List<String>>{};
+        decoded.forEach((key, val) {
+          if (val is List) {
+            result[key] = val.map((e) => e.toString()).toList()..sort();
+          }
+        });
+        return result;
+      }
+    }
+  } catch (e) {
+    debugPrint('⚠️ [LocationsProvider] Error fetching locations: $e');
+  }
+  return const {
+    'Maharashtra': [
+      'Ahmednagar', 'Akola', 'Amravati', 'Aurangabad', 'Beed', 'Bhandara',
+      'Buldhana', 'Chandrapur', 'Dhule', 'Gadchiroli', 'Gondia', 'Hingoli',
+      'Jalgaon', 'Jalna', 'Kolhapur', 'Latur', 'Mumbai City', 'Mumbai Suburban',
+      'Nagpur', 'Nanded', 'Nandurbar', 'Nashik', 'Osmanabad', 'Palghar',
+      'Parbhani', 'Pune', 'Raigad', 'Ratnagiri', 'Sangli', 'Satara',
+      'Sindhudurg', 'Solapur', 'Thane', 'Wardha', 'Washim', 'Yavatmal'
+    ],
+    'Gujarat': [
+      'Ahmedabad', 'Amreli', 'Anand', 'Aravalli', 'Banaskantha', 'Bharuch',
+      'Bhavnagar', 'Botad', 'Chhota Udaipur', 'Dahod', 'Dang', 'Devbhoomi Dwarka',
+      'Gandhinagar', 'Gir Somnath', 'Jamnagar', 'Junagadh', 'Kheda', 'Kutch',
+      'Mahisagar', 'Mehsana', 'Morbi', 'Narmada', 'Navsari', 'Panchmahal',
+      'Patan', 'Porbandar', 'Rajkot', 'Sabarkantha', 'Surat', 'Surendranagar',
+      'Tapi', 'Vadodara', 'Valsad'
+    ],
+    'Madhya Pradesh': [
+      'Agar Malwa', 'Alirajpur', 'Anuppur', 'Ashoknagar', 'Balaghat', 'Barwani',
+      'Betul', 'Bhind', 'Bhopal', 'Burhanpur', 'Chhatarpur', 'Chhindwara',
+      'Damoh', 'Datia', 'Dewas', 'Dhar', 'Dindori', 'Guna', 'Gwalior',
+      'Harda', 'Hoshangabad', 'Indore', 'Jabalpur', 'Jhabua', 'Katni',
+      'Khandwa', 'Khargone', 'Mandla', 'Mandsaur', 'Morena', 'Narsinghpur',
+      'Neemuch', 'Panna', 'Raisen', 'Rajgarh', 'Ratlam', 'Rewa', 'Sagar',
+      'Satna', 'Sehore', 'Seoni', 'Shahdol', 'Shajapur', 'Sheopur', 'Shivpuri',
+      'Sidhi', 'Singrauli', 'Tikamgarh', 'Ujjain', 'Umaria', 'Vidisha'
+    ],
+    'Karnataka': [
+      'Bagalkot', 'Ballari', 'Belagavi', 'Bengaluru Rural', 'Bengaluru Urban',
+      'Bidar', 'Chamarajanagar', 'Chikkaballapur', 'Chikkamagaluru', 'Chitradurga',
+      'Dakshina Kannada', 'Davanagere', 'Dharwad', 'Gadag', 'Hassan', 'Haveri',
+      'Kalaburagi', 'Kodagu', 'Kolar', 'Koppal', 'Mandya', 'Mysuru', 'Raichur',
+      'Ramanagara', 'Shivamogga', 'Tumakuru', 'Udupi', 'Uttara Kannada',
+      'Vijayapura', 'Yadgir'
+    ],
+    'Punjab': [
+      'Amritsar', 'Barnala', 'Bathinda', 'Faridkot', 'Fatehgarh Sahib', 'Fazilka',
+      'Ferozepur', 'Gurdaspur', 'Hoshiarpur', 'Jalandhar', 'Kapurthala',
+      'Ludhiana', 'Mansa', 'Moga', 'Muktsar', 'Pathankot', 'Patiala', 'Rupnagar',
+      'Sahibzada Ajit Singh Nagar', 'Sangrur', 'Shahid Bhagat Singh Nagar', 'Tarn Taran'
+    ],
+    'Rajasthan': [
+      'Ajmer', 'Alwar', 'Banswara', 'Baran', 'Barmer', 'Bharatpur', 'Bhilwara',
+      'Bikaner', 'Bundi', 'Chittorgarh', 'Churu', 'Dausa', 'Dholpur', 'Dungarpur',
+      'Hanumangarh', 'Jaipur', 'Jaisalmer', 'Jalore', 'Jhalawar', 'Jhunjhunu',
+      'Jodhpur', 'Karauli', 'Kota', 'Nagaur', 'Pali', 'Pratapgarh', 'Rajsamand',
+      'Sawai Madhopur', 'Sikar', 'Sirohi', 'Sri Ganganagar', 'Tonk', 'Udaipur'
+    ],
+    'Uttar Pradesh': [
+      'Agra', 'Aligarh', 'Prayagraj', 'Ambedkar Nagar', 'Amethi', 'Amroha',
+      'Auraiya', 'Ayodhya', 'Azamgarh', 'Baghpat', 'Bahraich', 'Ballia',
+      'Balrampur', 'Banda', 'Barabanki', 'Bareilly', 'Basti', 'Bhadohi',
+      'Bijnor', 'Budaun', 'Bulandshahr', 'Chandauli', 'Chitrakoot', 'Deoria',
+      'Etah', 'Etawah', 'Farrukhabad', 'Fatehpur', 'Firozabad',
+      'Gautam Buddha Nagar', 'Ghaziabad', 'Ghazipur', 'Gonda', 'Gorakhpur',
+      'Hamirpur', 'Hapur', 'Hardoi', 'Hathras', 'Jalaun', 'Jaunpur', 'Jhansi',
+      'Kannauj', 'Kanpur Dehat', 'Kanpur Nagar', 'Kasganj', 'Kaushambi',
+      'Kheri', 'Kushinagar', 'Lalitpur', 'Lucknow', 'Maharajganj', 'Mahoba',
+      'Mainpuri', 'Mathura', 'Mau', 'Meerut', 'Mirzapur', 'Moradabad',
+      'Muzaffarnagar', 'Pilibhit', 'Pratapgarh', 'Raebareli', 'Rampur',
+      'Saharanpur', 'Sambhal', 'Sant Kabir Nagar', 'Shahjahanpur', 'Shamli',
+      'Shravasti', 'Siddharthnagar', 'Sitapur', 'Sonbhadra', 'Sultanpur',
+      'Unnao', 'Varanasi'
+    ],
+  };
+});
 
 /// Modal dialog shown after social login when the user has incomplete profile details.
 ///
@@ -44,25 +135,27 @@ class _CompleteSocialProfileDialogState
     extends ConsumerState<CompleteSocialProfileDialog> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _phoneController;
-  late final TextEditingController _stateController;
-  late final TextEditingController _districtController;
+  String? _selectedState;
+  String? _selectedDistrict;
   bool _isSaving = false;
 
   @override
   void initState() {
     super.initState();
     _phoneController = TextEditingController(text: widget.user.phone);
-    _stateController =
-        TextEditingController(text: widget.user.locationState ?? '');
-    _districtController =
-        TextEditingController(text: widget.user.locationDistrict ?? '');
+    _selectedState = widget.user.locationState?.trim();
+    if (_selectedState != null && _selectedState!.isEmpty) {
+      _selectedState = null;
+    }
+    _selectedDistrict = widget.user.locationDistrict?.trim();
+    if (_selectedDistrict != null && _selectedDistrict!.isEmpty) {
+      _selectedDistrict = null;
+    }
   }
 
   @override
   void dispose() {
     _phoneController.dispose();
-    _stateController.dispose();
-    _districtController.dispose();
     super.dispose();
   }
 
@@ -86,8 +179,8 @@ class _CompleteSocialProfileDialogState
     }
 
     final phone = _phoneController.text.trim();
-    final state = _stateController.text.trim();
-    final district = _districtController.text.trim();
+    final state = _selectedState?.trim() ?? '';
+    final district = _selectedDistrict?.trim() ?? '';
 
     setState(() => _isSaving = true);
 
@@ -247,25 +340,112 @@ class _CompleteSocialProfileDialogState
                 ),
                 const SizedBox(height: 14),
 
-                // State Field
-                AppPillTextField(
-                  controller: _stateController,
-                  hintText: tr(ref, 'State (e.g. Maharashtra)'),
-                  prefixIcon: Icons.map_rounded,
-                  textInputAction: TextInputAction.next,
-                ),
-                const SizedBox(height: 14),
+                // Dependent State & District Dropdowns
+                Consumer(
+                  builder: (context, ref, _) {
+                    final locationsAsync = ref.watch(locationsMapProvider);
 
-                // District Field
-                AppPillTextField(
-                  controller: _districtController,
-                  hintText: tr(ref, 'District / City (e.g. Pune)'),
-                  prefixIcon: Icons.location_city_rounded,
-                  textInputAction: TextInputAction.done,
-                  onSubmitted: (_) {
-                    if (!_isSaving) {
-                      _saveAndContinue();
-                    }
+                    return locationsAsync.when(
+                      data: (locationsMap) {
+                        final statesList = locationsMap.keys.toList()..sort();
+                        final availableDistricts = (_selectedState != null && locationsMap.containsKey(_selectedState))
+                            ? locationsMap[_selectedState]!
+                            : <String>[];
+
+                        // Ensure selected state exists in options
+                        final currentStateValue = (_selectedState != null && statesList.contains(_selectedState))
+                            ? _selectedState
+                            : null;
+
+                        // Ensure selected district exists in available districts
+                        final currentDistrictValue = (_selectedDistrict != null && availableDistricts.contains(_selectedDistrict))
+                            ? _selectedDistrict
+                            : null;
+
+                        return Column(
+                          children: [
+                            // State Dropdown
+                            _buildPillDropdown(
+                              context: context,
+                              isDark: isDark,
+                              hintText: tr(ref, 'Select State'),
+                              icon: Icons.map_rounded,
+                              value: currentStateValue,
+                              items: statesList,
+                              onChanged: (val) {
+                                setState(() {
+                                  _selectedState = val;
+                                  _selectedDistrict = null; // Reset dependent district
+                                });
+                              },
+                            ),
+                            const SizedBox(height: 14),
+
+                            // District Dropdown
+                            _buildPillDropdown(
+                              context: context,
+                              isDark: isDark,
+                              hintText: _selectedState == null
+                                  ? tr(ref, 'Select State first')
+                                  : tr(ref, 'Select District / City'),
+                              icon: Icons.location_city_rounded,
+                              value: currentDistrictValue,
+                              items: availableDistricts,
+                              isEnabled: _selectedState != null && availableDistricts.isNotEmpty,
+                              onChanged: (val) {
+                                setState(() {
+                                  _selectedDistrict = val;
+                                });
+                              },
+                            ),
+                          ],
+                        );
+                      },
+                      loading: () => Column(
+                        children: [
+                          _buildPillDropdown(
+                            context: context,
+                            isDark: isDark,
+                            hintText: tr(ref, 'Loading states...'),
+                            icon: Icons.map_rounded,
+                            items: const [],
+                            isEnabled: false,
+                          ),
+                          const SizedBox(height: 14),
+                          _buildPillDropdown(
+                            context: context,
+                            isDark: isDark,
+                            hintText: tr(ref, 'Select District / City'),
+                            icon: Icons.location_city_rounded,
+                            items: const [],
+                            isEnabled: false,
+                          ),
+                        ],
+                      ),
+                      error: (_, __) => Column(
+                        children: [
+                          _buildPillDropdown(
+                            context: context,
+                            isDark: isDark,
+                            hintText: tr(ref, 'Select State'),
+                            icon: Icons.map_rounded,
+                            value: _selectedState,
+                            items: const ['Maharashtra', 'Gujarat', 'Madhya Pradesh', 'Punjab', 'Rajasthan', 'Uttar Pradesh'],
+                            onChanged: (val) => setState(() => _selectedState = val),
+                          ),
+                          const SizedBox(height: 14),
+                          _buildPillDropdown(
+                            context: context,
+                            isDark: isDark,
+                            hintText: tr(ref, 'Select District / City'),
+                            icon: Icons.location_city_rounded,
+                            value: _selectedDistrict,
+                            items: const ['Pune', 'Mumbai', 'Nagpur', 'Nashik', 'Ahmednagar'],
+                            onChanged: (val) => setState(() => _selectedDistrict = val),
+                          ),
+                        ],
+                      ),
+                    );
                   },
                 ),
                 const SizedBox(height: 24),
@@ -305,5 +485,101 @@ class _CompleteSocialProfileDialogState
       ),
     ),
   );
+  }
+
+  Widget _buildPillDropdown({
+    required BuildContext context,
+    required bool isDark,
+    required String hintText,
+    required IconData icon,
+    required List<String> items,
+    String? value,
+    ValueChanged<String?>? onChanged,
+    bool isEnabled = true,
+  }) {
+    return Container(
+      height: 56,
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.organicCardDark : AppColors.organicCardLight,
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(
+          color: isDark ? AppColors.organicBorderDark : AppColors.organicBorderLight,
+          width: 1.2,
+        ),
+        boxShadow: AppColors.organicCardShadow(isDark: isDark),
+      ),
+      child: Row(
+        children: [
+          const SizedBox(width: 9),
+          // Circular Badge for Leading Icon
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.organicBadgeDark : AppColors.organicBadgeLight,
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: Icon(
+                icon,
+                size: 19,
+                color: isEnabled
+                    ? (isDark ? AppColors.organicIconDark : AppColors.organicIconLight)
+                    : Colors.grey.shade400,
+              ),
+            ),
+          ),
+          const SizedBox(width: 14),
+          // Dropdown
+          Expanded(
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: value,
+                isExpanded: true,
+                dropdownColor: isDark ? AppColors.cardDark : Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                icon: Padding(
+                  padding: const EdgeInsets.only(right: 14),
+                  child: Icon(
+                    Icons.arrow_drop_down_rounded,
+                    color: isDark ? Colors.grey.shade400 : AppColors.organicIconLight,
+                    size: 26,
+                  ),
+                ),
+                hint: Text(
+                  hintText,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w400,
+                    color: isDark ? AppColors.organicHintDark : AppColors.organicHintLight,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                  color: isDark ? Colors.white : const Color(0xFF1B331F),
+                ),
+                items: items.map((item) {
+                  return DropdownMenuItem<String>(
+                    value: item,
+                    child: Text(
+                      item,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: isDark ? Colors.white : const Color(0xFF1B331F),
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  );
+                }).toList(),
+                onChanged: isEnabled ? onChanged : null,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
