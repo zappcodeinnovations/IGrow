@@ -87,6 +87,7 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
   File? _selectedDocImage;
   bool _isLoading = false;
   bool _isEditingExisting = false;
+  AutovalidateMode _autovalidateMode = AutovalidateMode.disabled;
 
   // IFSC Auto-fetch state
   bool _isFetchingIfsc = false;
@@ -377,6 +378,9 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
     print('====================================================');
     print('📝 [INSTRUCTOR KYC SCREEN] Form submission triggered');
     if (!_formKey.currentState!.validate()) {
+      setState(() {
+        _autovalidateMode = AutovalidateMode.onUserInteraction;
+      });
       print('⚠️ [INSTRUCTOR KYC SCREEN] Form validation failed. Check highlighted fields.');
       return;
     }
@@ -516,6 +520,7 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
                 // Editable Form
                 Form(
                   key: _formKey,
+                  autovalidateMode: _autovalidateMode,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
