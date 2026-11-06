@@ -9,12 +9,16 @@ class AppConfig {
   final bool enableCoupons;
   final bool showPayments;
   final bool showCoupons;
+  final bool enableAppleIap;
+  final bool showAppleIap;
 
   const AppConfig({
     required this.enablePaymentGateway,
     required this.enableCoupons,
     required this.showPayments,
     required this.showCoupons,
+    this.enableAppleIap = false,
+    this.showAppleIap = false,
   });
 
   factory AppConfig.fromJson(Map<String, dynamic> json) {
@@ -37,15 +41,21 @@ class AppConfig {
     final dynamic couponVal = json['enable_coupons'] ??
         json['show_coupons'] ??
         json['coupon_enabled'];
+    final dynamic appleIapVal = json['enable_apple_iap'] ??
+        json['show_apple_iap'] ??
+        json['apple_iap_enabled'];
 
     final bool enablePayment = parseFlag(paymentVal, defaultValue: true);
     final bool enableCoupon = parseFlag(couponVal, defaultValue: true);
+    final bool enableAppleIap = parseFlag(appleIapVal, defaultValue: false);
 
     return AppConfig(
       enablePaymentGateway: enablePayment,
       enableCoupons: enableCoupon,
       showPayments: parseFlag(json['show_payments'], defaultValue: enablePayment),
       showCoupons: parseFlag(json['show_coupons'], defaultValue: enableCoupon),
+      enableAppleIap: enableAppleIap,
+      showAppleIap: parseFlag(json['show_apple_iap'], defaultValue: enableAppleIap),
     );
   }
 
@@ -59,6 +69,8 @@ class AppConfig {
       enableCoupons: !isIos,
       showPayments: !isIos,
       showCoupons: !isIos,
+      enableAppleIap: isIos,
+      showAppleIap: isIos,
     );
   }
 
@@ -70,6 +82,22 @@ class AppConfig {
       return true;
     }
     return enablePaymentGateway && showPayments;
+  }
+
+  /// Helper to check if Apple Pay / In-App Purchase is active.
+  /// Only applies on iOS when Razorpay is disabled during App Store review.
+  bool get isApplePayActive {
+    if (kIsWeb || !Platform.isIOS) {
+      return false;
+    }
+    return !canShowPaymentGateway && (enableAppleIap || showAppleIap);
+  }
+
+  /// Helper to check if instructor can input any custom course price.
+  /// When Razorpay is enabled (and Apple Pay disabled), custom price input is allowed.
+  /// If Apple IAP is enforced (during review), fixed price tier dropdown is shown.
+  bool get allowsCustomCoursePrice {
+    return !isApplePayActive;
   }
 
   /// Helper to check if coupon field should be displayed.

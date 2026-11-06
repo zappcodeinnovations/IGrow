@@ -22,6 +22,7 @@ import '../../auth/providers/auth_provider.dart';
 import '../../certificates/widgets/certificate_viewer_dialog.dart';
 import '../../home_instructor/providers/instructor_home_provider.dart';
 import '../../../core/services/notification_service.dart';
+import '../../../core/services/app_config_service.dart';
 
 /// Module: 3-Step Course Creation Wizard
 /// Matching AgriLearn Web (CourseUploadWizard.jsx):
@@ -1424,27 +1425,73 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
           const SizedBox(height: 18),
 
           // Price & Language
-          _buildFieldLabel('Course Price Tier *'),
-          DropdownButtonFormField<String>(
-            initialValue: const ['0', '249', '499', '999', '1499'].contains(_priceController.text.trim())
-                ? _priceController.text.trim()
-                : '0',
-            decoration: const InputDecoration(
-              helperText: 'Select one of the standard price tiers.',
-              border: OutlineInputBorder(),
-              contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            ),
-            items: [
-              DropdownMenuItem(value: '0', child: Text(tr(ref, 'Free'))),
-              DropdownMenuItem(value: '249', child: Text('₹249 — Tier 1')),
-              DropdownMenuItem(value: '499', child: Text('₹499 — Tier 1.5')),
-              DropdownMenuItem(value: '999', child: Text('₹999 — Tier 2')),
-              DropdownMenuItem(value: '1499', child: Text('₹1,499 — Tier 3')),
-            ],
-            onChanged: (val) {
-              if (val != null) {
-                setState(() => _priceController.text = val);
+          Builder(
+            builder: (context) {
+              final config = ref.watch(appConfigProvider);
+              final allowsCustomPrice = config.allowsCustomCoursePrice;
+
+              if (allowsCustomPrice) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildFieldLabel('Price (₹) *'),
+                    TextField(
+                      controller: _priceController,
+                      focusNode: _priceFocusNode,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                      ],
+                      decoration: const InputDecoration(
+                        hintText: 'e.g., 499 (0 for Free)',
+                        prefixText: '₹ ',
+                        helperText: 'Enter any custom course price (or 0 for Free).',
+                        border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      ),
+                      onChanged: (val) {
+                        if (val.length > 1 && val.startsWith('0') && !val.startsWith('0.')) {
+                          final cleaned = val.replaceFirst(RegExp(r'^0+'), '');
+                          final target = cleaned.isEmpty ? '0' : cleaned;
+                          _priceController.value = TextEditingValue(
+                            text: target,
+                            selection: TextSelection.collapsed(offset: target.length),
+                          );
+                        }
+                      },
+                    ),
+                  ],
+                );
               }
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildFieldLabel('Course Price Tier *'),
+                  DropdownButtonFormField<String>(
+                    initialValue: const ['0', '249', '499', '999', '1499'].contains(_priceController.text.trim())
+                        ? _priceController.text.trim()
+                        : '0',
+                    decoration: const InputDecoration(
+                      helperText: 'Select one of the standard price tiers.',
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    ),
+                    items: [
+                      DropdownMenuItem(value: '0', child: Text(tr(ref, 'Free'))),
+                      DropdownMenuItem(value: '249', child: const Text('₹249 — Tier 1')),
+                      DropdownMenuItem(value: '499', child: const Text('₹499 — Tier 1.5')),
+                      DropdownMenuItem(value: '999', child: const Text('₹999 — Tier 2')),
+                      DropdownMenuItem(value: '1499', child: const Text('₹1,499 — Tier 3')),
+                    ],
+                    onChanged: (val) {
+                      if (val != null) {
+                        setState(() => _priceController.text = val);
+                      }
+                    },
+                  ),
+                ],
+              );
             },
           ),
           const SizedBox(height: 18),
