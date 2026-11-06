@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 
 import '../../../core/localization/app_strings.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/network/api_exception.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/app_toast.dart';
@@ -199,12 +200,22 @@ class _CompleteSocialProfileDialogState
       }
     } catch (e) {
       if (mounted) {
+        String msg = tr(ref, 'Failed to update details. You can update them in your profile.');
+        if (e is ApiException) {
+          if (e.fieldErrors != null && e.fieldErrors!.isNotEmpty) {
+            final firstEntry = e.fieldErrors!.entries.first;
+            final fieldName = firstEntry.key == 'phone_number' ? tr(ref, 'Phone number') : firstEntry.key;
+            final errText = firstEntry.value.isNotEmpty ? firstEntry.value.first : 'Invalid';
+            msg = '$fieldName: $errText';
+          } else if (e.message.isNotEmpty) {
+            msg = e.message;
+          }
+        }
         AppToast.show(
           context,
-          tr(ref, 'Failed to update details. You can update them in your profile.'),
+          msg,
           isError: true,
         );
-        _navigateToProfile();
       }
     } finally {
       if (mounted) {

@@ -676,23 +676,17 @@ class ApiAuthRepository implements AuthRepository {
     }
 
     if (response.statusCode >= 400) {
-      String errorMessage = 'Failed to update profile (${response.statusCode})';
       try {
         final errorData = jsonDecode(response.body);
-        if (errorData is Map) {
-          if (errorData.containsKey('detail')) {
-            errorMessage = errorData['detail'].toString();
-          } else if (errorData.containsKey('non_field_errors')) {
-            final nfe = errorData['non_field_errors'];
-            errorMessage = nfe is List ? nfe.first.toString() : nfe.toString();
-          } else if (errorData.isNotEmpty) {
-            final firstKey = errorData.keys.first;
-            final firstVal = errorData[firstKey];
-            errorMessage = '$firstKey: ${firstVal is List ? firstVal.first : firstVal}';
-          }
+        if (errorData is Map<String, dynamic>) {
+          throw ApiException.validation(errorData);
+        } else if (errorData is Map) {
+          throw ApiException.validation(Map<String, dynamic>.from(errorData));
         }
-      } catch (_) {}
-      throw ApiException(statusCode: response.statusCode, message: errorMessage);
+      } catch (e) {
+        if (e is ApiException) rethrow;
+      }
+      throw ApiException(statusCode: response.statusCode, message: 'Failed to update profile (${response.statusCode})');
     }
 
     // Refresh profile from server to guarantee fully populated, synchronized state
