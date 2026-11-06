@@ -50,27 +50,6 @@ class AppNavigationDrawer extends ConsumerWidget {
                           color: isDark ? Colors.white : AppColors.editorialOnSurface,
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? AppColors.editorialSecondary.withValues(alpha: 0.25)
-                              : AppColors.editorialSecondaryFixed,
-                          borderRadius: BorderRadius.circular(9999),
-                        ),
-                        child: Text(
-                          'EDTECH',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.5,
-                            color: isDark
-                                ? AppColors.editorialSecondaryFixedDim
-                                : AppColors.editorialOnSecondaryFixed,
-                          ),
-                        ),
-                      ),
                     ],
                   ),
                   IconButton(
