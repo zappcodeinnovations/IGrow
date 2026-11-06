@@ -5,6 +5,9 @@ import 'package:go_router/go_router.dart';
 import '../theme/app_colors.dart';
 import '../../data/models/user_role.dart';
 import '../../features/auth/providers/auth_provider.dart';
+import '../../features/cart/providers/cart_provider.dart';
+import '../../features/home_farmer/providers/student_provider.dart';
+import '../../features/wishlist/providers/wishlist_provider.dart';
 
 /// Shows a confirmation dialog before logging out across all panels.
 ///
@@ -44,6 +47,12 @@ class _LogoutConfirmationDialogState extends ConsumerState<LogoutConfirmationDia
     try {
       final activeRole = ref.read(authProvider).user?.activeRole ?? UserRole.farmer;
       await ref.read(authProvider.notifier).logout();
+
+      // Reset and invalidate user-specific cached state across the app
+      ref.invalidate(wishlistProvider);
+      ref.invalidate(cartProvider);
+      ref.invalidate(studentEnrollmentsProvider);
+      ref.invalidate(studentCartProvider);
 
       if (nav.canPop()) {
         nav.pop();
