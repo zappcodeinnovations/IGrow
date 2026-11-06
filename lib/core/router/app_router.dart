@@ -194,6 +194,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
+        path: RouteNames.instructorKyc,
+        parentNavigatorKey: rootNavigatorKey,
+        pageBuilder: (context, state) => _buildSlideRightPage(
+          context: context,
+          state: state,
+          child: const InstructorKycScreen(),
+        ),
+      ),
+      GoRoute(
         path: RouteNames.uploadCourse,
         builder: (context, state) => const UploadCourseScreen(),
       ),
@@ -494,14 +503,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 initialTabIndex: tab,
               );
             },
-          ),
-          GoRoute(
-            path: RouteNames.instructorKyc,
-            pageBuilder: (context, state) => _buildSlideRightPage(
-              context: context,
-              state: state,
-              child: const InstructorKycScreen(),
-            ),
           ),
           GoRoute(
             path: RouteNames.instructorAnalytics,
