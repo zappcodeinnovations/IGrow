@@ -540,7 +540,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF121413) : const Color(0xFFFBFBFA),
+      backgroundColor: isDark ? AppColors.bgDark : const Color(0xFFFBFBFA),
       appBar: _buildAppBar(context, isDark),
       body: SafeArea(
         child: _isCategoriesView

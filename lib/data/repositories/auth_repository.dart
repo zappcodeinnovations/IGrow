@@ -14,12 +14,13 @@ import '../models/user_role.dart';
 
 abstract class AuthRepository {
   Future<UserModel?> getCurrentUser({bool forceRefresh = false});
-  Future<UserModel> login({required String email, required String password});
+  Future<UserModel> login({required String email, required String password, String? expectedRole});
   Future<UserModel> socialLogin({
     required String provider,
     required String idToken,
     String? fullName,
     String? fcmToken,
+    String? expectedRole,
   });
   Future<void> syncFcmToken();
   Future<void> register({
@@ -136,22 +137,6 @@ class ApiAuthRepository implements AuthRepository {
         return null;
       }
       _currentUser = UserModel.fromApiProfile(profile);
-      
-      // If user had previously selected or switched to a specific active role, respect it
-      final prefs = await SharedPreferences.getInstance();
-      final savedRole = prefs.getString('active_user_role') ?? prefs.getString('selected_auth_role');
-      if (savedRole != null && _currentUser != null) {
-        final targetRole = savedRole == 'instructor' ? UserRole.instructor : UserRole.farmer;
-        final updatedGranted = List<UserRole>.from(_currentUser!.grantedRoles);
-        if (!updatedGranted.contains(targetRole)) {
-          updatedGranted.add(targetRole);
-        }
-        _currentUser = _currentUser!.copyWith(
-          activeRole: targetRole,
-          grantedRoles: updatedGranted,
-        );
-      }
-
       print('👤 [AUTH REPO] getCurrentUser loaded: email=${_currentUser?.email}, role=${_currentUser?.activeRole.name}, verificationStatus=${_currentUser?.verificationStatus}, kycVerified=${_currentUser?.kycVerified}');
       return _currentUser;
     } on ApiException catch (e) {
@@ -171,6 +156,7 @@ class ApiAuthRepository implements AuthRepository {
   Future<UserModel> login({
     required String email,
     required String password,
+    String? expectedRole,
   }) async {
     final response = await appApi.apiV1AuthLoginPost(
       body: CustomTokenObtainPairRequest(email: email.trim(), password: password),
@@ -182,9 +168,41 @@ class ApiAuthRepository implements AuthRepository {
       throw ApiException.server('Invalid login response');
     }
 
+    final access = data['access'] as String;
+    final refresh = (data['refresh'] ?? '') as String;
+
+    // Check user profile with temporary token before saving session
+    final meUri = Uri.parse('https://iagrow.zappcode.in/api/v1/auth/me/');
+    final meRes = await http.get(
+      meUri,
+      headers: {
+        'Authorization': 'Bearer $access',
+        'Accept': 'application/json',
+      },
+    );
+
+    if (meRes.statusCode >= 200 && meRes.statusCode < 300) {
+      final meJson = jsonDecode(meRes.body) as Map<String, dynamic>;
+      final roleStr = (meJson['role'] ?? '').toString().toUpperCase();
+      final isInstructorAccount = roleStr == 'INSTRUCTOR';
+
+      if (expectedRole != null && expectedRole.isNotEmpty) {
+        final expectingInstructor = expectedRole.toLowerCase().trim() == 'instructor';
+        if (expectingInstructor && !isInstructorAccount) {
+          throw ApiException.roleMismatch(
+            'This account is registered as a Student. Please switch to Student login.',
+          );
+        } else if (!expectingInstructor && isInstructorAccount) {
+          throw ApiException.roleMismatch(
+            'This account is registered as an Instructor. Please switch to Instructor login.',
+          );
+        }
+      }
+    }
+
     await tokenStorage.saveTokens(
-      access: data['access'],
-      refresh: data['refresh'],
+      access: access,
+      refresh: refresh,
     );
 
     // Safely register existing FCM token in background without blocking login
@@ -203,22 +221,6 @@ class ApiAuthRepository implements AuthRepository {
     if (profile == null) throw ApiException.server('Failed to fetch profile');
     
     _currentUser = UserModel.fromApiProfile(profile);
-    
-    // Check if a role was selected or previously saved
-    final prefs = await SharedPreferences.getInstance();
-    final savedRole = prefs.getString('active_user_role') ?? prefs.getString('selected_auth_role');
-    if (savedRole != null && _currentUser != null) {
-      final targetRole = savedRole == 'instructor' ? UserRole.instructor : UserRole.farmer;
-      final updatedGranted = List<UserRole>.from(_currentUser!.grantedRoles);
-      if (!updatedGranted.contains(targetRole)) {
-        updatedGranted.add(targetRole);
-      }
-      _currentUser = _currentUser!.copyWith(
-        activeRole: targetRole,
-        grantedRoles: updatedGranted,
-      );
-    }
-
     return _currentUser!;
   }
 
@@ -228,6 +230,7 @@ class ApiAuthRepository implements AuthRepository {
     required String idToken,
     String? fullName,
     String? fcmToken,
+    String? expectedRole,
   }) async {
     final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/auth/social-login/');
     final body = <String, dynamic>{
@@ -295,6 +298,35 @@ class ApiAuthRepository implements AuthRepository {
       throw ApiException.server('Invalid social login response: Missing access token');
     }
 
+    // Check user profile before saving session tokens
+    final meUri = Uri.parse('https://iagrow.zappcode.in/api/v1/auth/me/');
+    final meRes = await http.get(
+      meUri,
+      headers: {
+        'Authorization': 'Bearer $access',
+        'Accept': 'application/json',
+      },
+    );
+
+    if (meRes.statusCode >= 200 && meRes.statusCode < 300) {
+      final meJson = jsonDecode(meRes.body) as Map<String, dynamic>;
+      final roleStr = (meJson['role'] ?? '').toString().toUpperCase();
+      final isInstructorAccount = roleStr == 'INSTRUCTOR';
+
+      if (expectedRole != null && expectedRole.isNotEmpty) {
+        final expectingInstructor = expectedRole.toLowerCase().trim() == 'instructor';
+        if (expectingInstructor && !isInstructorAccount) {
+          throw ApiException.roleMismatch(
+            'This account is registered as a Student. Please switch to Student login.',
+          );
+        } else if (!expectingInstructor && isInstructorAccount) {
+          throw ApiException.roleMismatch(
+            'This account is registered as an Instructor. Please switch to Instructor login.',
+          );
+        }
+      }
+    }
+
     await tokenStorage.saveTokens(
       access: access,
       refresh: refresh ?? '',
@@ -315,22 +347,6 @@ class ApiAuthRepository implements AuthRepository {
     if (profile == null) throw ApiException.server('Failed to fetch profile after social login');
 
     _currentUser = UserModel.fromApiProfile(profile);
-    
-    // Check if a role was selected or previously saved
-    final prefs = await SharedPreferences.getInstance();
-    final savedRole = prefs.getString('active_user_role') ?? prefs.getString('selected_auth_role');
-    if (savedRole != null && _currentUser != null) {
-      final targetRole = savedRole == 'instructor' ? UserRole.instructor : UserRole.farmer;
-      final updatedGranted = List<UserRole>.from(_currentUser!.grantedRoles);
-      if (!updatedGranted.contains(targetRole)) {
-        updatedGranted.add(targetRole);
-      }
-      _currentUser = _currentUser!.copyWith(
-        activeRole: targetRole,
-        grantedRoles: updatedGranted,
-      );
-    }
-
     return _currentUser!;
   }
 

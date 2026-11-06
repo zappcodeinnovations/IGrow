@@ -15,7 +15,11 @@ class ApiException implements Exception {
   /// Per-field validation errors from the backend (e.g. `{"email": ["This field is required."]}`).
   final Map<String, List<String>>? fieldErrors;
 
-  // ── Factory helpers ───────────────────────────────────────────
+  /// 403 Forbidden / Role mismatch.
+  factory ApiException.roleMismatch(String msg) => ApiException(
+        statusCode: 403,
+        message: msg,
+      );
 
   /// 401 Unauthorized — token expired or invalid.
   factory ApiException.unauthorized([String? msg]) => ApiException(

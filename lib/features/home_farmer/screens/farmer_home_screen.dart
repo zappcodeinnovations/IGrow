@@ -69,7 +69,9 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
     // Refresh real-time weather data
     ref.read(weatherProvider.notifier).refresh();
     // Wait for enrollments to finish re-fetching before completing
-    await ref.read(studentEnrollmentsProvider.future).catchError((_) => <Enrollment>[]);
+    await ref
+        .read(studentEnrollmentsProvider.future)
+        .catchError((_) => <Enrollment>[]);
   }
 
   String _getTimeBasedGreeting() {
@@ -87,7 +89,9 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final user = ref.watch(authProvider).user;
-    final fullName = (user != null && user.fullName.isNotEmpty) ? user.fullName : 'Farmer';
+    final fullName = (user != null && user.fullName.isNotEmpty)
+        ? user.fullName
+        : 'Farmer';
     final firstName = fullName.split(' ').first;
 
     // Fetch async data providers
@@ -101,7 +105,9 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
       backgroundColor: isDark ? AppColors.cardDark : AppColors.white,
       displacement: 60,
       child: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+        physics: const BouncingScrollPhysics(
+          parent: AlwaysScrollableScrollPhysics(),
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -109,8 +115,12 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
             Container(
               width: double.infinity,
               decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF143E24) : const Color(0xFF1B4D2E),
-                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(32)),
+                color: isDark
+                    ? const Color(0xFF143E24)
+                    : const Color(0xFF1B4D2E),
+                borderRadius: const BorderRadius.vertical(
+                  bottom: Radius.circular(32),
+                ),
               ),
               padding: EdgeInsets.only(
                 top: MediaQuery.of(context).padding.top + 12,
@@ -189,7 +199,10 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                                     size: 20,
                                     color: Colors.white,
                                   ),
-                                  if (ref.watch(unreadNotificationsCountProvider) > 0)
+                                  if (ref.watch(
+                                        unreadNotificationsCountProvider,
+                                      ) >
+                                      0)
                                     Positioned(
                                       top: 8,
                                       right: 8,
@@ -210,7 +223,9 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                           // Wishlist / Heart
                           Consumer(
                             builder: (context, ref, child) {
-                              final wishlistCount = ref.watch(wishlistProvider).maybeWhen(
+                              final wishlistCount = ref
+                                  .watch(wishlistProvider)
+                                  .maybeWhen(
                                     data: (items) => items.length,
                                     orElse: () => 0,
                                   );
@@ -242,7 +257,10 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                                               color: Colors.redAccent,
                                               shape: BoxShape.circle,
                                             ),
-                                            constraints: const BoxConstraints(minWidth: 13, minHeight: 13),
+                                            constraints: const BoxConstraints(
+                                              minWidth: 13,
+                                              minHeight: 13,
+                                            ),
                                             child: Text(
                                               '$wishlistCount',
                                               style: const TextStyle(
@@ -299,10 +317,7 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                     ),
                   ),
                   const SizedBox(height: 2),
-                  const Text(
-                    '👋',
-                    style: TextStyle(fontSize: 24),
-                  ),
+                  const Text('👋', style: TextStyle(fontSize: 24)),
                   const SizedBox(height: 6),
                   Text(
                     'Learn farming from the best',
@@ -360,7 +375,10 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                               )
                             : null,
                         border: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
                       ),
                       style: const TextStyle(
                         fontSize: 14,
@@ -389,89 +407,117 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                           fontSize: 17,
                           fontWeight: FontWeight.bold,
                           letterSpacing: -0.3,
-                          color: isDark ? Colors.white : const Color(0xFF1B4D2E),
+                          color: isDark
+                              ? Colors.white
+                              : const Color(0xFF1B4D2E),
                         ),
                       ),
                       const SizedBox(height: 12),
-                      ref.watch(studentCategoriesProvider).when(
-                        data: (categories) {
-                          if (categories.isEmpty) return const SizedBox.shrink();
-                          return SizedBox(
-                            height: 98,
-                            child: ListView.separated(
-                              scrollDirection: Axis.horizontal,
-                              itemCount: categories.length,
-                              separatorBuilder: (_, __) => const SizedBox(width: 14),
-                              itemBuilder: (context, index) {
-                                final cat = categories[index];
-                                final iconData = _getCategoryIcon(cat.name);
-                                final pastelBg = _getCategoryBg(index, isDark);
+                      ref
+                          .watch(studentCategoriesProvider)
+                          .when(
+                            data: (categories) {
+                              if (categories.isEmpty)
+                                return const SizedBox.shrink();
+                              return SizedBox(
+                                height: 98,
+                                child: ListView.separated(
+                                  scrollDirection: Axis.horizontal,
+                                  itemCount: categories.length,
+                                  separatorBuilder: (_, __) =>
+                                      const SizedBox(width: 14),
+                                  itemBuilder: (context, index) {
+                                    final cat = categories[index];
+                                    final iconData = _getCategoryIcon(cat.name);
+                                    final pastelBg = _getCategoryBg(
+                                      index,
+                                      isDark,
+                                    );
 
-                                return InkWell(
-                                  onTap: () {
-                                    context.push('/farmer/explore?category=${cat.id}');
+                                    return InkWell(
+                                      onTap: () {
+                                        context.push(
+                                          '/farmer/explore?category=${cat.id}',
+                                        );
+                                      },
+                                      borderRadius: BorderRadius.circular(16),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Container(
+                                            width: 62,
+                                            height: 62,
+                                            decoration: BoxDecoration(
+                                              color: pastelBg,
+                                              borderRadius:
+                                                  BorderRadius.circular(16),
+                                              border: Border.all(
+                                                color: isDark
+                                                    ? AppColors.lineDark
+                                                    : Colors.transparent,
+                                              ),
+                                            ),
+                                            child: Center(
+                                              child: Icon(
+                                                iconData,
+                                                size: 28,
+                                                color: _getCategoryColor(
+                                                  index,
+                                                  isDark,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 6),
+                                          SizedBox(
+                                            width: 66,
+                                            child: Text(
+                                              cat.name,
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w600,
+                                                color: isDark
+                                                    ? Colors.white70
+                                                    : const Color(0xFF333333),
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              textAlign: TextAlign.center,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
                                   },
-                                  borderRadius: BorderRadius.circular(16),
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Container(
-                                        width: 62,
-                                        height: 62,
-                                        decoration: BoxDecoration(
-                                          color: pastelBg,
-                                          borderRadius: BorderRadius.circular(16),
-                                          border: Border.all(
-                                            color: isDark ? AppColors.lineDark : Colors.transparent,
-                                          ),
-                                        ),
-                                        child: Center(
-                                          child: Icon(
-                                            iconData,
-                                            size: 28,
-                                            color: _getCategoryColor(index, isDark),
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 6),
-                                      SizedBox(
-                                        width: 66,
-                                        child: Text(
-                                          cat.name,
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w600,
-                                            color: isDark ? Colors.white70 : const Color(0xFF333333),
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          textAlign: TextAlign.center,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              },
+                                ),
+                              );
+                            },
+                            loading: () => SizedBox(
+                              height: 98,
+                              child: ListView.separated(
+                                scrollDirection: Axis.horizontal,
+                                itemCount: 4,
+                                separatorBuilder: (_, __) =>
+                                    const SizedBox(width: 14),
+                                itemBuilder: (context, index) => Column(
+                                  children: const [
+                                    ShimmerContainer(
+                                      width: 62,
+                                      height: 62,
+                                      borderRadius: 16,
+                                    ),
+                                    SizedBox(height: 6),
+                                    ShimmerContainer(
+                                      width: 48,
+                                      height: 10,
+                                      borderRadius: 4,
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
-                          );
-                        },
-                        loading: () => SizedBox(
-                          height: 98,
-                          child: ListView.separated(
-                            scrollDirection: Axis.horizontal,
-                            itemCount: 4,
-                            separatorBuilder: (_, __) => const SizedBox(width: 14),
-                            itemBuilder: (context, index) => Column(
-                              children: const [
-                                ShimmerContainer(width: 62, height: 62, borderRadius: 16),
-                                SizedBox(height: 6),
-                                ShimmerContainer(width: 48, height: 10, borderRadius: 4),
-                              ],
-                            ),
+                            error: (_, __) => const SizedBox.shrink(),
                           ),
-                        ),
-                        error: (_, __) => const SizedBox.shrink(),
-                      ),
                       const SizedBox(height: 20),
                     ],
 
@@ -488,14 +534,19 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                             fontSize: 17,
                             fontWeight: FontWeight.bold,
                             letterSpacing: -0.3,
-                            color: isDark ? Colors.white : const Color(0xFF1B4D2E),
+                            color: isDark
+                                ? Colors.white
+                                : const Color(0xFF1B4D2E),
                           ),
                         ),
                         InkWell(
                           onTap: () => context.go(RouteNames.explore),
                           borderRadius: BorderRadius.circular(6),
                           child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 4,
+                              vertical: 2,
+                            ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
@@ -520,464 +571,622 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                       ],
                     ),
                     const SizedBox(height: 14),
-              ref.watch(studentCatalogProvider(CatalogQuery(search: _searchQuery))).when(
-                data: (courses) {
-                  if (courses.isEmpty) {
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 30),
-                      child: Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.search_off_rounded, size: 44, color: AppColors.inkSoft.withValues(alpha: 0.5)),
-                            const SizedBox(height: 10),
-                            Text(
-                              _searchQuery.isNotEmpty
-                                  ? 'No courses found for "$_searchQuery"'
-                                  : 'No courses available right now',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: isDark ? Colors.white70 : AppColors.editorialOnSurface,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                            if (_searchQuery.isNotEmpty) ...[
-                              const SizedBox(height: 8),
-                              TextButton(
-                                onPressed: () {
-                                  _searchController.clear();
-                                  setState(() {
-                                    _searchQuery = '';
-                                  });
-                                },
-                                child: Text(tr(ref, 'Clear Search')),
-                              ),
+                    ref
+                        .watch(
+                          studentCatalogProvider(
+                            CatalogQuery(search: _searchQuery),
+                          ),
+                        )
+                        .when(
+                          data: (courses) {
+                            if (courses.isEmpty) {
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 30,
+                                ),
+                                child: Center(
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.search_off_rounded,
+                                        size: 44,
+                                        color: AppColors.inkSoft.withValues(
+                                          alpha: 0.5,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 10),
+                                      Text(
+                                        _searchQuery.isNotEmpty
+                                            ? 'No courses found for "$_searchQuery"'
+                                            : 'No courses available right now',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                          color: isDark
+                                              ? Colors.white70
+                                              : AppColors.editorialOnSurface,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                      if (_searchQuery.isNotEmpty) ...[
+                                        const SizedBox(height: 8),
+                                        TextButton(
+                                          onPressed: () {
+                                            _searchController.clear();
+                                            setState(() {
+                                              _searchQuery = '';
+                                            });
+                                          },
+                                          child: Text(tr(ref, 'Clear Search')),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }
+                            return Column(
+                              children: [
+                                for (int i = 0; i < courses.length; i++) ...[
+                                  _CourseCard(course: courses[i], index: i),
+                                  if (i < courses.length - 1)
+                                    const SizedBox(height: 14),
+                                ],
+                              ],
+                            );
+                          },
+                          loading: () => Column(
+                            children: const [
+                              ShimmerCourseCard(),
+                              SizedBox(height: 14),
+                              ShimmerCourseCard(),
                             ],
-                          ],
-                        ),
-                      ),
-                    );
-                  }
-                  return Column(
-                    children: [
-                      for (int i = 0; i < courses.length; i++) ...[
-                        _CourseCard(course: courses[i], index: i),
-                        if (i < courses.length - 1) const SizedBox(height: 14),
-                      ],
-                    ],
-                  );
-                },
-                loading: () => Column(
-                  children: const [
-                    ShimmerCourseCard(),
-                    SizedBox(height: 14),
-                    ShimmerCourseCard(),
-                  ],
-                ),
-                error: (err, _) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 24),
-                  child: Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.wifi_off_rounded, size: 40, color: Colors.orange),
-                        const SizedBox(height: 10),
-                        Text(
-                          tr(ref, 'Unable to load courses. Please check your connection.'),
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: isDark ? Colors.white70 : AppColors.editorialOutline,
                           ),
-                        ),
-                        const SizedBox(height: 12),
-                        ElevatedButton.icon(
-                          icon: const Icon(Icons.refresh_rounded, size: 16),
-                          label: Text(tr(ref, 'Try Again')),
-                          onPressed: () => ref.invalidate(studentCatalogProvider(CatalogQuery(search: _searchQuery))),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 28),
-
-              // ── Verified Faculty Showcase (Top Agricultural Instructors) ──
-              ref.watch(topInstructorsProvider).when(
-                data: (instructors) {
-                  if (instructors.isEmpty) {
-                    return const SizedBox.shrink();
-                  }
-                  return Column(
-                    children: [
-                      _TopInstructorsShowcase(instructors: instructors),
-                      const SizedBox(height: 28),
-                    ],
-                  );
-                },
-                loading: () => Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const ShimmerContainer(width: 130, height: 22, borderRadius: 12),
-                    const SizedBox(height: 8),
-                    const ShimmerContainer(width: 250, height: 24),
-                    const SizedBox(height: 14),
-                    SizedBox(
-                      height: 240,
-                      child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: 2,
-                        separatorBuilder: (_, __) => const SizedBox(width: 14),
-                        itemBuilder: (context, index) => const ShimmerContainer(width: 220, height: 240, borderRadius: 18),
-                      ),
-                    ),
-                    const SizedBox(height: 28),
-                  ],
-                ),
-                error: (err, _) => const SizedBox.shrink(),
-              ),
-
-              // ── Latest Agriculture News Carousel ───────────────────────
-              const HomeNewsCarousel(),
-              const SizedBox(height: 28),
-
-              // ── 5. Recent Module Peek (Stitch Exact Match) ────────────────
-              enrollmentsAsync.when(
-                data: (enrollments) {
-                  final activeEnrollment = enrollments.isNotEmpty ? enrollments.first : null;
-                  final courseTitle = activeEnrollment?.courseTitle ?? 'zhc';
-                  final progressPct = (activeEnrollment?.completionPercentage ?? 100).round();
-                  final isComplete = progressPct >= 100;
-                  final courseTarget = (activeEnrollment?.courseSlug != null && activeEnrollment!.courseSlug!.isNotEmpty)
-                      ? activeEnrollment.courseSlug!
-                      : (activeEnrollment?.course ?? '');
-
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Recent Module',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: -0.3,
-                              color: isDark ? Colors.white : AppColors.editorialOnSurface,
-                            ),
-                          ),
-                          InkWell(
-                            onTap: () => context.go(RouteNames.farmerLearning),
-                            borderRadius: BorderRadius.circular(6),
-                            child: const Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                              child: Row(
+                          error: (err, _) => Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 24),
+                            child: Center(
+                              child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
+                                  const Icon(
+                                    Icons.wifi_off_rounded,
+                                    size: 40,
+                                    color: Colors.orange,
+                                  ),
+                                  const SizedBox(height: 10),
                                   Text(
-                                    'My Learning',
+                                    tr(
+                                      ref,
+                                      'Unable to load courses. Please check your connection.',
+                                    ),
+                                    textAlign: TextAlign.center,
                                     style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.editorialSecondary,
+                                      fontSize: 13,
+                                      color: isDark
+                                          ? Colors.white70
+                                          : AppColors.editorialOutline,
                                     ),
                                   ),
-                                  Icon(
-                                    Icons.chevron_right,
-                                    size: 16,
-                                    color: AppColors.editorialSecondary,
+                                  const SizedBox(height: 12),
+                                  ElevatedButton.icon(
+                                    icon: const Icon(
+                                      Icons.refresh_rounded,
+                                      size: 16,
+                                    ),
+                                    label: Text(tr(ref, 'Try Again')),
+                                    onPressed: () => ref.invalidate(
+                                      studentCatalogProvider(
+                                        CatalogQuery(search: _searchQuery),
+                                      ),
+                                    ),
                                   ),
                                 ],
                               ),
                             ),
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: isDark ? AppColors.cardDark : AppColors.editorialSurfaceContainerLowest,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: isDark ? AppColors.lineDark : AppColors.editorialOutlineVariant.withValues(alpha: 0.25),
-                            width: 1,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
-                              blurRadius: 10,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
                         ),
-                        child: Column(
+                    const SizedBox(height: 28),
+
+                    // ── Verified Faculty Showcase (Top Agricultural Instructors) ──
+                    ref
+                        .watch(topInstructorsProvider)
+                        .when(
+                          data: (instructors) {
+                            if (instructors.isEmpty) {
+                              return const SizedBox.shrink();
+                            }
+                            return Column(
+                              children: [
+                                _TopInstructorsShowcase(
+                                  instructors: instructors,
+                                ),
+                                const SizedBox(height: 28),
+                              ],
+                            );
+                          },
+                          loading: () => Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const ShimmerContainer(
+                                width: 130,
+                                height: 22,
+                                borderRadius: 12,
+                              ),
+                              const SizedBox(height: 8),
+                              const ShimmerContainer(width: 250, height: 24),
+                              const SizedBox(height: 14),
+                              SizedBox(
+                                height: 240,
+                                child: ListView.separated(
+                                  scrollDirection: Axis.horizontal,
+                                  itemCount: 2,
+                                  separatorBuilder: (_, __) =>
+                                      const SizedBox(width: 14),
+                                  itemBuilder: (context, index) =>
+                                      const ShimmerContainer(
+                                        width: 220,
+                                        height: 240,
+                                        borderRadius: 18,
+                                      ),
+                                ),
+                              ),
+                              const SizedBox(height: 28),
+                            ],
+                          ),
+                          error: (err, _) => const SizedBox.shrink(),
+                        ),
+
+                    // ── Latest Agriculture News Carousel ───────────────────────
+                    const HomeNewsCarousel(),
+                    const SizedBox(height: 28),
+
+                    // ── 5. Recent Module Peek (Stitch Exact Match) ────────────────
+                    enrollmentsAsync.when(
+                      data: (enrollments) {
+                        final activeEnrollment = enrollments.isNotEmpty
+                            ? enrollments.first
+                            : null;
+                        final courseTitle =
+                            activeEnrollment?.courseTitle ?? 'zhc';
+                        final progressPct =
+                            (activeEnrollment?.completionPercentage ?? 100)
+                                .round();
+                        final isComplete = progressPct >= 100;
+                        final courseTarget =
+                            (activeEnrollment?.courseSlug != null &&
+                                activeEnrollment!.courseSlug!.isNotEmpty)
+                            ? activeEnrollment.courseSlug!
+                            : (activeEnrollment?.course ?? '');
+
+                        return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                        decoration: BoxDecoration(
-                                          color: isComplete
-                                              ? (isDark ? const Color(0xFF262060) : AppColors.editorialSecondaryFixed)
-                                              : (isDark ? const Color(0xFF1E3524) : const Color(0xFFDCFCE7)),
-                                          borderRadius: BorderRadius.circular(9999),
+                                Text(
+                                  'Recent Module',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: -0.3,
+                                    color: isDark
+                                        ? Colors.white
+                                        : AppColors.editorialOnSurface,
+                                  ),
+                                ),
+                                InkWell(
+                                  onTap: () =>
+                                      context.go(RouteNames.farmerLearning),
+                                  borderRadius: BorderRadius.circular(6),
+                                  child: const Padding(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 4,
+                                      vertical: 2,
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          'My Learning',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: AppColors.editorialSecondary,
+                                          ),
                                         ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
+                                        Icon(
+                                          Icons.chevron_right,
+                                          size: 16,
+                                          color: AppColors.editorialSecondary,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? AppColors.cardDark
+                                    : AppColors.editorialSurfaceContainerLowest,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: isDark
+                                      ? AppColors.lineDark
+                                      : AppColors.editorialOutlineVariant
+                                            .withValues(alpha: 0.25),
+                                  width: 1,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(
+                                      alpha: isDark ? 0.2 : 0.03,
+                                    ),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
-                                            Icon(
-                                              isComplete ? Icons.check_circle_rounded : Icons.pending_rounded,
-                                              size: 13,
-                                              color: isComplete
-                                                  ? (isDark ? AppColors.editorialSecondaryFixedDim : AppColors.editorialOnSecondaryFixed)
-                                                  : (isDark ? const Color(0xFF86EFAC) : const Color(0xFF166534)),
-                                            ),
-                                            const SizedBox(width: 4),
-                                            Text(
-                                              isComplete ? 'MODULE COMPLETE' : 'IN PROGRESS',
-                                              style: TextStyle(
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.bold,
-                                                letterSpacing: 0.4,
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 8,
+                                                    vertical: 3,
+                                                  ),
+                                              decoration: BoxDecoration(
                                                 color: isComplete
-                                                    ? (isDark ? AppColors.editorialSecondaryFixedDim : AppColors.editorialOnSecondaryFixed)
-                                                    : (isDark ? const Color(0xFF86EFAC) : const Color(0xFF166534)),
+                                                    ? (isDark
+                                                          ? const Color(
+                                                              0xFF262060,
+                                                            )
+                                                          : AppColors
+                                                                .editorialSecondaryFixed)
+                                                    : (isDark
+                                                          ? const Color(
+                                                              0xFF1E3524,
+                                                            )
+                                                          : const Color(
+                                                              0xFFDCFCE7,
+                                                            )),
+                                                borderRadius:
+                                                    BorderRadius.circular(9999),
                                               ),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Icon(
+                                                    isComplete
+                                                        ? Icons
+                                                              .check_circle_rounded
+                                                        : Icons.pending_rounded,
+                                                    size: 13,
+                                                    color: isComplete
+                                                        ? (isDark
+                                                              ? AppColors
+                                                                    .editorialSecondaryFixedDim
+                                                              : AppColors
+                                                                    .editorialOnSecondaryFixed)
+                                                        : (isDark
+                                                              ? const Color(
+                                                                  0xFF86EFAC,
+                                                                )
+                                                              : const Color(
+                                                                  0xFF166534,
+                                                                )),
+                                                  ),
+                                                  const SizedBox(width: 4),
+                                                  Text(
+                                                    isComplete
+                                                        ? 'MODULE COMPLETE'
+                                                        : 'IN PROGRESS',
+                                                    style: TextStyle(
+                                                      fontSize: 10,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      letterSpacing: 0.4,
+                                                      color: isComplete
+                                                          ? (isDark
+                                                                ? AppColors
+                                                                      .editorialSecondaryFixedDim
+                                                                : AppColors
+                                                                      .editorialOnSecondaryFixed)
+                                                          : (isDark
+                                                                ? const Color(
+                                                                    0xFF86EFAC,
+                                                                  )
+                                                                : const Color(
+                                                                    0xFF166534,
+                                                                  )),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            const SizedBox(height: 8),
+                                            Text(
+                                              courseTitle,
+                                              style: TextStyle(
+                                                fontSize: 18,
+                                                fontWeight: FontWeight.bold,
+                                                letterSpacing: -0.3,
+                                                color: isDark
+                                                    ? Colors.white
+                                                    : AppColors
+                                                          .editorialOnSurface,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              'Advanced Zero-Tillage Horticulture • Core Course',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: isDark
+                                                    ? Colors.white60
+                                                    : AppColors
+                                                          .editorialOnSurfaceVariant,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
                                             ),
                                           ],
                                         ),
                                       ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        courseTitle,
-                                        style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                          letterSpacing: -0.3,
-                                          color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                                      const SizedBox(width: 12),
+                                      SizedBox(
+                                        height: 36,
+                                        child: ElevatedButton(
+                                          onPressed: () {
+                                            if (courseTarget.isNotEmpty) {
+                                              context.push(
+                                                '/player/$courseTarget',
+                                              );
+                                            } else {
+                                              context.push(RouteNames.explore);
+                                            }
+                                          },
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: isDark
+                                                ? Colors.white
+                                                : Colors.black,
+                                            foregroundColor: isDark
+                                                ? Colors.black
+                                                : Colors.white,
+                                            elevation: 0,
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 16,
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(9999),
+                                            ),
+                                          ),
+                                          child: const Text(
+                                            'Resume',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
                                         ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        'Advanced Zero-Tillage Horticulture • Core Course',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: isDark ? Colors.white60 : AppColors.editorialOnSurfaceVariant,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
                                       ),
                                     ],
                                   ),
-                                ),
-                                const SizedBox(width: 12),
-                                SizedBox(
-                                  height: 36,
-                                  child: ElevatedButton(
-                                    onPressed: () {
-                                      if (courseTarget.isNotEmpty) {
-                                        context.push('/player/$courseTarget');
-                                      } else {
-                                        context.push(RouteNames.explore);
-                                      }
-                                    },
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: isDark ? Colors.white : Colors.black,
-                                      foregroundColor: isDark ? Colors.black : Colors.white,
-                                      elevation: 0,
-                                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(9999),
+                                  const SizedBox(height: 14),
+                                  // Linear Architectural Progress Bar
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        'Progress',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: isDark
+                                              ? Colors.white60
+                                              : AppColors
+                                                    .editorialOnSurfaceVariant,
+                                        ),
+                                      ),
+                                      Text(
+                                        '$progressPct%',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                          color: isDark
+                                              ? Colors.white
+                                              : AppColors.editorialOnSurface,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(9999),
+                                    child: Container(
+                                      height: 6,
+                                      width: double.infinity,
+                                      color: isDark
+                                          ? Colors.white12
+                                          : AppColors.editorialSurfaceContainer,
+                                      child: FractionallySizedBox(
+                                        alignment: Alignment.centerLeft,
+                                        widthFactor: (progressPct / 100).clamp(
+                                          0.0,
+                                          1.0,
+                                        ),
+                                        child: Container(
+                                          color: AppColors.editorialSecondary,
+                                        ),
                                       ),
                                     ),
-                                    child: const Text(
-                                      'Resume',
-                                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
-                            const SizedBox(height: 14),
-                            // Linear Architectural Progress Bar
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  'Progress',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: isDark ? Colors.white60 : AppColors.editorialOnSurfaceVariant,
-                                  ),
-                                ),
-                                Text(
-                                  '$progressPct%',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    color: isDark ? Colors.white : AppColors.editorialOnSurface,
-                                  ),
-                                ),
-                              ],
+                            const SizedBox(height: 24),
+                          ],
+                        );
+                      },
+                      loading: () => const SizedBox.shrink(),
+                      error: (_, __) => const SizedBox.shrink(),
+                    ),
+
+                    // ── 7. Daily Agricultural Tip (Stitch Exact Match) ───────────
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? AppColors.surfaceContainerLowDark
+                            : AppColors.editorialSurfaceContainerLow,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(
+                              alpha: isDark ? 0.2 : 0.03,
                             ),
-                            const SizedBox(height: 6),
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(9999),
-                              child: Container(
-                                height: 6,
-                                width: double.infinity,
-                                color: isDark ? Colors.white12 : AppColors.editorialSurfaceContainer,
-                                child: FractionallySizedBox(
-                                  alignment: Alignment.centerLeft,
-                                  widthFactor: (progressPct / 100).clamp(0.0, 1.0),
-                                  child: Container(
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: const [
+                                  Icon(
+                                    Icons.lightbulb_outline_rounded,
+                                    size: 18,
                                     color: AppColors.editorialSecondary,
                                   ),
-                                ),
+                                  SizedBox(width: 6),
+                                  Text(
+                                    'DAILY AGRICULTURAL TIP',
+                                    style: TextStyle(
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 0.6,
+                                      color: AppColors.editorialSecondary,
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                    ],
-                  );
-                },
-                loading: () => const SizedBox.shrink(),
-                error: (_, __) => const SizedBox.shrink(),
-              ),
-
-
-              // ── 7. Daily Agricultural Tip (Stitch Exact Match) ───────────
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: isDark ? AppColors.surfaceContainerLowDark : AppColors.editorialSurfaceContainerLow,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: const [
-                            Icon(
-                              Icons.lightbulb_outline_rounded,
-                              size: 18,
-                              color: AppColors.editorialSecondary,
-                            ),
-                            SizedBox(width: 6),
-                            Text(
-                              'DAILY AGRICULTURAL TIP',
-                              style: TextStyle(
-                                fontSize: 10.5,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 0.6,
-                                color: AppColors.editorialSecondary,
-                              ),
-                            ),
-                          ],
-                        ),
-                        Text(
-                          'Vol. 18',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: isDark ? Colors.white60 : AppColors.editorialOnSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Container(
-                      padding: const EdgeInsets.only(left: 10),
-                      decoration: BoxDecoration(
-                        border: Border(
-                          left: BorderSide(
-                            color: AppColors.editorialSecondary.withValues(alpha: 0.5),
-                            width: 2.5,
-                          ),
-                        ),
-                      ),
-                      child: Text(
-                        '“Optimizing drip line pressure to 1.0–1.5 bar minimizes emitter clogging and ensures uniform micro-nutrient dissemination across lateral orchard rows.”',
-                        style: TextStyle(
-                          fontSize: 13.5,
-                          fontStyle: FontStyle.italic,
-                          height: 1.45,
-                          color: isDark ? Colors.white : AppColors.editorialOnSurface,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Prof. R. Deshmukh • Soil & Water Div.',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: isDark ? Colors.white60 : AppColors.editorialOnSurfaceVariant,
-                          ),
-                        ),
-                        InkWell(
-                          onTap: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Tip saved to your agriculture notes'),
-                                duration: Duration(seconds: 2),
-                              ),
-                            );
-                          },
-                          borderRadius: BorderRadius.circular(4),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.bookmark_border_rounded,
-                                size: 16,
-                                color: isDark ? Colors.white70 : AppColors.editorialOnSurfaceVariant,
-                              ),
-                              const SizedBox(width: 2),
                               Text(
-                                'Save',
+                                'Vol. 18',
                                 style: TextStyle(
-                                  fontSize: 11.5,
+                                  fontSize: 11,
                                   fontWeight: FontWeight.w600,
-                                  color: isDark ? Colors.white70 : AppColors.editorialOnSurfaceVariant,
+                                  color: isDark
+                                      ? Colors.white60
+                                      : AppColors.editorialOnSurfaceVariant,
                                 ),
                               ),
                             ],
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 10),
+                          Container(
+                            padding: const EdgeInsets.only(left: 10),
+                            decoration: BoxDecoration(
+                              border: Border(
+                                left: BorderSide(
+                                  color: AppColors.editorialSecondary
+                                      .withValues(alpha: 0.5),
+                                  width: 2.5,
+                                ),
+                              ),
+                            ),
+                            child: Text(
+                              '“Optimizing drip line pressure to 1.0–1.5 bar minimizes emitter clogging and ensures uniform micro-nutrient dissemination across lateral orchard rows.”',
+                              style: TextStyle(
+                                fontSize: 13.5,
+                                fontStyle: FontStyle.italic,
+                                height: 1.45,
+                                color: isDark
+                                    ? Colors.white
+                                    : AppColors.editorialOnSurface,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Prof. R. Deshmukh • Soil & Water Div.',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: isDark
+                                      ? Colors.white60
+                                      : AppColors.editorialOnSurfaceVariant,
+                                ),
+                              ),
+                              InkWell(
+                                onTap: () {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Tip saved to your agriculture notes',
+                                      ),
+                                      duration: Duration(seconds: 2),
+                                    ),
+                                  );
+                                },
+                                borderRadius: BorderRadius.circular(4),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.bookmark_border_rounded,
+                                      size: 16,
+                                      color: isDark
+                                          ? Colors.white70
+                                          : AppColors.editorialOnSurfaceVariant,
+                                    ),
+                                    const SizedBox(width: 2),
+                                    Text(
+                                      'Save',
+                                      style: TextStyle(
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.w600,
+                                        color: isDark
+                                            ? Colors.white70
+                                            : AppColors
+                                                  .editorialOnSurfaceVariant,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
+                    const SizedBox(height: 24),
                   ],
                 ),
               ),
@@ -1000,11 +1209,15 @@ IconData _getCategoryIcon(String name) {
     return Icons.pest_control_rounded;
   } else if (lower.contains('organic') || lower.contains('soil')) {
     return Icons.eco_rounded;
-  } else if (lower.contains('animal') || lower.contains('dairy') || lower.contains('husbandry')) {
+  } else if (lower.contains('animal') ||
+      lower.contains('dairy') ||
+      lower.contains('husbandry')) {
     return Icons.pets_rounded;
   } else if (lower.contains('tech') || lower.contains('machin')) {
     return Icons.agriculture_rounded;
-  } else if (lower.contains('horticult') || lower.contains('fruit') || lower.contains('veget')) {
+  } else if (lower.contains('horticult') ||
+      lower.contains('fruit') ||
+      lower.contains('veget')) {
     return Icons.yard_rounded;
   } else if (lower.contains('climate') || lower.contains('weather')) {
     return Icons.cloud_outlined;
@@ -1052,12 +1265,15 @@ class _CourseCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final isFree = course.price == null ||
+    final isFree =
+        course.price == null ||
         course.price == '0' ||
         course.price == '0.00' ||
         course.price == '0.0';
     final priceText = isFree ? 'FREE' : '₹${course.price}';
-    final badgeLabel = isFree ? 'Free course' : (index % 2 == 0 ? 'Bestseller' : 'Popular');
+    final badgeLabel = isFree
+        ? 'Free course'
+        : (index % 2 == 0 ? 'Bestseller' : 'Popular');
 
     return Material(
       color: Colors.transparent,
@@ -1087,15 +1303,21 @@ class _CourseCard extends StatelessWidget {
             children: [
               // Top Thumbnail Container with Bestseller/Free Badge
               ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(20),
+                ),
                 child: AspectRatio(
                   aspectRatio: 16 / 9,
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
                       Container(
-                        color: isDark ? const Color(0xFF24242A) : const Color(0xFFE9EFE9),
-                        child: course.thumbnail != null && course.thumbnail!.isNotEmpty
+                        color: isDark
+                            ? const Color(0xFF24242A)
+                            : const Color(0xFFE9EFE9),
+                        child:
+                            course.thumbnail != null &&
+                                course.thumbnail!.isNotEmpty
                             ? Image.network(
                                 course.thumbnail!,
                                 fit: BoxFit.cover,
@@ -1120,9 +1342,14 @@ class _CourseCard extends StatelessWidget {
                         top: 12,
                         left: 12,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 5,
+                          ),
                           decoration: BoxDecoration(
-                            color: isFree ? const Color(0xFFFEF3C7) : const Color(0xFFFDE68A),
+                            color: isFree
+                                ? const Color(0xFFFEF3C7)
+                                : const Color(0xFFFDE68A),
                             borderRadius: BorderRadius.circular(12),
                             boxShadow: [
                               BoxShadow(
@@ -1174,7 +1401,9 @@ class _CourseCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 12.5,
                         fontWeight: FontWeight.w500,
-                        color: isDark ? Colors.white60 : const Color(0xFF6B7280),
+                        color: isDark
+                            ? Colors.white60
+                            : const Color(0xFF6B7280),
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -1198,7 +1427,9 @@ class _CourseCard extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 12.5,
                                 fontWeight: FontWeight.bold,
-                                color: isDark ? Colors.white70 : const Color(0xFF374151),
+                                color: isDark
+                                    ? Colors.white70
+                                    : const Color(0xFF374151),
                               ),
                             ),
                           ],
@@ -1210,7 +1441,9 @@ class _CourseCard extends StatelessWidget {
                             fontWeight: FontWeight.w800,
                             color: isFree
                                 ? const Color(0xFF1B4D2E)
-                                : (isDark ? const Color(0xFF86EFAC) : const Color(0xFF1B4D2E)),
+                                : (isDark
+                                      ? const Color(0xFF86EFAC)
+                                      : const Color(0xFF1B4D2E)),
                           ),
                         ),
                       ],
@@ -1250,7 +1483,11 @@ class _TopInstructorsShowcase extends ConsumerWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.auto_awesome, size: 13, color: Color(0xFFB45309)),
+              const Icon(
+                Icons.auto_awesome,
+                size: 13,
+                color: Color(0xFFB45309),
+              ),
               const SizedBox(width: 4),
               Text(
                 tr(ref, 'VERIFIED FACULTY'),
@@ -1277,10 +1514,10 @@ class _TopInstructorsShowcase extends ConsumerWidget {
                   Text(
                     tr(ref, 'Explore Courses by Top Agricultural Instructors'),
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 17,
-                          height: 1.2,
-                        ),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 17,
+                      height: 1.2,
+                    ),
                   ),
                 ],
               ),
@@ -1299,14 +1536,18 @@ class _TopInstructorsShowcase extends ConsumerWidget {
                       style: TextStyle(
                         fontSize: 11.5,
                         fontWeight: FontWeight.bold,
-                        color: isDark ? AppColors.accentOrange : const Color(0xFF1B4D2E),
+                        color: isDark
+                            ? AppColors.accentOrange
+                            : const Color(0xFF1B4D2E),
                       ),
                     ),
                     const SizedBox(width: 2),
                     Icon(
                       Icons.chevron_right,
                       size: 16,
-                      color: isDark ? AppColors.accentOrange : const Color(0xFF1B4D2E),
+                      color: isDark
+                          ? AppColors.accentOrange
+                          : const Color(0xFF1B4D2E),
                     ),
                   ],
                 ),
@@ -1318,14 +1559,14 @@ class _TopInstructorsShowcase extends ConsumerWidget {
 
         // Instructors Horizontal List
         SizedBox(
-          height: 168,
+          height: 232,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: instructors.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            separatorBuilder: (_, __) => const SizedBox(width: 14),
             itemBuilder: (context, index) {
               final inst = instructors[index];
-              return _InstructorCard(inst: inst);
+              return _InstructorCard(inst: inst, index: index);
             },
           ),
         ),
@@ -1335,29 +1576,48 @@ class _TopInstructorsShowcase extends ConsumerWidget {
 }
 
 class _InstructorCard extends StatelessWidget {
-  const _InstructorCard({required this.inst});
+  const _InstructorCard({required this.inst, required this.index});
 
   final ApiTopInstructor inst;
+  final int index;
+
+  static const List<Color> _portraitBackdropColors = [
+    Color(0xFFE5A638), // Warm mustard yellow (matches screenshot)
+    Color(0xFF3B82F6), // Ocean blue
+    Color(0xFF10B981), // Emerald green
+    Color(0xFF8B5CF6), // Purple
+    Color(0xFFF97316), // Tangerine
+  ];
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final backdropColor =
+        _portraitBackdropColors[index % _portraitBackdropColors.length];
+    final specialty =
+        (inst.specialtyCrops != null && inst.specialtyCrops!.trim().isNotEmpty)
+        ? inst.specialtyCrops!.trim()
+        : ((inst.expertiseTags != null && inst.expertiseTags!.trim().isNotEmpty)
+              ? inst.expertiseTags!.trim()
+              : 'Agri Specialist');
+
+    final studentCountFormatted = inst.totalStudents >= 1000
+        ? '${(inst.totalStudents / 1000).toStringAsFixed(inst.totalStudents % 1000 == 0 ? 0 : 1)}k'
+        : '${inst.totalStudents}';
 
     return Container(
-      width: 172,
+      width: 200,
       decoration: BoxDecoration(
         color: isDark ? AppColors.cardDark : Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: isDark
-              ? AppColors.lineDark
-              : AppColors.editorialOutlineVariant.withValues(alpha: 0.3),
+          color: isDark ? AppColors.lineDark : const Color(0xFFE5E7EB),
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
-            blurRadius: 10,
+            color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.05),
+            blurRadius: 12,
             offset: const Offset(0, 3),
           ),
         ],
@@ -1365,182 +1625,253 @@ class _InstructorCard extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(18),
           onTap: () {
-            context.push('/farmer/explore?search=${Uri.encodeComponent(inst.fullName)}');
+            context.push(
+              '/farmer/explore?instructor=${Uri.encodeComponent(inst.id.isNotEmpty ? inst.id : inst.fullName)}',
+            );
           },
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // Top Row: Avatar with verified check & Experience Pill
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // ── Top Image Container with Colored Backdrop & Overlay Action Button ──
+              Padding(
+                padding: const EdgeInsets.fromLTRB(10, 10, 10, 4),
+                child: Stack(
+                  clipBehavior: Clip.none,
                   children: [
-                    Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        Container(
-                          width: 42,
-                          height: 42,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: isDark
-                                ? AppColors.editorialSecondary.withValues(alpha: 0.2)
-                                : AppColors.editorialSecondaryFixed,
-                            border: Border.all(
-                              color: AppColors.editorialSecondary.withValues(alpha: 0.4),
-                              width: 1.5,
-                            ),
+                    Container(
+                      height: 110,
+                      decoration: BoxDecoration(
+                        color: backdropColor,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: Center(
+                        child: inst.avatar != null && inst.avatar!.isNotEmpty
+                            ? Image.network(
+                                inst.avatar!,
+                                width: double.infinity,
+                                height: double.infinity,
+                                fit: BoxFit.cover,
+                                alignment: Alignment.topCenter,
+                                errorBuilder: (_, __, ___) =>
+                                    _buildFallbackAvatar(backdropColor),
+                              )
+                            : _buildFallbackAvatar(backdropColor),
+                      ),
+                    ),
+                    // Blue Circle Plus Button pinned at bottom-right corner of photo
+                    Positioned(
+                      bottom: -10,
+                      right: 10,
+                      child: Container(
+                        width: 26,
+                        height: 26,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1E5BB8),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: isDark ? AppColors.cardDark : Colors.white,
+                            width: 2.0,
                           ),
-                          child: Center(
-                            child: inst.avatar != null && inst.avatar!.isNotEmpty
-                                ? ClipOval(
-                                    child: Image.network(
-                                      inst.avatar!,
-                                      width: 42,
-                                      height: 42,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (_, __, ___) => Text(
-                                        inst.fullName.isNotEmpty ? inst.fullName[0].toUpperCase() : 'I',
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 16,
-                                          color: AppColors.editorialSecondary,
-                                        ),
-                                      ),
-                                    ),
-                                  )
-                                : Text(
-                                    inst.fullName.isNotEmpty ? inst.fullName[0].toUpperCase() : 'I',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
-                                      color: AppColors.editorialSecondary,
-                                    ),
-                                  ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(
+                                0xFF1E5BB8,
+                              ).withValues(alpha: 0.35),
+                              blurRadius: 5,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.add,
+                          color: Colors.white,
+                          size: 15,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 4),
+
+              // ── Instructor Info & Metrics ──
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Instructor Name
+                    Text(
+                      inst.fullName,
+                      style: TextStyle(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.2,
+                        color: isDark ? Colors.white : const Color(0xFF111827),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 5),
+
+                    // Row 1: Specialty / Role & Course Count
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.school_outlined,
+                          size: 12.5,
+                          color: Color(0xFF6B7280),
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            specialty,
+                            style: const TextStyle(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFF6B7280),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        Positioned(
-                          bottom: -1,
-                          right: -1,
-                          child: Container(
-                            padding: const EdgeInsets.all(1.5),
-                            decoration: BoxDecoration(
-                              color: AppColors.editorialSecondary,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: isDark ? AppColors.cardDark : Colors.white,
-                                width: 1.2,
-                              ),
-                            ),
-                            child: const Icon(
-                              Icons.check,
-                              color: Colors.white,
-                              size: 8,
-                            ),
+                        const SizedBox(width: 6),
+                        const Icon(
+                          Icons.menu_book_outlined,
+                          size: 12.5,
+                          color: Color(0xFF6B7280),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${inst.totalCourses} ${inst.totalCourses == 1 ? "Course" : "Courses"}',
+                          style: const TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF6B7280),
                           ),
                         ),
                       ],
                     ),
-                    if (inst.experience.isNotEmpty)
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? AppColors.editorialSecondary.withValues(alpha: 0.15)
-                              : AppColors.editorialSecondaryFixed.withValues(alpha: 0.7),
-                          borderRadius: BorderRadius.circular(9999),
-                        ),
-                        child: Text(
-                          inst.experience,
-                          style: TextStyle(
-                            fontSize: 9.5,
-                            fontWeight: FontWeight.w700,
-                            color: isDark
-                                ? AppColors.editorialSecondaryFixedDim
-                                : AppColors.editorialOnSecondaryFixed,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
+                    const SizedBox(height: 4),
 
-                // Name & Expertise
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      inst.fullName,
-                      style: TextStyle(
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.bold,
-                        color: isDark ? Colors.white : AppColors.editorialOnSurface,
-                        letterSpacing: -0.2,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      inst.specialtyCrops ?? inst.expertiseTags ?? 'Agricultural Specialist',
-                      style: TextStyle(
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w500,
-                        color: isDark ? Colors.white60 : AppColors.editorialOnSurfaceVariant,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-
-                // Footer Row: Rating & Course count tag
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
+                    // Row 2: Students Count & Rating
                     Row(
                       children: [
-                        const Icon(Icons.star_rounded, size: 14, color: Color(0xFFFBBF24)),
+                        const Icon(
+                          Icons.people_alt_outlined,
+                          size: 12.5,
+                          color: Color(0xFF6B7280),
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            '$studentCountFormatted Students',
+                            style: const TextStyle(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFF6B7280),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const Icon(
+                          Icons.star_rounded,
+                          size: 14,
+                          color: Color(0xFFF59E0B),
+                        ),
                         const SizedBox(width: 2),
                         Text(
                           inst.rating.toStringAsFixed(1),
                           style: TextStyle(
                             fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                            fontWeight: FontWeight.w800,
+                            color: isDark
+                                ? Colors.white
+                                : const Color(0xFF111827),
                           ),
+                        ),
+                        if (inst.reviewCount > 0)
+                          Text(
+                            ' (${inst.reviewCount})',
+                            style: const TextStyle(
+                              fontSize: 9.5,
+                              color: Color(0xFF9CA3AF),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+
+                    // Divider & "View Profile ->" link
+                    Divider(
+                      height: 1,
+                      thickness: 0.8,
+                      color: isDark
+                          ? AppColors.lineDark
+                          : const Color(0xFFF3F4F6),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Text(
+                          'View Profile',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: isDark
+                                ? AppColors.greenLight
+                                : const Color(0xFF1B5E20),
+                          ),
+                        ),
+                        const SizedBox(width: 3),
+                        Icon(
+                          Icons.arrow_forward_rounded,
+                          size: 12,
+                          color: isDark
+                              ? AppColors.greenLight
+                              : const Color(0xFF1B5E20),
                         ),
                       ],
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? Colors.white.withValues(alpha: 0.08)
-                            : AppColors.editorialSurfaceContainer,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        '${inst.totalCourses} courses',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: isDark ? Colors.white70 : AppColors.editorialOnSurfaceVariant,
-                        ),
-                      ),
-                    ),
                   ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
+
+  Widget _buildFallbackAvatar(Color backdropColor) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Container(
+          width: 58,
+          height: 58,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.white.withValues(alpha: 0.25),
+          ),
+          child: Center(
+            child: Text(
+              inst.fullName.isNotEmpty ? inst.fullName[0].toUpperCase() : 'I',
+              style: const TextStyle(
+                fontSize: 26,
+                fontWeight: FontWeight.w900,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }
-
-

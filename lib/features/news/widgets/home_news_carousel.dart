@@ -59,36 +59,40 @@ class HomeNewsCarousel extends ConsumerWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(7),
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryGreen.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(10),
+              Expanded(
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(7),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryGreen.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.newspaper_rounded,
+                        size: 20,
+                        color: AppColors.primaryGreen,
+                      ),
                     ),
-                    child: const Icon(
-                      Icons.newspaper_rounded,
-                      size: 20,
-                      color: AppColors.primaryGreen,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(
-                            'Agri Market News',
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: isDark ? Colors.white : AppColors.inkDark,
-                                ),
+                          Flexible(
+                            child: Text(
+                              'Agri Market News',
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: isDark ? Colors.white : AppColors.inkDark,
+                                  ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                           const SizedBox(width: 6),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                             decoration: BoxDecoration(
                               color: const Color(0xFFDCFCE7),
                               borderRadius: BorderRadius.circular(10),
@@ -97,7 +101,7 @@ class HomeNewsCarousel extends ConsumerWidget {
                             child: const Text(
                               'LIVE',
                               style: TextStyle(
-                                fontSize: 9.5,
+                                fontSize: 9,
                                 fontWeight: FontWeight.bold,
                                 color: Color(0xFF15803D),
                               ),
@@ -105,10 +109,11 @@ class HomeNewsCarousel extends ConsumerWidget {
                           ),
                         ],
                       ),
-                    ],
-                  ),
-                ],
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(width: 6),
               InkWell(
                 onTap: () => context.push(RouteNames.news),
                 borderRadius: BorderRadius.circular(8),

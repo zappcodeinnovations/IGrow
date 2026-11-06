@@ -352,7 +352,6 @@ class _InstructorChatbotScreenState extends State<InstructorChatbotScreen> {
               ),
             ),
           ),
-          if (!isBot) const SizedBox(width: 40), // Margin for user messages
         ],
       ),
     );

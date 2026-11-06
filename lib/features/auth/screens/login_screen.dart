@@ -92,22 +92,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     setState(() => _isEmailLoading = true);
     try {
+      final currentExpectedRole = (widget.selectedRole ?? _persistedRole ?? 'farmer').toLowerCase().trim();
       await ref.read(authProvider.notifier).login(
             email: email,
             password: password,
+            expectedRole: currentExpectedRole,
           );
 
       if (!mounted) return;
 
       final authState = ref.read(authProvider);
-      if (authState.isAuthenticated) {
+      if (authState.isAuthenticated && authState.user != null) {
+        final backendRole = authState.user!.activeRole;
         final prefs = await SharedPreferences.getInstance();
-        if (!mounted) return;
 
-        final selectedRoleStr = widget.selectedRole ?? prefs.getString('selected_auth_role');
-        if (selectedRoleStr == 'instructor') {
-          await ref.read(authProvider.notifier).switchRole(UserRole.instructor);
+        if (backendRole == UserRole.instructor) {
           await prefs.setString('active_user_role', 'instructor');
+          await prefs.setString('selected_auth_role', 'instructor');
+        } else {
+          await prefs.setString('active_user_role', 'farmer');
+          await prefs.setString('selected_auth_role', 'farmer');
         }
 
         if (!mounted) return;
@@ -141,13 +145,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       return;
     }
 
+    if (user == null) return;
+
     final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
 
-    final selectedRoleStr = widget.selectedRole ?? prefs.getString('selected_auth_role');
-    if (selectedRoleStr == 'instructor') {
-      await ref.read(authProvider.notifier).switchRole(UserRole.instructor);
+    final backendRole = user.activeRole;
+
+    if (backendRole == UserRole.instructor) {
       await prefs.setString('active_user_role', 'instructor');
+      await prefs.setString('selected_auth_role', 'instructor');
+    } else {
+      await prefs.setString('active_user_role', 'farmer');
+      await prefs.setString('selected_auth_role', 'farmer');
     }
 
     if (!mounted) return;
@@ -175,11 +185,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       }
 
       print('✅ [LOGIN_SCREEN] Google Sign-In token received. Sending to backend...');
+      final currentExpectedRole = (widget.selectedRole ?? _persistedRole ?? 'farmer').toLowerCase().trim();
       final success = await ref.read(authProvider.notifier).socialLogin(
             provider: 'google',
             idToken: payload['id_token'] as String,
             fullName: payload['full_name'] as String?,
             fcmToken: payload['fcm_token'] as String?,
+            expectedRole: currentExpectedRole,
           );
 
       if (success) {
@@ -207,11 +219,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       final payload = await SocialAuthService.instance.signInWithApple();
       if (payload == null) return; // cancelled or unsupported
 
+      final currentExpectedRole = (widget.selectedRole ?? _persistedRole ?? 'farmer').toLowerCase().trim();
       final success = await ref.read(authProvider.notifier).socialLogin(
             provider: 'apple',
             idToken: payload['id_token'] as String,
             fullName: payload['full_name'] as String?,
             fcmToken: payload['fcm_token'] as String?,
+            expectedRole: currentExpectedRole,
           );
 
       if (success) {
@@ -232,7 +246,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget build(BuildContext context) {
     ref.listen<AuthState>(authProvider, (previous, next) {
       if (next.status == AuthStatus.error && next.error != null) {
-        AppToast.show(context, next.error!, isError: true);
+        AppToast.show(context, tr(ref, next.error!), isError: true);
         ref.read(authProvider.notifier).clearError();
       }
     });

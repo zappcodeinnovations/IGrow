@@ -30,6 +30,8 @@ class AppStrings {
   static const Map<String, Map<String, String>> _translations = {
     'en': {
       // Bottom Navigation & Tabs
+      'This account is registered as a Student. Please switch to Student login.': 'This account is registered as a Student. Please switch to Student login.',
+      'This account is registered as an Instructor. Please switch to Instructor login.': 'This account is registered as an Instructor. Please switch to Instructor login.',
       'Home': 'Home',
       'Dashboard': 'Dashboard',
       'Explore': 'Explore',
@@ -425,6 +427,8 @@ class AppStrings {
 
     'hi': {
       // Bottom Navigation & Tabs
+      'This account is registered as a Student. Please switch to Student login.': 'यह खाता एक छात्र/किसान (Student) के रूप में पंजीकृत है। कृपया छात्र लॉगिन से साइन इन करें।',
+      'This account is registered as an Instructor. Please switch to Instructor login.': 'यह खाता एक प्रशिक्षक (Instructor) के रूप में पंजीकृत है। कृपया प्रशिक्षक लॉगिन से साइन इन करें।',
       'Home': 'होम',
       'Dashboard': 'डैशबोर्ड',
       'Explore': 'एक्सप्लोर',
@@ -820,6 +824,8 @@ class AppStrings {
 
     'mr': {
       // Bottom Navigation & Tabs
+      'This account is registered as a Student. Please switch to Student login.': 'हे खाते विद्यार्थी (Student) म्हणून नोंदणीकृत आहे. कृपया विद्यार्थी लॉगिन वापरा.',
+      'This account is registered as an Instructor. Please switch to Instructor login.': 'हे खाते शिक्षक (Instructor) म्हणून नोंदणीकृत आहे. कृपया शिक्षक लॉगिन वापरा.',
       'Home': 'मुख्यपृष्ठ',
       'Dashboard': 'डॅशबोर्ड',
       'Explore': 'शोधा',
