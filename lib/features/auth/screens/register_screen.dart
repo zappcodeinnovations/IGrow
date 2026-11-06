@@ -144,11 +144,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       }
 
       print('✅ [REGISTER_SCREEN] Google Sign-In token received. Sending to backend...');
+      final roleStr = _selectedRole.name;
       final success = await ref.read(authProvider.notifier).socialLogin(
             provider: 'google',
             idToken: payload['id_token'] as String,
             fullName: payload['full_name'] as String?,
             fcmToken: payload['fcm_token'] as String?,
+            expectedRole: roleStr,
           );
 
       if (success) {
@@ -176,11 +178,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       final payload = await SocialAuthService.instance.signInWithApple();
       if (payload == null) return;
 
+      final roleStr = _selectedRole.name;
       final success = await ref.read(authProvider.notifier).socialLogin(
             provider: 'apple',
             idToken: payload['id_token'] as String,
             fullName: payload['full_name'] as String?,
             fcmToken: payload['fcm_token'] as String?,
+            expectedRole: roleStr,
           );
 
       if (success) {

@@ -244,6 +244,9 @@ class ApiAuthRepository implements AuthRepository {
     if (fcmToken != null && fcmToken.trim().isNotEmpty) {
       body['fcm_token'] = fcmToken.trim();
     }
+    if (expectedRole != null && expectedRole.trim().isNotEmpty) {
+      body['role'] = expectedRole.trim().toUpperCase();
+    }
 
     print('\n🌐 [AUTH_REPO] POST /api/v1/auth/social-login/ with provider: $provider');
     print('📦 [AUTH_REPO] Payload: id_token length=${idToken.length}, full_name=$fullName, fcm_token=${fcmToken != null}');
