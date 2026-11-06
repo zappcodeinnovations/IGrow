@@ -142,6 +142,17 @@ class SocialAuthService {
         'full_name': fullName,
         'fcm_token': fcmToken,
       };
+    } on SignInWithAppleAuthorizationException catch (e) {
+      if (e.code == AuthorizationErrorCode.canceled) {
+        if (kDebugMode) {
+          print('⚠️ [SocialAuthService] Apple Sign-In cancelled by user.');
+        }
+        return null;
+      }
+      if (kDebugMode) {
+        print('❌ [SocialAuthService] Apple Sign-In error: $e');
+      }
+      rethrow;
     } catch (e) {
       if (kDebugMode) {
         print('❌ [SocialAuthService] Apple Sign-In error: $e');
