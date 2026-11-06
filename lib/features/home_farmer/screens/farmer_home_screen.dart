@@ -1318,14 +1318,14 @@ class _TopInstructorsShowcase extends ConsumerWidget {
 
         // Instructors Horizontal List
         SizedBox(
-          height: 168,
+          height: 295,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: instructors.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            separatorBuilder: (_, __) => const SizedBox(width: 14),
             itemBuilder: (context, index) {
               final inst = instructors[index];
-              return _InstructorCard(inst: inst);
+              return _InstructorCard(inst: inst, index: index);
             },
           ),
         ),
@@ -1335,210 +1335,269 @@ class _TopInstructorsShowcase extends ConsumerWidget {
 }
 
 class _InstructorCard extends StatelessWidget {
-  const _InstructorCard({required this.inst});
+  const _InstructorCard({required this.inst, required this.index});
 
   final ApiTopInstructor inst;
+  final int index;
+
+  static const List<Color> _portraitBackdropColors = [
+    Color(0xFFE5A638), // Warm mustard yellow (matches screenshot)
+    Color(0xFF3B82F6), // Ocean blue
+    Color(0xFF10B981), // Emerald green
+    Color(0xFF8B5CF6), // Purple
+    Color(0xFFF97316), // Tangerine
+  ];
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final backdropColor = _portraitBackdropColors[index % _portraitBackdropColors.length];
+    final specialty = (inst.specialtyCrops != null && inst.specialtyCrops!.trim().isNotEmpty)
+        ? inst.specialtyCrops!.trim()
+        : ((inst.expertiseTags != null && inst.expertiseTags!.trim().isNotEmpty)
+            ? inst.expertiseTags!.trim()
+            : 'Agri Specialist');
+
+    final studentCountFormatted = inst.totalStudents >= 1000
+        ? '${(inst.totalStudents / 1000).toStringAsFixed(inst.totalStudents % 1000 == 0 ? 0 : 1)}k'
+        : '${inst.totalStudents}';
 
     return Container(
-      width: 172,
+      width: 220,
       decoration: BoxDecoration(
         color: isDark ? AppColors.cardDark : Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isDark
-              ? AppColors.lineDark
-              : AppColors.editorialOutlineVariant.withValues(alpha: 0.3),
+          color: isDark ? AppColors.lineDark : const Color(0xFFE5E7EB),
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
+            color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.05),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
           onTap: () {
-            context.push('/farmer/explore?search=${Uri.encodeComponent(inst.fullName)}');
+            context.push('/farmer/explore?instructor=${Uri.encodeComponent(inst.id.isNotEmpty ? inst.id : inst.fullName)}');
           },
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // Top Row: Avatar with verified check & Experience Pill
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // ── Top Image Container with Colored Backdrop & Overlay Action Button ──
+              Padding(
+                padding: const EdgeInsets.all(10),
+                child: Stack(
+                  clipBehavior: Clip.none,
                   children: [
-                    Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        Container(
-                          width: 42,
-                          height: 42,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: isDark
-                                ? AppColors.editorialSecondary.withValues(alpha: 0.2)
-                                : AppColors.editorialSecondaryFixed,
-                            border: Border.all(
-                              color: AppColors.editorialSecondary.withValues(alpha: 0.4),
-                              width: 1.5,
-                            ),
+                    Container(
+                      height: 125,
+                      decoration: BoxDecoration(
+                        color: backdropColor,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: Center(
+                        child: inst.avatar != null && inst.avatar!.isNotEmpty
+                            ? Image.network(
+                                inst.avatar!,
+                                width: double.infinity,
+                                height: double.infinity,
+                                fit: BoxFit.cover,
+                                alignment: Alignment.topCenter,
+                                errorBuilder: (_, __, ___) => _buildFallbackAvatar(backdropColor),
+                              )
+                            : _buildFallbackAvatar(backdropColor),
+                      ),
+                    ),
+                    // Blue Circle Plus Button pinned at bottom-right corner of photo
+                    Positioned(
+                      bottom: -12,
+                      right: 12,
+                      child: Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1E5BB8),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: isDark ? AppColors.cardDark : Colors.white,
+                            width: 2.2,
                           ),
-                          child: Center(
-                            child: inst.avatar != null && inst.avatar!.isNotEmpty
-                                ? ClipOval(
-                                    child: Image.network(
-                                      inst.avatar!,
-                                      width: 42,
-                                      height: 42,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (_, __, ___) => Text(
-                                        inst.fullName.isNotEmpty ? inst.fullName[0].toUpperCase() : 'I',
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 16,
-                                          color: AppColors.editorialSecondary,
-                                        ),
-                                      ),
-                                    ),
-                                  )
-                                : Text(
-                                    inst.fullName.isNotEmpty ? inst.fullName[0].toUpperCase() : 'I',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
-                                      color: AppColors.editorialSecondary,
-                                    ),
-                                  ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF1E5BB8).withValues(alpha: 0.4),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.add,
+                          color: Colors.white,
+                          size: 16,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 6),
+
+              // ── Instructor Info & Metrics ──
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Instructor Name
+                    Text(
+                      inst.fullName,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.2,
+                        color: isDark ? Colors.white : const Color(0xFF111827),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 6),
+
+                    // Row 1: Specialty / Role & Course Count
+                    Row(
+                      children: [
+                        const Icon(Icons.school_outlined, size: 13, color: Color(0xFF6B7280)),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            specialty,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFF6B7280),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        Positioned(
-                          bottom: -1,
-                          right: -1,
-                          child: Container(
-                            padding: const EdgeInsets.all(1.5),
-                            decoration: BoxDecoration(
-                              color: AppColors.editorialSecondary,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: isDark ? AppColors.cardDark : Colors.white,
-                                width: 1.2,
-                              ),
-                            ),
-                            child: const Icon(
-                              Icons.check,
-                              color: Colors.white,
-                              size: 8,
-                            ),
+                        const SizedBox(width: 6),
+                        const Icon(Icons.menu_book_outlined, size: 13, color: Color(0xFF6B7280)),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${inst.totalCourses} ${inst.totalCourses == 1 ? "Course" : "Courses"}',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF6B7280),
                           ),
                         ),
                       ],
                     ),
-                    if (inst.experience.isNotEmpty)
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? AppColors.editorialSecondary.withValues(alpha: 0.15)
-                              : AppColors.editorialSecondaryFixed.withValues(alpha: 0.7),
-                          borderRadius: BorderRadius.circular(9999),
-                        ),
-                        child: Text(
-                          inst.experience,
-                          style: TextStyle(
-                            fontSize: 9.5,
-                            fontWeight: FontWeight.w700,
-                            color: isDark
-                                ? AppColors.editorialSecondaryFixedDim
-                                : AppColors.editorialOnSecondaryFixed,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
+                    const SizedBox(height: 5),
 
-                // Name & Expertise
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      inst.fullName,
-                      style: TextStyle(
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.bold,
-                        color: isDark ? Colors.white : AppColors.editorialOnSurface,
-                        letterSpacing: -0.2,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      inst.specialtyCrops ?? inst.expertiseTags ?? 'Agricultural Specialist',
-                      style: TextStyle(
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w500,
-                        color: isDark ? Colors.white60 : AppColors.editorialOnSurfaceVariant,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-
-                // Footer Row: Rating & Course count tag
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
+                    // Row 2: Students Count & Rating
                     Row(
                       children: [
-                        const Icon(Icons.star_rounded, size: 14, color: Color(0xFFFBBF24)),
+                        const Icon(Icons.people_alt_outlined, size: 13, color: Color(0xFF6B7280)),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            '$studentCountFormatted Students',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFF6B7280),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const Icon(Icons.star_rounded, size: 15, color: Color(0xFFF59E0B)),
                         const SizedBox(width: 2),
                         Text(
                           inst.rating.toStringAsFixed(1),
                           style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w800,
+                            color: isDark ? Colors.white : const Color(0xFF111827),
                           ),
+                        ),
+                        if (inst.reviewCount > 0)
+                          Text(
+                            ' (${inst.reviewCount})',
+                            style: const TextStyle(
+                              fontSize: 10,
+                              color: Color(0xFF9CA3AF),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+
+                    // Divider & "View Profile ->" link
+                    Divider(
+                      height: 1,
+                      thickness: 0.8,
+                      color: isDark ? AppColors.lineDark : const Color(0xFFF3F4F6),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Text(
+                          'View Profile',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
+                            color: isDark ? AppColors.greenLight : const Color(0xFF1B5E20),
+                          ),
+                        ),
+                        const SizedBox(width: 3),
+                        Icon(
+                          Icons.arrow_forward_rounded,
+                          size: 13,
+                          color: isDark ? AppColors.greenLight : const Color(0xFF1B5E20),
                         ),
                       ],
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? Colors.white.withValues(alpha: 0.08)
-                            : AppColors.editorialSurfaceContainer,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        '${inst.totalCourses} courses',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: isDark ? Colors.white70 : AppColors.editorialOnSurfaceVariant,
-                        ),
-                      ),
-                    ),
                   ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildFallbackAvatar(Color backdropColor) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Container(
+          width: 58,
+          height: 58,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.white.withValues(alpha: 0.25),
+          ),
+          child: Center(
+            child: Text(
+              inst.fullName.isNotEmpty ? inst.fullName[0].toUpperCase() : 'I',
+              style: const TextStyle(
+                fontSize: 26,
+                fontWeight: FontWeight.w900,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
