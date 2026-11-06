@@ -201,7 +201,15 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   Widget build(BuildContext context) {
     ref.listen<AuthState>(authProvider, (previous, next) {
       if (next.status == AuthStatus.error && next.error != null) {
-        AppToast.show(context, next.error!, isError: true);
+        String displayError = next.error!;
+        final lower = displayError.toLowerCase();
+        if (lower.contains('user with this email already exists') ||
+            (lower.contains('email') && (lower.contains('already exists') || lower.contains('taken')))) {
+          displayError = tr(ref, 'Email already used for an account.');
+        } else {
+          displayError = tr(ref, displayError);
+        }
+        AppToast.show(context, displayError, isError: true);
         ref.read(authProvider.notifier).clearError();
       }
     });

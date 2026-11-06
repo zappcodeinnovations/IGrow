@@ -51,9 +51,26 @@ class ApiException implements Exception {
       final nfe = body['non_field_errors'];
       generalMessage = nfe is List ? nfe.first.toString() : nfe.toString();
     } else if (fieldErrors.isNotEmpty) {
-      // Use the first field error as the message.
+      // User-friendly mapping for common validation errors
       final first = fieldErrors.entries.first;
-      generalMessage = '${first.key}: ${first.value.first}';
+      final fieldName = first.key;
+      final rawError = first.value.first;
+      final lowerRaw = rawError.toLowerCase();
+
+      if (fieldName == 'email' &&
+          (lowerRaw.contains('already exists') ||
+           lowerRaw.contains('unique') ||
+           lowerRaw.contains('already registered') ||
+           lowerRaw.contains('taken'))) {
+        generalMessage = 'Email already used for an account.';
+      } else if (fieldName == 'phone_number' &&
+          (lowerRaw.contains('already exists') ||
+           lowerRaw.contains('unique') ||
+           lowerRaw.contains('taken'))) {
+        generalMessage = 'Phone number already used for an account.';
+      } else {
+        generalMessage = '$fieldName: $rawError';
+      }
     }
 
     return ApiException(
