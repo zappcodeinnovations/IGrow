@@ -4,6 +4,7 @@ import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import 'package:screen_protector/screen_protector.dart';
 
 import 'package:go_router/go_router.dart';
+import '../../../core/localization/app_strings.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/router/route_names.dart';
@@ -123,6 +124,11 @@ class _EbookViewerScreenState extends ConsumerState<EbookViewerScreen> {
                 const SizedBox(height: 8),
               ],
               const Divider(height: 20),
+              Text(
+                '${tr(ref, 'Description')}:',
+                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+              ),
+              const SizedBox(height: 6),
               Text(
                 ebook.description.isNotEmpty ? ebook.description : 'No description provided.',
                 style: Theme.of(dialogContext).textTheme.bodyMedium?.copyWith(

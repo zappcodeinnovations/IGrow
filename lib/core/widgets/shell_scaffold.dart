@@ -72,6 +72,9 @@ class _ShellScaffoldState extends ConsumerState<ShellScaffold> {
         currentIndex = 2;
       } else if (location.startsWith('/farmer/community')) {
         currentIndex = 3;
+      } else {
+        // e.g. /farmer/profile - not a primary bottom bar tab
+        currentIndex = -1;
       }
     } else {
       if (location.startsWith('/instructor/home')) {
@@ -82,6 +85,8 @@ class _ShellScaffoldState extends ConsumerState<ShellScaffold> {
         currentIndex = 2; // placeholder
       } else if (location.startsWith('/instructor/profile')) {
         currentIndex = 3;
+      } else {
+        currentIndex = -1;
       }
     }
 

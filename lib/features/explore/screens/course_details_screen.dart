@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../../core/localization/app_strings.dart';
@@ -794,20 +793,23 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
           ),
           actions: [
             courseAsync.maybeWhen(
-              data: (course) => IconButton(
-                icon: Icon(
-                  Icons.share_outlined,
-                  color: isDark ? Colors.white : AppColors.inkDark,
-                ),
-                tooltip: 'Share Course',
-                onPressed: () {
-                  final title = course.title;
-                  final slug = course.slug ?? widget.courseId;
-                  final text = 'Check out "$title" on IGrow: https://iagrow.org/courses/$slug';
-                  // ignore: deprecated_member_use
-                  Share.share(text, subject: title);
-                },
-              ),
+              data: (course) {
+                if (isInstructor) return const SizedBox.shrink();
+                final isSaved = ref.watch(isWishlistedProvider(course.id)) ||
+                    (course.slug != null &&
+                        course.slug!.isNotEmpty &&
+                        ref.watch(isWishlistedProvider(course.slug!))) ||
+                    ref.watch(isWishlistedProvider(widget.courseId));
+
+                return IconButton(
+                  icon: Icon(
+                    isSaved ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                    color: isSaved ? Colors.redAccent : (isDark ? Colors.white : AppColors.inkDark),
+                  ),
+                  tooltip: isSaved ? 'Remove from Wishlist' : 'Add to Wishlist',
+                  onPressed: _isTogglingWishlist ? null : () => _toggleWishlist(course),
+                );
+              },
               orElse: () => const SizedBox.shrink(),
             ),
             if (!isInstructor)
@@ -1683,29 +1685,6 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                     ),
                   ),
                 ),
-              ] else if (inCart) ...[
-                SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: FilledButton.icon(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF1B4D2E),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    onPressed: () => context.push('/cart'),
-                    icon: const Icon(Icons.shopping_cart_outlined, color: Colors.white),
-                    label: const Text(
-                      'Go to Cart',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
               ] else ...[
                 SizedBox(
                   width: double.infinity,
@@ -1731,46 +1710,102 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
               ],
               const SizedBox(height: 10),
 
-              // Button 2: "Preview free lesson"
-              SizedBox(
-                width: double.infinity,
-                height: 46,
-                child: FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: isDark
-                        ? AppColors.surfaceContainerHighDark
-                        : const Color(0xFFE8F3EB),
-                    foregroundColor: const Color(0xFF1B4D2E),
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  onPressed: () {
-                    if (previewVideoUrl != null && previewVideoUrl.isNotEmpty) {
-                      _initializePlayer(
-                        previewVideoUrl,
-                        autoPlay: true,
-                        bunnyId: previewBunnyId,
-                      );
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('No preview video available for this course.'),
+              // Button 2: "Add to Cart" or "Go to Cart" (repurposed from preview)
+              if (!isEnrolled && !isInstructor)
+                SizedBox(
+                  width: double.infinity,
+                  height: 46,
+                  child: inCart
+                      ? OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Color(0xFF1B4D2E)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          onPressed: () => context.push('/cart'),
+                          icon: const Icon(Icons.shopping_cart_checkout_rounded, size: 18, color: Color(0xFF1B4D2E)),
+                          label: Text(
+                            tr(ref, 'Go to Cart'),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                              color: Color(0xFF1B4D2E),
+                            ),
+                          ),
+                        )
+                      : FilledButton.icon(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: isDark
+                                ? AppColors.surfaceContainerHighDark
+                                : const Color(0xFFE8F3EB),
+                            foregroundColor: const Color(0xFF1B4D2E),
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          onPressed: _isAddingToCart ? null : () => _handleAddToCart(context, course),
+                          icon: _isAddingToCart
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Color(0xFF1B4D2E),
+                                  ),
+                                )
+                              : const Icon(Icons.add_shopping_cart_rounded, size: 18, color: Color(0xFF1B4D2E)),
+                          label: Text(
+                            tr(ref, 'Add to Cart'),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                              color: Color(0xFF1B4D2E),
+                            ),
+                          ),
                         ),
-                      );
-                    }
-                  },
-                  child: const Text(
-                    'Preview free lesson',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                      color: Color(0xFF1B4D2E),
+                )
+              else if (isInstructor || isEnrolled)
+                SizedBox(
+                  width: double.infinity,
+                  height: 46,
+                  child: FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: isDark
+                          ? AppColors.surfaceContainerHighDark
+                          : const Color(0xFFE8F3EB),
+                      foregroundColor: const Color(0xFF1B4D2E),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onPressed: () {
+                      if (previewVideoUrl != null && previewVideoUrl.isNotEmpty) {
+                        _initializePlayer(
+                          previewVideoUrl,
+                          autoPlay: true,
+                          bunnyId: previewBunnyId,
+                        );
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('No preview video available for this course.'),
+                          ),
+                        );
+                      }
+                    },
+                    child: const Text(
+                      'Preview free lesson',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: Color(0xFF1B4D2E),
+                      ),
                     ),
                   ),
                 ),
-              ),
             ],
           ),
         ),

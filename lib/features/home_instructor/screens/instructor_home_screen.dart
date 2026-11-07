@@ -688,6 +688,56 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
     }
   }
 
+  Future<void> _deleteCourse(ApiCourseList course) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('Delete Course'),
+        content: Text('Are you sure you want to permanently delete "${course.title}"? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(c, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+            onPressed: () => Navigator.pop(c, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await ref.read(instructorRepositoryProvider).deleteCourse(course.id);
+        if (!mounted) return;
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.clearSnackBars();
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('Course deleted successfully'),
+            backgroundColor: AppColors.primaryGreen,
+          ),
+        );
+        ref.invalidate(instructorCoursesProvider);
+        ref.invalidate(studentCatalogProvider);
+        ref.invalidate(featuredCoursesProvider);
+        ref.invalidate(exploreCoursesProvider);
+      } catch (e) {
+        if (!mounted) return;
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.clearSnackBars();
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -1187,6 +1237,7 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                               }
                             },
                             onDeactivate: () => _deactivateCourse(course),
+                            onDelete: () => _deleteCourse(course),
                           ),
                         );
                       }).toList(),
@@ -1449,12 +1500,14 @@ class AgriLearnCourseCard extends ConsumerWidget {
     required this.onManage,
     this.onViewLive,
     this.onDeactivate,
+    this.onDelete,
   });
 
   final ApiCourseList course;
   final VoidCallback onManage;
   final VoidCallback? onViewLive;
   final VoidCallback? onDeactivate;
+  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -1663,6 +1716,25 @@ class AgriLearnCourseCard extends ConsumerWidget {
                             fontSize: 11,
                             fontWeight: FontWeight.bold,
                             color: Color(0xFFD97706),
+                          ),
+                        ),
+                      ),
+                    if (!isLive && onDelete != null)
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          side: const BorderSide(color: Color(0xFFEF4444)),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        onPressed: onDelete,
+                        icon: const Icon(Icons.delete_outline_rounded, size: 14, color: Color(0xFFEF4444)),
+                        label: Text(
+                          tr(ref, 'Delete'),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFFEF4444),
                           ),
                         ),
                       ),

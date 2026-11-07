@@ -419,33 +419,87 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                         const SizedBox(height: 14),
 
-                        // Right-aligned "Forgot Password?" with clean green underline
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: GestureDetector(
-                            onTap: () => context.push(RouteNames.forgotPassword),
-                            behavior: HitTestBehavior.opaque,
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 4,
-                                horizontal: 2,
-                              ),
-                              child: Text(
-                                tr(ref, 'Forgot Password?'),
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 14.5,
-                                  fontWeight: FontWeight.w600,
+                        // Switch Portal button on left & "Forgot Password?" on right
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            GestureDetector(
+                              onTap: () async {
+                                final targetRole = _isInstructorRole ? 'farmer' : 'instructor';
+                                final prefs = await SharedPreferences.getInstance();
+                                await prefs.setString('selected_auth_role', targetRole);
+                                if (context.mounted) {
+                                  context.go('${RouteNames.login}?role=$targetRole');
+                                }
+                              },
+                              behavior: HitTestBehavior.opaque,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 6,
+                                  horizontal: 10,
+                                ),
+                                decoration: BoxDecoration(
                                   color: isDark
-                                      ? AppColors.organicActionLinkDark
-                                      : AppColors.organicActionLink,
-                                  decoration: TextDecoration.underline,
-                                  decorationColor: isDark
-                                      ? AppColors.organicActionLinkDark
-                                      : AppColors.organicActionLink,
+                                      ? AppColors.cardDark
+                                      : const Color(0xFFF3F7F4),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: isDark
+                                        ? AppColors.lineDark
+                                        : AppColors.organicBorderLight,
+                                    width: 1,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.swap_horiz_rounded,
+                                      size: 16,
+                                      color: isDark
+                                          ? AppColors.organicActionLinkDark
+                                          : AppColors.organicActionLink,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      tr(ref, _isInstructorRole ? 'Student Login' : 'Instructor Login'),
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 12.5,
+                                        fontWeight: FontWeight.w700,
+                                        color: isDark
+                                          ? AppColors.organicActionLinkDark
+                                          : AppColors.organicActionLink,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
-                          ),
+                            GestureDetector(
+                              onTap: () => context.push(RouteNames.forgotPassword),
+                              behavior: HitTestBehavior.opaque,
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 4,
+                                  horizontal: 2,
+                                ),
+                                child: Text(
+                                  tr(ref, 'Forgot Password?'),
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 14.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: isDark
+                                        ? AppColors.organicActionLinkDark
+                                        : AppColors.organicActionLink,
+                                    decoration: TextDecoration.underline,
+                                    decorationColor: isDark
+                                        ? AppColors.organicActionLinkDark
+                                        : AppColors.organicActionLink,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
 
                         const SizedBox(height: 20),

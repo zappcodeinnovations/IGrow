@@ -144,6 +144,62 @@ class _CoursesTab extends ConsumerWidget {
     }
   }
 
+  Future<void> _deleteCourse(
+    BuildContext context,
+    WidgetRef ref,
+    ApiCourseList course,
+  ) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('Delete Course'),
+        content: Text('Are you sure you want to permanently delete "${course.title}"? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(c, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+            onPressed: () => Navigator.pop(c, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await ref.read(instructorRepositoryProvider).deleteCourse(course.id);
+        if (context.mounted) {
+          final messenger = ScaffoldMessenger.of(context);
+          messenger.clearSnackBars();
+          messenger.showSnackBar(
+            const SnackBar(
+              content: Text('Course deleted successfully'),
+              backgroundColor: AppColors.primaryGreen,
+            ),
+          );
+          ref.invalidate(instructorCoursesProvider);
+          ref.invalidate(studentCatalogProvider);
+          ref.invalidate(featuredCoursesProvider);
+          ref.invalidate(exploreCoursesProvider);
+        }
+      } catch (e) {
+        if (context.mounted) {
+          final messenger = ScaffoldMessenger.of(context);
+          messenger.clearSnackBars();
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text(e.toString().replaceAll('Exception: ', '')),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -312,6 +368,12 @@ class _CoursesTab extends ConsumerWidget {
                             icon: const Icon(Icons.pause_circle_outline, color: Color(0xFFD97706)),
                             tooltip: 'Deactivate Course',
                             onPressed: () => _deactivateCourse(context, ref, course),
+                          ),
+                        if (!isLive)
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFFEF4444)),
+                            tooltip: 'Delete Course',
+                            onPressed: () => _deleteCourse(context, ref, course),
                           ),
                       ],
                     ),

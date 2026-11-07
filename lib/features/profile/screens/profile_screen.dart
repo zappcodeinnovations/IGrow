@@ -9,7 +9,6 @@ import '../../../core/theme/theme_provider.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/delete_account_dialog.dart';
 import '../../../core/widgets/logout_dialog.dart';
-import '../../../core/widgets/shell_scaffold.dart';
 import '../../../data/models/user_role.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../certificates/providers/certificates_provider.dart';
@@ -83,10 +82,8 @@ class ProfileScreen extends ConsumerWidget {
               onTap: () {
                 if (Navigator.of(context).canPop()) {
                   context.pop();
-                } else if (shellScaffoldKey.currentState != null) {
-                  shellScaffoldKey.currentState!.openDrawer();
                 } else {
-                  Scaffold.of(context).openDrawer();
+                  context.go(RouteNames.farmerHome);
                 }
               },
               borderRadius: BorderRadius.circular(20),

@@ -245,7 +245,8 @@ class ApiAuthRepository implements AuthRepository {
       body['fcm_token'] = fcmToken.trim();
     }
     if (expectedRole != null && expectedRole.trim().isNotEmpty) {
-      body['role'] = expectedRole.trim().toUpperCase();
+      final roleUpper = expectedRole.trim().toUpperCase();
+      body['role'] = (roleUpper == 'FARMER' || roleUpper == 'STUDENT') ? 'STUDENT' : 'INSTRUCTOR';
     }
 
     print('\n🌐 [AUTH_REPO] POST /api/v1/auth/social-login/ with provider: $provider');
