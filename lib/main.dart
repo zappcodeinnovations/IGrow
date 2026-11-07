@@ -134,6 +134,7 @@ class _IGrowAppState extends ConsumerState<IGrowApp> {
 
     // Invalidate student & explore providers
     ref.invalidate(studentEnrollmentsProvider);
+    ref.invalidate(studentCatalogProvider);
     ref.invalidate(featuredCoursesProvider);
     ref.invalidate(exploreCoursesProvider);
   }
@@ -174,6 +175,17 @@ class _IGrowAppState extends ConsumerState<IGrowApp> {
         ],
         routerConfig: router,
         debugShowCheckedModeBanner: false,
+        builder: (context, child) {
+          return GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onTap: () {
+              // Automatically unfocus any active input field and dismiss the keyboard
+              // when tapping anywhere outside an interactive control.
+              FocusManager.instance.primaryFocus?.unfocus();
+            },
+            child: child ?? const SizedBox.shrink(),
+          );
+        },
       ),
     );
   }

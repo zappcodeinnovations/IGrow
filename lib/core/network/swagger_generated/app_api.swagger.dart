@@ -7867,6 +7867,8 @@ class EBook {
     this.rejectionReason,
     this.createdAt,
     this.updatedAt,
+    this.price,
+    this.isPurchased,
   });
 
   factory EBook.fromJson(Map<String, dynamic> json) => _$EBookFromJson(json);
@@ -7906,6 +7908,10 @@ class EBook {
   final DateTime? createdAt;
   @JsonKey(name: 'updated_at')
   final DateTime? updatedAt;
+  @JsonKey(name: 'price')
+  final String? price;
+  @JsonKey(name: 'is_purchased')
+  final bool? isPurchased;
   static const fromJsonFactory = _$EBookFromJson;
 
   @override
@@ -8010,6 +8016,8 @@ extension $EBookExtension on EBook {
     String? rejectionReason,
     DateTime? createdAt,
     DateTime? updatedAt,
+    String? price,
+    bool? isPurchased,
   }) {
     return EBook(
       id: id ?? this.id,
@@ -8026,6 +8034,8 @@ extension $EBookExtension on EBook {
       rejectionReason: rejectionReason ?? this.rejectionReason,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      price: price ?? this.price,
+      isPurchased: isPurchased ?? this.isPurchased,
     );
   }
 

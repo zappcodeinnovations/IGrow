@@ -12,6 +12,9 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/router/route_names.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../explore/providers/explore_provider.dart';
+import '../../home_farmer/providers/farmer_home_provider.dart';
+import '../../home_farmer/providers/student_provider.dart';
 import '../../notifications/providers/notification_provider.dart';
 import '../../../core/widgets/logout_dialog.dart';
 import '../../../core/widgets/shimmer_placeholders.dart';
@@ -668,6 +671,9 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
           ),
         );
         ref.invalidate(instructorCoursesProvider);
+        ref.invalidate(studentCatalogProvider);
+        ref.invalidate(featuredCoursesProvider);
+        ref.invalidate(exploreCoursesProvider);
       } catch (e) {
         if (!mounted) return;
         final messenger = ScaffoldMessenger.of(context);
@@ -1811,6 +1817,44 @@ class _AgriLearnEbookCard extends ConsumerWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: (ebook.price == null || ebook.price == '0' || ebook.price == '0.00' || ebook.price == '0.0')
+                                ? AppColors.primaryGreen.withValues(alpha: 0.12)
+                                : const Color(0xFFF59E0B).withValues(alpha: 0.14),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.currency_rupee,
+                                size: 10,
+                                color: (ebook.price == null || ebook.price == '0' || ebook.price == '0.00' || ebook.price == '0.0')
+                                    ? AppColors.primaryGreen
+                                    : const Color(0xFFD97706),
+                              ),
+                              Text(
+                                (ebook.price == null || ebook.price == '0' || ebook.price == '0.00' || ebook.price == '0.0')
+                                    ? 'FREE'
+                                    : '${ebook.price}',
+                                style: TextStyle(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: (ebook.price == null || ebook.price == '0' || ebook.price == '0.00' || ebook.price == '0.0')
+                                      ? AppColors.primaryGreen
+                                      : const Color(0xFFD97706),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),

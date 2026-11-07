@@ -461,14 +461,58 @@ class ApiAuthRepository implements AuthRepository {
     required String newPassword,
     required String confirmPassword,
   }) async {
-    final response = await appApi.apiV1AuthResetPasswordPost(
-      body: ResetPasswordRequest(
-        resetToken: resetToken,
-        newPassword: newPassword,
-        confirmPassword: confirmPassword,
-      ),
+    final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/auth/reset-password/');
+    final response = await http.post(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: jsonEncode({
+        'reset_token': resetToken.trim(),
+        'new_password': newPassword,
+        'confirm_password': confirmPassword,
+      }),
     );
-    _handleError(response);
+
+    if (response.statusCode >= 400) {
+      String errorMessage = 'Failed to reset password (${response.statusCode})';
+      Map<String, dynamic>? errorData;
+      try {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map<String, dynamic>) {
+          errorData = decoded;
+        }
+      } catch (_) {}
+
+      if (errorData != null) {
+        if (errorData.containsKey('error') && errorData['error'] != null) {
+          errorMessage = errorData['error'].toString();
+        } else if (errorData.containsKey('detail') && errorData['detail'] != null) {
+          errorMessage = errorData['detail'].toString();
+        } else if (errorData.containsKey('non_field_errors') && errorData['non_field_errors'] != null) {
+          final nfe = errorData['non_field_errors'];
+          errorMessage = nfe is List ? nfe.first.toString() : nfe.toString();
+        } else {
+          // Check for field-specific errors
+          final entries = errorData.entries.where((e) => e.value != null).toList();
+          if (entries.isNotEmpty) {
+            final firstEntry = entries.first;
+            final val = firstEntry.value;
+            final raw = val is List ? val.first.toString() : val.toString();
+            if (firstEntry.key == 'reset_token') {
+              errorMessage = 'Reset link has expired or is invalid. Please request a new OTP.';
+            } else if (firstEntry.key == 'new_password' || firstEntry.key == 'confirm_password') {
+              errorMessage = raw;
+            } else {
+              errorMessage = '${firstEntry.key}: $raw';
+            }
+          }
+        }
+      }
+
+      throw ApiException(statusCode: response.statusCode, message: errorMessage);
+    }
   }
 
   @override

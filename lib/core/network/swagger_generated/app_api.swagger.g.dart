@@ -701,6 +701,8 @@ EBook _$EBookFromJson(Map<String, dynamic> json) => EBook(
   updatedAt: json['updated_at'] == null
       ? null
       : DateTime.parse(json['updated_at'] as String),
+  price: json['price']?.toString(),
+  isPurchased: json['is_purchased'] as bool?,
 );
 
 Map<String, dynamic> _$EBookToJson(EBook instance) => <String, dynamic>{
@@ -718,6 +720,8 @@ Map<String, dynamic> _$EBookToJson(EBook instance) => <String, dynamic>{
   'rejection_reason': instance.rejectionReason,
   'created_at': instance.createdAt?.toIso8601String(),
   'updated_at': instance.updatedAt?.toIso8601String(),
+  'price': instance.price,
+  'is_purchased': instance.isPurchased,
 };
 
 EBookCreateUpdate _$EBookCreateUpdateFromJson(Map<String, dynamic> json) =>

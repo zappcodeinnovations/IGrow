@@ -967,6 +967,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                         totalLectures,
                         previewVideoUrl: videoUrl,
                         previewBunnyId: previewLecture?.bunnyVideoId,
+                        isInstructor: isInstructor,
                       ),
                       Padding(
                         padding: const EdgeInsets.fromLTRB(16, 8, 16, 90),
@@ -1506,6 +1507,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
     int totalLectures, {
     String? previewVideoUrl,
     String? previewBunnyId,
+    bool isInstructor = false,
   }) {
     final inCart = (course.id.isNotEmpty && ref.watch(isCourseInCartProvider(course.id))) ||
         ref.watch(isCourseInCartProvider(widget.courseId)) ||
@@ -1629,8 +1631,34 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
               const SizedBox(height: 18),
 
               // Primary Action Buttons Inline:
-              // Button 1: "Enroll now • ₹XXX" or "Start Learning (Enrolled)" or "Go to Cart"
-              if (isEnrolled) ...[
+              if (isInstructor) ...[
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primaryGreen,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 2,
+                    ),
+                    onPressed: () {
+                      final targetId = course.id.isNotEmpty ? course.id : widget.courseId;
+                      context.push('/instructor/manage-course/$targetId');
+                    },
+                    icon: const Icon(Icons.settings_outlined, size: 18),
+                    label: const Text(
+                      'Manage Course',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ] else if (isEnrolled) ...[
                 SizedBox(
                   width: double.infinity,
                   height: 48,

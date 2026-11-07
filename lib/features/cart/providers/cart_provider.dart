@@ -104,13 +104,13 @@ class CartNotifier extends AsyncNotifier<ApiCart> {
     }
   }
 
-  /// Add a course to the cart.
-  Future<void> addToCart(String courseId) async {
+  /// Add a course or ebook to the cart.
+  Future<void> addToCart(String courseId, {String? ebookId}) async {
     final previousState = state;
     state = const AsyncLoading();
 
     try {
-      await _repository.addToCart(courseId);
+      await _repository.addToCart(courseId, ebookId: ebookId);
     } catch (e) {
       // POST failed! Revert state to previous cart so UI state is NOT desynced or wiped.
       state = previousState;
@@ -129,13 +129,14 @@ class CartNotifier extends AsyncNotifier<ApiCart> {
         final retryCart = await _repository.getCart();
         state = AsyncData(retryCart);
       } catch (_) {
-        // Since the course WAS successfully added to the server cart,
+        // Since the item WAS successfully added to the server cart,
         // synthesize/preserve the cart state so UI reflects it accurately without throwing a false error!
+        final itemId = (ebookId != null && ebookId.isNotEmpty) ? ebookId : courseId;
         if (previousState.hasValue) {
           final existing = previousState.value!;
-          final alreadyPresent = existing.items.any((it) => it.course == courseId || it.id == courseId);
+          final alreadyPresent = existing.items.any((it) => it.course == itemId || it.id == itemId);
           if (!alreadyPresent) {
-            final optimisticItem = ApiCartItem(id: courseId, course: courseId);
+            final optimisticItem = ApiCartItem(id: itemId, course: courseId);
             final updatedItems = [...existing.items, optimisticItem];
             state = AsyncData(ApiCart(
               id: existing.id,
@@ -149,7 +150,7 @@ class CartNotifier extends AsyncNotifier<ApiCart> {
         } else {
           state = AsyncData(ApiCart(
             id: '',
-            items: [ApiCartItem(id: courseId, course: courseId)],
+            items: [ApiCartItem(id: itemId, course: courseId)],
             itemCount: '1',
           ));
         }

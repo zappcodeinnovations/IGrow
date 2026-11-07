@@ -423,6 +423,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
   void clearError() {
     state = state.copyWith(error: null);
   }
+
+  /// Set a custom error message.
+  void setError(String message) {
+    state = state.copyWith(error: message);
+  }
 }
 
 // ─── Providers ─────────────────────────────────────────────────────

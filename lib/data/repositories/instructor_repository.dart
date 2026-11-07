@@ -595,6 +595,34 @@ class InstructorRepository {
 
   /// List instructor's ebooks.
   Future<PaginatedEBookList> getEBooks({int? page}) async {
+    // 1. Direct HTTP call to capture price and custom fields
+    try {
+      final token = await tokenStorage.getAccessToken();
+      final queryParams = <String, String>{
+        if (page != null) 'page': page.toString(),
+      };
+      final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/instructor/ebooks/').replace(
+        queryParameters: queryParams.isNotEmpty ? queryParams : null,
+      );
+
+      final response = await http.get(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        return PaginatedEBookList.fromJson(data);
+      }
+    } catch (e) {
+      debugPrint('⚠️ [InstructorRepository] getEBooks direct HTTP error: $e');
+    }
+
+    // 2. Fallback to Chopper appApi
     try {
       final response = await appApi.apiV1InstructorEbooksGet(page: page);
       if (response.isSuccessful && response.body != null) {
@@ -672,6 +700,28 @@ class InstructorRepository {
 
   /// Update E-Book.
   Future<Map<String, dynamic>> updateEBook(String ebookId, Map<String, dynamic> updates) async {
+    try {
+      final token = await tokenStorage.getAccessToken();
+      final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/instructor/ebooks/$ebookId/');
+      final rawResponse = await http.patch(
+        uri,
+        headers: {
+          if (token != null) 'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode(updates),
+      );
+
+      if (rawResponse.statusCode >= 200 && rawResponse.statusCode < 300) {
+        debugPrint('✅ [InstructorRepository] updateEBook direct HTTP SUCCESS: ${rawResponse.body}');
+        return jsonDecode(rawResponse.body) as Map<String, dynamic>;
+      }
+      debugPrint('⚠️ [InstructorRepository] updateEBook direct HTTP failed (${rawResponse.statusCode}): ${rawResponse.body}');
+    } catch (e) {
+      debugPrint('⚠️ [InstructorRepository] updateEBook direct HTTP error: $e');
+    }
+
     final response = await appApi.apiV1InstructorEbooksIdPatch(
       id: ebookId,
       body: PatchedEBookCreateUpdateRequest.fromJson(updates),

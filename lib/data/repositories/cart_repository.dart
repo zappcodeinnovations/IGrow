@@ -84,12 +84,22 @@ class CartRepository {
     return const ApiCart(id: '');
   }
 
-  /// Add a course to cart.
-  Future<void> addToCart(String courseId) async {
-    debugPrint('➕ [CartRepository] addToCart: courseId=$courseId');
+  /// Add a course or ebook to cart.
+  Future<void> addToCart(String courseId, {String? ebookId}) async {
+    debugPrint('➕ [CartRepository] addToCart: courseId=$courseId, ebookId=$ebookId');
     final token = await tokenStorage.getAccessToken();
     final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/cart/add/');
     
+    final payload = <String, dynamic>{};
+    if (courseId.isNotEmpty) {
+      payload['course_id'] = courseId;
+      payload['course'] = courseId;
+    }
+    if (ebookId != null && ebookId.isNotEmpty) {
+      payload['ebook_id'] = ebookId;
+      payload['ebook'] = ebookId;
+    }
+
     http.Response response;
     try {
       response = await http.post(
@@ -98,15 +108,12 @@ class CartRepository {
           if (token != null) 'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
-        body: jsonEncode({
-          'course_id': courseId,
-          'course': courseId,
-        }),
+        body: jsonEncode(payload),
       ).timeout(const Duration(seconds: 15));
     } catch (e) {
       debugPrint('❌ [CartRepository] addToCart network error: $e');
       if (_isNetworkOrAbortError(e)) {
-        throw ApiException.network('Unable to add course to cart. Please check your internet connection.');
+        throw ApiException.network('Unable to add item to cart. Please check your internet connection.');
       }
       rethrow;
     }

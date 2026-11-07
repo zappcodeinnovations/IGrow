@@ -31,8 +31,26 @@ class _CreatePasswordScreenState extends ConsumerState<CreatePasswordScreen> {
     final newPassword = _passwordController.text;
     final confirmPassword = _confirmController.text;
     
-    if (newPassword.length < 8) return;
-    if (newPassword != confirmPassword) return;
+    if (newPassword.isEmpty) {
+      ref.read(authProvider.notifier).setError('Please enter a new password.');
+      return;
+    }
+    if (newPassword.length < 8) {
+      ref.read(authProvider.notifier).setError('Password must be at least 8 characters long.');
+      return;
+    }
+    if (confirmPassword.isEmpty) {
+      ref.read(authProvider.notifier).setError('Please confirm your new password.');
+      return;
+    }
+    if (newPassword != confirmPassword) {
+      ref.read(authProvider.notifier).setError('Passwords do not match. Please verify and try again.');
+      return;
+    }
+    if (widget.token.isEmpty) {
+      ref.read(authProvider.notifier).setError('Invalid or expired reset session. Please request a new OTP.');
+      return;
+    }
     
     setState(() => _isSaving = true);
     

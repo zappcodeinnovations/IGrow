@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
@@ -93,6 +94,10 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
   bool _isFetchingIfsc = false;
   String? _ifscHelperText;
   bool _bankNameManuallyEdited = false;
+
+  // Toggle visibility of submitted masked data in Under Review state
+  bool _showSubmittedDocNumber = false;
+  bool _showSubmittedAccountNumber = false;
   String? _lastFetchedIfsc;
 
   final ImagePicker _picker = ImagePicker();
@@ -660,16 +665,24 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
                       AppTextField(
                         controller: _accountNumberController,
                         label: 'Bank Account Number *',
-                        hint: 'Enter account number',
+                        hint: 'Enter account number (9 to 18 digits)',
                         keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                          LengthLimitingTextInputFormatter(18),
+                        ],
                         prefixIcon: const Icon(Icons.pin_rounded,
                             color: AppColors.primaryGreen),
                         validator: (val) {
                           if (val == null || val.trim().isEmpty) {
                             return 'Please enter account number';
                           }
-                          if (val.trim().length < 8) {
-                            return 'Account number must be at least 8 digits';
+                          final digits = val.trim();
+                          if (digits.length < 9) {
+                            return 'Account number must be at least 9 digits';
+                          }
+                          if (digits.length > 18) {
+                            return 'Account number cannot exceed 18 digits';
                           }
                           return null;
                         },
@@ -682,6 +695,10 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
                         label: 'Confirm Account Number *',
                         hint: 'Re-enter account number',
                         keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                          LengthLimitingTextInputFormatter(18),
+                        ],
                         prefixIcon: const Icon(Icons.lock_outline_rounded,
                             color: AppColors.primaryGreen),
                         validator: (val) {
@@ -1181,7 +1198,13 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
               ),
               _buildSummaryRow(
                 'Document Number',
-                _maskNumber(user?.kycDocumentNumber),
+                _showSubmittedDocNumber
+                    ? (user?.kycDocumentNumber ?? 'Not provided')
+                    : _maskNumber(user?.kycDocumentNumber),
+                onToggleVisibility: (user?.kycDocumentNumber != null && user!.kycDocumentNumber!.isNotEmpty)
+                    ? () => setState(() => _showSubmittedDocNumber = !_showSubmittedDocNumber)
+                    : null,
+                isMasked: !_showSubmittedDocNumber,
               ),
               if (user?.kycDocumentImage != null && user!.kycDocumentImage!.isNotEmpty) ...[
                 const SizedBox(height: 12),
@@ -1216,7 +1239,13 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
               _buildSummaryRow('Account Holder', user?.bankAccountName ?? user?.fullName ?? ''),
               _buildSummaryRow(
                 'Account Number',
-                _maskNumber(user?.bankAccountNumber),
+                _showSubmittedAccountNumber
+                    ? (user?.bankAccountNumber ?? 'Not provided')
+                    : _maskNumber(user?.bankAccountNumber),
+                onToggleVisibility: (user?.bankAccountNumber != null && user!.bankAccountNumber!.isNotEmpty)
+                    ? () => setState(() => _showSubmittedAccountNumber = !_showSubmittedAccountNumber)
+                    : null,
+                isMasked: !_showSubmittedAccountNumber,
               ),
               _buildSummaryRow('IFSC Code', user?.bankIfscCode ?? '••••'),
             ],
@@ -1226,11 +1255,16 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
     );
   }
 
-  Widget _buildSummaryRow(String label, String value) {
+  Widget _buildSummaryRow(
+    String label,
+    String value, {
+    VoidCallback? onToggleVisibility,
+    bool isMasked = false,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 7),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Expanded(
             flex: 4,
@@ -1242,16 +1276,41 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
                   ?.copyWith(color: AppColors.inkSoft),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 8),
           Expanded(
             flex: 6,
-            child: Text(
-              value,
-              textAlign: TextAlign.end,
-              style: Theme.of(context)
-                  .textTheme
-                  .bodyMedium
-                  ?.copyWith(fontWeight: FontWeight.w600),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Flexible(
+                  child: Text(
+                    value,
+                    textAlign: TextAlign.end,
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodyMedium
+                        ?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: isMasked ? 1.5 : 0.2,
+                        ),
+                  ),
+                ),
+                if (onToggleVisibility != null) ...[
+                  const SizedBox(width: 6),
+                  InkWell(
+                    onTap: onToggleVisibility,
+                    borderRadius: BorderRadius.circular(16),
+                    child: Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: Icon(
+                        isMasked ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                        size: 18,
+                        color: AppColors.primaryGreen,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
         ],

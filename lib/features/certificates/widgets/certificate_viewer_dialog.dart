@@ -36,6 +36,7 @@ class CertificateViewerDialog extends StatefulWidget {
     showDialog(
       context: context,
       barrierDismissible: true,
+      barrierColor: Colors.black.withValues(alpha: 0.85),
       builder: (_) => CertificateViewerDialog(
         certificate: certificate,
         enrollment: enrollment,
@@ -747,68 +748,6 @@ class _CertificateViewerDialogState extends State<CertificateViewerDialog> {
             ),
             const SizedBox(height: 14),
 
-            // In-dialog download feedback toast / banner (rendered above actions, at same layer)
-            if (_downloadSuccessMsg != null)
-              Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                decoration: BoxDecoration(
-                  color: AppColors.primaryGreen,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.25),
-                      blurRadius: 8,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        _downloadSuccessMsg!,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    if (_lastGeneratedPdfBytes != null) ...[
-                      TextButton(
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          foregroundColor: Colors.amberAccent,
-                        ),
-                        onPressed: () {
-                          Printing.layoutPdf(
-                            format: PdfPageFormat.a4.landscape,
-                            dynamicLayout: false,
-                            onLayout: (format) async => _lastGeneratedPdfBytes!,
-                            name: _lastGeneratedFileName ?? 'Certificate.pdf',
-                          );
-                        },
-                        child: const Text('Open', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                      ),
-                    ],
-                    InkWell(
-                      onTap: () => setState(() => _downloadSuccessMsg = null),
-                      child: const Padding(
-                        padding: EdgeInsets.only(left: 4),
-                        child: Icon(Icons.close_rounded, color: Colors.white70, size: 16),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
             // ── Action Buttons (Responsive on all screen widths) ────
             LayoutBuilder(
               builder: (context, constraints) {
@@ -888,6 +827,69 @@ class _CertificateViewerDialogState extends State<CertificateViewerDialog> {
                 );
               },
             ),
+
+            // In-dialog download feedback toast / banner (rendered UNDER action buttons)
+            if (_downloadSuccessMsg != null) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryGreen,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.25),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _downloadSuccessMsg!,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (_lastGeneratedPdfBytes != null) ...[
+                      TextButton(
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          foregroundColor: Colors.amberAccent,
+                        ),
+                        onPressed: () {
+                          Printing.layoutPdf(
+                            format: PdfPageFormat.a4.landscape,
+                            dynamicLayout: false,
+                            onLayout: (format) async => _lastGeneratedPdfBytes!,
+                            name: _lastGeneratedFileName ?? 'Certificate.pdf',
+                          );
+                        },
+                        child: const Text('Open', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                      ),
+                    ],
+                    InkWell(
+                      onTap: () => setState(() => _downloadSuccessMsg = null),
+                      child: const Padding(
+                        padding: EdgeInsets.only(left: 4),
+                        child: Icon(Icons.close_rounded, color: Colors.white70, size: 16),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
       ),

@@ -158,8 +158,81 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 }
 
 /// Slide 1: Brand presentation (IGROW • LEARN • GROW • ACHIEVE)
-class _FirstOnboardingSlide extends StatelessWidget {
+class _FirstOnboardingSlide extends StatefulWidget {
   const _FirstOnboardingSlide();
+
+  @override
+  State<_FirstOnboardingSlide> createState() => _FirstOnboardingSlideState();
+}
+
+class _FirstOnboardingSlideState extends State<_FirstOnboardingSlide>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _animCtrl;
+  late final Animation<double> _iconScale;
+  late final Animation<double> _iconFade;
+  late final Animation<Offset> _floatAnim;
+  late final Animation<double> _textFade;
+  late final Animation<Offset> _textSlide;
+
+  @override
+  void initState() {
+    super.initState();
+    _animCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    );
+
+    _iconScale = Tween<double>(begin: 0.65, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _animCtrl,
+        curve: const Interval(0.0, 0.65, curve: Curves.easeOutBack),
+      ),
+    );
+
+    _iconFade = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _animCtrl,
+        curve: const Interval(0.0, 0.45, curve: Curves.easeOut),
+      ),
+    );
+
+    // Floating animation for central vector emblem
+    _floatAnim = Tween<Offset>(
+      begin: const Offset(0, 0.03),
+      end: const Offset(0, -0.03),
+    ).animate(
+      CurvedAnimation(
+        parent: _animCtrl,
+        curve: Curves.easeInOutSine,
+      ),
+    );
+
+    // Staggered text entrance
+    _textFade = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _animCtrl,
+        curve: const Interval(0.35, 0.9, curve: Curves.easeOut),
+      ),
+    );
+
+    _textSlide = Tween<Offset>(
+      begin: const Offset(0, 0.18),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(
+        parent: _animCtrl,
+        curve: const Interval(0.35, 0.9, curve: Curves.easeOutCubic),
+      ),
+    );
+
+    _animCtrl.forward();
+  }
+
+  @override
+  void dispose() {
+    _animCtrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -171,78 +244,111 @@ class _FirstOnboardingSlide extends StatelessWidget {
         children: [
           const Spacer(flex: 3),
 
-          // Brand Emblem with subtle glow
-          Container(
-            width: 120,
-            height: 120,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: isDark
-                    ? [const Color(0xFF1E3A27), const Color(0xFF13281B)]
-                    : [const Color(0xFFE8F5E9), const Color(0xFFC8E6C9)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primaryGreen.withValues(alpha: 0.22),
-                  blurRadius: 36,
-                  offset: const Offset(0, 14),
+          // Brand Emblem with subtle glow, scale-up entrance and gentle float
+          AnimatedBuilder(
+            animation: _animCtrl,
+            builder: (context, child) {
+              return FadeTransition(
+                opacity: _iconFade,
+                child: ScaleTransition(
+                  scale: _iconScale,
+                  child: SlideTransition(
+                    position: _floatAnim,
+                    child: child,
+                  ),
                 ),
-              ],
-            ),
-            child: const Center(
-              child: Icon(
-                Icons.eco_rounded,
-                size: 64,
-                color: AppColors.primaryGreen,
+              );
+            },
+            child: Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: isDark
+                      ? [const Color(0xFF1E3A27), const Color(0xFF13281B)]
+                      : [const Color(0xFFE8F5E9), const Color(0xFFC8E6C9)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primaryGreen.withValues(alpha: 0.28),
+                    blurRadius: 36,
+                    offset: const Offset(0, 14),
+                  ),
+                ],
+              ),
+              child: const Center(
+                child: Icon(
+                  Icons.eco_rounded,
+                  size: 64,
+                  color: AppColors.primaryGreen,
+                ),
               ),
             ),
           ),
           const SizedBox(height: 36),
 
-          // Main Title
-          Text(
-            'iAgrow',
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 38,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 2.0,
-              color: isDark ? AppColors.white : AppColors.inkDark,
-            ),
-          ),
-          const SizedBox(height: 8),
+          // Staggered Typography
+          AnimatedBuilder(
+            animation: _animCtrl,
+            builder: (context, child) {
+              return FadeTransition(
+                opacity: _textFade,
+                child: SlideTransition(
+                  position: _textSlide,
+                  child: child,
+                ),
+              );
+            },
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Main Title
+                Text(
+                  'iAgrow',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 38,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 2.0,
+                    color: isDark ? AppColors.white : AppColors.inkDark,
+                  ),
+                ),
+                const SizedBox(height: 8),
 
-          // Tagline
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
-            decoration: BoxDecoration(
-              color: AppColors.primaryGreen.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Text(
-              'LEARN • GROW • ACHIEVE',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 2.2,
-                color: isDark ? AppColors.greenLight : AppColors.primaryGreen,
-              ),
-            ),
-          ),
+                // Tagline
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryGreen.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Text(
+                    'LEARN • GROW • ACHIEVE',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 2.2,
+                      color: isDark ? AppColors.greenLight : AppColors.primaryGreen,
+                    ),
+                  ),
+                ),
 
-          const SizedBox(height: 28),
+                const SizedBox(height: 28),
 
-          // Description
-          Text(
-            'Knowledge for every farm.\nOpportunity for every learner.',
-            textAlign: TextAlign.center,
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 17,
-              fontWeight: FontWeight.w500,
-              height: 1.5,
-              color: isDark ? AppColors.white.withValues(alpha: 0.75) : AppColors.inkSoft,
+                // Description
+                Text(
+                  'Knowledge for every farm.\nOpportunity for every learner.',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w500,
+                    height: 1.5,
+                    color: isDark ? AppColors.white.withValues(alpha: 0.75) : AppColors.inkSoft,
+                  ),
+                ),
+              ],
             ),
           ),
 
@@ -254,8 +360,79 @@ class _FirstOnboardingSlide extends StatelessWidget {
 }
 
 /// Slide 2: Value proposition (Grow better. Learn smarter.)
-class _SecondOnboardingSlide extends StatelessWidget {
+class _SecondOnboardingSlide extends StatefulWidget {
   const _SecondOnboardingSlide();
+
+  @override
+  State<_SecondOnboardingSlide> createState() => _SecondOnboardingSlideState();
+}
+
+class _SecondOnboardingSlideState extends State<_SecondOnboardingSlide>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _animCtrl;
+  late final Animation<double> _iconScale;
+  late final Animation<double> _iconFade;
+  late final Animation<Offset> _floatAnim;
+  late final Animation<double> _textFade;
+  late final Animation<Offset> _textSlide;
+
+  @override
+  void initState() {
+    super.initState();
+    _animCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    );
+
+    _iconScale = Tween<double>(begin: 0.65, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _animCtrl,
+        curve: const Interval(0.0, 0.65, curve: Curves.easeOutBack),
+      ),
+    );
+
+    _iconFade = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _animCtrl,
+        curve: const Interval(0.0, 0.45, curve: Curves.easeOut),
+      ),
+    );
+
+    _floatAnim = Tween<Offset>(
+      begin: const Offset(0, 0.03),
+      end: const Offset(0, -0.03),
+    ).animate(
+      CurvedAnimation(
+        parent: _animCtrl,
+        curve: Curves.easeInOutSine,
+      ),
+    );
+
+    _textFade = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _animCtrl,
+        curve: const Interval(0.35, 0.9, curve: Curves.easeOut),
+      ),
+    );
+
+    _textSlide = Tween<Offset>(
+      begin: const Offset(0, 0.18),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(
+        parent: _animCtrl,
+        curve: const Interval(0.35, 0.9, curve: Curves.easeOutCubic),
+      ),
+    );
+
+    _animCtrl.forward();
+  }
+
+  @override
+  void dispose() {
+    _animCtrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -267,79 +444,112 @@ class _SecondOnboardingSlide extends StatelessWidget {
         children: [
           const Spacer(flex: 3),
 
-          // Focal Feature Emblem
-          Container(
-            width: 120,
-            height: 120,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: isDark
-                    ? [const Color(0xFF1E3A27), const Color(0xFF13281B)]
-                    : [const Color(0xFFE8F5E9), const Color(0xFFC8E6C9)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primaryGreen.withValues(alpha: 0.22),
-                  blurRadius: 36,
-                  offset: const Offset(0, 14),
+          // Focal Feature Emblem with glow, scale-up and floating animation
+          AnimatedBuilder(
+            animation: _animCtrl,
+            builder: (context, child) {
+              return FadeTransition(
+                opacity: _iconFade,
+                child: ScaleTransition(
+                  scale: _iconScale,
+                  child: SlideTransition(
+                    position: _floatAnim,
+                    child: child,
+                  ),
                 ),
-              ],
-            ),
-            child: const Center(
-              child: Icon(
-                Icons.auto_stories_rounded,
-                size: 58,
-                color: AppColors.primaryGreen,
+              );
+            },
+            child: Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: isDark
+                      ? [const Color(0xFF1E3A27), const Color(0xFF13281B)]
+                      : [const Color(0xFFE8F5E9), const Color(0xFFC8E6C9)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primaryGreen.withValues(alpha: 0.28),
+                    blurRadius: 36,
+                    offset: const Offset(0, 14),
+                  ),
+                ],
+              ),
+              child: const Center(
+                child: Icon(
+                  Icons.auto_stories_rounded,
+                  size: 58,
+                  color: AppColors.primaryGreen,
+                ),
               ),
             ),
           ),
           const SizedBox(height: 36),
 
-          // Overline / Tag
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
-            decoration: BoxDecoration(
-              color: AppColors.primaryGreen.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Text(
-              'THE FUTURE OF FARM LEARNING',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 1.8,
-                color: isDark ? AppColors.greenLight : AppColors.primaryGreen,
-              ),
-            ),
-          ),
-          const SizedBox(height: 18),
+          // Staggered Typography
+          AnimatedBuilder(
+            animation: _animCtrl,
+            builder: (context, child) {
+              return FadeTransition(
+                opacity: _textFade,
+                child: SlideTransition(
+                  position: _textSlide,
+                  child: child,
+                ),
+              );
+            },
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Overline / Tag
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryGreen.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Text(
+                    'THE FUTURE OF FARM LEARNING',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.8,
+                      color: isDark ? AppColors.greenLight : AppColors.primaryGreen,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
 
-          // Headline
-          Text(
-            'Grow better.\nLearn smarter.',
-            textAlign: TextAlign.center,
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 34,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.6,
-              height: 1.2,
-              color: isDark ? AppColors.white : AppColors.inkDark,
-            ),
-          ),
-          const SizedBox(height: 14),
+                // Headline
+                Text(
+                  'Grow better.\nLearn smarter.',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 34,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.6,
+                    height: 1.2,
+                    color: isDark ? AppColors.white : AppColors.inkDark,
+                  ),
+                ),
+                const SizedBox(height: 14),
 
-          // Subtitle
-          Text(
-            'Practical farming courses taught by trusted agriculture experts, in your native language.',
-            textAlign: TextAlign.center,
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 15,
-              fontWeight: FontWeight.w500,
-              height: 1.5,
-              color: isDark ? AppColors.white.withValues(alpha: 0.75) : AppColors.inkSoft,
+                // Subtitle
+                Text(
+                  'Practical farming courses taught by trusted agriculture experts, in your native language.',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    height: 1.5,
+                    color: isDark ? AppColors.white.withValues(alpha: 0.75) : AppColors.inkSoft,
+                  ),
+                ),
+              ],
             ),
           ),
 

@@ -7,6 +7,9 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/shimmer_placeholders.dart';
 import '../../../data/models/api_models/course_models.dart';
+import '../../explore/providers/explore_provider.dart';
+import '../../home_farmer/providers/farmer_home_provider.dart';
+import '../../home_farmer/providers/student_provider.dart';
 import '../../home_instructor/providers/instructor_home_provider.dart';
 
 class InstructorUploadsScreen extends ConsumerStatefulWidget {
@@ -122,6 +125,9 @@ class _CoursesTab extends ConsumerWidget {
             ),
           );
           ref.invalidate(instructorCoursesProvider);
+          ref.invalidate(studentCatalogProvider);
+          ref.invalidate(featuredCoursesProvider);
+          ref.invalidate(exploreCoursesProvider);
         }
       } catch (e) {
         if (context.mounted) {
@@ -361,6 +367,132 @@ class _EBooksTab extends ConsumerWidget {
     return 'DRAFT';
   }
 
+  Future<void> _editEBookPrice(
+    BuildContext context,
+    WidgetRef ref,
+    dynamic ebook,
+  ) async {
+    final ebookId = ebook.id?.toString();
+    if (ebookId == null || ebookId.isEmpty) return;
+
+    final currentPrice = (ebook.price ?? '0').toString().replaceAll('₹', '').trim();
+    final priceController = TextEditingController(text: currentPrice == '0.00' ? '0' : currentPrice);
+
+    final newPrice = await showDialog<String>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.primaryGreen.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.currency_rupee, color: AppColors.primaryGreen, size: 20),
+            ),
+            const SizedBox(width: 10),
+            const Expanded(
+              child: Text(
+                'Set E-Book Price',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Set pricing for "${ebook.title ?? 'E-Book'}". Enter 0 to offer this e-book for free to learners.',
+              style: const TextStyle(fontSize: 13, color: AppColors.inkSoft),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: priceController,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              autofocus: true,
+              decoration: InputDecoration(
+                labelText: 'Price (₹ INR)',
+                hintText: 'e.g. 199 or 0',
+                prefixIcon: const Icon(Icons.currency_rupee, size: 18),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppColors.primaryGreen, width: 2),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.primaryGreen,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () {
+              final val = priceController.text.trim();
+              Navigator.pop(dialogCtx, val);
+            },
+            child: const Text('Save Price'),
+          ),
+        ],
+      ),
+    );
+
+    if (newPrice != null) {
+      final parsed = double.tryParse(newPrice);
+      if (parsed == null || parsed < 0) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Please enter a valid price (>= 0)'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+        return;
+      }
+
+      try {
+        final formatted = parsed.toStringAsFixed(2);
+        await ref.read(instructorRepositoryProvider).updateEBook(ebookId, {
+          'price': formatted,
+        });
+        ref.invalidate(instructorEbooksProvider);
+        ref.invalidate(studentEbooksProvider);
+        if (context.mounted) {
+          final messenger = ScaffoldMessenger.of(context);
+          messenger.clearSnackBars();
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text('Price updated to ${parsed == 0 ? 'FREE' : '₹$formatted'}!'),
+              backgroundColor: AppColors.primaryGreen,
+            ),
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          final messenger = ScaffoldMessenger.of(context);
+          messenger.clearSnackBars();
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text('Failed to update price: $e'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+      }
+    }
+  }
+
   Future<void> _submitEBookForReview(
     BuildContext context,
     WidgetRef ref,
@@ -539,34 +671,88 @@ class _EBooksTab extends ConsumerWidget {
                                 ),
                               ],
                               const SizedBox(height: 8),
-                              // Status Badge
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 3,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: badgeBg,
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(badgeIcon, size: 12, color: badgeText),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      badgeLabel,
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.bold,
-                                        color: badgeText,
-                                      ),
+                              // Status Badge & Price Tag Row
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 6,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                children: [
+                                  // Status Badge
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 3,
                                     ),
-                                  ],
-                                ),
+                                    decoration: BoxDecoration(
+                                      color: badgeBg,
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(badgeIcon, size: 12, color: badgeText),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          badgeLabel,
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                            color: badgeText,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  // Price Tag
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 3,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: (ebook.price == null || ebook.price == '0' || ebook.price == '0.00' || ebook.price == '0.0')
+                                          ? AppColors.primaryGreen.withValues(alpha: 0.12)
+                                          : const Color(0xFFF59E0B).withValues(alpha: 0.14),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.currency_rupee,
+                                          size: 11,
+                                          color: (ebook.price == null || ebook.price == '0' || ebook.price == '0.00' || ebook.price == '0.0')
+                                              ? AppColors.primaryGreen
+                                              : const Color(0xFFD97706),
+                                        ),
+                                        Text(
+                                          (ebook.price == null || ebook.price == '0' || ebook.price == '0.00' || ebook.price == '0.0')
+                                              ? 'FREE'
+                                              : '${ebook.price}',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                            color: (ebook.price == null || ebook.price == '0' || ebook.price == '0.00' || ebook.price == '0.0')
+                                                ? AppColors.primaryGreen
+                                                : const Color(0xFFD97706),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
+                        ),
+                        // Edit Price Button
+                        IconButton(
+                          icon: const Icon(
+                            Icons.edit_outlined,
+                            color: AppColors.primaryGreen,
+                          ),
+                          tooltip: 'Edit Price',
+                          onPressed: () => _editEBookPrice(context, ref, ebook),
                         ),
                         // Delete Button
                         IconButton(
