@@ -1044,7 +1044,16 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
             final isNotApproved = !isOffline && (
                 errLower.contains('not approved') ||
                 errLower.contains('not published') ||
-                errLower.contains('not found'));
+                errLower.contains('not found') ||
+                errLower.contains('deleted') ||
+                errLower.contains('does not exist') ||
+                errLower.contains('404'));
+            final isDeletedOrNotFound = !isOffline && (
+                errLower.contains('not found') ||
+                errLower.contains('deleted') ||
+                errLower.contains('does not exist') ||
+                errLower.contains('404'));
+
             return Center(
               child: Padding(
                 padding: const EdgeInsets.all(28),
@@ -1064,24 +1073,30 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                       child: Icon(
                         isOffline
                             ? Icons.wifi_off_rounded
-                            : (isNotApproved
-                                ? Icons.hourglass_empty_rounded
-                                : Icons.error_outline_rounded),
+                            : (isDeletedOrNotFound
+                                ? Icons.remove_circle_outline_rounded
+                                : (isNotApproved
+                                    ? Icons.hourglass_empty_rounded
+                                    : Icons.error_outline_rounded)),
                         size: 48,
                         color: isOffline
                             ? Colors.orange
-                            : (isNotApproved
-                                ? Colors.amber[800]
-                                : AppColors.error),
+                            : (isDeletedOrNotFound
+                                ? Colors.grey.shade600
+                                : (isNotApproved
+                                    ? Colors.amber[800]
+                                    : AppColors.error)),
                       ),
                     ),
                     const SizedBox(height: 16),
                     Text(
                       isOffline
                           ? tr(ref, 'Unable to load course')
-                          : (isNotApproved
-                              ? tr(ref, 'Course Not Available Yet')
-                              : tr(ref, 'Unable to Load Course')),
+                          : (isDeletedOrNotFound
+                              ? tr(ref, 'Course No Longer Available')
+                              : (isNotApproved
+                                  ? tr(ref, 'Course Not Available Yet')
+                                  : tr(ref, 'Unable to Load Course'))),
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -1092,9 +1107,11 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                     Text(
                       isOffline
                           ? tr(ref, 'Unable to load course details at this time. Please check your connection.')
-                          : (isNotApproved
-                              ? tr(ref, 'This course has been announced by the instructor but is currently under draft review or awaiting admin approval.')
-                              : cleanErr),
+                          : (isDeletedOrNotFound
+                              ? tr(ref, 'This course has been unpublished or removed by the instructor.')
+                              : (isNotApproved
+                                  ? tr(ref, 'This course has been announced by the instructor but is currently under draft review or awaiting admin approval.')
+                                  : cleanErr)),
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         fontSize: 13,

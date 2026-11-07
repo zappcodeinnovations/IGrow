@@ -294,6 +294,28 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  /// Change password while authenticated.
+  Future<bool> changePassword({
+    required String oldPassword,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    try {
+      await _repo.changePassword(
+        oldPassword: oldPassword,
+        newPassword: newPassword,
+        confirmPassword: confirmPassword,
+      );
+      return true;
+    } on ApiException catch (e) {
+      state = state.copyWith(error: e.message);
+      return false;
+    } catch (e) {
+      state = state.copyWith(error: e.toString());
+      return false;
+    }
+  }
+
   /// Switch active role.
   Future<void> switchRole(UserRole newRole) async {
     state = state.copyWith(status: AuthStatus.loading);

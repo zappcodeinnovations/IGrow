@@ -30,6 +30,11 @@ class AppStrings {
   static const Map<String, Map<String, String>> _translations = {
     'en': {
       // Bottom Navigation & Tabs
+      'Change Password': 'Change Password',
+      'Current Password': 'Current Password',
+      'New Password': 'New Password',
+      'Reset / Change Password': 'Reset / Change Password',
+      'Password changed successfully!': 'Password changed successfully!',
       'Add to Cart': 'Add to Cart',
       'Go to Cart': 'Go to Cart',
       'Student Login': 'Student Login',
@@ -431,6 +436,11 @@ class AppStrings {
 
     'hi': {
       // Bottom Navigation & Tabs
+      'Change Password': 'पासवर्ड बदलें',
+      'Current Password': 'वर्तमान पासवर्ड',
+      'New Password': 'नया पासवर्ड',
+      'Reset / Change Password': 'पासवर्ड रीसेट / बदलें',
+      'Password changed successfully!': 'पासवर्ड सफलतापूर्वक बदल दिया गया!',
       'Add to Cart': 'कार्ट में जोड़ें',
       'Go to Cart': 'कार्ट पर जाएं',
       'Student Login': 'छात्र लॉगिन',
@@ -832,6 +842,11 @@ class AppStrings {
 
     'mr': {
       // Bottom Navigation & Tabs
+      'Change Password': 'पासवर्ड बदला',
+      'Current Password': 'सध्याचा पासवर्ड',
+      'New Password': 'नवीन पासवर्ड',
+      'Reset / Change Password': 'पासवर्ड रीसेट / बदला',
+      'Password changed successfully!': 'पासवर्ड यशस्वीरित्या बदलला गेला!',
       'Add to Cart': 'कार्टमध्ये जोडा',
       'Go to Cart': 'कार्टवर जा',
       'Student Login': 'विद्यार्थी लॉगिन',

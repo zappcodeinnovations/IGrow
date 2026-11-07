@@ -451,6 +451,197 @@ class ProfileScreen extends ConsumerWidget {
   }
 
   // ═════════════════════════════════════════════════════════════════════════════
+  // CHANGE PASSWORD DIALOG (In-App Reset / Change Password)
+  // ═════════════════════════════════════════════════════════════════════════════
+  void _showChangePasswordDialog(BuildContext context, WidgetRef ref) {
+    final formKey = GlobalKey<FormState>();
+    final oldPasswordController = TextEditingController();
+    final newPasswordController = TextEditingController();
+    final confirmPasswordController = TextEditingController();
+    bool obscureOld = true;
+    bool obscureNew = true;
+    bool obscureConfirm = true;
+    bool isLoading = false;
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              backgroundColor: isDark ? AppColors.cardDark : Colors.white,
+              title: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white10 : const Color(0xFFE8F3EB),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.lock_reset_rounded, color: AppColors.primaryGreen, size: 22),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    tr(ref, 'Change Password'),
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : const Color(0xFF1B4D2E),
+                    ),
+                  ),
+                ],
+              ),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: Form(
+                  key: formKey,
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Current Password
+                        TextFormField(
+                          controller: oldPasswordController,
+                          obscureText: obscureOld,
+                          decoration: InputDecoration(
+                            labelText: tr(ref, 'Current Password'),
+                            prefixIcon: const Icon(Icons.lock_outline_rounded, size: 20),
+                            suffixIcon: IconButton(
+                              icon: Icon(obscureOld ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 20),
+                              onPressed: () => setDialogState(() => obscureOld = !obscureOld),
+                            ),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          ),
+                          validator: (val) {
+                            if (val == null || val.trim().isEmpty) {
+                              return tr(ref, 'Password is required');
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 14),
+
+                        // New Password
+                        TextFormField(
+                          controller: newPasswordController,
+                          obscureText: obscureNew,
+                          decoration: InputDecoration(
+                            labelText: tr(ref, 'New Password'),
+                            prefixIcon: const Icon(Icons.vpn_key_outlined, size: 20),
+                            suffixIcon: IconButton(
+                              icon: Icon(obscureNew ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 20),
+                              onPressed: () => setDialogState(() => obscureNew = !obscureNew),
+                            ),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          ),
+                          validator: (val) {
+                            if (val == null || val.trim().isEmpty) {
+                              return tr(ref, 'Password is required');
+                            }
+                            if (val.length < 8) {
+                              return 'Password must be at least 8 characters';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 14),
+
+                        // Confirm Password
+                        TextFormField(
+                          controller: confirmPasswordController,
+                          obscureText: obscureConfirm,
+                          decoration: InputDecoration(
+                            labelText: tr(ref, 'Confirm Password'),
+                            prefixIcon: const Icon(Icons.check_circle_outline_rounded, size: 20),
+                            suffixIcon: IconButton(
+                              icon: Icon(obscureConfirm ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 20),
+                              onPressed: () => setDialogState(() => obscureConfirm = !obscureConfirm),
+                            ),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          ),
+                          validator: (val) {
+                            if (val == null || val.trim().isEmpty) {
+                              return tr(ref, 'Password is required');
+                            }
+                            if (val != newPasswordController.text) {
+                              return tr(ref, 'Passwords don\'t match');
+                            }
+                            return null;
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              actionsPadding: const EdgeInsets.only(right: 16, bottom: 16, top: 4),
+              actions: [
+                TextButton(
+                  onPressed: isLoading ? null : () => Navigator.pop(dialogContext),
+                  child: Text(tr(ref, 'Cancel')),
+                ),
+                FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF1B4D2E),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  onPressed: isLoading
+                      ? null
+                      : () async {
+                          if (!formKey.currentState!.validate()) return;
+                          setDialogState(() => isLoading = true);
+
+                          final success = await ref.read(authProvider.notifier).changePassword(
+                                oldPassword: oldPasswordController.text,
+                                newPassword: newPasswordController.text,
+                                confirmPassword: confirmPasswordController.text,
+                              );
+
+                          if (context.mounted) {
+                            if (success) {
+                              Navigator.pop(dialogContext);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(tr(ref, 'Password changed successfully!')),
+                                  backgroundColor: AppColors.primaryGreen,
+                                ),
+                              );
+                            } else {
+                              setDialogState(() => isLoading = false);
+                              final error = ref.read(authProvider).error ?? 'Failed to update password';
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(error),
+                                  backgroundColor: AppColors.error,
+                                ),
+                              );
+                            }
+                          }
+                        },
+                  child: isLoading
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : Text(tr(ref, 'Change Password')),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // ═════════════════════════════════════════════════════════════════════════════
   // SETTINGS BOTTOM SHEET (Language, Dark Mode, Privacy, Notifications)
   // ═════════════════════════════════════════════════════════════════════════════
   void _showSettingsSheet(BuildContext context, WidgetRef ref) {
@@ -578,6 +769,24 @@ class ProfileScreen extends ConsumerWidget {
                         onTap: () {
                           Navigator.pop(sheetContext);
                           context.push(RouteNames.notifications);
+                        },
+                      ),
+
+                      // Reset / Change Password
+                      ListTile(
+                        leading: Icon(Icons.lock_reset_rounded, color: iconColor),
+                        title: Text(
+                          tr(sheetRef, 'Change Password'),
+                          style: TextStyle(color: textColor, fontWeight: FontWeight.w600),
+                        ),
+                        subtitle: Text(
+                          tr(sheetRef, 'Reset / Change Password'),
+                          style: TextStyle(color: subtitleColor, fontSize: 13),
+                        ),
+                        trailing: Icon(Icons.chevron_right_rounded, color: chevronColor),
+                        onTap: () {
+                          Navigator.pop(sheetContext);
+                          _showChangePasswordDialog(context, ref);
                         },
                       ),
                     ],
@@ -850,6 +1059,11 @@ class ProfileScreen extends ConsumerWidget {
                     icon: Icons.notifications_outlined,
                     label: tr(ref, 'Notifications'),
                     onTap: () => context.push(RouteNames.notifications),
+                  ),
+                  _MenuItemData(
+                    icon: Icons.lock_reset_rounded,
+                    label: tr(ref, 'Change Password'),
+                    onTap: () => _showChangePasswordDialog(context, ref),
                   ),
                   _MenuItemData(
                     icon: Icons.privacy_tip_outlined,

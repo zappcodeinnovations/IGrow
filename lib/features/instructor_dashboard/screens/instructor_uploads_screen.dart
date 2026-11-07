@@ -429,131 +429,6 @@ class _EBooksTab extends ConsumerWidget {
     return 'DRAFT';
   }
 
-  Future<void> _editEBookPrice(
-    BuildContext context,
-    WidgetRef ref,
-    dynamic ebook,
-  ) async {
-    final ebookId = ebook.id?.toString();
-    if (ebookId == null || ebookId.isEmpty) return;
-
-    final currentPrice = (ebook.price ?? '0').toString().replaceAll('₹', '').trim();
-    final priceController = TextEditingController(text: currentPrice == '0.00' ? '0' : currentPrice);
-
-    final newPrice = await showDialog<String>(
-      context: context,
-      builder: (dialogCtx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppColors.primaryGreen.withValues(alpha: 0.12),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.currency_rupee, color: AppColors.primaryGreen, size: 20),
-            ),
-            const SizedBox(width: 10),
-            const Expanded(
-              child: Text(
-                'Set E-Book Price',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Set pricing for "${ebook.title ?? 'E-Book'}". Enter 0 to offer this e-book for free to learners.',
-              style: const TextStyle(fontSize: 13, color: AppColors.inkSoft),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: priceController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              autofocus: true,
-              decoration: InputDecoration(
-                labelText: 'Price (₹ INR)',
-                hintText: 'e.g. 199 or 0',
-                prefixIcon: const Icon(Icons.currency_rupee, size: 18),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: AppColors.primaryGreen, width: 2),
-                ),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogCtx),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.primaryGreen,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-            onPressed: () {
-              final val = priceController.text.trim();
-              Navigator.pop(dialogCtx, val);
-            },
-            child: const Text('Save Price'),
-          ),
-        ],
-      ),
-    );
-
-    if (newPrice != null) {
-      final parsed = double.tryParse(newPrice);
-      if (parsed == null || parsed < 0) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Please enter a valid price (>= 0)'),
-              backgroundColor: AppColors.error,
-            ),
-          );
-        }
-        return;
-      }
-
-      try {
-        final formatted = parsed.toStringAsFixed(2);
-        await ref.read(instructorRepositoryProvider).updateEBook(ebookId, {
-          'price': formatted,
-        });
-        ref.invalidate(instructorEbooksProvider);
-        ref.invalidate(studentEbooksProvider);
-        if (context.mounted) {
-          final messenger = ScaffoldMessenger.of(context);
-          messenger.clearSnackBars();
-          messenger.showSnackBar(
-            SnackBar(
-              content: Text('Price updated to ${parsed == 0 ? 'FREE' : '₹$formatted'}!'),
-              backgroundColor: AppColors.primaryGreen,
-            ),
-          );
-        }
-      } catch (e) {
-        if (context.mounted) {
-          final messenger = ScaffoldMessenger.of(context);
-          messenger.clearSnackBars();
-          messenger.showSnackBar(
-            SnackBar(
-              content: Text('Failed to update price: $e'),
-              backgroundColor: AppColors.error,
-            ),
-          );
-        }
-      }
-    }
-  }
 
   Future<void> _submitEBookForReview(
     BuildContext context,
@@ -807,92 +682,12 @@ class _EBooksTab extends ConsumerWidget {
                             ],
                           ),
                         ),
-                        // Edit Price Button
-                        IconButton(
-                          icon: const Icon(
-                            Icons.edit_outlined,
-                            color: AppColors.primaryGreen,
-                          ),
-                          tooltip: 'Edit Price',
-                          onPressed: () => _editEBookPrice(context, ref, ebook),
-                        ),
-                        // Delete Button
-                        IconButton(
-                          icon: const Icon(
-                            Icons.delete_outline,
-                            color: AppColors.error,
-                          ),
-                          tooltip: 'Delete E-Book',
-                          onPressed: () async {
-                            final confirm = await showDialog<bool>(
-                              context: context,
-                              builder: (c) => AlertDialog(
-                                title: const Text('Delete E-Book'),
-                                content: Text(
-                                  'Are you sure you want to delete "${ebook.title ?? 'this e-book'}"?',
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(c, false),
-                                    child: const Text('Cancel'),
-                                  ),
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(c, true),
-                                    child: const Text(
-                                      'Delete',
-                                      style: TextStyle(color: AppColors.error),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                            if (confirm == true) {
-                              try {
-                                await ref
-                                    .read(instructorRepositoryProvider)
-                                    .deleteEBook(ebook.id!);
-                                ref.invalidate(instructorEbooksProvider);
-                                if (context.mounted) {
-                                  final messenger = ScaffoldMessenger.of(context);
-                                  messenger.clearSnackBars();
-                                  messenger.showSnackBar(
-                                    const SnackBar(
-                                      content: Text('E-Book deleted successfully.'),
-                                      backgroundColor: AppColors.primaryGreen,
-                                      duration: Duration(seconds: 2),
-                                    ),
-                                  );
-                                }
-                              } catch (e) {
-                                if (context.mounted) {
-                                  String cleanError = e.toString();
-                                  if (cleanError.startsWith('Exception: ')) {
-                                    cleanError = cleanError.substring('Exception: '.length);
-                                  }
-                                  if (cleanError.toLowerCase().contains('not permitted') ||
-                                      cleanError.toLowerCase().contains('only platform administrators')) {
-                                    cleanError = 'You do not have permission to delete e-books. Please contact an administrator.';
-                                  }
-                                  final messenger = ScaffoldMessenger.of(context);
-                                  messenger.clearSnackBars();
-                                  messenger.showSnackBar(
-                                    SnackBar(
-                                      content: Text(cleanError),
-                                      backgroundColor: AppColors.error,
-                                      duration: const Duration(seconds: 3),
-                                    ),
-                                  );
-                                }
-                              }
-                            }
-                          },
-                        ),
                       ],
                     ),
 
-                    // Additional action / notification depending on status
+                    // Actions & Status alerts
                     if (status == 'APPROVED') ...[
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 10),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
@@ -900,13 +695,15 @@ class _EBooksTab extends ConsumerWidget {
                             style: OutlinedButton.styleFrom(
                               foregroundColor: Colors.teal.shade700,
                               side: BorderSide(color: Colors.teal.shade400, width: 1.2),
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                             ),
                             icon: const Icon(Icons.visibility_outlined, size: 14),
                             label: Text(
                               tr(ref, 'View in Library'),
-                              style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold),
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                             ),
                             onPressed: () {
                               if (ebook.id != null && ebook.id!.isNotEmpty) {
@@ -917,7 +714,7 @@ class _EBooksTab extends ConsumerWidget {
                         ],
                       ),
                     ] else if (status == 'DRAFT') ...[
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 10),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
@@ -929,18 +726,20 @@ class _EBooksTab extends ConsumerWidget {
                                 width: 1.2,
                               ),
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 8,
+                                horizontal: 12,
+                                vertical: 6,
                               ),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
+                                borderRadius: BorderRadius.circular(8),
                               ),
                             ),
                             icon: const Icon(Icons.send_rounded, size: 14),
                             label: Text(
                               tr(ref, 'Submit for Review'),
                               style: const TextStyle(
-                                fontSize: 12.5,
+                                fontSize: 12,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
