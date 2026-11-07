@@ -22,7 +22,8 @@ class InstructorUploadsScreen extends ConsumerStatefulWidget {
       _InstructorUploadsScreenState();
 }
 
-class _InstructorUploadsScreenState extends ConsumerState<InstructorUploadsScreen>
+class _InstructorUploadsScreenState
+    extends ConsumerState<InstructorUploadsScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
@@ -73,10 +74,7 @@ class _InstructorUploadsScreenState extends ConsumerState<InstructorUploadsScree
       ),
       body: TabBarView(
         controller: _tabController,
-        children: const [
-          _CoursesTab(),
-          _EBooksTab(),
-        ],
+        children: const [_CoursesTab(), _EBooksTab()],
       ),
     );
   }
@@ -94,15 +92,23 @@ class _CoursesTab extends ConsumerWidget {
       context: context,
       builder: (c) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Deactivate Course', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Deactivate Course',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         content: Text(
           'Are you sure you want to deactivate "${course.title}"?\n\n'
           'The course will be moved to Draft status and hidden from the public marketplace. You can review and manage it anytime.',
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(c, false),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: const Color(0xFFF59E0B)),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFF59E0B),
+            ),
             onPressed: () => Navigator.pop(c, true),
             child: const Text('Deactivate'),
           ),
@@ -153,7 +159,9 @@ class _CoursesTab extends ConsumerWidget {
       context: context,
       builder: (c) => AlertDialog(
         title: const Text('Delete Course'),
-        content: Text('Are you sure you want to permanently delete "${course.title}"? This action cannot be undone.'),
+        content: Text(
+          'Are you sure you want to permanently delete "${course.title}"? This action cannot be undone.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(c, false),
@@ -218,7 +226,8 @@ class _CoursesTab extends ConsumerWidget {
           itemBuilder: (context, index) {
             final course = courses[index];
             final cStatus = (course.status ?? 'DRAFT').toUpperCase();
-            final isLive = cStatus == 'APPROVED' ||
+            final isLive =
+                cStatus == 'APPROVED' ||
                 cStatus == 'LIVE' ||
                 cStatus == 'PUBLISHED' ||
                 cStatus == 'ACTIVE';
@@ -251,8 +260,8 @@ class _CoursesTab extends ConsumerWidget {
               cBadgeLabel = 'Draft';
             }
 
-            final hasThumbnail = course.thumbnail != null &&
-                course.thumbnail!.trim().isNotEmpty;
+            final hasThumbnail =
+                course.thumbnail != null && course.thumbnail!.trim().isNotEmpty;
 
             return Padding(
               padding: const EdgeInsets.only(bottom: 12),
@@ -272,7 +281,9 @@ class _CoursesTab extends ConsumerWidget {
                                 course.thumbnail!,
                                 fit: BoxFit.cover,
                                 errorBuilder: (_, __, ___) => Container(
-                                  color: AppColors.primaryGreen.withValues(alpha: 0.1),
+                                  color: AppColors.primaryGreen.withValues(
+                                    alpha: 0.1,
+                                  ),
                                   child: const Icon(
                                     Icons.play_circle_fill,
                                     color: AppColors.primaryGreen,
@@ -281,7 +292,9 @@ class _CoursesTab extends ConsumerWidget {
                                 ),
                               )
                             : Container(
-                                color: AppColors.primaryGreen.withValues(alpha: 0.1),
+                                color: AppColors.primaryGreen.withValues(
+                                  alpha: 0.1,
+                                ),
                                 child: const Icon(
                                   Icons.play_circle_fill,
                                   color: AppColors.primaryGreen,
@@ -318,18 +331,14 @@ class _CoursesTab extends ConsumerWidget {
                                   const SizedBox(width: 4),
                                   Text(
                                     '${course.enrollmentCount ?? 0} Students',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodySmall
+                                    style: Theme.of(context).textTheme.bodySmall
                                         ?.copyWith(color: AppColors.inkSoft),
                                   ),
                                 ],
                               ),
                               Text(
                                 course.price == '0.00' ? 'Free' : 'Paid',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .labelSmall
+                                style: Theme.of(context).textTheme.labelSmall
                                     ?.copyWith(color: AppColors.primaryGreen),
                               ),
                               Container(
@@ -359,21 +368,34 @@ class _CoursesTab extends ConsumerWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         IconButton(
-                          icon: const Icon(Icons.edit_document, color: AppColors.primaryGreen),
+                          icon: const Icon(
+                            Icons.edit_document,
+                            color: AppColors.primaryGreen,
+                          ),
                           tooltip: 'Manage Content',
-                          onPressed: () => context.push('/instructor/manage-course/${course.id}'),
+                          onPressed: () => context.push(
+                            '/instructor/manage-course/${course.id}',
+                          ),
                         ),
                         if (isLive)
                           IconButton(
-                            icon: const Icon(Icons.pause_circle_outline, color: Color(0xFFD97706)),
+                            icon: const Icon(
+                              Icons.pause_circle_outline,
+                              color: Color(0xFFD97706),
+                            ),
                             tooltip: 'Deactivate Course',
-                            onPressed: () => _deactivateCourse(context, ref, course),
+                            onPressed: () =>
+                                _deactivateCourse(context, ref, course),
                           ),
                         if (!isLive)
                           IconButton(
-                            icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFFEF4444)),
+                            icon: const Icon(
+                              Icons.delete_outline_rounded,
+                              color: Color(0xFFEF4444),
+                            ),
                             tooltip: 'Delete Course',
-                            onPressed: () => _deleteCourse(context, ref, course),
+                            onPressed: () =>
+                                _deleteCourse(context, ref, course),
                           ),
                       ],
                     ),
@@ -396,10 +418,17 @@ class _CoursesTab extends ConsumerWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.wifi_off_rounded, size: 48, color: Colors.orange),
+              const Icon(
+                Icons.wifi_off_rounded,
+                size: 48,
+                color: Colors.orange,
+              ),
               const SizedBox(height: 12),
               Text(
-                tr(ref, 'Unable to load courses at this time. Please check your connection.'),
+                tr(
+                  ref,
+                  'Unable to load courses at this time. Please check your connection.',
+                ),
                 textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 14, color: AppColors.inkSoft),
               ),
@@ -541,13 +570,16 @@ class _EBooksTab extends ConsumerWidget {
               case 'DRAFT':
               default:
                 badgeBg = isDark ? Colors.white12 : Colors.grey.shade100;
-                badgeText = isDark ? Colors.grey.shade300 : Colors.grey.shade800;
+                badgeText = isDark
+                    ? Colors.grey.shade300
+                    : Colors.grey.shade800;
                 badgeLabel = tr(ref, 'Draft');
                 badgeIcon = Icons.edit_note_rounded;
                 break;
             }
 
-            final hasCover = ebook.coverImage != null &&
+            final hasCover =
+                ebook.coverImage != null &&
                 ebook.coverImage.toString().trim().isNotEmpty;
 
             return Padding(
@@ -565,11 +597,15 @@ class _EBooksTab extends ConsumerWidget {
                           width: 60,
                           height: 75,
                           decoration: BoxDecoration(
-                            color: AppColors.accentOrange.withValues(alpha: 0.1),
+                            color: AppColors.accentOrange.withValues(
+                              alpha: 0.1,
+                            ),
                             borderRadius: BorderRadius.circular(10),
                             image: hasCover
                                 ? DecorationImage(
-                                    image: NetworkImage(ebook.coverImage.toString()),
+                                    image: NetworkImage(
+                                      ebook.coverImage.toString(),
+                                    ),
                                     fit: BoxFit.cover,
                                   )
                                 : null,
@@ -595,13 +631,14 @@ class _EBooksTab extends ConsumerWidget {
                                 overflow: TextOverflow.ellipsis,
                               ),
                               if (ebook.authorName != null &&
-                                  ebook.authorName.toString().trim().isNotEmpty) ...[
+                                  ebook.authorName
+                                      .toString()
+                                      .trim()
+                                      .isNotEmpty) ...[
                                 const SizedBox(height: 4),
                                 Text(
                                   'By ${ebook.authorName}',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodySmall
+                                  style: Theme.of(context).textTheme.bodySmall
                                       ?.copyWith(color: AppColors.inkSoft),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -627,7 +664,11 @@ class _EBooksTab extends ConsumerWidget {
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        Icon(badgeIcon, size: 12, color: badgeText),
+                                        Icon(
+                                          badgeIcon,
+                                          size: 12,
+                                          color: badgeText,
+                                        ),
                                         const SizedBox(width: 4),
                                         Text(
                                           badgeLabel,
@@ -647,9 +688,17 @@ class _EBooksTab extends ConsumerWidget {
                                       vertical: 3,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: (ebook.price == null || ebook.price == '0' || ebook.price == '0.00' || ebook.price == '0.0')
-                                          ? AppColors.primaryGreen.withValues(alpha: 0.12)
-                                          : const Color(0xFFF59E0B).withValues(alpha: 0.14),
+                                      color:
+                                          (ebook.price == null ||
+                                              ebook.price == '0' ||
+                                              ebook.price == '0.00' ||
+                                              ebook.price == '0.0')
+                                          ? AppColors.primaryGreen.withValues(
+                                              alpha: 0.12,
+                                            )
+                                          : const Color(
+                                              0xFFF59E0B,
+                                            ).withValues(alpha: 0.14),
                                       borderRadius: BorderRadius.circular(6),
                                     ),
                                     child: Row(
@@ -658,18 +707,29 @@ class _EBooksTab extends ConsumerWidget {
                                         Icon(
                                           Icons.currency_rupee,
                                           size: 11,
-                                          color: (ebook.price == null || ebook.price == '0' || ebook.price == '0.00' || ebook.price == '0.0')
+                                          color:
+                                              (ebook.price == null ||
+                                                  ebook.price == '0' ||
+                                                  ebook.price == '0.00' ||
+                                                  ebook.price == '0.0')
                                               ? AppColors.primaryGreen
                                               : const Color(0xFFD97706),
                                         ),
                                         Text(
-                                          (ebook.price == null || ebook.price == '0' || ebook.price == '0.00' || ebook.price == '0.0')
+                                          (ebook.price == null ||
+                                                  ebook.price == '0' ||
+                                                  ebook.price == '0.00' ||
+                                                  ebook.price == '0.0')
                                               ? 'FREE'
                                               : '${ebook.price}',
                                           style: TextStyle(
                                             fontSize: 11,
                                             fontWeight: FontWeight.bold,
-                                            color: (ebook.price == null || ebook.price == '0' || ebook.price == '0.00' || ebook.price == '0.0')
+                                            color:
+                                                (ebook.price == null ||
+                                                    ebook.price == '0' ||
+                                                    ebook.price == '0.00' ||
+                                                    ebook.price == '0.0')
                                                 ? AppColors.primaryGreen
                                                 : const Color(0xFFD97706),
                                           ),
@@ -694,16 +754,30 @@ class _EBooksTab extends ConsumerWidget {
                           OutlinedButton.icon(
                             style: OutlinedButton.styleFrom(
                               foregroundColor: Colors.teal.shade700,
-                              side: BorderSide(color: Colors.teal.shade400, width: 1.2),
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              side: BorderSide(
+                                color: Colors.teal.shade400,
+                                width: 1.2,
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
                               minimumSize: Size.zero,
                               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
                             ),
-                            icon: const Icon(Icons.visibility_outlined, size: 14),
+                            icon: const Icon(
+                              Icons.visibility_outlined,
+                              size: 14,
+                            ),
                             label: Text(
                               tr(ref, 'View in Library'),
-                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                             onPressed: () {
                               if (ebook.id != null && ebook.id!.isNotEmpty) {
@@ -773,7 +847,10 @@ class _EBooksTab extends ConsumerWidget {
                             const SizedBox(width: 6),
                             Expanded(
                               child: Text(
-                                tr(ref, 'Submitted to Admin. Awaiting approval before going live to students.'),
+                                tr(
+                                  ref,
+                                  'Submitted to Admin. Awaiting approval before going live to students.',
+                                ),
                                 style: const TextStyle(
                                   fontSize: 11,
                                   color: AppColors.accentOrange,
@@ -838,10 +915,17 @@ class _EBooksTab extends ConsumerWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.wifi_off_rounded, size: 48, color: Colors.orange),
+              const Icon(
+                Icons.wifi_off_rounded,
+                size: 48,
+                color: Colors.orange,
+              ),
               const SizedBox(height: 12),
               Text(
-                tr(ref, 'Unable to load e-books at this time. Please check your connection.'),
+                tr(
+                  ref,
+                  'Unable to load e-books at this time. Please check your connection.',
+                ),
                 textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 14, color: AppColors.inkSoft),
               ),
