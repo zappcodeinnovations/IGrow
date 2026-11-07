@@ -1625,7 +1625,9 @@ class AgriLearnCourseCard extends ConsumerWidget {
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         Text(
-                          '₹',
+                          (course.price == null || course.price == '0' || course.price == '0.00' || course.price == '0.0')
+                              ? 'Free'
+                              : '₹${course.price}',
                           style: const TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
@@ -1640,7 +1642,7 @@ class AgriLearnCourseCard extends ConsumerWidget {
                           ),
                         ),
                         Text(
-                          ' Students',
+                          '${course.enrollmentCount ?? 0} ${tr(ref, 'Students')}',
                           style: TextStyle(
                             fontSize: 11,
                             color: isDark ? Colors.grey.shade400 : AppColors.inkSoft,

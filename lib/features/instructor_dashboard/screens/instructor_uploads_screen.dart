@@ -337,9 +337,11 @@ class _CoursesTab extends ConsumerWidget {
                                 ],
                               ),
                               Text(
-                                course.price == '0.00' ? 'Free' : 'Paid',
+                                (course.price == null || course.price == '0' || course.price == '0.00' || course.price == '0.0')
+                                    ? 'Free'
+                                    : '₹${course.price}',
                                 style: Theme.of(context).textTheme.labelSmall
-                                    ?.copyWith(color: AppColors.primaryGreen),
+                                    ?.copyWith(color: AppColors.primaryGreen, fontWeight: FontWeight.bold),
                               ),
                               Container(
                                 padding: const EdgeInsets.symmetric(
