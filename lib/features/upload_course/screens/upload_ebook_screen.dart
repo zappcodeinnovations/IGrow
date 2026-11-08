@@ -15,6 +15,7 @@ import '../../../core/widgets/kyc_restricted_view.dart';
 import '../../../data/models/user_model.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../home_instructor/providers/instructor_home_provider.dart';
+import '../../../core/services/app_config_service.dart';
 
 class UploadEbookScreen extends ConsumerStatefulWidget {
   const UploadEbookScreen({super.key});
@@ -384,28 +385,61 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
                                     : null,
                               ),
                               const SizedBox(height: 16),
-                              AppTextField(
-                                controller: _priceController,
-                                label: tr(ref, 'Price (₹)'),
-                                hint: '0 for free, or enter amount (e.g. 199)',
-                                helperText: tr(ref, 'Enter 0 to offer this e-book for free.'),
-                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                prefixIcon: const Icon(
-                                  Icons.currency_rupee_rounded,
-                                  color: AppColors.primaryGreen,
-                                ),
-                                validator: (val) {
-                                  if (val == null || val.trim().isEmpty) {
-                                    return 'Price is required';
+                              Builder(
+                                builder: (context) {
+                                  final config = ref.watch(appConfigProvider);
+                                  final allowsCustomPrice = config.allowsCustomCoursePrice;
+
+                                  if (allowsCustomPrice) {
+                                    return AppTextField(
+                                      controller: _priceController,
+                                      label: tr(ref, 'Price (₹)'),
+                                      hint: '0 for free, or enter amount (e.g. 199)',
+                                      helperText: tr(ref, 'Enter 0 to offer this e-book for free.'),
+                                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                      prefixIcon: const Icon(
+                                        Icons.currency_rupee_rounded,
+                                        color: AppColors.primaryGreen,
+                                      ),
+                                      validator: (val) {
+                                        if (val == null || val.trim().isEmpty) {
+                                          return 'Price is required';
+                                        }
+                                        final numVal = double.tryParse(val.trim());
+                                        if (numVal == null) {
+                                          return 'Please enter a valid price';
+                                        }
+                                        if (numVal < 0) {
+                                          return 'Price cannot be negative';
+                                        }
+                                        return null;
+                                      },
+                                    );
                                   }
-                                  final numVal = double.tryParse(val.trim());
-                                  if (numVal == null) {
-                                    return 'Please enter a valid price';
-                                  }
-                                  if (numVal < 0) {
-                                    return 'Price cannot be negative';
-                                  }
-                                  return null;
+
+                                  return DropdownButtonFormField<String>(
+                                    initialValue: const ['0', '249', '499', '999', '1499'].contains(_priceController.text.trim())
+                                        ? _priceController.text.trim()
+                                        : '0',
+                                    decoration: InputDecoration(
+                                      labelText: tr(ref, 'E-Book Price Tier *'),
+                                      helperText: 'Select one of the standard price tiers.',
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                    ),
+                                    items: [
+                                      DropdownMenuItem(value: '0', child: Text(tr(ref, 'Free (₹0)'))),
+                                      const DropdownMenuItem(value: '249', child: Text('₹249 — Tier 1')),
+                                      const DropdownMenuItem(value: '499', child: Text('₹499 — Tier 1.5')),
+                                      const DropdownMenuItem(value: '999', child: Text('₹999 — Tier 2')),
+                                      const DropdownMenuItem(value: '1499', child: Text('₹1,499 — Tier 3')),
+                                    ],
+                                    onChanged: (val) {
+                                      if (val != null) {
+                                        setState(() => _priceController.text = val);
+                                      }
+                                    },
+                                  );
                                 },
                               ),
                             ],

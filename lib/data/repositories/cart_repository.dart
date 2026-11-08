@@ -399,17 +399,19 @@ class CartRepository {
   /// Step 4: Process Apple In-App Purchase Transaction on iOS
   /// Calls POST https://iagrow.zappcode.in/api/v1/orders/ios/payment/transaction/
   Future<Map<String, dynamic>> processIosAppleTransaction({
-    required String courseId,
+    String? courseId,
+    String? ebookId,
     required String productId,
     required String transactionId,
     required String receiptData,
   }) async {
-    debugPrint('🍏 [CartRepository] processIosAppleTransaction START: courseId=$courseId, productId=$productId, txId=$transactionId');
+    debugPrint('🍏 [CartRepository] processIosAppleTransaction START: courseId=$courseId, ebookId=$ebookId, productId=$productId, txId=$transactionId');
     final token = await tokenStorage.getAccessToken();
     final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/orders/ios/payment/transaction/');
 
     final payload = <String, dynamic>{
-      'course_id': courseId.trim(),
+      if (courseId != null && courseId.trim().isNotEmpty) 'course_id': courseId.trim(),
+      if (ebookId != null && ebookId.trim().isNotEmpty) 'ebook_id': ebookId.trim(),
       'product_id': productId.trim(),
       'transaction_id': transactionId.trim(),
       'receipt_data': receiptData.trim(),

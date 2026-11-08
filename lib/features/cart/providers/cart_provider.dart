@@ -219,7 +219,8 @@ class CartNotifier extends AsyncNotifier<ApiCart> {
 
   /// Step 4: Process Apple In-App Purchase & fulfill enrollment
   Future<Map<String, dynamic>> processIosAppleTransaction({
-    required String courseId,
+    String? courseId,
+    String? ebookId,
     required String productId,
     required String transactionId,
     required String receiptData,
@@ -228,6 +229,7 @@ class CartNotifier extends AsyncNotifier<ApiCart> {
     try {
       final result = await _repository.processIosAppleTransaction(
         courseId: courseId,
+        ebookId: ebookId,
         productId: productId,
         transactionId: transactionId,
         receiptData: receiptData,
@@ -239,6 +241,7 @@ class CartNotifier extends AsyncNotifier<ApiCart> {
       // Invalidate student enrollments & orders so course activates instantly!
       ref.invalidate(studentEnrollmentsProvider);
       ref.invalidate(ordersProvider);
+      ref.invalidate(studentEbooksProvider);
 
       return result;
     } catch (e) {

@@ -303,19 +303,24 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     try {
       debugPrint('🍏 [CheckoutScreen] Starting Apple IAP flow for total: ₹$finalTotal...');
       String targetCourseId = '';
-      if (widget.directCourseId != null && widget.directCourseId!.isNotEmpty) {
+      String targetEbookId = '';
+
+      if (widget.directEbookId != null && widget.directEbookId!.isNotEmpty) {
+        targetEbookId = widget.directEbookId!;
+      } else if (widget.directCourseId != null && widget.directCourseId!.isNotEmpty) {
         targetCourseId = widget.directCourseId!;
       } else if (items.isNotEmpty) {
         targetCourseId = _getItemCourseId(items.first);
+        targetEbookId = _getItemEbookId(items.first);
       }
 
-      if (targetCourseId.isEmpty) {
-        throw Exception('No course selected for purchase.');
+      if (targetCourseId.isEmpty && targetEbookId.isEmpty) {
+        throw Exception('No item selected for purchase.');
       }
 
-      // Map dynamic course price to Apple Consumable Tier
+      // Map dynamic item price to Apple Consumable Tier
       final String productId = AppleIapService.getProductIdForPrice(finalTotal);
-      debugPrint('🍏 [CheckoutScreen] Mapped total ₹$finalTotal to Apple Product ID: $productId');
+      debugPrint('🍏 [CheckoutScreen] Mapped total ₹$finalTotal to Apple Product ID: $productId (course: "$targetCourseId", ebook: "$targetEbookId")');
 
       // 1. Launch StoreKit In-App Purchase sheet
       final purchaseDetails = await AppleIapService.instance.buyProduct(productId: productId);
@@ -326,7 +331,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
 
       // 2. Post receipt & transaction to backend
       final result = await ref.read(cartProvider.notifier).processIosAppleTransaction(
-            courseId: targetCourseId,
+            courseId: targetCourseId.isNotEmpty ? targetCourseId : null,
+            ebookId: targetEbookId.isNotEmpty ? targetEbookId : null,
             productId: productId,
             transactionId: transactionId,
             receiptData: receiptData,
@@ -340,12 +346,13 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
         throw Exception('This Apple In-App Purchase transaction has already been redeemed.');
       }
 
-      // Immediately invalidate enrollment and order caches so user sees course in My Learning
+      // Immediately invalidate enrollment and order caches so user sees item in My Learning
       ref.invalidate(studentEnrollmentsProvider);
       ref.invalidate(ordersProvider);
+      ref.invalidate(studentEbooksProvider);
 
       // 3. Clear cart if cart checkout
-      if (widget.directCourseId == null) {
+      if (widget.directCourseId == null && widget.directEbookId == null) {
         await ref.read(cartProvider.notifier).clearCart();
       }
 
@@ -610,10 +617,25 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     }
     if (item is ApiCourseDetail) return item.id;
     if (item is ApiCartItem) return item.course;
+    if (item is EBook) return item.id ?? item.slug ?? '';
     if (item is Map) {
       return item['course_id']?.toString() ??
           item['course']?.toString() ??
+          item['ebook_id']?.toString() ??
           item['id']?.toString() ??
+          '';
+    }
+    return '';
+  }
+
+  String _getItemEbookId(dynamic item) {
+    if (widget.directEbookId != null && widget.directEbookId!.isNotEmpty) {
+      return widget.directEbookId!;
+    }
+    if (item is EBook) return item.id ?? item.slug ?? '';
+    if (item is Map) {
+      return item['ebook_id']?.toString() ??
+          item['ebook']?.toString() ??
           '';
     }
     return '';
