@@ -30,11 +30,21 @@ class CommunityRepository {
           } else if (data.containsKey('error')) {
             errorMessage = data['error'].toString();
           } else {
-            final firstValue = data.values.first;
+            final firstEntry = data.entries.first;
+            final fieldName = firstEntry.key.toString();
+            final firstValue = firstEntry.value;
+            String msg = '';
             if (firstValue is List && firstValue.isNotEmpty) {
-              errorMessage = firstValue.first.toString();
+              msg = firstValue.first.toString();
             } else if (firstValue is String) {
-              errorMessage = firstValue;
+              msg = firstValue;
+            } else {
+              msg = firstValue.toString();
+            }
+            if (fieldName != 'non_field_errors' && fieldName != 'detail') {
+              errorMessage = '$fieldName: $msg';
+            } else {
+              errorMessage = msg;
             }
           }
         }

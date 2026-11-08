@@ -153,6 +153,7 @@ class _ModalWrapper extends StatelessWidget {
             Divider(height: 1, color: borderColor),
             Flexible(
               child: SingleChildScrollView(
+                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
                 child: child,
               ),
@@ -207,15 +208,30 @@ class _GeneralPostModalState extends ConsumerState<_GeneralPostModal> {
       return;
     }
 
+    // Auto-generate title if optional title field was left empty
+    String title = _titleController.text.trim();
+    if (title.isEmpty) {
+      final firstLine = content.split('\n').first.trim();
+      if (firstLine.isNotEmpty) {
+        title = firstLine.length > 50 ? '${firstLine.substring(0, 47)}...' : firstLine;
+      } else {
+        title = 'Community Post';
+      }
+    }
+
     setState(() => _isLoading = true);
     try {
       await ref.read(communityPostsProvider.notifier).createPost(
         hubId: widget.hubId,
         postType: 'POST',
-        title: _titleController.text.trim(),
+        title: title,
         content: content,
         imagePath: _imageFile?.path,
       );
+
+      if (widget.hubId.isNotEmpty) {
+        ref.read(communityHubPostsProvider(widget.hubId).notifier).fetchPosts();
+      }
 
       if (mounted) {
         Navigator.pop(context);
@@ -225,8 +241,9 @@ class _GeneralPostModalState extends ConsumerState<_GeneralPostModal> {
       }
     } catch (e) {
       if (mounted) {
+        final errText = e.toString().replaceFirst(RegExp(r'^ApiException\(\d+\):\s*'), '');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to publish post: $e')),
+          SnackBar(content: Text('Failed to publish post: $errText')),
         );
       }
     } finally {
@@ -726,7 +743,7 @@ class _WebinarModalState extends ConsumerState<_WebinarModal> {
     if (pickedDate != null && mounted) {
       final pickedTime = await showAppTimePicker(
         context: context,
-        initialTime: _eventTime ?? const TimeOfDay(hour: 11, minute: 0),
+        initialTime: _eventTime ?? TimeOfDay.now(),
       );
       if (pickedTime != null && mounted) {
         setState(() {
@@ -740,6 +757,7 @@ class _WebinarModalState extends ConsumerState<_WebinarModal> {
   Future<void> _submit() async {
     final title = _titleController.text.trim();
     final link = _linkController.text.trim();
+    final rawContent = _contentController.text.trim();
     if (title.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter webinar title')));
       return;
@@ -752,6 +770,11 @@ class _WebinarModalState extends ConsumerState<_WebinarModal> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please provide Zoom/Meet link')));
       return;
     }
+
+    // Backend requires content to be non-empty
+    final content = rawContent.isNotEmpty
+        ? rawContent
+        : 'Join our online webinar on $title at ${_eventTime!.format(context)}.';
 
     final fullDateTime = DateTime(
       _eventDate!.year,
@@ -767,10 +790,14 @@ class _WebinarModalState extends ConsumerState<_WebinarModal> {
         hubId: widget.hubId,
         postType: 'WEBINAR',
         title: title,
-        content: _contentController.text.trim(),
+        content: content,
         eventDate: fullDateTime,
         link: link,
       );
+
+      if (widget.hubId.isNotEmpty) {
+        ref.read(communityHubPostsProvider(widget.hubId).notifier).fetchPosts();
+      }
 
       if (mounted) {
         Navigator.pop(context);
@@ -780,8 +807,9 @@ class _WebinarModalState extends ConsumerState<_WebinarModal> {
       }
     } catch (e) {
       if (mounted) {
+        final errText = e.toString().replaceFirst(RegExp(r'^ApiException\(\d+\):\s*'), '');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to schedule webinar: $e')),
+          SnackBar(content: Text('Failed to schedule webinar: $errText')),
         );
       }
     } finally {
@@ -939,7 +967,7 @@ class _SeminarModalState extends ConsumerState<_SeminarModal> {
     if (pickedDate != null && mounted) {
       final pickedTime = await showAppTimePicker(
         context: context,
-        initialTime: _eventTime ?? const TimeOfDay(hour: 10, minute: 0),
+        initialTime: _eventTime ?? TimeOfDay.now(),
       );
       if (pickedTime != null && mounted) {
         setState(() {
@@ -953,6 +981,7 @@ class _SeminarModalState extends ConsumerState<_SeminarModal> {
   Future<void> _submit() async {
     final title = _titleController.text.trim();
     final venue = _venueController.text.trim();
+    final rawContent = _contentController.text.trim();
     if (title.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter event title')));
       return;
@@ -965,6 +994,11 @@ class _SeminarModalState extends ConsumerState<_SeminarModal> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter venue address')));
       return;
     }
+
+    // Backend CommunityPostCreateRequest requires `content` to be non-empty (minLength: 1)
+    final content = rawContent.isNotEmpty
+        ? rawContent
+        : 'Join us at $venue for $title on ${_eventDate!.day}/${_eventDate!.month}/${_eventDate!.year}.';
 
     final fullDateTime = DateTime(
       _eventDate!.year,
@@ -980,11 +1014,15 @@ class _SeminarModalState extends ConsumerState<_SeminarModal> {
         hubId: widget.hubId,
         postType: 'SEMINAR',
         title: title,
-        content: _contentController.text.trim(),
+        content: content,
         eventDate: fullDateTime,
         venueAddress: venue,
         link: _mapsLinkController.text.trim(),
       );
+
+      if (widget.hubId.isNotEmpty) {
+        ref.read(communityHubPostsProvider(widget.hubId).notifier).fetchPosts();
+      }
 
       if (mounted) {
         Navigator.pop(context);
@@ -994,8 +1032,9 @@ class _SeminarModalState extends ConsumerState<_SeminarModal> {
       }
     } catch (e) {
       if (mounted) {
+        final errText = e.toString().replaceFirst(RegExp(r'^ApiException\(\d+\):\s*'), '');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to publish seminar: $e')),
+          SnackBar(content: Text('Failed to publish seminar: $errText')),
         );
       }
     } finally {

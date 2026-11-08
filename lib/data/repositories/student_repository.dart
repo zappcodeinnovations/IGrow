@@ -105,6 +105,39 @@ class StudentRepository {
     return response.body!;
   }
 
+  /// Fetch ebooks purchased by current student from /api/v1/ebooks/purchased/
+  Future<List<EBook>> getPurchasedEbooks() async {
+    try {
+      final token = await tokenStorage.getAccessToken();
+      final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/ebooks/purchased/');
+      final response = await http.get(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final decoded = jsonDecode(response.body);
+        final list = <dynamic>[];
+        if (decoded is List) {
+          list.addAll(decoded);
+        } else if (decoded is Map && decoded['results'] is List) {
+          list.addAll(decoded['results'] as List);
+        }
+        return list
+            .whereType<Map<String, dynamic>>()
+            .map((e) => EBook.fromJson(e))
+            .toList();
+      }
+    } catch (e) {
+      debugPrint('⚠️ [StudentRepository] getPurchasedEbooks error: $e');
+    }
+    return [];
+  }
+
   /// Fetch specific ebook details (with live PDF stream URL).
   Future<EBook> getEbookDetail(String slugOrId) async {
     debugPrint('📖 [StudentRepository] getEbookDetail: slugOrId=$slugOrId');
@@ -739,5 +772,33 @@ class StudentRepository {
     }
 
     return ApiTopInstructor.fallbacks;
+  }
+
+  /// Fetch detailed public profile of an instructor including their active courses.
+  Future<ApiPublicInstructorDetail?> getInstructorDetail(String instructorId) async {
+    debugPrint('👨‍🏫 [StudentRepository] getInstructorDetail: id=$instructorId');
+    try {
+      final token = await tokenStorage.getAccessToken();
+      final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/instructors/$instructorId/');
+      final response = await http.get(
+        uri,
+        headers: {
+          if (token != null) 'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      );
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map<String, dynamic>) {
+          debugPrint('✅ [StudentRepository] getInstructorDetail SUCCESS: ${decoded['full_name']}');
+          return ApiPublicInstructorDetail.fromJson(decoded);
+        }
+      }
+      debugPrint('⚠️ [StudentRepository] getInstructorDetail returned HTTP ${response.statusCode}');
+    } catch (e) {
+      debugPrint('❌ [StudentRepository] getInstructorDetail error: $e');
+    }
+    return null;
   }
 }

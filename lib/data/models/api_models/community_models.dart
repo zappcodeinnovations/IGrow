@@ -257,7 +257,7 @@ class CommunityPost {
   final String tag;
   final int viewsCount;
   final int reactionsCount;
-  final String? userReaction; // 'LIKE' | 'LOVE' | 'CLAP' | 'IDEA' | 'FARM'
+  final String? userReaction; // 'LIKE' | 'LOVE' | 'CLAP' | 'HELPFUL' | 'IDEA' | 'FARM'
   final int commentsCount;
   final DateTime createdAt;
   final DateTime? updatedAt;
@@ -399,6 +399,32 @@ class CommunityPost {
     final minute = local.minute.toString().padLeft(2, '0');
     final period = hour24 >= 12 ? 'PM' : 'AM';
     return '$day/$month/$year • $hour12:$minute $period';
+  }
+
+  /// Whether a scheduled webinar is currently open for joining (starts 15 minutes before event date).
+  bool get isWebinarJoinable {
+    if (eventDate == null) return true;
+    final now = DateTime.now();
+    final joinWindowStart = eventDate!.toLocal().subtract(const Duration(minutes: 15));
+    return now.isAfter(joinWindowStart);
+  }
+
+  /// Human-readable time remaining until the webinar starts (or null if already started or joinable).
+  String? get webinarCountdownMessage {
+    if (eventDate == null) return null;
+    final now = DateTime.now();
+    final localStart = eventDate!.toLocal();
+    if (now.isAfter(localStart)) return null;
+    final diff = localStart.difference(now);
+    if (diff.inDays > 1) {
+      return 'Starts in ${diff.inDays} days';
+    } else if (diff.inDays == 1) {
+      return 'Starts tomorrow';
+    } else if (diff.inHours > 0) {
+      return 'Starts in ${diff.inHours}h ${diff.inMinutes % 60}m';
+    } else {
+      return 'Starts in ${diff.inMinutes}m';
+    }
   }
 
   CommunityPost copyWith({

@@ -857,8 +857,9 @@ class ProfileScreen extends ConsumerWidget {
                           Text(
                             user?.email ?? '',
                             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: AppColors.editorialOnSurfaceVariant,
-                                  fontSize: 12,
+                                  color: isDark ? Colors.white70 : AppColors.editorialOnSurfaceVariant,
+                                  fontSize: 12.5,
+                                  fontWeight: isDark ? FontWeight.w500 : FontWeight.normal,
                                 ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -964,30 +965,29 @@ class ProfileScreen extends ConsumerWidget {
                     icon: Icons.phone_rounded,
                     label: tr(ref, 'Phone'),
                     value: user?.phone.isNotEmpty == true ? user!.phone : tr(ref, 'Not provided'),
-                    showChevron: false,
-                    onTap: () => _showComingSoon(context, ref),
+                    showChevron: true,
+                    onTap: () => context.push('/edit-profile'),
                   ),
                   _MenuItemData(
                     icon: Icons.location_on_rounded,
                     label: tr(ref, 'Location'),
                     value: user?.location ?? tr(ref, 'Not provided'),
-                    showChevron: false,
-                    onTap: () => _showComingSoon(context, ref),
+                    showChevron: true,
+                    onTap: () => context.push('/edit-profile'),
                   ),
-                  if (user?.bio != null && user!.bio!.isNotEmpty)
-                    _MenuItemData(
-                      icon: Icons.info_rounded,
-                      label: tr(ref, 'Bio'),
-                      value: user!.bio,
-                      showChevron: false,
-                      onTap: () => _showComingSoon(context, ref),
-                    ),
+                  _MenuItemData(
+                    icon: Icons.info_rounded,
+                    label: tr(ref, 'Bio'),
+                    value: user?.bio != null && user!.bio!.isNotEmpty ? user!.bio : tr(ref, 'Not provided'),
+                    showChevron: true,
+                    onTap: () => context.push('/edit-profile'),
+                  ),
                   _MenuItemData(
                     icon: Icons.star_rounded,
                     label: tr(ref, 'Expertise Tags'),
                     value: user?.expertiseTags ?? tr(ref, 'Not provided'),
-                    showChevron: false,
-                    onTap: () => _showComingSoon(context, ref),
+                    showChevron: true,
+                    onTap: () => context.push('/edit-profile'),
                   ),
                   _MenuItemData(
                     icon: Icons.work_rounded,
@@ -995,22 +995,22 @@ class ProfileScreen extends ConsumerWidget {
                     value: user?.yearsOfExperience != null
                         ? '${user!.yearsOfExperience} ${tr(ref, 'years')}'
                         : tr(ref, 'Not provided'),
-                    showChevron: false,
-                    onTap: () => _showComingSoon(context, ref),
+                    showChevron: true,
+                    onTap: () => context.push('/edit-profile'),
                   ),
                   _MenuItemData(
                     icon: Icons.grass_rounded,
                     label: tr(ref, 'Specialty Crops'),
                     value: user?.specialtyCrops ?? tr(ref, 'Not provided'),
-                    showChevron: false,
-                    onTap: () => _showComingSoon(context, ref),
+                    showChevron: true,
+                    onTap: () => context.push('/edit-profile'),
                   ),
                   _MenuItemData(
                     icon: Icons.link_rounded,
                     label: tr(ref, 'Social Link'),
                     value: user?.socialLink ?? tr(ref, 'Not provided'),
-                    showChevron: false,
-                    onTap: () => _showComingSoon(context, ref),
+                    showChevron: true,
+                    onTap: () => context.push('/edit-profile'),
                   ),
                   _MenuItemData(
                     icon: Icons.verified_user_rounded,
@@ -1273,18 +1273,6 @@ class ProfileScreen extends ConsumerWidget {
           ),
         ),
       ],
-    );
-  }
-
-  void _showComingSoon(BuildContext context, WidgetRef ref) {
-    final messenger = ScaffoldMessenger.of(context);
-    messenger.clearSnackBars();
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(tr(ref, 'Feature coming soon')),
-        duration: const Duration(milliseconds: 1800),
-        behavior: SnackBarBehavior.floating,
-      ),
     );
   }
 }

@@ -7,6 +7,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
+import '../../../core/network/swagger_generated/app_api.swagger.dart' show EBook;
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/models/api_models/course_models.dart';
@@ -90,32 +91,48 @@ class _CheckoutSuccessScreenState extends ConsumerState<CheckoutSuccessScreen> {
     _syncWithSavedState();
   }
 
-  static (String title, String id, String price) extractItemInfo(dynamic item) {
-    if (item is ApiCourseDetail) {
-      return (item.title, item.id, item.price ?? '0.00');
+  static (String title, String id, String price, bool isEbook) extractItemInfo(dynamic item) {
+    if (item is EBook) {
+      final ebookId = (item.id != null && item.id!.isNotEmpty) ? item.id! : (item.slug ?? '');
+      return (item.title, ebookId, item.price ?? '0.00', true);
+    } else if (item is ApiCourseDetail) {
+      return (item.title, item.id, item.price ?? '0.00', false);
     } else if (item is ApiCartItem) {
+      final isEbookItem = item.courseDetail?['item_type']?.toString().toLowerCase() == 'ebook' ||
+          item.courseDetail?['ebook_id'] != null;
       final title = item.courseDetail?['title']?.toString() ??
           item.courseDetail?['name']?.toString() ??
-          'Course';
+          (isEbookItem ? 'E-Book' : 'Course');
       final price = item.courseDetail?['price']?.toString() ??
           item.courseDetail?['discount_price']?.toString() ??
           '0.00';
-      return (title, item.course, price);
+      final id = isEbookItem ? (item.courseDetail?['ebook_id']?.toString() ?? item.course) : item.course;
+      return (title, id, price, isEbookItem);
     } else if (item is ApiOrderItem) {
-      final title = item.courseTitle ?? 'Course';
-      final courseId = item.course ?? item.id;
+      final isEbookItem = item.itemType?.toLowerCase() == 'ebook' ||
+          (item.ebookId != null && item.ebookId!.isNotEmpty) ||
+          (item.ebook != null && item.ebook!.isNotEmpty);
+      final title = item.ebookTitle ?? item.courseTitle ?? (isEbookItem ? 'E-Book' : 'Course');
+      final id = isEbookItem ? (item.ebookId ?? item.ebook ?? item.id) : (item.course ?? item.id);
       final price = item.priceAtPurchase;
-      return (title, courseId, price);
+      return (title, id, price, isEbookItem);
     } else if (item is Map) {
       final map = Map<String, dynamic>.from(item);
-      final title = map['course_title']?.toString() ??
+      final isEbookItem = map['item_type']?.toString().toLowerCase() == 'ebook' ||
+          map['ebook_id'] != null ||
+          map['ebook'] != null;
+      final title = map['ebook_title']?.toString() ??
+          map['course_title']?.toString() ??
           map['title']?.toString() ??
           map['name']?.toString() ??
           (map['course_detail'] is Map
               ? (map['course_detail']['title']?.toString() ?? map['course_detail']['name']?.toString())
               : null) ??
-          'Course';
-      final courseId = map['course']?.toString() ??
+          (isEbookItem ? 'E-Book' : 'Course');
+      final id = (isEbookItem
+              ? (map['ebook_id']?.toString() ?? map['ebook']?.toString())
+              : null) ??
+          map['course']?.toString() ??
           map['course_id']?.toString() ??
           map['id']?.toString() ??
           '';
@@ -123,12 +140,12 @@ class _CheckoutSuccessScreenState extends ConsumerState<CheckoutSuccessScreen> {
           map['price']?.toString() ??
           (map['course_detail'] is Map ? map['course_detail']['price']?.toString() : null) ??
           '0.00';
-      return (title, courseId, price);
+      return (title, id, price, isEbookItem);
     }
     if (item is String) {
-      return (item, '', '0.00');
+      return (item, '', '0.00', false);
     }
-    return ('Course', '', '0.00');
+    return ('Course', '', '0.00', false);
   }
 
   void _syncWithSavedState() {
@@ -190,7 +207,7 @@ class _CheckoutSuccessScreenState extends ConsumerState<CheckoutSuccessScreen> {
     if (_finalTotal <= 0 && _purchasedItems.isNotEmpty) {
       double sum = 0.0;
       for (final it in _purchasedItems) {
-        final (_, _, priceStr) = extractItemInfo(it);
+        final (_, _, priceStr, _) = extractItemInfo(it);
         sum += double.tryParse(priceStr) ?? 0.0;
       }
       if (sum > 0) {
@@ -428,7 +445,7 @@ class _CheckoutSuccessScreenState extends ConsumerState<CheckoutSuccessScreen> {
           const SizedBox(height: 10),
 
           ..._purchasedItems.map((item) {
-            final (title, courseId, _) = extractItemInfo(item);
+            final (title, itemId, _, isEbook) = extractItemInfo(item);
 
             return Container(
               margin: const EdgeInsets.only(bottom: 12),
@@ -453,8 +470,8 @@ class _CheckoutSuccessScreenState extends ConsumerState<CheckoutSuccessScreen> {
                           color: AppColors.primaryGreen.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: const Icon(
-                          Icons.play_circle_filled,
+                        child: Icon(
+                          isEbook ? Icons.menu_book_rounded : Icons.play_circle_filled,
                           color: AppColors.primaryGreen,
                           size: 24,
                         ),
@@ -475,7 +492,9 @@ class _CheckoutSuccessScreenState extends ConsumerState<CheckoutSuccessScreen> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              'Lifetime Access • Verified Certificate',
+                              isEbook
+                                  ? 'Instant Digital Access • PDF Material'
+                                  : 'Lifetime Access • Verified Certificate',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
@@ -501,14 +520,19 @@ class _CheckoutSuccessScreenState extends ConsumerState<CheckoutSuccessScreen> {
                         ),
                         elevation: 0,
                       ),
-                      icon: const Icon(Icons.play_arrow_rounded, size: 18),
-                      label: const Text(
-                        'Start Learning',
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                      icon: Icon(
+                        isEbook ? Icons.auto_stories_rounded : Icons.play_arrow_rounded,
+                        size: 18,
+                      ),
+                      label: Text(
+                        isEbook ? 'Read E-Book Now' : 'Start Learning',
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
                       ),
                       onPressed: () {
-                        if (courseId.isNotEmpty) {
-                          context.push('/player/$courseId?fromCheckout=true');
+                        if (isEbook && itemId.isNotEmpty) {
+                          context.push('/farmer/ebook/$itemId');
+                        } else if (itemId.isNotEmpty) {
+                          context.push('/player/$itemId?fromCheckout=true');
                         } else {
                           context.go(RouteNames.farmerHome);
                         }
@@ -757,7 +781,7 @@ class _CheckoutSuccessScreenState extends ConsumerState<CheckoutSuccessScreen> {
 
               // Items
               ...items.map((item) {
-                final (title, _, price) = extractItemInfo(item);
+                final (title, _, price, _) = extractItemInfo(item);
 
                 return Padding(
                   padding: const EdgeInsets.symmetric(
@@ -1060,7 +1084,7 @@ class _CheckoutSuccessScreenState extends ConsumerState<CheckoutSuccessScreen> {
                 cellStyle: const pw.TextStyle(fontSize: 11),
                 headers: ['Course / Description', 'SAC', 'Amount'],
                 data: items.map((item) {
-                  final (title, _, price) = extractItemInfo(item);
+                  final (title, _, price, _) = extractItemInfo(item);
                   return [title, '998311', 'Rs. $price'];
                 }).toList(),
               ),

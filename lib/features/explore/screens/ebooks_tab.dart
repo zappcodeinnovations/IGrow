@@ -91,7 +91,12 @@ class EbooksTab extends ConsumerWidget {
             final rawPrice = ebook.price ?? '0.00';
             final parsedPrice = double.tryParse(rawPrice) ?? 0.0;
             final isFree = parsedPrice <= 0.0;
-            final isPurchased = ebook.isPurchased == true;
+            final ebookId = ebook.id ?? '';
+            final ebookSlug = ebook.slug ?? '';
+            final isPurchased = ebook.isPurchased == true ||
+                (ebookId.isNotEmpty && ref.watch(isEbookPurchasedProvider(ebookId))) ||
+                (ebookSlug.isNotEmpty && ref.watch(isEbookPurchasedProvider(ebookSlug))) ||
+                ref.watch(isEbookPurchasedProvider(ebook.title));
             final identifier = (ebook.slug != null && ebook.slug!.isNotEmpty)
                 ? ebook.slug!
                 : (ebook.id ?? '');
@@ -111,11 +116,13 @@ class EbooksTab extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   InkWell(
-                    onTap: () {
-                      if (identifier.isNotEmpty) {
-                        context.push('/farmer/ebook/$identifier');
-                      }
-                    },
+                    onTap: (isPurchased || isFree)
+                        ? () {
+                            if (identifier.isNotEmpty) {
+                              context.push('/farmer/ebook/$identifier');
+                            }
+                          }
+                        : null,
                     borderRadius: BorderRadius.circular(12),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,

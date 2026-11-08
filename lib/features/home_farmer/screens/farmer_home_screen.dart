@@ -1642,7 +1642,8 @@ class _InstructorCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(18),
           onTap: () {
             context.push(
-              '/farmer/explore?instructor=${Uri.encodeComponent(inst.id.isNotEmpty ? inst.id : inst.fullName)}',
+              '/farmer/instructor/${inst.id}',
+              extra: inst,
             );
           },
           child: Column(

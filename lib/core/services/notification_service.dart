@@ -236,9 +236,18 @@ class NotificationService {
             final file = File(payload);
             if (await file.exists()) {
               final bytes = await file.readAsBytes();
+              final pageFormat = (!kIsWeb && Platform.isIOS)
+                  ? const PdfPageFormat(
+                      595.28,
+                      420.94, // 70.7% scaling to match portrait viewport
+                      marginAll: 0,
+                    )
+                  : PdfPageFormat.a4.landscape;
+
               await Printing.layoutPdf(
-                format: PdfPageFormat.a4.landscape,
+                format: pageFormat,
                 dynamicLayout: false,
+                forceCustomPrintPaper: true,
                 onLayout: (_) async => bytes,
                 name: file.uri.pathSegments.last,
               );

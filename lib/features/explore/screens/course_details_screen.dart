@@ -1309,52 +1309,75 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
           const SizedBox(height: 18),
 
           // Instructor Attribution
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 18,
-                backgroundColor: AppColors.primaryGreen,
-                backgroundImage:
-                    course.instructorAvatar != null &&
-                        course.instructorAvatar!.isNotEmpty
-                    ? NetworkImage(course.instructorAvatar!)
-                    : null,
-                child:
-                    course.instructorAvatar == null ||
-                        course.instructorAvatar!.isEmpty
-                    ? Text(
-                        instructor.isNotEmpty
-                            ? instructor[0].toUpperCase()
-                            : 'I',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      )
-                    : null,
-              ),
-              const SizedBox(width: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+          InkWell(
+            onTap: () {
+              if (instructor.isNotEmpty && instructor != 'Instructor') {
+                context.push('${RouteNames.explore}?search=${Uri.encodeComponent(instructor)}');
+              }
+            },
+            borderRadius: BorderRadius.circular(10),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    'Created by',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.white.withValues(alpha: 0.6),
-                    ),
+                  CircleAvatar(
+                    radius: 18,
+                    backgroundColor: AppColors.primaryGreen,
+                    backgroundImage:
+                        course.instructorAvatar != null &&
+                            course.instructorAvatar!.isNotEmpty
+                        ? NetworkImage(course.instructorAvatar!)
+                        : null,
+                    child:
+                        course.instructorAvatar == null ||
+                            course.instructorAvatar!.isEmpty
+                        ? Text(
+                            instructor.isNotEmpty
+                                ? instructor[0].toUpperCase()
+                                : 'I',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          )
+                        : null,
                   ),
-                  Text(
-                    instructor,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
+                  const SizedBox(width: 10),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Created by',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.white.withValues(alpha: 0.6),
+                        ),
+                      ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            instructor,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Icon(
+                            Icons.chevron_right_rounded,
+                            size: 16,
+                            color: Colors.white.withValues(alpha: 0.7),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
+            ),
           ),
         ],
       ),
@@ -1735,28 +1758,37 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                   child: inCart
                       ? OutlinedButton.icon(
                           style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: Color(0xFF1B4D2E)),
+                            side: BorderSide(
+                              color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF1B4D2E),
+                              width: 1.5,
+                            ),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),
                           onPressed: () => context.push('/cart'),
-                          icon: const Icon(Icons.shopping_cart_checkout_rounded, size: 18, color: Color(0xFF1B4D2E)),
+                          icon: Icon(
+                            Icons.shopping_cart_checkout_rounded,
+                            size: 18,
+                            color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF1B4D2E),
+                          ),
                           label: Text(
                             tr(ref, 'Go to Cart'),
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 14,
-                              color: Color(0xFF1B4D2E),
+                              color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF1B4D2E),
                             ),
                           ),
                         )
                       : FilledButton.icon(
                           style: FilledButton.styleFrom(
                             backgroundColor: isDark
-                                ? AppColors.surfaceContainerHighDark
+                                ? const Color(0xFF243629)
                                 : const Color(0xFFE8F3EB),
-                            foregroundColor: const Color(0xFF1B4D2E),
+                            foregroundColor: isDark
+                                ? const Color(0xFF4ADE80)
+                                : const Color(0xFF1B4D2E),
                             elevation: 0,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -1764,21 +1796,25 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                           ),
                           onPressed: _isAddingToCart ? null : () => _handleAddToCart(context, course),
                           icon: _isAddingToCart
-                              ? const SizedBox(
+                              ? SizedBox(
                                   width: 16,
                                   height: 16,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
-                                    color: Color(0xFF1B4D2E),
+                                    color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF1B4D2E),
                                   ),
                                 )
-                              : const Icon(Icons.add_shopping_cart_rounded, size: 18, color: Color(0xFF1B4D2E)),
+                              : Icon(
+                                  Icons.add_shopping_cart_rounded,
+                                  size: 18,
+                                  color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF1B4D2E),
+                                ),
                           label: Text(
                             tr(ref, 'Add to Cart'),
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 14,
-                              color: Color(0xFF1B4D2E),
+                              color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF1B4D2E),
                             ),
                           ),
                         ),
@@ -1790,9 +1826,11 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                   child: FilledButton(
                     style: FilledButton.styleFrom(
                       backgroundColor: isDark
-                          ? AppColors.surfaceContainerHighDark
+                          ? const Color(0xFF243629)
                           : const Color(0xFFE8F3EB),
-                      foregroundColor: const Color(0xFF1B4D2E),
+                      foregroundColor: isDark
+                          ? const Color(0xFF4ADE80)
+                          : const Color(0xFF1B4D2E),
                       elevation: 0,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -1813,12 +1851,12 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                         );
                       }
                     },
-                    child: const Text(
+                    child: Text(
                       'Preview free lesson',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 14,
-                        color: Color(0xFF1B4D2E),
+                        color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF1B4D2E),
                       ),
                     ),
                   ),

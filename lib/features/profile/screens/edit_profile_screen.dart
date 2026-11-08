@@ -1218,15 +1218,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               ),
             ),
           ),
-          if (_isLoading)
-            Positioned.fill(
-              child: Container(
-                color: Colors.black.withValues(alpha: 0.2),
-                child: const Center(
-                  child: CircularProgressIndicator(color: AppColors.editorialSecondary),
-                ),
-              ),
-            ),
         ],
       ),
     );

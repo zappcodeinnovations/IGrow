@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -126,6 +127,8 @@ class _CoursesTab extends ConsumerWidget {
             ),
           );
           ref.invalidate(instructorCoursesProvider);
+          ref.invalidate(instructorCourseDetailProvider(course.id));
+          unawaited(ref.refresh(instructorCoursesProvider((search: '', ordering: '')).future));
           ref.invalidate(studentCatalogProvider);
           ref.invalidate(featuredCoursesProvider);
           ref.invalidate(exploreCoursesProvider);
@@ -182,6 +185,8 @@ class _CoursesTab extends ConsumerWidget {
             ),
           );
           ref.invalidate(instructorCoursesProvider);
+          ref.invalidate(instructorCourseDetailProvider(course.id));
+          unawaited(ref.refresh(instructorCoursesProvider((search: '', ordering: '')).future));
           ref.invalidate(studentCatalogProvider);
           ref.invalidate(featuredCoursesProvider);
           ref.invalidate(exploreCoursesProvider);
@@ -208,15 +213,28 @@ class _CoursesTab extends ConsumerWidget {
       instructorCoursesProvider((search: '', ordering: '')),
     );
 
-    return coursesAsync.when(
-      data: (courses) {
-        if (courses.isEmpty) {
-          return const Center(child: Text('No courses uploaded yet.'));
-        }
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: courses.length,
-          itemBuilder: (context, index) {
+    return RefreshIndicator(
+      color: AppColors.primaryGreen,
+      onRefresh: () async {
+        ref.invalidate(instructorCoursesProvider);
+        await ref.read(instructorCoursesProvider((search: '', ordering: '')).future);
+      },
+      child: coursesAsync.when(
+        data: (courses) {
+          if (courses.isEmpty) {
+            return ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: const [
+                SizedBox(height: 120),
+                Center(child: Text('No courses uploaded yet.')),
+              ],
+            );
+          }
+          return ListView.builder(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(16),
+            itemCount: courses.length,
+            itemBuilder: (context, index) {
             final course = courses[index];
             final cStatus = (course.status ?? 'DRAFT').toUpperCase();
             final isLive = cStatus == 'APPROVED' ||
@@ -413,6 +431,7 @@ class _CoursesTab extends ConsumerWidget {
             ],
           ),
         ),
+      ),
       ),
     );
   }

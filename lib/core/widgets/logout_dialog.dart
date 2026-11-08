@@ -61,9 +61,14 @@ class _LogoutConfirmationDialogState extends ConsumerState<LogoutConfirmationDia
       messenger.clearSnackBars();
       messenger.showSnackBar(
         const SnackBar(
-          content: Text('Logged out successfully.'),
+          content: Text(
+            'Logged out successfully.',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           duration: Duration(milliseconds: 1800),
-          backgroundColor: AppColors.inkDark,
         ),
       );
 

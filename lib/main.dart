@@ -176,12 +176,20 @@ class _IGrowAppState extends ConsumerState<IGrowApp> {
         routerConfig: router,
         debugShowCheckedModeBanner: false,
         builder: (context, child) {
-          return GestureDetector(
+          return Listener(
             behavior: HitTestBehavior.translucent,
-            onTap: () {
-              // Automatically unfocus any active input field and dismiss the keyboard
-              // when tapping anywhere outside an interactive control.
-              FocusManager.instance.primaryFocus?.unfocus();
+            onPointerDown: (event) {
+              final currentFocus = FocusManager.instance.primaryFocus;
+              if (currentFocus != null && currentFocus.hasFocus && currentFocus.context != null) {
+                final renderBox = currentFocus.context!.findRenderObject();
+                if (renderBox is RenderBox) {
+                  final localOffset = renderBox.globalToLocal(event.position);
+                  // If the pointer event landed outside the currently focused text field, unfocus
+                  if (!renderBox.paintBounds.contains(localOffset)) {
+                    currentFocus.unfocus();
+                  }
+                }
+              }
             },
             child: child ?? const SizedBox.shrink(),
           );

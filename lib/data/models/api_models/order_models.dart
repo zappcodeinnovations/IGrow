@@ -67,6 +67,11 @@ class ApiOrderItem {
     this.course,
     this.courseTitle,
     this.courseSlug,
+    this.ebook,
+    this.ebookId,
+    this.ebookTitle,
+    this.ebookSlug,
+    this.itemType,
     required this.priceAtPurchase,
   });
 
@@ -74,6 +79,11 @@ class ApiOrderItem {
   final String? course;
   final String? courseTitle;
   final String? courseSlug;
+  final String? ebook;
+  final String? ebookId;
+  final String? ebookTitle;
+  final String? ebookSlug;
+  final String? itemType;
   final String priceAtPurchase;
 
   factory ApiOrderItem.fromJson(Map<String, dynamic> json) => ApiOrderItem(
@@ -81,8 +91,26 @@ class ApiOrderItem {
         course: json['course'] as String?,
         courseTitle: json['course_title'] as String?,
         courseSlug: json['course_slug'] as String?,
+        ebook: json['ebook'] as String?,
+        ebookId: json['ebook_id'] as String? ?? json['ebook'] as String?,
+        ebookTitle: json['ebook_title'] as String?,
+        ebookSlug: json['ebook_slug'] as String?,
+        itemType: json['item_type'] as String?,
         priceAtPurchase: json['price_at_purchase']?.toString() ?? '0',
       );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        if (course != null) 'course': course,
+        if (courseTitle != null) 'course_title': courseTitle,
+        if (courseSlug != null) 'course_slug': courseSlug,
+        if (ebook != null) 'ebook': ebook,
+        if (ebookId != null) 'ebook_id': ebookId,
+        if (ebookTitle != null) 'ebook_title': ebookTitle,
+        if (ebookSlug != null) 'ebook_slug': ebookSlug,
+        if (itemType != null) 'item_type': itemType,
+        'price_at_purchase': priceAtPurchase,
+      };
 }
 
 // ── Order ────────────────────────────────────────────────────────

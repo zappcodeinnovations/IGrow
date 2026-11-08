@@ -349,6 +349,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       // Immediately invalidate enrollment and order caches so user sees item in My Learning
       ref.invalidate(studentEnrollmentsProvider);
       ref.invalidate(ordersProvider);
+      ref.invalidate(studentPurchasedEbooksProvider);
       ref.invalidate(studentEbooksProvider);
 
       // 3. Clear cart if cart checkout
@@ -1777,48 +1778,54 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
             const SizedBox(width: 12),
             Flexible(
               flex: 6,
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryGreen,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+              child: SizedBox(
+                height: 48,
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryGreen,
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor: AppColors.primaryGreen,
+                    disabledForegroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 2,
                   ),
-                  elevation: 2,
-                ),
-                icon: _isProcessing
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
+                  icon: _isProcessing
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Icon(
+                          is100PercentFree ? Icons.check_circle_outline_rounded : Icons.lock_rounded,
                           color: Colors.white,
+                          size: 18,
                         ),
-                      )
-                    : Icon(
-                        is100PercentFree ? Icons.check_circle_outline_rounded : Icons.lock_rounded,
-                        color: Colors.white,
-                        size: 18,
-                      ),
-                label: Text(
-                  buttonLabel,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                  label: Text(
+                    buttonLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
+                  onPressed: _isProcessing
+                      ? null
+                      : () => _startPaymentFlow(
+                            originalTotal: originalTotal,
+                            finalTotal: finalTotal,
+                            discountAmount: discountAmount,
+                            items: items,
+                          ),
                 ),
-                onPressed: _isProcessing
-                    ? null
-                    : () => _startPaymentFlow(
-                          originalTotal: originalTotal,
-                          finalTotal: finalTotal,
-                          discountAmount: discountAmount,
-                          items: items,
-                        ),
               ),
             ),
           ],

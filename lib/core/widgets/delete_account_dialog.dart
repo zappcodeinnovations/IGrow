@@ -74,9 +74,12 @@ class _DeleteAccountConfirmationDialogState
         const SnackBar(
           content: Text(
             'Your account and associated data have been permanently deleted.',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           duration: Duration(milliseconds: 3000),
-          backgroundColor: AppColors.inkDark,
         ),
       );
 

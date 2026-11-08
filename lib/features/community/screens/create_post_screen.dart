@@ -132,7 +132,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
     if (pickedDate != null && mounted) {
       final pickedTime = await showAppTimePicker(
         context: context,
-        initialTime: _selectedEventTime ?? const TimeOfDay(hour: 10, minute: 0),
+        initialTime: _selectedEventTime ?? TimeOfDay.now(),
       );
 
       if (pickedTime != null && mounted) {

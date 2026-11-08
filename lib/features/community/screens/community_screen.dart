@@ -1370,6 +1370,7 @@ class _CommunityCard extends ConsumerWidget {
                       content: Text('Left "${hub.name}"'),
                       action: SnackBarAction(
                         label: 'Undo',
+                        textColor: const Color(0xFF4ADE80),
                         onPressed: () async {
                           await ref.read(communityHubsProvider.notifier).toggleJoin(
                                 hub.id,
@@ -1612,6 +1613,7 @@ class _CommunityCard extends ConsumerWidget {
                                       content: Text('Joined "${hub.name}"!'),
                                       action: SnackBarAction(
                                         label: 'View',
+                                        textColor: const Color(0xFF4ADE80),
                                         onPressed: () {
                                           context.push('/community/hub/${hub.id}');
                                         },

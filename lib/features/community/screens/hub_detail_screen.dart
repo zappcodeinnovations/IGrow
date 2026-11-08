@@ -76,6 +76,7 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                       content: Text('Left "${hub.name}"'),
                       action: SnackBarAction(
                         label: 'Undo',
+                        textColor: const Color(0xFF4ADE80),
                         onPressed: () async {
                           await ref.read(communityHubsProvider.notifier).toggleJoin(
                                 hub.id,
@@ -249,7 +250,8 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                 SliverAppBar(
                   expandedHeight: 200,
                   pinned: true,
-                  backgroundColor: AppColors.primaryGreen,
+                  backgroundColor: isDark ? const Color(0xFF131F16) : Colors.white,
+                  surfaceTintColor: Colors.transparent,
                   leading: IconButton(
                     icon: Container(
                       padding: const EdgeInsets.all(7),
@@ -429,33 +431,63 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                         ),
                         // Join / Leave Button (For learners)
                         if (!isAuthorOrInstructor)
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: hub.isMember
-                                  ? (isDark ? const Color(0xFF24242A) : AppColors.editorialSurfaceContainerLow)
-                                  : AppColors.editorialSecondary,
-                              foregroundColor: hub.isMember
-                                  ? (isDark ? Colors.white70 : AppColors.editorialOnSurface)
-                                  : Colors.white,
-                              elevation: hub.isMember ? 0 : 1,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                            ),
-                            onPressed: () async {
-                              if (hub.isMember) {
-                                _confirmLeave(context, hub);
-                              } else {
-                                await ref.read(communityHubsProvider.notifier).toggleJoin(
-                                      hub.id,
-                                      currentIsMember: false,
-                                      currentMemberCount: hub.memberCount,
-                                    );
-                              }
-                            },
-                            child: Text(
-                              hub.isMember ? 'Joined ✓' : '+ Join',
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                            ),
+                          SizedBox(
+                            height: 34,
+                            child: hub.isMember
+                                ? OutlinedButton.icon(
+                                    style: OutlinedButton.styleFrom(
+                                      side: BorderSide(
+                                        color: isDark ? AppColors.lineDark : AppColors.editorialOutlineVariant.withValues(alpha: 0.4),
+                                      ),
+                                      backgroundColor: isDark ? const Color(0xFF24242A) : AppColors.editorialSurfaceContainerLow,
+                                      foregroundColor: isDark ? Colors.white70 : AppColors.editorialOnSurface,
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                                      minimumSize: Size.zero,
+                                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                    onPressed: () => _confirmLeave(context, hub),
+                                    icon: const Icon(Icons.check_circle_rounded, size: 14, color: AppColors.editorialSecondaryFixedDim),
+                                    label: const Text(
+                                      'Joined ✓',
+                                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+                                    ),
+                                  )
+                                : OutlinedButton(
+                                    style: OutlinedButton.styleFrom(
+                                      side: BorderSide(
+                                        color: isDark
+                                            ? AppColors.primaryGreen.withValues(alpha: 0.6)
+                                            : AppColors.primaryGreen,
+                                        width: 1.2,
+                                      ),
+                                      backgroundColor: isDark
+                                          ? AppColors.primaryGreen.withValues(alpha: 0.15)
+                                          : AppColors.primaryGreen.withValues(alpha: 0.08),
+                                      foregroundColor: isDark
+                                          ? const Color(0xFF86EFAC)
+                                          : AppColors.primaryGreen,
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                                      minimumSize: Size.zero,
+                                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                    onPressed: () async {
+                                      await ref.read(communityHubsProvider.notifier).toggleJoin(
+                                            hub.id,
+                                            currentIsMember: false,
+                                            currentMemberCount: hub.memberCount,
+                                          );
+                                    },
+                                    child: const Text(
+                                      '+ Join',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12.5,
+                                        letterSpacing: 0.2,
+                                      ),
+                                    ),
+                                  ),
                           ),
                       ],
                     ),

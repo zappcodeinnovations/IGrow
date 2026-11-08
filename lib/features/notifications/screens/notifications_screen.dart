@@ -111,6 +111,56 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     }
   }
 
+  Future<void> _handleNotificationTap(ApiNotification item) async {
+    if (!item.isRead) {
+      ref.read(notificationsProvider.notifier).markAsRead(item.id);
+    }
+
+    final type = item.notificationType.toUpperCase();
+
+    // 1. Course notification
+    if (item.course != null && item.course!.trim().isNotEmpty) {
+      context.push('/farmer/course/${item.course!.trim()}');
+      return;
+    }
+
+    // 2. E-Book notification -> Route to Explore > E-Books tab filtered by this book
+    final hasEbookHint = type == 'NEW_EBOOK' ||
+        item.title.toLowerCase().contains('e-book') ||
+        item.title.toLowerCase().contains('ebook') ||
+        (item.ebookId != null && item.ebookId!.trim().isNotEmpty);
+
+    if (hasEbookHint) {
+      String candidateTitle = (item.ebookTitle != null && item.ebookTitle!.isNotEmpty)
+          ? item.ebookTitle!
+          : item.title;
+
+      // Strip prefixes like "New E-Book: "
+      candidateTitle = candidateTitle.replaceAll(RegExp(r'^(?:New\s+E-Book:\s*|New\s+Ebook:\s*)', caseSensitive: false), '').trim();
+      // Remove trailing ellipsis
+      candidateTitle = candidateTitle.replaceAll(RegExp(r'\.{2,}$'), '').trim();
+
+      if (candidateTitle.isNotEmpty) {
+        final query = Uri.encodeComponent(candidateTitle);
+        context.go('${RouteNames.explore}?tab=ebooks&search=$query');
+      } else {
+        context.go('${RouteNames.explore}?tab=ebooks');
+      }
+      return;
+    }
+
+    // 3. Welcome or Explore notification
+    if (type == 'WELCOME' ||
+        item.title.toLowerCase().contains('welcome') ||
+        item.message.toLowerCase().contains('explore our top')) {
+      context.go(RouteNames.explore);
+      return;
+    }
+
+    // 4. Default fallback: Explore screen
+    context.go(RouteNames.explore);
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -375,14 +425,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                         },
                         child: InkWell(
                           borderRadius: BorderRadius.circular(18),
-                          onTap: () {
-                            if (!item.isRead) {
-                              ref.read(notificationsProvider.notifier).markAsRead(item.id);
-                            }
-                            if (item.course != null && item.course!.isNotEmpty) {
-                              context.push('/farmer/course/${item.course}');
-                            }
-                          },
+                          onTap: () => _handleNotificationTap(item),
                           child: Container(
                             padding: const EdgeInsets.all(14),
                             decoration: BoxDecoration(

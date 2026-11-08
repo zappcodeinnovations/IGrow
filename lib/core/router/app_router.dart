@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../data/models/user_role.dart';
+import '../../data/models/api_models/instructor_model.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/auth/screens/auth_success_screen.dart';
 import '../../features/auth/screens/choose_role_screen.dart';
@@ -37,6 +38,7 @@ import '../../features/explore/screens/quiz_player_screen.dart';
 import '../../features/profile/screens/edit_profile_screen.dart';
 import '../../features/profile/screens/support_screen.dart';
 import '../../features/explore/screens/course_details_screen.dart';
+import '../../features/explore/screens/instructor_profile_screen.dart';
 import '../../features/explore/screens/ebook_viewer_screen.dart';
 import '../../features/upload_course/screens/upload_course_screen.dart';
 import '../../features/upload_course/screens/upload_ebook_screen.dart';
@@ -185,6 +187,31 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final id = state.pathParameters['id']!;
           return CourseDetailsScreen(courseId: id);
+        },
+      ),
+      GoRoute(
+        name: RouteNames.publicInstructorProfile,
+        path: '/farmer/instructor/:id',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          ApiTopInstructor? fallback;
+          final extra = state.extra;
+          if (extra is ApiTopInstructor) {
+            fallback = extra;
+          } else if (extra is Map<String, dynamic>) {
+            try {
+              fallback = ApiTopInstructor.fromJson(extra);
+            } catch (_) {}
+          } else if (extra is Map) {
+            try {
+              fallback = ApiTopInstructor.fromJson(Map<String, dynamic>.from(extra));
+            } catch (_) {}
+          }
+          return InstructorProfileScreen(
+            instructorId: id,
+            fallbackInstructor: fallback,
+          );
         },
       ),
       GoRoute(

@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -248,6 +247,7 @@ class AppTheme {
           fontSize: 13.5,
           fontWeight: FontWeight.w600,
         ),
+        actionTextColor: AppColors.primaryGreen,
         closeIconColor: AppColors.inkSoft,
         elevation: 6,
         shape: RoundedRectangleBorder(
@@ -432,6 +432,7 @@ class AppTheme {
           fontSize: 13.5,
           fontWeight: FontWeight.w600,
         ),
+        actionTextColor: const Color(0xFF4ADE80),
         closeIconColor: Colors.white70,
         elevation: 6,
         shape: RoundedRectangleBorder(

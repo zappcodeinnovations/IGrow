@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
@@ -748,84 +749,83 @@ class _CertificateViewerDialogState extends State<CertificateViewerDialog> {
             ),
             const SizedBox(height: 14),
 
-            // ── Action Buttons (Responsive on all screen widths) ────
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final isCompact = constraints.maxWidth < 360;
-
-                final closeBtn = TextButton(
-                  style: TextButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    backgroundColor: Colors.white24,
-                    padding: const EdgeInsets.symmetric(vertical: 11),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Close', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                );
-
-                final shareBtn = OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    side: const BorderSide(color: Colors.white70),
-                    padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 8),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  icon: const Icon(Icons.share_outlined, size: 15),
-                  label: const Text('Share Link', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                  onPressed: _shareVerificationLink,
-                );
-
-                final downloadBtn = ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFD4AF37),
-                    foregroundColor: Colors.black87,
-                    padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 10),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  icon: _isGeneratingPdf
-                      ? const SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black87),
-                        )
-                      : const Icon(Icons.download_rounded, size: 16),
-                  label: Text(
-                    _isGeneratingPdf ? 'Generating...' : 'Download PDF',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  onPressed: _isGeneratingPdf ? null : _downloadAndSharePdf,
-                );
-
-                if (isCompact) {
-                  return Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(child: closeBtn),
-                          const SizedBox(width: 8),
-                          Expanded(child: shareBtn),
-                        ],
+            // ── Action Buttons ────
+            Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: 44,
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        backgroundColor: const Color(0xFF1E2822),
+                        side: const BorderSide(color: Colors.white24, width: 1),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
                       ),
-                      const SizedBox(height: 8),
-                      SizedBox(width: double.infinity, child: downloadBtn),
-                    ],
-                  );
-                }
-
-                return Row(
-                  children: [
-                    Expanded(flex: 3, child: closeBtn),
-                    const SizedBox(width: 8),
-                    Expanded(flex: 4, child: shareBtn),
-                    const SizedBox(width: 8),
-                    Expanded(flex: 5, child: downloadBtn),
-                  ],
-                );
-              },
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text(
+                        'Close',
+                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: SizedBox(
+                    height: 44,
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        backgroundColor: const Color(0xFF1E2822),
+                        side: const BorderSide(color: AppColors.primaryGreen, width: 1.2),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                      ),
+                      icon: const Icon(Icons.share_outlined, size: 15, color: AppColors.primaryGreen),
+                      label: const FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          'Share Link',
+                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+                        ),
+                      ),
+                      onPressed: _shareVerificationLink,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: SizedBox(
+                    height: 44,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFD4AF37),
+                        foregroundColor: const Color(0xFF1A1A1A),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                      ),
+                      icon: _isGeneratingPdf
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black87),
+                            )
+                          : const Icon(Icons.download_rounded, size: 16),
+                      label: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          _isGeneratingPdf ? 'Saving...' : 'Download PDF',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                        ),
+                      ),
+                      onPressed: _isGeneratingPdf ? null : _downloadAndSharePdf,
+                    ),
+                  ),
+                ),
+              ],
             ),
 
             // In-dialog download feedback toast / banner (rendered UNDER action buttons)
@@ -869,9 +869,22 @@ class _CertificateViewerDialogState extends State<CertificateViewerDialog> {
                           foregroundColor: Colors.amberAccent,
                         ),
                         onPressed: () {
+                          // On iOS AirPrint preview, if orientation defaults to Portrait A4,
+                          // a full-width landscape A4 (841.89pt) page gets scaled/truncated unless
+                          // format width is matched to Portrait width (595.28pt = 70.7% scale)
+                          // or on Android / desktop where landscape printing works natively.
+                          final pageFormat = (!kIsWeb && Platform.isIOS)
+                              ? const PdfPageFormat(
+                                  595.28,
+                                  420.94, // 595.28 * (595.28 / 841.89) = 70.7% scaling
+                                  marginAll: 0,
+                                )
+                              : PdfPageFormat.a4.landscape;
+
                           Printing.layoutPdf(
-                            format: PdfPageFormat.a4.landscape,
+                            format: pageFormat,
                             dynamicLayout: false,
+                            forceCustomPrintPaper: true,
                             onLayout: (format) async => _lastGeneratedPdfBytes!,
                             name: _lastGeneratedFileName ?? 'Certificate.pdf',
                           );

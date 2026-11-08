@@ -1,9 +1,9 @@
+import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 
 import '../../../core/localization/app_strings.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/growth_ring_progress.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../data/models/api_models/course_models.dart';
 import '../providers/instructor_home_provider.dart';
@@ -671,6 +671,8 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
           ),
         );
         ref.invalidate(instructorCoursesProvider);
+        ref.invalidate(instructorCourseDetailProvider(course.id));
+        unawaited(ref.refresh(instructorCoursesProvider((search: _searchQuery, ordering: _ordering)).future));
         ref.invalidate(studentCatalogProvider);
         ref.invalidate(featuredCoursesProvider);
         ref.invalidate(exploreCoursesProvider);
@@ -721,6 +723,8 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
           ),
         );
         ref.invalidate(instructorCoursesProvider);
+        ref.invalidate(instructorCourseDetailProvider(course.id));
+        unawaited(ref.refresh(instructorCoursesProvider((search: _searchQuery, ordering: _ordering)).future));
         ref.invalidate(studentCatalogProvider);
         ref.invalidate(featuredCoursesProvider);
         ref.invalidate(exploreCoursesProvider);
@@ -766,6 +770,11 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
               Expanded(
                 child: TextField(
                   controller: _searchController,
+                  onChanged: (value) {
+                    setState(() {
+                      _searchQuery = value;
+                    });
+                  },
                   onSubmitted: (value) {
                     setState(() {
                       _searchQuery = value;
@@ -773,7 +782,9 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                   },
                   style: Theme.of(context).textTheme.bodyMedium,
                   decoration: InputDecoration(
-                    hintText: tr(ref, 'Search courses...'),
+                    hintText: _selectedDashboardTab == 1
+                        ? tr(ref, 'Search e-books...')
+                        : tr(ref, 'Search courses...'),
                     hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.inkSoft),
                     filled: false,
                     isDense: true,
@@ -1202,22 +1213,50 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
               if (_selectedDashboardTab == 0)
                 ref.watch(instructorCoursesProvider((search: _searchQuery, ordering: _ordering))).when(
                   data: (courses) {
+                    final isSearching = _searchQuery.trim().isNotEmpty;
                     if (courses.isEmpty) {
                       return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 20),
+                        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
                         child: Center(
                           child: Column(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.video_library_outlined, size: 48, color: Colors.grey.shade400),
-                              const SizedBox(height: 10),
-                              Text(tr(ref, 'No courses created yet.')),
-                              const SizedBox(height: 10),
-                              FilledButton.icon(
-                                style: FilledButton.styleFrom(backgroundColor: AppColors.accentOrange),
-                                onPressed: () => context.push(RouteNames.uploadCourse),
-                                icon: const Icon(Icons.add, size: 18),
-                                label: Text(tr(ref, 'Create First Course')),
+                              Icon(
+                                isSearching ? Icons.search_off_rounded : Icons.video_library_outlined,
+                                size: 48,
+                                color: Colors.grey.shade400,
                               ),
+                              const SizedBox(height: 12),
+                              Text(
+                                isSearching
+                                    ? '${tr(ref, 'No courses found matching')} "$_searchQuery"'
+                                    : tr(ref, 'No courses created yet.'),
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              if (isSearching)
+                                TextButton.icon(
+                                  onPressed: () {
+                                    setState(() {
+                                      _searchController.clear();
+                                      _searchQuery = '';
+                                    });
+                                  },
+                                  icon: const Icon(Icons.clear_rounded, size: 16),
+                                  label: Text(tr(ref, 'Clear Search')),
+                                )
+                              else
+                                FilledButton.icon(
+                                  style: FilledButton.styleFrom(backgroundColor: AppColors.accentOrange),
+                                  onPressed: () => context.push(RouteNames.uploadCourse),
+                                  icon: const Icon(Icons.add, size: 18),
+                                  label: Text(tr(ref, 'Create First Course')),
+                                ),
                             ],
                           ),
                         ),
@@ -1281,29 +1320,66 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
               else
                 ref.watch(instructorEbooksProvider).when(
                   data: (ebooks) {
-                    if (ebooks.isEmpty) {
+                    final isSearching = _searchQuery.trim().isNotEmpty;
+                    final filteredEbooks = isSearching
+                        ? ebooks.where((e) {
+                            final title = (e.title ?? e['title'] ?? '').toString().toLowerCase();
+                            final desc = (e.description ?? e['description'] ?? '').toString().toLowerCase();
+                            final q = _searchQuery.trim().toLowerCase();
+                            return title.contains(q) || desc.contains(q);
+                          }).toList()
+                        : ebooks;
+
+                    if (filteredEbooks.isEmpty) {
                       return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 20),
+                        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
                         child: Center(
                           child: Column(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.menu_book_rounded, size: 48, color: Colors.grey.shade400),
-                              const SizedBox(height: 10),
-                              Text(tr(ref, 'No e-books uploaded yet.')),
-                              const SizedBox(height: 10),
-                              FilledButton.icon(
-                                style: FilledButton.styleFrom(backgroundColor: const Color(0xFF9333EA)),
-                                onPressed: () => context.push(RouteNames.uploadEbook),
-                                icon: const Icon(Icons.add, size: 18),
-                                label: Text(tr(ref, 'Create First E-Book')),
+                              Icon(
+                                isSearching ? Icons.search_off_rounded : Icons.menu_book_rounded,
+                                size: 48,
+                                color: Colors.grey.shade400,
                               ),
+                              const SizedBox(height: 12),
+                              Text(
+                                isSearching
+                                    ? '${tr(ref, 'No e-books found matching')} "$_searchQuery"'
+                                    : tr(ref, 'No e-books uploaded yet.'),
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              if (isSearching)
+                                TextButton.icon(
+                                  onPressed: () {
+                                    setState(() {
+                                      _searchController.clear();
+                                      _searchQuery = '';
+                                    });
+                                  },
+                                  icon: const Icon(Icons.clear_rounded, size: 16),
+                                  label: Text(tr(ref, 'Clear Search')),
+                                )
+                              else
+                                FilledButton.icon(
+                                  style: FilledButton.styleFrom(backgroundColor: const Color(0xFF9333EA)),
+                                  onPressed: () => context.push(RouteNames.uploadEbook),
+                                  icon: const Icon(Icons.add, size: 18),
+                                  label: Text(tr(ref, 'Create First E-Book')),
+                                ),
                             ],
                           ),
                         ),
                       );
                     }
                     return Column(
-                      children: ebooks.take(5).map((ebook) {
+                      children: filteredEbooks.take(5).map((ebook) {
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 12),
                           child: _AgriLearnEbookCard(
@@ -1625,7 +1701,11 @@ class AgriLearnCourseCard extends ConsumerWidget {
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         Text(
-                          (course.price == null || course.price == '0' || course.price == '0.00' || course.price == '0.0')
+                        Text(
+                          (course.price == null ||
+                                  course.price == '0' ||
+                                  course.price == '0.00' ||
+                                  course.price == '0.0')
                               ? 'Free'
                               : '₹${course.price}',
                           style: const TextStyle(

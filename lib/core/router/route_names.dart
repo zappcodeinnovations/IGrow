@@ -25,6 +25,7 @@ class RouteNames {
 
   // Farmer sub-routes
   static const courseDetails = '/farmer/course/:id';
+  static const publicInstructorProfile = '/farmer/instructor/:id';
   static const cart = '/farmer/cart';
   static const checkout = '/farmer/checkout';
   static const paymentSuccess = '/farmer/payment-success';

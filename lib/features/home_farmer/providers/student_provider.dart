@@ -168,6 +168,94 @@ final studentEbooksProvider = FutureProvider.autoDispose.family<List<EBook>, Ebo
   return list;
 });
 
+/// Provider for fetching ONLY e-books that the student has purchased or enrolled in.
+final studentPurchasedEbooksProvider = FutureProvider.autoDispose<List<EBook>>((ref) async {
+  final repo = ref.watch(studentRepositoryProvider);
+  final purchasedFromEndpoint = await repo.getPurchasedEbooks();
+
+  // If endpoint returned purchased items, use them
+  if (purchasedFromEndpoint.isNotEmpty) {
+    return purchasedFromEndpoint;
+  }
+
+  // Cross-reference with completed orders or catalog items marked as isPurchased
+  final catalog = await repo.getEbooksCatalog();
+  final list = List<EBook>.from(catalog.results);
+
+  // Extract purchased ebook IDs from completed orders if available
+  final purchasedEbookIds = <String>{};
+  final purchasedTitles = <String>{};
+  try {
+    final orders = await ref.watch(ordersProvider.future);
+    for (final order in orders) {
+      final status = order.status?.toUpperCase();
+      if (status == 'SUCCESS' || status == 'COMPLETED' || status == 'PAID' || status == null) {
+        for (final item in order.items) {
+          final ebookId = item.ebook ?? item.ebookId;
+          if (ebookId != null && ebookId.isNotEmpty) {
+            purchasedEbookIds.add(ebookId.toLowerCase());
+          }
+          final ebookSlug = item.ebookSlug;
+          if (ebookSlug != null && ebookSlug.isNotEmpty) {
+            purchasedEbookIds.add(ebookSlug.toLowerCase());
+          }
+          final ebookTitle = item.ebookTitle ?? item.courseTitle;
+          if (ebookTitle != null && ebookTitle.isNotEmpty) {
+            purchasedTitles.add(ebookTitle.trim().toLowerCase());
+          }
+        }
+      }
+    }
+  } catch (_) {}
+
+  // Filter only purchased e-books (either flagged by backend or verified in completed orders)
+  return list.where((ebook) {
+    final isMarkedPurchased = ebook.isPurchased == true;
+    final inOrdersById = ebook.id != null && purchasedEbookIds.contains(ebook.id!.toLowerCase());
+    final inOrdersBySlug = ebook.slug != null && purchasedEbookIds.contains(ebook.slug!.toLowerCase());
+    final inOrdersByTitle = purchasedTitles.contains(ebook.title.trim().toLowerCase());
+    return isMarkedPurchased || inOrdersById || inOrdersBySlug || inOrdersByTitle;
+  }).toList();
+});
+
+/// Provider for checking if a specific ebook has been purchased by the student.
+final isEbookPurchasedProvider = Provider.autoDispose.family<bool, String>((ref, ebookIdOrSlug) {
+  final target = ebookIdOrSlug.trim();
+  if (target.isEmpty) return false;
+  final targetLower = target.toLowerCase();
+
+  // Check purchased ebooks list first
+  final purchasedAsync = ref.watch(studentPurchasedEbooksProvider);
+  final isPurchasedFromList = purchasedAsync.maybeWhen(
+    data: (ebooks) => ebooks.any((eb) =>
+        (eb.id != null && eb.id!.toLowerCase() == targetLower) ||
+        (eb.slug != null && eb.slug!.toLowerCase() == targetLower) ||
+        eb.title.trim().toLowerCase() == targetLower),
+    orElse: () => false,
+  );
+  if (isPurchasedFromList) return true;
+
+  // Cross check completed orders
+  final ordersAsync = ref.watch(ordersProvider);
+  return ordersAsync.maybeWhen(
+    data: (orders) {
+      return orders.any((order) {
+        final status = order.status?.toUpperCase();
+        if (status != 'FAILED' && status != 'CANCELLED' && status != 'REFUNDED') {
+          return order.items.any((item) {
+            final eId = (item.ebook ?? item.ebookId)?.toLowerCase();
+            final eSlug = item.ebookSlug?.toLowerCase();
+            final eTitle = (item.ebookTitle ?? item.courseTitle)?.trim().toLowerCase();
+            return eId == targetLower || eSlug == targetLower || eTitle == targetLower;
+          });
+        }
+        return false;
+      });
+    },
+    orElse: () => false,
+  );
+});
+
 /// Provider for fetching a single ebook detail by slug or ID.
 final ebookDetailProvider = FutureProvider.autoDispose.family<EBook, String>((ref, slugOrId) async {
   final repo = ref.watch(studentRepositoryProvider);
@@ -466,5 +554,11 @@ final coursePercentageProvider = FutureProvider.autoDispose.family<double, Strin
 final topInstructorsProvider = FutureProvider.autoDispose<List<ApiTopInstructor>>((ref) async {
   final repo = ref.watch(studentRepositoryProvider);
   return await repo.getTopInstructors();
+});
+
+/// Provider for fetching a single public instructor profile with their courses.
+final publicInstructorDetailProvider = FutureProvider.autoDispose.family<ApiPublicInstructorDetail?, String>((ref, instructorId) async {
+  final repo = ref.watch(studentRepositoryProvider);
+  return await repo.getInstructorDetail(instructorId);
 });
 

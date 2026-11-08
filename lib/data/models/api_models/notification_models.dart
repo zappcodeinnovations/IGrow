@@ -67,9 +67,9 @@ class ApiNotification {
         notificationType: json['notification_type'] as String? ?? '',
         title: json['title'] as String? ?? '',
         message: json['message'] as String? ?? '',
-        course: json['course'] as String?,
+        course: (json['course'] ?? json['course_id'] ?? json['course_slug'])?.toString(),
         courseTitle: json['course_title'] as String?,
-        ebookId: json['ebook_id'] as String?,
+        ebookId: (json['ebook'] ?? json['ebook_id'] ?? json['ebook_slug'])?.toString(),
         ebookTitle: json['ebook_title'] as String?,
         isRead: json['is_read'] as bool? ?? false,
         createdAt: json['created_at'] != null

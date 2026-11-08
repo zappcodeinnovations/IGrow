@@ -360,8 +360,9 @@ class _RichPostCardState extends ConsumerState<RichPostCard> with SingleTickerPr
         children: [
           // ─── Header: Author Info, Verified Tag, Badge & Menu ───────
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 12, 10),
+            padding: const EdgeInsets.fromLTRB(16, 14, 8, 10),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 // Avatar with Glowing Ring
                 Container(
@@ -389,6 +390,7 @@ class _RichPostCardState extends ConsumerState<RichPostCard> with SingleTickerPr
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Row(
                         children: [
@@ -421,22 +423,22 @@ class _RichPostCardState extends ConsumerState<RichPostCard> with SingleTickerPr
                     ],
                   ),
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: 6),
                 // Post Type Badge
-                Flexible(
-                  fit: FlexFit.loose,
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 130),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3.5),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: badgeBg,
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: badgeColor.withValues(alpha: isDark ? 0.4 : 0.25)),
+                      border: Border.all(color: badgeColor.withValues(alpha: isDark ? 0.45 : 0.3)),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(badgeIcon, size: 11, color: badgeColor),
-                        const SizedBox(width: 3),
+                        Icon(badgeIcon, size: 12, color: badgeColor),
+                        const SizedBox(width: 4),
                         Flexible(
                           child: Text(
                             badgeLabel,
@@ -445,7 +447,7 @@ class _RichPostCardState extends ConsumerState<RichPostCard> with SingleTickerPr
                             style: TextStyle(
                               color: badgeColor,
                               fontWeight: FontWeight.bold,
-                              fontSize: 10,
+                              fontSize: 11,
                             ),
                           ),
                         ),
@@ -454,50 +456,56 @@ class _RichPostCardState extends ConsumerState<RichPostCard> with SingleTickerPr
                   ),
                 ),
                 // More 3-Dots Menu (Apple Guideline 1.2: Report & Block)
-                PopupMenuButton<String>(
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  icon: Icon(Icons.more_vert_rounded, size: 19, color: isDark ? Colors.white70 : AppColors.inkSoft),
-                  color: isDark ? const Color(0xFF1E2B22) : Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  onSelected: (value) {
-                    if (value == 'delete') _deletePost();
-                    if (value == 'report') _reportPost();
-                    if (value == 'block') _blockUser();
-                  },
-                  itemBuilder: (_) => [
-                    if (isAuthorOrInstructor)
-                      const PopupMenuItem(
-                        value: 'delete',
-                        child: Row(
-                          children: [
-                            Icon(Icons.delete_outline_rounded, color: AppColors.error, size: 18),
-                            SizedBox(width: 8),
-                            Text('Delete Post', style: TextStyle(color: AppColors.error)),
-                          ],
+                SizedBox(
+                  width: 24,
+                  height: 28,
+                  child: Center(
+                    child: PopupMenuButton<String>(
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      icon: Icon(Icons.more_vert_rounded, size: 20, color: isDark ? Colors.white70 : AppColors.inkSoft),
+                      color: isDark ? const Color(0xFF1E2B22) : Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      onSelected: (value) {
+                        if (value == 'delete') _deletePost();
+                        if (value == 'report') _reportPost();
+                        if (value == 'block') _blockUser();
+                      },
+                      itemBuilder: (_) => [
+                        if (isAuthorOrInstructor)
+                          const PopupMenuItem(
+                            value: 'delete',
+                            child: Row(
+                              children: [
+                                Icon(Icons.delete_outline_rounded, color: AppColors.error, size: 18),
+                                SizedBox(width: 8),
+                                Text('Delete Post', style: TextStyle(color: AppColors.error)),
+                              ],
+                            ),
+                          ),
+                        const PopupMenuItem(
+                          value: 'report',
+                          child: Row(
+                            children: [
+                              Icon(Icons.flag_outlined, color: Colors.orange, size: 18),
+                              SizedBox(width: 8),
+                              Text('Report Post'),
+                            ],
+                          ),
                         ),
-                      ),
-                    const PopupMenuItem(
-                      value: 'report',
-                      child: Row(
-                        children: [
-                          Icon(Icons.flag_outlined, color: Colors.orange, size: 18),
-                          SizedBox(width: 8),
-                          Text('Report Post'),
-                        ],
-                      ),
+                        const PopupMenuItem(
+                          value: 'block',
+                          child: Row(
+                            children: [
+                              Icon(Icons.block_rounded, color: Colors.redAccent, size: 18),
+                              SizedBox(width: 8),
+                              Text('Block User', style: TextStyle(color: Colors.redAccent)),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                    const PopupMenuItem(
-                      value: 'block',
-                      child: Row(
-                        children: [
-                          Icon(Icons.block_rounded, color: Colors.redAccent, size: 18),
-                          SizedBox(width: 8),
-                          Text('Block User', style: TextStyle(color: Colors.redAccent)),
-                        ],
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ],
             ),

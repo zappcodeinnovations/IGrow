@@ -7,7 +7,7 @@ Future<TimeOfDay?> showAppTimePicker({
   required BuildContext context,
   TimeOfDay? initialTime,
 }) async {
-  final now = initialTime ?? const TimeOfDay(hour: 10, minute: 0);
+  final now = initialTime ?? TimeOfDay.now();
   final isDark = Theme.of(context).brightness == Brightness.dark;
 
   return await showModalBottomSheet<TimeOfDay>(

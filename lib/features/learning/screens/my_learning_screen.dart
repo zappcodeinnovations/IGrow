@@ -46,7 +46,7 @@ class _MyLearningScreenState extends ConsumerState<MyLearningScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final enrollmentsAsync = ref.watch(studentEnrollmentsProvider);
-    final ebooksAsync = ref.watch(studentEbooksProvider(const EbooksQuery()));
+    final ebooksAsync = ref.watch(studentPurchasedEbooksProvider);
     final cartState = ref.watch(cartProvider);
     final cartItemCount = cartState.maybeWhen(
       data: (cart) => cart.items.length,
@@ -352,6 +352,7 @@ class _MyLearningScreenState extends ConsumerState<MyLearningScreen> {
                 color: AppColors.primaryGreen,
                 onRefresh: () async {
                   ref.invalidate(studentEnrollmentsProvider);
+                  ref.invalidate(studentPurchasedEbooksProvider);
                   ref.invalidate(studentEbooksProvider);
                   ref.invalidate(ordersProvider);
                   await ref.read(studentEnrollmentsProvider.future).catchError((_) => <Enrollment>[]);
@@ -812,7 +813,7 @@ class _MyLearningScreenState extends ConsumerState<MyLearningScreen> {
               ElevatedButton.icon(
                 icon: const Icon(Icons.refresh_rounded, size: 18),
                 label: Text(tr(ref, 'Try Again')),
-                onPressed: () => ref.invalidate(studentEbooksProvider),
+                onPressed: () => ref.invalidate(studentPurchasedEbooksProvider),
               ),
             ],
           ),
