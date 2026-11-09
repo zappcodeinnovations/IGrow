@@ -1701,7 +1701,6 @@ class AgriLearnCourseCard extends ConsumerWidget {
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         Text(
-                        Text(
                           (course.price == null ||
                                   course.price == '0' ||
                                   course.price == '0.00' ||
