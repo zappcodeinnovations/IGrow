@@ -49,8 +49,11 @@ enum CourseCategory {
 
   static CourseCategory? fromValue(String? value) {
     if (value == null) return null;
+    final normalized = value.toLowerCase().replaceAll('-', '_').replaceAll(' ', '_').trim();
     return CourseCategory.values.cast<CourseCategory?>().firstWhere(
-          (e) => e!.value == value,
+          (e) => e!.value == normalized ||
+                 e.display.toLowerCase() == value.toLowerCase().trim() ||
+                 e.name.toLowerCase() == normalized,
           orElse: () => null,
         );
   }
@@ -187,6 +190,25 @@ class ApiCourseList {
   CourseLevel? get levelEnum => CourseLevel.fromValue(level);
   CourseStatus? get statusEnum => CourseStatus.fromValue(status);
 
+  String? get resolvedCategoryName {
+    if (categoryDisplay != null && categoryDisplay!.trim().isNotEmpty) {
+      return categoryDisplay!.trim();
+    }
+    final enumMatch = CourseCategory.fromValue(category);
+    if (enumMatch != null) {
+      return enumMatch.display;
+    }
+    if (category != null && category!.trim().isNotEmpty && !RegExp(r'^[0-9a-fA-F-]{20,}$').hasMatch(category!.trim())) {
+      return category!
+          .replaceAll('_', ' ')
+          .replaceAll('-', ' ')
+          .split(' ')
+          .map((w) => w.isNotEmpty ? '${w[0].toUpperCase()}${w.substring(1)}' : '')
+          .join(' ');
+    }
+    return null;
+  }
+
   factory ApiCourseList.fromJson(Map<String, dynamic> json) {
     final rawSlug = json['slug']?.toString().trim();
     final id = json['id']?.toString() ?? '';
@@ -198,8 +220,16 @@ class ApiCourseList {
         title: json['title']?.toString() ?? '',
         shortDescription: json['short_description']?.toString(),
         thumbnail: json['thumbnail']?.toString(),
-        category: json['category'] is Map ? (json['category']['id']?.toString() ?? json['category']['slug']?.toString()) : json['category']?.toString(),
-        categoryDisplay: json['category_display']?.toString(),
+        category: json['category'] is Map
+            ? (json['category']['slug']?.toString() ??
+                json['category']['id']?.toString())
+            : json['category']?.toString(),
+        categoryDisplay: json['category_display']?.toString() ??
+            json['category_name']?.toString() ??
+            (json['category'] is Map
+                ? (json['category']['name']?.toString() ??
+                    json['category']['title']?.toString())
+                : null),
         level: json['level']?.toString(),
         levelDisplay: json['level_display']?.toString(),
         price: json['price']?.toString(),
@@ -446,6 +476,25 @@ class ApiCourseDetail {
   final DateTime? publishedAt;
   final dynamic isEnrolled;
 
+  String? get resolvedCategoryName {
+    if (categoryDisplay != null && categoryDisplay!.trim().isNotEmpty) {
+      return categoryDisplay!.trim();
+    }
+    final enumMatch = CourseCategory.fromValue(category);
+    if (enumMatch != null) {
+      return enumMatch.display;
+    }
+    if (category != null && category!.trim().isNotEmpty && !RegExp(r'^[0-9a-fA-F-]{20,}$').hasMatch(category!.trim())) {
+      return category!
+          .replaceAll('_', ' ')
+          .replaceAll('-', ' ')
+          .split(' ')
+          .map((w) => w.isNotEmpty ? '${w[0].toUpperCase()}${w.substring(1)}' : '')
+          .join(' ');
+    }
+    return null;
+  }
+
   factory ApiCourseDetail.fromJson(Map<String, dynamic> json) {
     try {
       String? parseStringOrList(dynamic val) {
@@ -480,11 +529,17 @@ class ApiCourseDetail {
               json['preview_time'],
         ),
         category: json['category'] is Map
-            ? (json['category']['id']?.toString() ??
-                json['category']['slug']?.toString() ??
+            ? (json['category']['slug']?.toString() ??
+                json['category']['id']?.toString() ??
                 json['category']['name']?.toString())
             : json['category']?.toString(),
-        categoryDisplay: json['category_display']?.toString(),
+        categoryDisplay: json['category_display']?.toString() ??
+            json['category_name']?.toString() ??
+            (json['category'] is Map
+                ? (json['category']['name']?.toString() ??
+                    json['category']['title']?.toString() ??
+                    json['category']['slug']?.toString())
+                : null),
         level: json['level']?.toString(),
         levelDisplay: json['level_display']?.toString(),
         price: json['price']?.toString(),

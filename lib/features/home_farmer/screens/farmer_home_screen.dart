@@ -8,6 +8,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/responsive_layout.dart';
 import '../../../core/widgets/shimmer_placeholders.dart';
 import '../../../data/models/api_models/instructor_model.dart';
+import '../../../data/models/api_models/course_models.dart' show CourseCategory;
 import '../../auth/providers/auth_provider.dart';
 import '../../notifications/providers/notification_provider.dart';
 import '../../../core/services/quiz_service.dart';
@@ -1285,9 +1286,11 @@ class _CourseCard extends StatelessWidget {
         course.price == '0.00' ||
         course.price == '0.0';
     final priceText = isFree ? 'FREE' : '₹${course.price}';
-    final badgeLabel = isFree
-        ? 'Free course'
-        : (index % 2 == 0 ? 'Bestseller' : 'Popular');
+    final categoryName = course.category?.name ??
+        CourseCategory.fromValue(course.category?.slug)?.display;
+    final badgeLabel = (categoryName != null && categoryName.trim().isNotEmpty)
+        ? categoryName.trim()
+        : (isFree ? 'Free course' : (index % 2 == 0 ? 'Bestseller' : 'Popular'));
 
     return Material(
       color: Colors.transparent,
@@ -1361,13 +1364,13 @@ class _CourseCard extends StatelessWidget {
                             vertical: 5,
                           ),
                           decoration: BoxDecoration(
-                            color: isFree
-                                ? const Color(0xFFFEF3C7)
-                                : const Color(0xFFFDE68A),
+                            color: isDark
+                                ? const Color(0xFF1E3A2F)
+                                : Colors.white.withValues(alpha: 0.95),
                             borderRadius: BorderRadius.circular(12),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.08),
+                                color: Colors.black.withValues(alpha: 0.12),
                                 blurRadius: 4,
                                 offset: const Offset(0, 1),
                               ),
@@ -1375,8 +1378,10 @@ class _CourseCard extends StatelessWidget {
                           ),
                           child: Text(
                             badgeLabel,
-                            style: const TextStyle(
-                              color: Color(0xFF92400E),
+                            style: TextStyle(
+                              color: isDark
+                                  ? const Color(0xFF86EFAC)
+                                  : const Color(0xFF132A13),
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
                             ),

@@ -1171,8 +1171,10 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
   // ── Hero Header ─────────────────────────────────────────────────────────────
 
   Widget _buildHeroHeader(ApiCourseDetail course, int totalLectures) {
-    final categoryText =
-        course.categoryDisplay ?? course.category ?? 'AGRIBUSINESS';
+    final categoryText = course.categoryDisplay ??
+        course.resolvedCategoryName ??
+        CourseCategory.fromValue(course.category)?.display ??
+        'AGRIBUSINESS';
     final instructor = course.instructorName ?? 'Instructor';
 
     return Container(
@@ -1393,6 +1395,10 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
     String? previewBunnyId,
     BorderRadius? borderRadius,
   }) {
+    final categoryText = course.categoryDisplay ??
+        course.resolvedCategoryName ??
+        CourseCategory.fromValue(course.category)?.display;
+
     return ClipRRect(
       borderRadius: borderRadius ?? BorderRadius.zero,
       child: AspectRatio(
@@ -1439,6 +1445,50 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                       ),
                     ),
                   ),
+                  // Top-Left Category Badge Overlay (Matches Web Catalog View)
+                  if (categoryText != null && categoryText.trim().isNotEmpty && !_isPlayingVideo)
+                    Positioned(
+                      top: 14,
+                      left: 14,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.65),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.35),
+                            width: 1,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.3),
+                              blurRadius: 4,
+                              offset: const Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.eco_rounded,
+                              size: 13,
+                              color: Color(0xFF86EFAC),
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              categoryText.trim(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   // Loading indicator or "Preview this course" Play Button Overlay
                   if (_isLoadingVideo)
                     Container(
@@ -1567,6 +1617,11 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
         ? (course.language![0].toUpperCase() + course.language!.substring(1).toLowerCase())
         : 'हिंदी';
 
+    // Category display
+    final categoryText = course.categoryDisplay ??
+        course.resolvedCategoryName ??
+        CourseCategory.fromValue(course.category)?.display;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1584,22 +1639,57 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // "BESTSELLER" Tag Pill
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFEF3C7),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: const Text(
-                  'BESTSELLER',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFFB45309),
-                    letterSpacing: 0.5,
+              // Badges Row: Category Badge & "BESTSELLER" Tag Pill
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  // Category Badge (Matches Web Catalog: "Organic Farming", "Soil Science", etc.)
+                  if (categoryText != null && categoryText.trim().isNotEmpty)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? AppColors.primaryGreen.withValues(alpha: 0.2)
+                            : const Color(0xFFE8F5E9),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: isDark
+                              ? AppColors.primaryGreen.withValues(alpha: 0.5)
+                              : const Color(0xFFA5D6A7),
+                          width: 1,
+                        ),
+                      ),
+                      child: Text(
+                        categoryText.trim(),
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: isDark ? const Color(0xFF86EFAC) : const Color(0xFF1B5E20),
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                    ),
+
+                  // "BESTSELLER" Tag Pill
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFEF3C7),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Text(
+                      'BESTSELLER',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFFB45309),
+                        letterSpacing: 0.5,
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
               const SizedBox(height: 12),
 
