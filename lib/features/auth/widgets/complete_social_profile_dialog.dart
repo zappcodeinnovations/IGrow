@@ -617,243 +617,292 @@ class _CompleteSocialProfileDialogState
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (sheetContext) {
-        String query = '';
-        final searchController = TextEditingController();
+        return _LocationPickerBottomSheet(
+          isDark: isDark,
+          title: title,
+          icon: icon,
+          items: items,
+          selectedValue: selectedValue,
+          onSelected: onSelected,
+        );
+      },
+    );
+  }
+}
 
-        return StatefulBuilder(
-          builder: (modalCtx, setModalState) {
-            final filtered = items.where((it) {
-              return it.toLowerCase().contains(query.toLowerCase().trim());
-            }).toList();
+class _LocationPickerBottomSheet extends StatefulWidget {
+  const _LocationPickerBottomSheet({
+    required this.isDark,
+    required this.title,
+    required this.icon,
+    required this.items,
+    required this.selectedValue,
+    required this.onSelected,
+  });
 
-            return Container(
-              constraints: BoxConstraints(
-                maxHeight: MediaQuery.of(modalCtx).size.height * 0.75,
+  final bool isDark;
+  final String title;
+  final IconData icon;
+  final List<String> items;
+  final String? selectedValue;
+  final ValueChanged<String> onSelected;
+
+  @override
+  State<_LocationPickerBottomSheet> createState() => _LocationPickerBottomSheetState();
+}
+
+class _LocationPickerBottomSheetState extends State<_LocationPickerBottomSheet> {
+  late final TextEditingController _searchController;
+  String _query = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final filtered = widget.items.where((it) {
+      return it.toLowerCase().contains(_query.toLowerCase().trim());
+    }).toList();
+
+    return Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.78,
+      ),
+      decoration: BoxDecoration(
+        color: widget.isDark ? const Color(0xFF1E2822) : Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: widget.isDark ? 0.5 : 0.12),
+            blurRadius: 24,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+      ),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Pull Handle Indicator
+            Center(
+              child: Container(
+                margin: const EdgeInsets.only(top: 12, bottom: 8),
+                width: 44,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: widget.isDark ? Colors.white24 : Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(3),
+                ),
               ),
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF1E2822) : Colors.white,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: isDark ? 0.5 : 0.12),
-                    blurRadius: 24,
-                    offset: const Offset(0, -4),
+            ),
+
+            // Sheet Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 12, 10),
+              child: Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: widget.isDark ? AppColors.organicBadgeDark : AppColors.organicBadgeLight,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      widget.icon,
+                      size: 18,
+                      color: widget.isDark ? AppColors.organicIconDark : AppColors.organicIconLight,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      widget.title,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                        color: widget.isDark ? Colors.white : AppColors.inkDark,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(
+                      Icons.close_rounded,
+                      size: 22,
+                      color: widget.isDark ? Colors.white70 : AppColors.inkSoft,
+                    ),
+                    onPressed: () => Navigator.pop(context),
                   ),
                 ],
               ),
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(modalCtx).viewInsets.bottom + 16,
-              ),
-              child: SafeArea(
-                top: false,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Pull Handle Indicator
-                    Center(
-                      child: Container(
-                        margin: const EdgeInsets.only(top: 12, bottom: 8),
-                        width: 44,
-                        height: 5,
-                        decoration: BoxDecoration(
-                          color: isDark ? Colors.white24 : Colors.grey.shade300,
-                          borderRadius: BorderRadius.circular(3),
-                        ),
-                      ),
-                    ),
+            ),
 
-                    // Sheet Header
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 8, 12, 12),
-                      child: Row(
+            // Single Clean Search Input Field (No nested cards/boxes)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
+              child: TextField(
+                controller: _searchController,
+                autofocus: false,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w500,
+                  color: widget.isDark ? Colors.white : AppColors.inkDark,
+                ),
+                decoration: InputDecoration(
+                  hintText: 'Search...',
+                  hintStyle: GoogleFonts.plusJakartaSans(
+                    fontSize: 14,
+                    color: widget.isDark ? Colors.white38 : AppColors.inkSoft,
+                  ),
+                  prefixIcon: Icon(
+                    Icons.search_rounded,
+                    size: 20,
+                    color: widget.isDark ? Colors.grey.shade400 : AppColors.organicIconLight,
+                  ),
+                  suffixIcon: _query.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.close_rounded, size: 18),
+                          color: widget.isDark ? Colors.white60 : Colors.grey.shade600,
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() => _query = '');
+                          },
+                        )
+                      : null,
+                  filled: true,
+                  fillColor: widget.isDark ? Colors.white.withValues(alpha: 0.06) : const Color(0xFFF3F7F3),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(24),
+                    borderSide: BorderSide(
+                      color: widget.isDark ? AppColors.lineDark : const Color(0xFFE2EBE0),
+                      width: 1.2,
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(24),
+                    borderSide: BorderSide(
+                      color: widget.isDark ? AppColors.lineDark : const Color(0xFFE2EBE0),
+                      width: 1.2,
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(24),
+                    borderSide: const BorderSide(
+                      color: AppColors.primaryGreen,
+                      width: 1.6,
+                    ),
+                  ),
+                ),
+                onChanged: (val) {
+                  setState(() => _query = val);
+                },
+              ),
+            ),
+
+            const SizedBox(height: 10),
+            Divider(
+              height: 1,
+              thickness: 1,
+              color: widget.isDark ? AppColors.lineDark : const Color(0xFFF0F4F0),
+            ),
+
+            // Scrollable List of Options
+            Flexible(
+              child: filtered.isEmpty
+                  ? Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 36),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Container(
-                            width: 36,
-                            height: 36,
-                            decoration: BoxDecoration(
-                              color: isDark ? AppColors.organicBadgeDark : AppColors.organicBadgeLight,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              icon,
-                              size: 18,
-                              color: isDark ? AppColors.organicIconDark : AppColors.organicIconLight,
-                            ),
+                          Icon(
+                            Icons.location_off_outlined,
+                            size: 38,
+                            color: widget.isDark ? Colors.white24 : Colors.grey.shade400,
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              title,
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 17,
-                                fontWeight: FontWeight.bold,
-                                color: isDark ? Colors.white : AppColors.inkDark,
-                              ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'No matches found',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: widget.isDark ? Colors.white38 : AppColors.inkSoft,
                             ),
-                          ),
-                          IconButton(
-                            icon: Icon(
-                              Icons.close_rounded,
-                              size: 22,
-                              color: isDark ? Colors.white70 : AppColors.inkSoft,
-                            ),
-                            onPressed: () => Navigator.pop(modalCtx),
                           ),
                         ],
                       ),
-                    ),
+                    )
+                  : ListView.builder(
+                      shrinkWrap: true,
+                      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                      itemCount: filtered.length,
+                      itemBuilder: (itemCtx, index) {
+                        final item = filtered[index];
+                        final isSelected = item == widget.selectedValue;
 
-                    // Modern Pill Search Bar
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
-                      child: Container(
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: isDark ? Colors.white.withValues(alpha: 0.06) : const Color(0xFFF3F7F3),
-                          borderRadius: BorderRadius.circular(24),
-                          border: Border.all(
-                            color: isDark ? AppColors.lineDark : const Color(0xFFE2EBE0),
-                            width: 1.2,
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            const SizedBox(width: 14),
-                            Icon(
-                              Icons.search_rounded,
-                              size: 20,
-                              color: isDark ? Colors.grey.shade400 : AppColors.organicIconLight,
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: TextField(
-                                controller: searchController,
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 14,
-                                  color: isDark ? Colors.white : AppColors.inkDark,
-                                ),
-                                decoration: InputDecoration(
-                                  hintText: 'Search...',
-                                  hintStyle: GoogleFonts.plusJakartaSans(
-                                    fontSize: 14,
-                                    color: isDark ? Colors.white38 : AppColors.inkSoft,
-                                  ),
-                                  border: InputBorder.none,
-                                  isDense: true,
-                                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                                ),
-                                onChanged: (val) {
-                                  setModalState(() => query = val);
-                                },
+                        return Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () {
+                              Navigator.pop(context);
+                              widget.onSelected(item);
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 13,
                               ),
-                            ),
-                            if (query.isNotEmpty)
-                              IconButton(
-                                icon: const Icon(Icons.close_rounded, size: 18),
-                                color: isDark ? Colors.white60 : Colors.grey.shade600,
-                                onPressed: () {
-                                  searchController.clear();
-                                  setModalState(() => query = '');
-                                },
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? (widget.isDark
+                                        ? AppColors.primaryGreen.withValues(alpha: 0.15)
+                                        : const Color(0xFFE8F5E9))
+                                    : Colors.transparent,
                               ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 10),
-                    Divider(
-                      height: 1,
-                      thickness: 1,
-                      color: isDark ? AppColors.lineDark : const Color(0xFFF0F4F0),
-                    ),
-
-                    // Scrollable List of Options
-                    Flexible(
-                      child: filtered.isEmpty
-                          ? Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 36),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
+                              child: Row(
                                 children: [
-                                  Icon(
-                                    Icons.location_off_outlined,
-                                    size: 38,
-                                    color: isDark ? Colors.white24 : Colors.grey.shade400,
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    'No matches found',
-                                    style: GoogleFonts.plusJakartaSans(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w500,
-                                      color: isDark ? Colors.white38 : AppColors.inkSoft,
+                                  Expanded(
+                                    child: Text(
+                                      item,
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 14.5,
+                                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                                        color: isSelected
+                                            ? (widget.isDark ? const Color(0xFF4ADE80) : AppColors.primaryGreen)
+                                            : (widget.isDark ? Colors.white : AppColors.inkDark),
+                                      ),
                                     ),
                                   ),
+                                  if (isSelected)
+                                    Icon(
+                                      Icons.check_circle_rounded,
+                                      size: 19,
+                                      color: widget.isDark ? const Color(0xFF4ADE80) : AppColors.primaryGreen,
+                                    ),
                                 ],
                               ),
-                            )
-                          : ListView.builder(
-                              shrinkWrap: true,
-                              itemCount: filtered.length,
-                              itemBuilder: (itemCtx, index) {
-                                final item = filtered[index];
-                                final isSelected = item == selectedValue;
-
-                                return Material(
-                                  color: Colors.transparent,
-                                  child: InkWell(
-                                    onTap: () {
-                                      Navigator.pop(modalCtx);
-                                      onSelected(item);
-                                    },
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 20,
-                                        vertical: 13,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: isSelected
-                                            ? (isDark
-                                                ? AppColors.primaryGreen.withValues(alpha: 0.15)
-                                                : const Color(0xFFE8F5E9))
-                                            : Colors.transparent,
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Expanded(
-                                            child: Text(
-                                              item,
-                                              style: GoogleFonts.plusJakartaSans(
-                                                fontSize: 14.5,
-                                                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                                                color: isSelected
-                                                    ? (isDark ? const Color(0xFF4ADE80) : AppColors.primaryGreen)
-                                                    : (isDark ? Colors.white : AppColors.inkDark),
-                                              ),
-                                            ),
-                                          ),
-                                          if (isSelected)
-                                            Icon(
-                                              Icons.check_circle_rounded,
-                                              size: 19,
-                                              color: isDark ? const Color(0xFF4ADE80) : AppColors.primaryGreen,
-                                            ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              },
                             ),
+                          ),
+                        );
+                      },
                     ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
