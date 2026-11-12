@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../theme/app_colors.dart';
+import '../utils/app_toast.dart';
 import '../../features/auth/providers/auth_provider.dart';
 
 /// Shows a comprehensive, Apple-compliant confirmation dialog before permanently
@@ -60,7 +61,6 @@ class _DeleteAccountConfirmationDialogState
     setState(() => _isLoading = true);
 
     final nav = Navigator.of(context);
-    final messenger = ScaffoldMessenger.of(context);
 
     try {
       await widget.ref.read(authProvider.notifier).deleteAccount();
@@ -69,33 +69,24 @@ class _DeleteAccountConfirmationDialogState
         nav.pop();
       }
 
-      messenger.clearSnackBars();
-      messenger.showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Your account and associated data have been permanently deleted.',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          duration: Duration(milliseconds: 3000),
-        ),
+      if (!mounted) return;
+      AppToast.show(
+        context,
+        'Your account and associated data have been permanently deleted.',
+        severity: ToastSeverity.info,
+        duration: const Duration(milliseconds: 3000),
       );
 
-      if (!mounted) return;
       context.go('/login');
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
+        AppToast.show(
+          context,
+          'Account deletion error: $e',
+          severity: ToastSeverity.error,
+        );
       }
-      messenger.clearSnackBars();
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text('Account deletion error: $e'),
-          backgroundColor: AppColors.error,
-        ),
-      );
     }
   }
 

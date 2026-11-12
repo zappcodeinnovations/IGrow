@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../theme/app_colors.dart';
+import '../utils/app_toast.dart';
 import '../../data/models/user_role.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/cart/providers/cart_provider.dart';
@@ -40,7 +41,6 @@ class _LogoutConfirmationDialogState extends ConsumerState<LogoutConfirmationDia
 
   Future<void> _handleLogout() async {
     final nav = Navigator.of(context);
-    final messenger = ScaffoldMessenger.of(context);
 
     setState(() => _isLoading = true);
 
@@ -58,33 +58,24 @@ class _LogoutConfirmationDialogState extends ConsumerState<LogoutConfirmationDia
         nav.pop();
       }
 
-      messenger.clearSnackBars();
-      messenger.showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Logged out successfully.',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          duration: Duration(milliseconds: 1800),
-        ),
+      if (!mounted) return;
+      AppToast.show(
+        context,
+        'Logged out successfully.',
+        severity: ToastSeverity.success,
+        duration: const Duration(milliseconds: 1800),
       );
 
-      if (!mounted) return;
       context.go('/login?role=${activeRole.name}');
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
+        AppToast.show(
+          context,
+          'Logout failed: $e',
+          severity: ToastSeverity.error,
+        );
       }
-      messenger.clearSnackBars();
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text('Logout failed: $e'),
-          backgroundColor: AppColors.error,
-        ),
-      );
     }
   }
 
