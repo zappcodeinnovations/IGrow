@@ -846,6 +846,7 @@ class ApiAuthRepository implements AuthRepository {
     }
 
     if (response.statusCode >= 400) {
+      TokenStorage.checkResponse(response.statusCode, response.body);
       Map<String, dynamic>? errorData;
       try {
         errorData = jsonDecode(response.body) as Map<String, dynamic>;
@@ -969,6 +970,7 @@ class ApiAuthRepository implements AuthRepository {
     print('📦 [KYC REPO] Response Body: ${response.body}');
 
     if (response.statusCode >= 400) {
+      TokenStorage.checkResponse(response.statusCode, response.body);
       Map<String, dynamic>? errorData;
       try {
         errorData = jsonDecode(response.body) as Map<String, dynamic>;

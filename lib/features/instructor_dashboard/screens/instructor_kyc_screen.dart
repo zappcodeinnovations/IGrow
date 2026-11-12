@@ -90,8 +90,10 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
   bool _isEditingExisting = false;
   AutovalidateMode _autovalidateMode = AutovalidateMode.disabled;
 
-  // IFSC Auto-fetch state
+  // IFSC Auto-fetch & validation state
   bool _isFetchingIfsc = false;
+  bool? _isIfscValid; // true = valid, false = invalid (404/not found), null = unverified
+  String? _ifscErrorText;
   String? _ifscHelperText;
   bool _bankNameManuallyEdited = false;
 
@@ -130,6 +132,15 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
       }
     }
 
+    if ((user?.bankIfscCode ?? '').isNotEmpty) {
+      final ifsc = user!.bankIfscCode!.trim().toUpperCase();
+      if (ifsc.length == 11 && RegExp(r'^[A-Z]{4}0[A-Z0-9]{6}$').hasMatch(ifsc)) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _fetchIfscDetails(ifsc);
+        });
+      }
+    }
+
     // Refresh profile on open to capture any immediate admin changes
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(authProvider.notifier).refreshUserSilent();
@@ -161,6 +172,15 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
       );
     }
 
+    // Reset validation and helper states when IFSC is modified
+    if (clean != _lastFetchedIfsc) {
+      setState(() {
+        _isIfscValid = null;
+        _ifscErrorText = null;
+        _ifscHelperText = null;
+      });
+    }
+
     // Instant bank name prefix matching (e.g. KKBK -> Kotak Mahindra Bank)
     if (clean.length >= 4) {
       final mappedBank = resolveIfscBankPrefix(clean);
@@ -173,21 +193,31 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
     } else if (clean.isEmpty && !_bankNameManuallyEdited) {
       _bankNameController.clear();
       setState(() {
+        _isIfscValid = null;
+        _ifscErrorText = null;
         _ifscHelperText = null;
       });
     }
 
-    // When full 11-character code is entered, perform online lookup for branch details
-    if (clean.length == 11 && RegExp(r'^[A-Z]{4}0[A-Z0-9]{6}$').hasMatch(clean)) {
-      if (clean != _lastFetchedIfsc) {
-        _fetchIfscDetails(clean);
-      }
-    } else if (clean.length < 11) {
-      if (_ifscHelperText != null) {
+    // When full 11-character code is entered, validate format and perform online lookup
+    if (clean.length == 11) {
+      if (!RegExp(r'^[A-Z]{4}0[A-Z0-9]{6}$').hasMatch(clean)) {
         setState(() {
+          _isIfscValid = false;
+          _ifscErrorText = '5th character must be zero "0" (e.g. SBIN0001234)';
           _ifscHelperText = null;
         });
+        _formKey.currentState?.validate();
+      } else if (clean != _lastFetchedIfsc) {
+        _fetchIfscDetails(clean);
       }
+    } else if (clean.length > 11) {
+      setState(() {
+        _isIfscValid = false;
+        _ifscErrorText = 'IFSC code must be exactly 11 characters';
+        _ifscHelperText = null;
+      });
+      _formKey.currentState?.validate();
     }
   }
 
@@ -195,6 +225,8 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
     setState(() {
       _isFetchingIfsc = true;
       _lastFetchedIfsc = ifsc;
+      _isIfscValid = null;
+      _ifscErrorText = null;
     });
 
     try {
@@ -215,36 +247,38 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
         }
 
         setState(() {
+          _isIfscValid = true;
+          _ifscErrorText = null;
           if (branch != null && branch.trim().isNotEmpty) {
             _ifscHelperText = 'Branch: ${branch.trim()}${city != null ? ', ${city.trim()}' : ''}';
           } else if (bank != null) {
             _ifscHelperText = 'Bank: $bank';
           }
         });
-      } else {
-        // If API returns non-200 (e.g. 404 for synthetic branch code like kkbk0001849)
-        final mapped = resolveIfscBankPrefix(ifsc);
-        if (mapped != null) {
-          if (!_bankNameManuallyEdited) {
-            _bankNameController.text = mapped;
-          }
-          setState(() {
-            _ifscHelperText = 'Bank: $mapped';
-          });
-        }
-      }
-    } catch (_) {
-      // Graceful fallback to prefix mapping upon network error or timeout
-      if (!mounted) return;
-      final mapped = resolveIfscBankPrefix(ifsc);
-      if (mapped != null) {
-        if (!_bankNameManuallyEdited) {
-          _bankNameController.text = mapped;
-        }
+        _formKey.currentState?.validate();
+      } else if (response.statusCode == 404) {
+        // Invalid or non-existent IFSC code
         setState(() {
-          _ifscHelperText = 'Bank: $mapped';
+          _isIfscValid = false;
+          _ifscErrorText = 'Invalid IFSC code. Branch does not exist.';
+          _ifscHelperText = null;
+        });
+        _formKey.currentState?.validate();
+      } else {
+        setState(() {
+          _isIfscValid = null;
+          _ifscErrorText = null;
+          _ifscHelperText = 'Unable to verify branch online (${response.statusCode})';
         });
       }
+    } catch (_) {
+      // Network timeout or connectivity issue
+      if (!mounted) return;
+      setState(() {
+        _isIfscValid = null;
+        _ifscErrorText = null;
+        _ifscHelperText = 'Could not verify IFSC online. Check network connection.';
+      });
     } finally {
       if (mounted) {
         setState(() {
@@ -382,6 +416,57 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
   Future<void> _submitKyc() async {
     print('====================================================');
     print('📝 [INSTRUCTOR KYC SCREEN] Form submission triggered');
+
+    final ifscClean = _ifscController.text.trim().toUpperCase();
+
+    // Check if IFSC verification is currently in progress
+    if (_isFetchingIfsc) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please wait while IFSC code is being verified.'),
+          backgroundColor: AppColors.primaryGreen,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    // Check if IFSC code has been marked invalid
+    if (_isIfscValid == false) {
+      setState(() {
+        _autovalidateMode = AutovalidateMode.onUserInteraction;
+      });
+      _formKey.currentState!.validate();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_ifscErrorText ?? 'Invalid IFSC code. Please enter a valid IFSC.'),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    // If IFSC was entered/pasted but not yet verified, run verification now
+    if (_isIfscValid == null && ifscClean.length == 11 && RegExp(r'^[A-Z]{4}0[A-Z0-9]{6}$').hasMatch(ifscClean)) {
+      await _fetchIfscDetails(ifscClean);
+      if (!mounted) return;
+      if (_isIfscValid == false) {
+        setState(() {
+          _autovalidateMode = AutovalidateMode.onUserInteraction;
+        });
+        _formKey.currentState!.validate();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(_ifscErrorText ?? 'Invalid IFSC code. Branch does not exist.'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+    }
+
     if (!_formKey.currentState!.validate()) {
       setState(() {
         _autovalidateMode = AutovalidateMode.onUserInteraction;
@@ -719,6 +804,10 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
                         label: 'IFSC Code *',
                         hint: 'e.g. SBIN0001234',
                         keyboardType: TextInputType.text,
+                        inputFormatters: [
+                          LengthLimitingTextInputFormatter(11),
+                          FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9]')),
+                        ],
                         prefixIcon: const Icon(Icons.qr_code_2_rounded,
                             color: AppColors.primaryGreen),
                         suffixIcon: _isFetchingIfsc
@@ -733,10 +822,13 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
                                   ),
                                 ),
                               )
-                            : (_ifscHelperText != null
+                            : (_isIfscValid == true
                                 ? const Icon(Icons.check_circle_rounded,
                                     color: AppColors.primaryGreen, size: 20)
-                                : null),
+                                : (_isIfscValid == false
+                                    ? const Icon(Icons.cancel_rounded,
+                                        color: AppColors.error, size: 20)
+                                    : null)),
                         helperText: _ifscHelperText,
                         onChanged: _onIfscChanged,
                         validator: (val) {
@@ -746,6 +838,9 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
                           final clean = val.trim().toUpperCase();
                           if (!RegExp(r'^[A-Z]{4}0[A-Z0-9]{6}$').hasMatch(clean)) {
                             return 'Enter a valid 11-character IFSC code (e.g. SBIN0001234)';
+                          }
+                          if (_isIfscValid == false) {
+                            return _ifscErrorText ?? 'Invalid IFSC code. Branch does not exist.';
                           }
                           return null;
                         },
