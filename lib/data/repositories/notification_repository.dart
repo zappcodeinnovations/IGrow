@@ -57,6 +57,7 @@ class NotificationRepository {
         return notifications;
       } else {
         debugPrint('⚠️ [NotificationRepository] getNotifications HTTP ${response.statusCode}: ${response.body}');
+        TokenStorage.checkResponse(response.statusCode, response.body);
       }
     } catch (e) {
       debugPrint('❌ [NotificationRepository] getNotifications HTTP error: $e');

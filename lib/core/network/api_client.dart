@@ -181,6 +181,26 @@ class SafeJsonConverter implements Converter {
   }
 }
 
+/// Intercepts responses to catch 401 unauthorized or invalid token responses and trigger session expiration.
+class SessionExpirationInterceptor implements Interceptor {
+  @override
+  FutureOr<Response<BodyType>> intercept<BodyType>(Chain<BodyType> chain) async {
+    final response = await chain.proceed(chain.request);
+    final path = chain.request.url.path;
+    final isAuthEndpoint = path.contains('/auth/login') ||
+        path.contains('/auth/register') ||
+        path.contains('/auth/refresh') ||
+        path.contains('/auth/forgot-password') ||
+        path.contains('/auth/verify-reset-otp') ||
+        path.contains('/auth/reset-password');
+
+    if (!isAuthEndpoint) {
+      TokenStorage.checkResponse(response.statusCode, response.bodyString, path);
+    }
+    return response;
+  }
+}
+
 /// Creates the Swagger-generated AppApi Chopper Client.
 AppApi buildAppApi(TokenStorage tokenStorage) {
   return AppApi.create(
@@ -191,6 +211,7 @@ AppApi buildAppApi(TokenStorage tokenStorage) {
     converter: SafeJsonConverter($JsonSerializableConverter()),
     interceptors: [
       NetworkErrorInterceptor(),
+      SessionExpirationInterceptor(),
       TokenInterceptor(tokenStorage),
       DebugLoggingInterceptor(),
       HttpLoggingInterceptor(),

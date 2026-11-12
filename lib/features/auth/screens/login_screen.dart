@@ -245,7 +245,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     ref.listen<AuthState>(authProvider, (previous, next) {
-      if (next.status == AuthStatus.error && next.error != null) {
+      if ((next.status == AuthStatus.error || next.status == AuthStatus.unauthenticated) &&
+          next.error != null &&
+          next.error!.isNotEmpty &&
+          previous?.error != next.error) {
         AppToast.show(context, tr(ref, next.error!), isError: true);
         ref.read(authProvider.notifier).clearError();
       }

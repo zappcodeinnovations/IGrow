@@ -319,6 +319,7 @@ class StudentRepository {
       debugPrint('✅ [StudentRepository] addToCart SUCCESS');
     } else {
       debugPrint('❌ [StudentRepository] addToCart ERROR (${response.statusCode}): ${response.body}');
+      TokenStorage.checkResponse(response.statusCode, response.body);
       throw Exception('Failed to add to cart: ${response.body}');
     }
   }
@@ -400,6 +401,7 @@ class StudentRepository {
       return {'completed': completed};
     } else {
       debugPrint('❌ [StudentRepository] updateLectureProgress ERROR (${response.statusCode}): ${response.body}');
+      TokenStorage.checkResponse(response.statusCode, response.body);
       throw Exception('Failed to update lecture progress (${response.statusCode}): ${response.body}');
     }
   }
@@ -478,6 +480,7 @@ class StudentRepository {
       }),
     );
     if (response.statusCode >= 300) {
+      TokenStorage.checkResponse(response.statusCode, response.body);
       throw Exception('Failed to post question: ${response.body}');
     }
   }
@@ -676,6 +679,8 @@ class StudentRepository {
             'is_passed': passed,
           };
         }
+      } else {
+        TokenStorage.checkResponse(response.statusCode, response.body);
       }
     } catch (_) {}
 

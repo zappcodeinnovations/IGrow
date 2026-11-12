@@ -180,6 +180,7 @@ class InstructorRepository {
         return jsonDecode(response.body) as Map<String, dynamic>;
       } else {
         debugPrint('❌ [InstructorRepository] createCourse MULTIPART ERROR (${response.statusCode}): ${response.body}');
+        TokenStorage.checkResponse(response.statusCode, response.body);
         throw Exception('Failed to create course: ${response.body}');
       }
     } else {
@@ -668,6 +669,7 @@ class InstructorRepository {
           return jsonDecode(response.body) as Map<String, dynamic>;
         } else {
           debugPrint('❌ [InstructorRepository] createEBook MULTIPART ERROR (${response.statusCode}): ${response.body}');
+          TokenStorage.checkResponse(response.statusCode, response.body);
           throw Exception('Failed to create ebook (${response.statusCode}): ${response.body}');
         }
       } on SocketException catch (_) {
@@ -717,6 +719,7 @@ class InstructorRepository {
         debugPrint('✅ [InstructorRepository] updateEBook direct HTTP SUCCESS: ${rawResponse.body}');
         return jsonDecode(rawResponse.body) as Map<String, dynamic>;
       }
+      TokenStorage.checkResponse(rawResponse.statusCode, rawResponse.body);
       debugPrint('⚠️ [InstructorRepository] updateEBook direct HTTP failed (${rawResponse.statusCode}): ${rawResponse.body}');
     } catch (e) {
       debugPrint('⚠️ [InstructorRepository] updateEBook direct HTTP error: $e');
@@ -861,6 +864,7 @@ class InstructorRepository {
         return {};
       } else {
         debugPrint('❌ [InstructorRepository] uploadVideo ERROR (${response.statusCode}): ${response.body}');
+        TokenStorage.checkResponse(response.statusCode, response.body);
         if (response.body.contains('Bunny Stream API') || response.body.contains('Failed to initialize video')) {
           throw Exception('Video server notice: Bunny Stream CDN is currently being activated or under maintenance.');
         } else if (response.statusCode == 413) {
@@ -930,6 +934,7 @@ class InstructorRepository {
         return {};
       } else {
         debugPrint('❌ [InstructorRepository] uploadResource ERROR (${response.statusCode}): ${response.body}');
+        TokenStorage.checkResponse(response.statusCode, response.body);
         if (response.statusCode == 413) {
           throw Exception('File size is too large for the server.');
         }
@@ -988,6 +993,7 @@ class InstructorRepository {
       return {};
     } else {
       debugPrint('❌ [InstructorRepository] uploadCertificateTemplate ERROR (${response.statusCode}): ${response.body}');
+      TokenStorage.checkResponse(response.statusCode, response.body);
       throw Exception('Failed to upload certificate (${response.statusCode}): ${response.body}');
     }
   }

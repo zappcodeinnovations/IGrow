@@ -36,6 +36,7 @@ class WishlistRepository {
         }
       } else {
         debugPrint('⚠️ [WishlistRepository] getWishlist HTTP ${response.statusCode}: ${response.body}');
+        TokenStorage.checkResponse(response.statusCode, response.body);
       }
     } catch (e) {
       debugPrint('❌ [WishlistRepository] getWishlist error: $e');
@@ -94,6 +95,7 @@ class WishlistRepository {
         throw Exception('Failed to update wishlist (HTTP 500)');
       } else {
         debugPrint('⚠️ [WishlistRepository] toggle failed HTTP ${response.statusCode}: ${response.body}');
+        TokenStorage.checkResponse(response.statusCode, response.body);
         throw Exception('Failed to update wishlist (HTTP ${response.statusCode})');
       }
     } catch (e) {
@@ -121,6 +123,7 @@ class WishlistRepository {
         return true;
       } else {
         debugPrint('⚠️ [WishlistRepository] remove failed HTTP ${response.statusCode}: ${response.body}');
+        TokenStorage.checkResponse(response.statusCode, response.body);
         return false;
       }
     } catch (e) {

@@ -39,6 +39,14 @@ class TokenAuthenticator extends Authenticator {
   @override
   FutureOr<Request?> authenticate(Request request, Response response, [Request? originalRequest]) async {
     if (response.statusCode == 401) {
+      final path = request.url.path;
+      final isAuthEndpoint = path.contains('/auth/login') ||
+          path.contains('/auth/register') ||
+          path.contains('/auth/refresh') ||
+          path.contains('/auth/forgot-password') ||
+          path.contains('/auth/verify-reset-otp') ||
+          path.contains('/auth/reset-password');
+
       final refreshed = await _tryRefreshToken();
       if (refreshed) {
         final token = await tokenStorage.getAccessToken();
@@ -48,6 +56,8 @@ class TokenAuthenticator extends Authenticator {
             'Authorization': 'Bearer $token',
           });
         }
+      } else if (!isAuthEndpoint) {
+        TokenStorage.notifySessionExpired();
       }
     }
     return null;
@@ -93,6 +103,7 @@ class TokenAuthenticator extends Authenticator {
       } else if (response.statusCode >= 400 && response.statusCode < 500) {
         // Only clear tokens if the refresh token is actually rejected (e.g., 401)
         await tokenStorage.clearTokens();
+        TokenStorage.notifySessionExpired();
       }
 
       _refreshCompleter!.complete(false);

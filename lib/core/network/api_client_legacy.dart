@@ -197,6 +197,7 @@ class ApiClient {
           return _processResponse(retryResponse, method: method, url: url);
         } else {
           print('❌ [AUTH] Token refresh failed. Logging out...');
+          TokenStorage.notifySessionExpired();
           throw ApiException.unauthorized();
         }
       }
@@ -243,6 +244,9 @@ class ApiClient {
     print('⚠️ [HTTP ERROR STATUS] $statusCode for ${method ?? ""} ${url ?? ""}');
 
     if (statusCode == 401) {
+      if (url == null || (!url.contains('/auth/login') && !url.contains('/auth/refresh'))) {
+        TokenStorage.notifySessionExpired();
+      }
       throw ApiException.unauthorized(
         body is Map && body.containsKey('detail')
             ? body['detail'].toString()

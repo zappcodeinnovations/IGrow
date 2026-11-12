@@ -21,6 +21,7 @@ class CommunityRepository {
 
   void _handleError(http.Response response) {
     if (response.statusCode >= 400) {
+      TokenStorage.checkResponse(response.statusCode, response.body);
       String errorMessage = 'Community Error (${response.statusCode})';
       try {
         final data = jsonDecode(response.body);

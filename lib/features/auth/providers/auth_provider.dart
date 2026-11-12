@@ -79,10 +79,15 @@ class AuthState {
 // ─── Auth Notifier ─────────────────────────────────────────────────
 
 class AuthNotifier extends StateNotifier<AuthState> {
-  AuthNotifier(this._repo) : super(const AuthState());
+  AuthNotifier(this._repo) : super(const AuthState()) {
+    _sessionExpiredSub = TokenStorage.onSessionExpired.listen((reason) {
+      forceLogout(reason);
+    });
+  }
 
   final AuthRepository _repo;
   Timer? _profileSyncTimer;
+  StreamSubscription<String?>? _sessionExpiredSub;
 
   void _startPeriodicSync() {
     _profileSyncTimer?.cancel();
@@ -103,7 +108,22 @@ class AuthNotifier extends StateNotifier<AuthState> {
   @override
   void dispose() {
     _stopPeriodicSync();
+    _sessionExpiredSub?.cancel();
     super.dispose();
+  }
+
+  /// Forcibly logs out the user when session is invalidated/expired (e.g. account deleted by admin).
+  Future<void> forceLogout([String? reason]) async {
+    if (state.status != AuthStatus.authenticated) return;
+    debugPrint('🔒 [AUTH PROVIDER] forceLogout executed: $reason');
+    _stopPeriodicSync();
+    try {
+      await _repo.logout();
+    } catch (_) {}
+    state = AuthState(
+      status: AuthStatus.unauthenticated,
+      error: reason ?? 'Your session has expired. Please log in again.',
+    );
   }
 
   /// Silently refresh the current user from backend without full-screen loading spinner.
@@ -120,6 +140,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
       return null;
     } catch (e) {
       debugPrint('⚠️ [AUTH PROVIDER] refreshUserSilent skipped: $e');
+      if (e is ApiException && e.isUnauthorized) {
+        forceLogout();
+      }
       return null;
     }
   }

@@ -99,6 +99,13 @@ class ApiAuthRepository implements AuthRepository {
       }
 
       if (response.statusCode == 401) {
+        final path = response.base.request?.url.path ?? '';
+        final isAuthPath = path.contains('/auth/login') ||
+            path.contains('/auth/register') ||
+            path.contains('/auth/refresh');
+        if (!isAuthPath) {
+          TokenStorage.notifySessionExpired();
+        }
         if (errorData != null && errorData.containsKey('detail')) {
           throw ApiException.unauthorized(errorData['detail'].toString());
         }
@@ -144,6 +151,7 @@ class ApiAuthRepository implements AuthRepository {
       print('❌ [AUTH REPO] getCurrentUser ApiException: ${e.message} (status: ${e.statusCode})');
       if (e.isUnauthorized) {
         await tokenStorage.clearTokens();
+        TokenStorage.notifySessionExpired();
         return null;
       }
       rethrow;
