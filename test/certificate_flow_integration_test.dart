@@ -227,8 +227,8 @@ void main() {
       FocusManager.instance.primaryFocus?.unfocus();
       await tester.pump(const Duration(milliseconds: 100));
 
-      // Tap Save & Continue to Step 2
-      final nextBtnFinder1 = find.widgetWithText(FilledButton, 'Save & Continue');
+      // Tap Next to Step 2
+      final nextBtnFinder1 = find.widgetWithText(FilledButton, 'Next: Curriculum');
       if (nextBtnFinder1.evaluate().isNotEmpty) {
         await tester.ensureVisible(nextBtnFinder1.first);
         await tester.tap(nextBtnFinder1.first);
@@ -248,9 +248,11 @@ void main() {
       // Verify Step 3 Elements are displayed
       expect(find.text('Issue Certificate of Completion for this Course'), findsOneWidget);
       expect(find.text('Your Digital Signature'), findsOneWidget);
-      expect(find.text('Certificate Template Style'), findsOneWidget);
-      expect(find.text('Modern Professional'), findsOneWidget);
-      expect(find.text('Classic Academic'), findsOneWidget);
+
+      // Verify Certificate Template Style selector cards are removed (cross-platform consistency with web)
+      expect(find.text('Certificate Template Style'), findsNothing);
+      expect(find.text('Modern Professional'), findsNothing);
+      expect(find.text('Classic Academic'), findsNothing);
 
       // Verify Instructor Title / Designation field
       expect(find.text('Instructor Title / Designation'), findsOneWidget);

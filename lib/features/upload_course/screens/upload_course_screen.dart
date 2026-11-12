@@ -28,7 +28,7 @@ import '../../../core/services/app_config_service.dart';
 /// Matching AgriLearn Web (CourseUploadWizard.jsx):
 /// - Step 1: Create a New Course (Basic Info, Categories, Price, Thumbnail)
 /// - Step 2: Build Curriculum (Modules, Lectures with Video & Study Material, E-Book link)
-/// - Step 3: Course Certificate (Signature upload, Certificate template selection)
+/// - Step 3: Course Certificate (Signature upload, Instructor designation, Certificate preview)
 /// - Sequential submission pipeline with upload progress ticker
 class UploadCourseScreen extends ConsumerStatefulWidget {
   const UploadCourseScreen({super.key});
@@ -92,7 +92,7 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
   // ── Step 3: Certificate State ─────────────────────────────────────────────
   bool _issueCertificate = true;
   File? _signatureImage;
-  String _selectedTemplate = 'modern'; // 'modern' or 'classic'
+  final String _selectedTemplate = 'modern';
   final _instructorTitleController =
       TextEditingController(text: 'Lead Instructor & Agricultural Specialist');
 
@@ -2146,15 +2146,18 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
               borderRadius: BorderRadius.circular(12),
               color: AppColors.primaryGreen.withValues(alpha: 0.04),
             ),
-            child: CheckboxListTile(
-              value: _issueCertificate,
-              activeColor: AppColors.primaryGreen,
-              contentPadding: EdgeInsets.zero,
-              title: const Text(
-                'Issue Certificate of Completion for this Course',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+            child: Material(
+              color: Colors.transparent,
+              child: CheckboxListTile(
+                value: _issueCertificate,
+                activeColor: AppColors.primaryGreen,
+                contentPadding: EdgeInsets.zero,
+                title: const Text(
+                  'Issue Certificate of Completion for this Course',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                ),
+                onChanged: (val) => setState(() => _issueCertificate = val ?? true),
               ),
-              onChanged: (val) => setState(() => _issueCertificate = val ?? true),
             ),
           ),
           const SizedBox(height: 24),
@@ -2222,29 +2225,6 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                       ],
                     ),
             ),
-          ),
-          const SizedBox(height: 24),
-
-          // Certificate Template Style
-          _buildFieldLabel('Certificate Template Style'),
-          Row(
-            children: [
-              Expanded(
-                child: _buildTemplateCard(
-                  title: 'Modern Professional',
-                  templateKey: 'modern',
-                  isDark: isDark,
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: _buildTemplateCard(
-                  title: 'Classic Academic',
-                  templateKey: 'classic',
-                  isDark: isDark,
-                ),
-              ),
-            ],
           ),
           const SizedBox(height: 24),
 
@@ -2339,99 +2319,6 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
     );
   }
 
-  Widget _buildTemplateCard({
-    required String title,
-    required String templateKey,
-    required bool isDark,
-  }) {
-    final isSelected = _selectedTemplate == templateKey;
-
-    return InkWell(
-      onTap: () => setState(() => _selectedTemplate = templateKey),
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected ? AppColors.primaryGreen : (isDark ? AppColors.lineDark : Colors.grey.shade300),
-            width: isSelected ? 2 : 1,
-          ),
-          color: isSelected ? AppColors.primaryGreen.withValues(alpha: 0.05) : Colors.transparent,
-        ),
-        child: Column(
-          children: [
-            // Mini Certificate Representation
-            Container(
-              height: 72,
-              width: double.infinity,
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: isDark ? Colors.black45 : Colors.white,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: templateKey == 'modern'
-                      ? AppColors.primaryGreen.withValues(alpha: 0.5)
-                      : const Color(0xFFD97706).withValues(alpha: 0.5),
-                  width: 1.2,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  // Top mini banner
-                  Container(
-                    height: 5,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: templateKey == 'modern' ? AppColors.primaryGreen : const Color(0xFFD97706),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  const Spacer(),
-                  Icon(
-                    templateKey == 'modern'
-                        ? Icons.workspace_premium_rounded
-                        : Icons.military_tech_rounded,
-                    color: isSelected
-                        ? (templateKey == 'modern' ? AppColors.primaryGreen : const Color(0xFFD97706))
-                        : Colors.grey.shade400,
-                    size: 26,
-                  ),
-                  const Spacer(),
-                  // Mini placeholder lines
-                  Container(
-                    height: 2,
-                    width: 38,
-                    color: Colors.grey.shade300,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                color: isSelected ? AppColors.primaryGreen : (isDark ? Colors.grey.shade300 : AppColors.inkDark),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildLiveCertificateDemoPreview(bool isDark) {
     final courseTitle = _titleController.text.trim().isNotEmpty
         ? _titleController.text.trim()
@@ -2439,7 +2326,6 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
     final instructorDesignation = _instructorTitleController.text.trim().isNotEmpty
         ? _instructorTitleController.text.trim()
         : 'Lead Instructor & Agricultural Specialist';
-    final isModern = _selectedTemplate == 'modern';
 
     return Container(
       width: double.infinity,
@@ -2552,9 +2438,7 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                 color: isDark ? const Color(0xFF121712) : const Color(0xFFFCFDF9),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: isModern
-                      ? AppColors.primaryGreen.withValues(alpha: 0.5)
-                      : const Color(0xFFD97706).withValues(alpha: 0.5),
+                  color: AppColors.primaryGreen.withValues(alpha: 0.5),
                   width: 2,
                 ),
                 boxShadow: [
@@ -2569,9 +2453,7 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 decoration: BoxDecoration(
                   border: Border.all(
-                    color: isModern
-                        ? const Color(0xFF22C55E).withValues(alpha: 0.3)
-                        : const Color(0xFFF59E0B).withValues(alpha: 0.3),
+                    color: const Color(0xFF22C55E).withValues(alpha: 0.3),
                     width: 1,
                   ),
                   borderRadius: BorderRadius.circular(8),
@@ -2661,9 +2543,7 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                       margin: const EdgeInsets.symmetric(vertical: 4),
                       height: 1,
                       width: 140,
-                      color: isModern
-                          ? AppColors.primaryGreen.withValues(alpha: 0.4)
-                          : const Color(0xFFD97706).withValues(alpha: 0.4),
+                      color: AppColors.primaryGreen.withValues(alpha: 0.4),
                     ),
                     const SizedBox(height: 2),
 
