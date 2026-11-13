@@ -45,6 +45,12 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
   num? _minPrice;
   num? _maxPrice;
   double? _minRating;
+
+  // E-Books specific filters
+  String _selectedEbookPricePreset = 'all';
+  num? _ebookMinPrice;
+  num? _ebookMaxPrice;
+
   final _searchController = TextEditingController();
 
   /// Returns true when user is browsing the category grid (Screen 12)
@@ -57,6 +63,12 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
       (_selectedInstructorId == null || _selectedInstructorId!.isEmpty);
 
   int get _activeFilterCount {
+    if (_selectedTab == 1) {
+      int count = 0;
+      if (_selectedEbookPricePreset != 'all') count++;
+      if (_selectedInstructorId != null && _selectedInstructorId!.isNotEmpty) count++;
+      return count;
+    }
     int count = 0;
     if (_selectedLevel.isNotEmpty) count++;
     if (_selectedLanguage.isNotEmpty) count++;
@@ -131,11 +143,17 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
       _minPrice = null;
       _maxPrice = null;
       _minRating = null;
+      _selectedEbookPricePreset = 'all';
+      _ebookMinPrice = null;
+      _ebookMaxPrice = null;
       _selectedInstructorId = null;
     });
   }
 
   void _showFilterBottomSheet() {
+    final isEbooksTab = _selectedTab == 1;
+
+    // Course temp states
     String tempLevel = _selectedLevel;
     String tempLanguage = _selectedLanguage;
     String tempOrdering = _selectedOrdering;
@@ -143,6 +161,11 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
     num? tempMinPrice = _minPrice;
     num? tempMaxPrice = _maxPrice;
     double? tempMinRating = _minRating;
+
+    // E-Book temp states
+    String tempEbookPricePreset = _selectedEbookPricePreset;
+    num? tempEbookMinPrice = _ebookMinPrice;
+    num? tempEbookMaxPrice = _ebookMaxPrice;
 
     showModalBottomSheet(
       context: context,
@@ -153,6 +176,11 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
         return StatefulBuilder(
           builder: (context, setModalState) {
             int getTempCount() {
+              if (isEbooksTab) {
+                int count = 0;
+                if (tempEbookPricePreset != 'all') count++;
+                return count;
+              }
               int count = 0;
               if (tempLevel.isNotEmpty) count++;
               if (tempLanguage.isNotEmpty) count++;
@@ -169,8 +197,14 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                 maxHeight: MediaQuery.of(context).size.height * 0.85,
               ),
               decoration: BoxDecoration(
-                color: isDark ? AppColors.cardDark : Colors.white,
+                color: isDark ? const Color(0xFF141E16) : Colors.white,
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                border: Border(
+                  top: BorderSide(
+                    color: isDark ? const Color(0xFF263B2B) : const Color(0xFFE2E8F0),
+                    width: 1,
+                  ),
+                ),
               ),
               child: SafeArea(
                 child: SingleChildScrollView(
@@ -181,11 +215,11 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                     children: [
                       Center(
                         child: Container(
-                          width: 40,
+                          width: 44,
                           height: 4,
-                          margin: const EdgeInsets.only(bottom: 16),
+                          margin: const EdgeInsets.only(bottom: 18),
                           decoration: BoxDecoration(
-                            color: isDark ? AppColors.lineDark : Colors.grey.shade300,
+                            color: isDark ? Colors.white24 : Colors.grey.shade300,
                             borderRadius: BorderRadius.circular(2),
                           ),
                         ),
@@ -198,14 +232,20 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                               Container(
                                 padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF1B4D2E).withValues(alpha: 0.12),
+                                  color: const Color(0xFF1B4D2E).withValues(alpha: 0.14),
                                   borderRadius: BorderRadius.circular(10),
                                 ),
-                                child: const Icon(Icons.tune_rounded, color: Color(0xFF1B4D2E), size: 20),
+                                child: Icon(
+                                  isEbooksTab ? Icons.auto_stories_rounded : Icons.tune_rounded,
+                                  color: const Color(0xFF1B4D2E),
+                                  size: 20,
+                                ),
                               ),
                               const SizedBox(width: 10),
                               Text(
-                                tr(ref, 'Filter & Sort Courses'),
+                                isEbooksTab
+                                    ? tr(ref, 'Filter & Sort E-Books')
+                                    : tr(ref, 'Filter & Sort Courses'),
                                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
                                       fontWeight: FontWeight.bold,
                                       fontSize: 18,
@@ -233,365 +273,484 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                       ),
                       const SizedBox(height: 20),
 
-                      // Rating Filter
-                      Row(
-                        children: [
-                          const Icon(Icons.star_rounded, size: 18, color: Colors.amber),
-                          const SizedBox(width: 6),
-                          Text(tr(ref, 'Minimum Rating'), style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, fontSize: 14)),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          ChoiceChip(
-                            label: Text(tr(ref, 'All Ratings')),
-                            selected: tempMinRating == null,
-                            selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
-                            labelStyle: TextStyle(
-                              color: tempMinRating == null ? const Color(0xFF1B4D2E) : null,
-                              fontWeight: tempMinRating == null ? FontWeight.bold : FontWeight.normal,
+                      // ═════════════════════════════════════════════════════════════
+                      // E-BOOKS TAB SPECIFIC FILTERS
+                      // ═════════════════════════════════════════════════════════════
+                      if (isEbooksTab) ...[
+                        Row(
+                          children: [
+                            const Icon(Icons.payments_outlined, size: 18, color: Color(0xFF1B4D2E)),
+                            const SizedBox(width: 6),
+                            Text(
+                              tr(ref, 'Price Filter'),
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
                             ),
-                            onSelected: (val) {
-                              if (val) {
-                                setModalState(() => tempMinRating = null);
-                              }
-                            },
-                          ),
-                          ...[4.5, 4.0, 3.5, 3.0].map((rating) {
-                            final isSelected = tempMinRating == rating;
-                            return ChoiceChip(
-                              label: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(Icons.star_rounded, size: 14, color: Colors.amber),
-                                  const SizedBox(width: 4),
-                                  Text('${formatNum(ref, rating)} ${tr(ref, '& up')}'),
-                                ],
-                              ),
-                              selected: isSelected,
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            ChoiceChip(
+                              label: Text(tr(ref, 'All Prices')),
+                              selected: tempEbookPricePreset == 'all',
                               selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
                               labelStyle: TextStyle(
-                                color: isSelected ? const Color(0xFF1B4D2E) : null,
-                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                color: tempEbookPricePreset == 'all' ? const Color(0xFF1B4D2E) : null,
+                                fontWeight: tempEbookPricePreset == 'all' ? FontWeight.bold : FontWeight.normal,
                               ),
                               onSelected: (val) {
-                                setModalState(() => tempMinRating = val ? rating : null);
+                                if (val) {
+                                  setModalState(() {
+                                    tempEbookPricePreset = 'all';
+                                    tempEbookMinPrice = null;
+                                    tempEbookMaxPrice = null;
+                                  });
+                                }
                               },
-                            );
-                          }),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
+                            ),
+                            ChoiceChip(
+                              label: Text(tr(ref, 'Free E-Books')),
+                              selected: tempEbookPricePreset == 'free',
+                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
+                              labelStyle: TextStyle(
+                                color: tempEbookPricePreset == 'free' ? const Color(0xFF1B4D2E) : null,
+                                fontWeight: tempEbookPricePreset == 'free' ? FontWeight.bold : FontWeight.normal,
+                              ),
+                              onSelected: (val) {
+                                if (val) {
+                                  setModalState(() {
+                                    tempEbookPricePreset = 'free';
+                                    tempEbookMinPrice = 0;
+                                    tempEbookMaxPrice = 0;
+                                  });
+                                }
+                              },
+                            ),
+                            ChoiceChip(
+                              label: Text(tr(ref, 'Paid E-Books')),
+                              selected: tempEbookPricePreset == 'paid',
+                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
+                              labelStyle: TextStyle(
+                                color: tempEbookPricePreset == 'paid' ? const Color(0xFF1B4D2E) : null,
+                                fontWeight: tempEbookPricePreset == 'paid' ? FontWeight.bold : FontWeight.normal,
+                              ),
+                              onSelected: (val) {
+                                if (val) {
+                                  setModalState(() {
+                                    tempEbookPricePreset = 'paid';
+                                    tempEbookMinPrice = 1;
+                                    tempEbookMaxPrice = null;
+                                  });
+                                }
+                              },
+                            ),
+                            ChoiceChip(
+                              label: Text(tr(ref, 'Under ₹200')),
+                              selected: tempEbookPricePreset == 'under_200',
+                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
+                              labelStyle: TextStyle(
+                                color: tempEbookPricePreset == 'under_200' ? const Color(0xFF1B4D2E) : null,
+                                fontWeight: tempEbookPricePreset == 'under_200' ? FontWeight.bold : FontWeight.normal,
+                              ),
+                              onSelected: (val) {
+                                if (val) {
+                                  setModalState(() {
+                                    tempEbookPricePreset = 'under_200';
+                                    tempEbookMinPrice = 1;
+                                    tempEbookMaxPrice = 200;
+                                  });
+                                }
+                              },
+                            ),
+                            ChoiceChip(
+                              label: Text(tr(ref, 'Under ₹500')),
+                              selected: tempEbookPricePreset == 'under_500',
+                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
+                              labelStyle: TextStyle(
+                                color: tempEbookPricePreset == 'under_500' ? const Color(0xFF1B4D2E) : null,
+                                fontWeight: tempEbookPricePreset == 'under_500' ? FontWeight.bold : FontWeight.normal,
+                              ),
+                              onSelected: (val) {
+                                if (val) {
+                                  setModalState(() {
+                                    tempEbookPricePreset = 'under_500';
+                                    tempEbookMinPrice = 1;
+                                    tempEbookMaxPrice = 500;
+                                  });
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+                      ] else ...[
+                        // ═════════════════════════════════════════════════════════════
+                        // COURSES TAB SPECIFIC FILTERS
+                        // ═════════════════════════════════════════════════════════════
+                        // Rating Filter
+                        Row(
+                          children: [
+                            const Icon(Icons.star_rounded, size: 18, color: Colors.amber),
+                            const SizedBox(width: 6),
+                            Text(tr(ref, 'Minimum Rating'), style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, fontSize: 14)),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            ChoiceChip(
+                              label: Text(tr(ref, 'All Ratings')),
+                              selected: tempMinRating == null,
+                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
+                              labelStyle: TextStyle(
+                                color: tempMinRating == null ? const Color(0xFF1B4D2E) : null,
+                                fontWeight: tempMinRating == null ? FontWeight.bold : FontWeight.normal,
+                              ),
+                              onSelected: (val) {
+                                if (val) {
+                                  setModalState(() => tempMinRating = null);
+                                }
+                              },
+                            ),
+                            ...[4.5, 4.0, 3.5, 3.0].map((rating) {
+                              final isSelected = tempMinRating == rating;
+                              return ChoiceChip(
+                                label: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.star_rounded, size: 14, color: Colors.amber),
+                                    const SizedBox(width: 4),
+                                    Text('${formatNum(ref, rating)} ${tr(ref, '& up')}'),
+                                  ],
+                                ),
+                                selected: isSelected,
+                                selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
+                                labelStyle: TextStyle(
+                                  color: isSelected ? const Color(0xFF1B4D2E) : null,
+                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                ),
+                                onSelected: (val) {
+                                  setModalState(() => tempMinRating = val ? rating : null);
+                                },
+                              );
+                            }),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
 
-                      // Price Preset Filter
-                      Row(
-                        children: [
-                          const Icon(Icons.payments_outlined, size: 18, color: Color(0xFF1B4D2E)),
-                          const SizedBox(width: 6),
-                          Text(tr(ref, 'Price Filter'), style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, fontSize: 14)),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          ChoiceChip(
-                            label: Text(tr(ref, 'All Prices')),
-                            selected: tempPricePreset == 'all',
-                            selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
-                            labelStyle: TextStyle(
-                              color: tempPricePreset == 'all' ? const Color(0xFF1B4D2E) : null,
-                              fontWeight: tempPricePreset == 'all' ? FontWeight.bold : FontWeight.normal,
+                        // Price Preset Filter
+                        Row(
+                          children: [
+                            const Icon(Icons.payments_outlined, size: 18, color: Color(0xFF1B4D2E)),
+                            const SizedBox(width: 6),
+                            Text(tr(ref, 'Price Filter'), style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, fontSize: 14)),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            ChoiceChip(
+                              label: Text(tr(ref, 'All Prices')),
+                              selected: tempPricePreset == 'all',
+                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
+                              labelStyle: TextStyle(
+                                color: tempPricePreset == 'all' ? const Color(0xFF1B4D2E) : null,
+                                fontWeight: tempPricePreset == 'all' ? FontWeight.bold : FontWeight.normal,
+                              ),
+                              onSelected: (val) {
+                                if (val) {
+                                  setModalState(() {
+                                    tempPricePreset = 'all';
+                                    tempMinPrice = null;
+                                    tempMaxPrice = null;
+                                  });
+                                }
+                              },
                             ),
-                            onSelected: (val) {
-                              if (val) {
-                                setModalState(() {
-                                  tempPricePreset = 'all';
-                                  tempMinPrice = null;
-                                  tempMaxPrice = null;
-                                });
-                              }
-                            },
-                          ),
-                          ChoiceChip(
-                            label: Text(tr(ref, 'Free Courses')),
-                            selected: tempPricePreset == 'free',
-                            selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
-                            labelStyle: TextStyle(
-                              color: tempPricePreset == 'free' ? const Color(0xFF1B4D2E) : null,
-                              fontWeight: tempPricePreset == 'free' ? FontWeight.bold : FontWeight.normal,
+                            ChoiceChip(
+                              label: Text(tr(ref, 'Free Courses')),
+                              selected: tempPricePreset == 'free',
+                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
+                              labelStyle: TextStyle(
+                                color: tempPricePreset == 'free' ? const Color(0xFF1B4D2E) : null,
+                                fontWeight: tempPricePreset == 'free' ? FontWeight.bold : FontWeight.normal,
+                              ),
+                              onSelected: (val) {
+                                if (val) {
+                                  setModalState(() {
+                                    tempPricePreset = 'free';
+                                    tempMinPrice = 0;
+                                    tempMaxPrice = 0;
+                                  });
+                                }
+                              },
                             ),
-                            onSelected: (val) {
-                              if (val) {
-                                setModalState(() {
-                                  tempPricePreset = 'free';
-                                  tempMinPrice = 0;
-                                  tempMaxPrice = 0;
-                                });
-                              }
-                            },
-                          ),
-                          ChoiceChip(
-                            label: Text(tr(ref, 'Paid Courses')),
-                            selected: tempPricePreset == 'paid',
-                            selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
-                            labelStyle: TextStyle(
-                              color: tempPricePreset == 'paid' ? const Color(0xFF1B4D2E) : null,
-                              fontWeight: tempPricePreset == 'paid' ? FontWeight.bold : FontWeight.normal,
+                            ChoiceChip(
+                              label: Text(tr(ref, 'Paid Courses')),
+                              selected: tempPricePreset == 'paid',
+                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
+                              labelStyle: TextStyle(
+                                color: tempPricePreset == 'paid' ? const Color(0xFF1B4D2E) : null,
+                                fontWeight: tempPricePreset == 'paid' ? FontWeight.bold : FontWeight.normal,
+                              ),
+                              onSelected: (val) {
+                                if (val) {
+                                  setModalState(() {
+                                    tempPricePreset = 'paid';
+                                    tempMinPrice = 1;
+                                    tempMaxPrice = null;
+                                  });
+                                }
+                              },
                             ),
-                            onSelected: (val) {
-                              if (val) {
-                                setModalState(() {
-                                  tempPricePreset = 'paid';
-                                  tempMinPrice = 1;
-                                  tempMaxPrice = null;
-                                });
-                              }
-                            },
-                          ),
-                          ChoiceChip(
-                            label: Text(tr(ref, 'Under ₹500')),
-                            selected: tempPricePreset == 'under_500',
-                            selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
-                            labelStyle: TextStyle(
-                              color: tempPricePreset == 'under_500' ? const Color(0xFF1B4D2E) : null,
-                              fontWeight: tempPricePreset == 'under_500' ? FontWeight.bold : FontWeight.normal,
+                            ChoiceChip(
+                              label: Text(tr(ref, 'Under ₹500')),
+                              selected: tempPricePreset == 'under_500',
+                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
+                              labelStyle: TextStyle(
+                                color: tempPricePreset == 'under_500' ? const Color(0xFF1B4D2E) : null,
+                                fontWeight: tempPricePreset == 'under_500' ? FontWeight.bold : FontWeight.normal,
+                              ),
+                              onSelected: (val) {
+                                if (val) {
+                                  setModalState(() {
+                                    tempPricePreset = 'under_500';
+                                    tempMinPrice = 1;
+                                    tempMaxPrice = 500;
+                                  });
+                                }
+                              },
                             ),
-                            onSelected: (val) {
-                              if (val) {
-                                setModalState(() {
-                                  tempPricePreset = 'under_500';
-                                  tempMinPrice = 1;
-                                  tempMaxPrice = 500;
-                                });
-                              }
-                            },
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
 
-                      // Skill Level
-                      Row(
-                        children: [
-                          const Icon(Icons.signal_cellular_alt_rounded, size: 18, color: Color(0xFF1B4D2E)),
-                          const SizedBox(width: 6),
-                          Text(tr(ref, 'Skill Level'), style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, fontSize: 14)),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          ChoiceChip(
-                            label: Text(tr(ref, 'All Levels')),
-                            selected: tempLevel.isEmpty,
-                            selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
-                            labelStyle: TextStyle(
-                              color: tempLevel.isEmpty ? const Color(0xFF1B4D2E) : null,
-                              fontWeight: tempLevel.isEmpty ? FontWeight.bold : FontWeight.normal,
+                        // Skill Level
+                        Row(
+                          children: [
+                            const Icon(Icons.signal_cellular_alt_rounded, size: 18, color: Color(0xFF1B4D2E)),
+                            const SizedBox(width: 6),
+                            Text(tr(ref, 'Skill Level'), style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, fontSize: 14)),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            ChoiceChip(
+                              label: Text(tr(ref, 'All Levels')),
+                              selected: tempLevel.isEmpty,
+                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
+                              labelStyle: TextStyle(
+                                color: tempLevel.isEmpty ? const Color(0xFF1B4D2E) : null,
+                                fontWeight: tempLevel.isEmpty ? FontWeight.bold : FontWeight.normal,
+                              ),
+                              onSelected: (val) {
+                                if (val) setModalState(() => tempLevel = '');
+                              },
                             ),
-                            onSelected: (val) {
-                              if (val) setModalState(() => tempLevel = '');
-                            },
-                          ),
-                          ChoiceChip(
-                            label: Text(tr(ref, 'Beginner')),
-                            selected: tempLevel == 'beginner',
-                            selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
-                            labelStyle: TextStyle(
-                              color: tempLevel == 'beginner' ? const Color(0xFF1B4D2E) : null,
-                              fontWeight: tempLevel == 'beginner' ? FontWeight.bold : FontWeight.normal,
+                            ChoiceChip(
+                              label: Text(tr(ref, 'Beginner')),
+                              selected: tempLevel == 'beginner',
+                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
+                              labelStyle: TextStyle(
+                                color: tempLevel == 'beginner' ? const Color(0xFF1B4D2E) : null,
+                                fontWeight: tempLevel == 'beginner' ? FontWeight.bold : FontWeight.normal,
+                              ),
+                              onSelected: (val) {
+                                setModalState(() => tempLevel = val ? 'beginner' : '');
+                              },
                             ),
-                            onSelected: (val) {
-                              setModalState(() => tempLevel = val ? 'beginner' : '');
-                            },
-                          ),
-                          ChoiceChip(
-                            label: Text(tr(ref, 'Intermediate')),
-                            selected: tempLevel == 'intermediate',
-                            selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
-                            labelStyle: TextStyle(
-                              color: tempLevel == 'intermediate' ? const Color(0xFF1B4D2E) : null,
-                              fontWeight: tempLevel == 'intermediate' ? FontWeight.bold : FontWeight.normal,
+                            ChoiceChip(
+                              label: Text(tr(ref, 'Intermediate')),
+                              selected: tempLevel == 'intermediate',
+                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
+                              labelStyle: TextStyle(
+                                color: tempLevel == 'intermediate' ? const Color(0xFF1B4D2E) : null,
+                                fontWeight: tempLevel == 'intermediate' ? FontWeight.bold : FontWeight.normal,
+                              ),
+                              onSelected: (val) {
+                                setModalState(() => tempLevel = val ? 'intermediate' : '');
+                              },
                             ),
-                            onSelected: (val) {
-                              setModalState(() => tempLevel = val ? 'intermediate' : '');
-                            },
-                          ),
-                          ChoiceChip(
-                            label: Text(tr(ref, 'Advanced')),
-                            selected: tempLevel == 'advanced',
-                            selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
-                            labelStyle: TextStyle(
-                              color: tempLevel == 'advanced' ? const Color(0xFF1B4D2E) : null,
-                              fontWeight: tempLevel == 'advanced' ? FontWeight.bold : FontWeight.normal,
+                            ChoiceChip(
+                              label: Text(tr(ref, 'Advanced')),
+                              selected: tempLevel == 'advanced',
+                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
+                              labelStyle: TextStyle(
+                                color: tempLevel == 'advanced' ? const Color(0xFF1B4D2E) : null,
+                                fontWeight: tempLevel == 'advanced' ? FontWeight.bold : FontWeight.normal,
+                              ),
+                              onSelected: (val) {
+                                setModalState(() => tempLevel = val ? 'advanced' : '');
+                              },
                             ),
-                            onSelected: (val) {
-                              setModalState(() => tempLevel = val ? 'advanced' : '');
-                            },
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
 
-                      // Language Filter
-                      Row(
-                        children: [
-                          const Icon(Icons.language_rounded, size: 18, color: Color(0xFF1B4D2E)),
-                          const SizedBox(width: 6),
-                          Text(tr(ref, 'Language Filter'), style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, fontSize: 14)),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          ChoiceChip(
-                            label: Text(tr(ref, 'All Languages')),
-                            selected: tempLanguage.isEmpty,
-                            selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
-                            labelStyle: TextStyle(
-                              color: tempLanguage.isEmpty ? const Color(0xFF1B4D2E) : null,
-                              fontWeight: tempLanguage.isEmpty ? FontWeight.bold : FontWeight.normal,
+                        // Language Filter
+                        Row(
+                          children: [
+                            const Icon(Icons.language_rounded, size: 18, color: Color(0xFF1B4D2E)),
+                            const SizedBox(width: 6),
+                            Text(tr(ref, 'Language Filter'), style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, fontSize: 14)),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            ChoiceChip(
+                              label: Text(tr(ref, 'All Languages')),
+                              selected: tempLanguage.isEmpty,
+                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
+                              labelStyle: TextStyle(
+                                color: tempLanguage.isEmpty ? const Color(0xFF1B4D2E) : null,
+                                fontWeight: tempLanguage.isEmpty ? FontWeight.bold : FontWeight.normal,
+                              ),
+                              onSelected: (val) {
+                                if (val) setModalState(() => tempLanguage = '');
+                              },
                             ),
-                            onSelected: (val) {
-                              if (val) setModalState(() => tempLanguage = '');
-                            },
-                          ),
-                          ChoiceChip(
-                            label: Text(tr(ref, 'Hindi')),
-                            selected: tempLanguage == 'Hindi',
-                            selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
-                            labelStyle: TextStyle(
-                              color: tempLanguage == 'Hindi' ? const Color(0xFF1B4D2E) : null,
-                              fontWeight: tempLanguage == 'Hindi' ? FontWeight.bold : FontWeight.normal,
+                            ChoiceChip(
+                              label: Text(tr(ref, 'Hindi')),
+                              selected: tempLanguage == 'Hindi',
+                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
+                              labelStyle: TextStyle(
+                                color: tempLanguage == 'Hindi' ? const Color(0xFF1B4D2E) : null,
+                                fontWeight: tempLanguage == 'Hindi' ? FontWeight.bold : FontWeight.normal,
+                              ),
+                              onSelected: (val) {
+                                setModalState(() => tempLanguage = val ? 'Hindi' : '');
+                              },
                             ),
-                            onSelected: (val) {
-                              setModalState(() => tempLanguage = val ? 'Hindi' : '');
-                            },
-                          ),
-                          ChoiceChip(
-                            label: Text(tr(ref, 'Marathi')),
-                            selected: tempLanguage == 'Marathi',
-                            selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
-                            labelStyle: TextStyle(
-                              color: tempLanguage == 'Marathi' ? const Color(0xFF1B4D2E) : null,
-                              fontWeight: tempLanguage == 'Marathi' ? FontWeight.bold : FontWeight.normal,
+                            ChoiceChip(
+                              label: Text(tr(ref, 'Marathi')),
+                              selected: tempLanguage == 'Marathi',
+                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
+                              labelStyle: TextStyle(
+                                color: tempLanguage == 'Marathi' ? const Color(0xFF1B4D2E) : null,
+                                fontWeight: tempLanguage == 'Marathi' ? FontWeight.bold : FontWeight.normal,
+                              ),
+                              onSelected: (val) {
+                                setModalState(() => tempLanguage = val ? 'Marathi' : '');
+                              },
                             ),
-                            onSelected: (val) {
-                              setModalState(() => tempLanguage = val ? 'Marathi' : '');
-                            },
-                          ),
-                          ChoiceChip(
-                            label: Text(tr(ref, 'English')),
-                            selected: tempLanguage == 'English',
-                            selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
-                            labelStyle: TextStyle(
-                              color: tempLanguage == 'English' ? const Color(0xFF1B4D2E) : null,
-                              fontWeight: tempLanguage == 'English' ? FontWeight.bold : FontWeight.normal,
+                            ChoiceChip(
+                              label: Text(tr(ref, 'English')),
+                              selected: tempLanguage == 'English',
+                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
+                              labelStyle: TextStyle(
+                                color: tempLanguage == 'English' ? const Color(0xFF1B4D2E) : null,
+                                fontWeight: tempLanguage == 'English' ? FontWeight.bold : FontWeight.normal,
+                              ),
+                              onSelected: (val) {
+                                setModalState(() => tempLanguage = val ? 'English' : '');
+                              },
                             ),
-                            onSelected: (val) {
-                              setModalState(() => tempLanguage = val ? 'English' : '');
-                            },
-                          ),
-                          ChoiceChip(
-                            label: Text(tr(ref, 'Gujarati')),
-                            selected: tempLanguage == 'Gujarati',
-                            selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
-                            labelStyle: TextStyle(
-                              color: tempLanguage == 'Gujarati' ? const Color(0xFF1B4D2E) : null,
-                              fontWeight: tempLanguage == 'Gujarati' ? FontWeight.bold : FontWeight.normal,
+                            ChoiceChip(
+                              label: Text(tr(ref, 'Gujarati')),
+                              selected: tempLanguage == 'Gujarati',
+                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
+                              labelStyle: TextStyle(
+                                color: tempLanguage == 'Gujarati' ? const Color(0xFF1B4D2E) : null,
+                                fontWeight: tempLanguage == 'Gujarati' ? FontWeight.bold : FontWeight.normal,
+                              ),
+                              onSelected: (val) {
+                                setModalState(() => tempLanguage = val ? 'Gujarati' : '');
+                              },
                             ),
-                            onSelected: (val) {
-                              setModalState(() => tempLanguage = val ? 'Gujarati' : '');
-                            },
-                          ),
-                          ChoiceChip(
-                            label: Text(tr(ref, 'Punjabi')),
-                            selected: tempLanguage == 'Punjabi',
-                            selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
-                            labelStyle: TextStyle(
-                              color: tempLanguage == 'Punjabi' ? const Color(0xFF1B4D2E) : null,
-                              fontWeight: tempLanguage == 'Punjabi' ? FontWeight.bold : FontWeight.normal,
+                            ChoiceChip(
+                              label: Text(tr(ref, 'Punjabi')),
+                              selected: tempLanguage == 'Punjabi',
+                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
+                              labelStyle: TextStyle(
+                                color: tempLanguage == 'Punjabi' ? const Color(0xFF1B4D2E) : null,
+                                fontWeight: tempLanguage == 'Punjabi' ? FontWeight.bold : FontWeight.normal,
+                              ),
+                              onSelected: (val) {
+                                setModalState(() => tempLanguage = val ? 'Punjabi' : '');
+                              },
                             ),
-                            onSelected: (val) {
-                              setModalState(() => tempLanguage = val ? 'Punjabi' : '');
-                            },
-                          ),
-                          ChoiceChip(
-                            label: Text(tr(ref, 'Telugu')),
-                            selected: tempLanguage == 'Telugu',
-                            selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
-                            labelStyle: TextStyle(
-                              color: tempLanguage == 'Telugu' ? const Color(0xFF1B4D2E) : null,
-                              fontWeight: tempLanguage == 'Telugu' ? FontWeight.bold : FontWeight.normal,
+                            ChoiceChip(
+                              label: Text(tr(ref, 'Telugu')),
+                              selected: tempLanguage == 'Telugu',
+                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
+                              labelStyle: TextStyle(
+                                color: tempLanguage == 'Telugu' ? const Color(0xFF1B4D2E) : null,
+                                fontWeight: tempLanguage == 'Telugu' ? FontWeight.bold : FontWeight.normal,
+                              ),
+                              onSelected: (val) {
+                                setModalState(() => tempLanguage = val ? 'Telugu' : '');
+                              },
                             ),
-                            onSelected: (val) {
-                              setModalState(() => tempLanguage = val ? 'Telugu' : '');
-                            },
-                          ),
-                          ChoiceChip(
-                            label: Text(tr(ref, 'Tamil')),
-                            selected: tempLanguage == 'Tamil',
-                            selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
-                            labelStyle: TextStyle(
-                              color: tempLanguage == 'Tamil' ? const Color(0xFF1B4D2E) : null,
-                              fontWeight: tempLanguage == 'Tamil' ? FontWeight.bold : FontWeight.normal,
+                            ChoiceChip(
+                              label: Text(tr(ref, 'Tamil')),
+                              selected: tempLanguage == 'Tamil',
+                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
+                              labelStyle: TextStyle(
+                                color: tempLanguage == 'Tamil' ? const Color(0xFF1B4D2E) : null,
+                                fontWeight: tempLanguage == 'Tamil' ? FontWeight.bold : FontWeight.normal,
+                              ),
+                              onSelected: (val) {
+                                setModalState(() => tempLanguage = val ? 'Tamil' : '');
+                              },
                             ),
-                            onSelected: (val) {
-                              setModalState(() => tempLanguage = val ? 'Tamil' : '');
-                            },
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
 
-                      // Sort By
-                      Row(
-                        children: [
-                          const Icon(Icons.sort_rounded, size: 18, color: Color(0xFF1B4D2E)),
-                          const SizedBox(width: 6),
-                          Text(tr(ref, 'Sort by'), style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, fontSize: 14)),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          ChoiceChip(
-                            label: Text(tr(ref, 'Newest')),
-                            selected: tempOrdering == '-created_at' || tempOrdering == '',
-                            selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
-                            labelStyle: TextStyle(
-                              color: (tempOrdering == '-created_at' || tempOrdering == '') ? const Color(0xFF1B4D2E) : null,
-                              fontWeight: (tempOrdering == '-created_at' || tempOrdering == '') ? FontWeight.bold : FontWeight.normal,
+                        // Sort By
+                        Row(
+                          children: [
+                            const Icon(Icons.sort_rounded, size: 18, color: Color(0xFF1B4D2E)),
+                            const SizedBox(width: 6),
+                            Text(tr(ref, 'Sort by'), style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, fontSize: 14)),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            ChoiceChip(
+                              label: Text(tr(ref, 'Newest')),
+                              selected: tempOrdering == '-created_at' || tempOrdering == '',
+                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
+                              labelStyle: TextStyle(
+                                color: (tempOrdering == '-created_at' || tempOrdering == '') ? const Color(0xFF1B4D2E) : null,
+                                fontWeight: (tempOrdering == '-created_at' || tempOrdering == '') ? FontWeight.bold : FontWeight.normal,
+                              ),
+                              onSelected: (val) {
+                                if (val) setModalState(() => tempOrdering = '-created_at');
+                              },
                             ),
-                            onSelected: (val) {
-                              if (val) setModalState(() => tempOrdering = '-created_at');
-                            },
-                          ),
-                          ChoiceChip(
-                            label: Text(tr(ref, 'Most Popular')),
-                            selected: tempOrdering == '-views_count',
-                            selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
-                            labelStyle: TextStyle(
-                              color: tempOrdering == '-views_count' ? const Color(0xFF1B4D2E) : null,
-                              fontWeight: tempOrdering == '-views_count' ? FontWeight.bold : FontWeight.normal,
+                            ChoiceChip(
+                              label: Text(tr(ref, 'Most Popular')),
+                              selected: tempOrdering == '-views_count',
+                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
+                              labelStyle: TextStyle(
+                                color: tempOrdering == '-views_count' ? const Color(0xFF1B4D2E) : null,
+                                fontWeight: tempOrdering == '-views_count' ? FontWeight.bold : FontWeight.normal,
+                              ),
+                              onSelected: (val) {
+                                if (val) setModalState(() => tempOrdering = '-views_count');
+                              },
                             ),
-                            onSelected: (val) {
-                              if (val) setModalState(() => tempOrdering = '-views_count');
-                            },
-                          ),
-                        ],
-                      ),
+                          ],
+                        ),
+                      ],
                       const SizedBox(height: 28),
 
                       // Reset & Apply Buttons
@@ -602,16 +761,25 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                               style: OutlinedButton.styleFrom(
                                 padding: const EdgeInsets.symmetric(vertical: 14),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                side: BorderSide(
+                                  color: isDark ? const Color(0xFF2E4534) : const Color(0xFFCBD5E1),
+                                ),
                               ),
                               onPressed: () {
                                 setModalState(() {
-                                  tempLevel = '';
-                                  tempLanguage = '';
-                                  tempOrdering = '';
-                                  tempPricePreset = 'all';
-                                  tempMinPrice = null;
-                                  tempMaxPrice = null;
-                                  tempMinRating = null;
+                                  if (isEbooksTab) {
+                                    tempEbookPricePreset = 'all';
+                                    tempEbookMinPrice = null;
+                                    tempEbookMaxPrice = null;
+                                  } else {
+                                    tempLevel = '';
+                                    tempLanguage = '';
+                                    tempOrdering = '';
+                                    tempPricePreset = 'all';
+                                    tempMinPrice = null;
+                                    tempMaxPrice = null;
+                                    tempMinRating = null;
+                                  }
                                 });
                               },
                               child: Text(tr(ref, 'Reset All'), style: const TextStyle(fontWeight: FontWeight.bold)),
@@ -631,13 +799,19 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                               onPressed: () {
                                 Navigator.pop(context);
                                 setState(() {
-                                  _selectedLevel = tempLevel;
-                                  _selectedLanguage = tempLanguage;
-                                  _selectedOrdering = tempOrdering;
-                                  _selectedPricePreset = tempPricePreset;
-                                  _minPrice = tempMinPrice;
-                                  _maxPrice = tempMaxPrice;
-                                  _minRating = tempMinRating;
+                                  if (isEbooksTab) {
+                                    _selectedEbookPricePreset = tempEbookPricePreset;
+                                    _ebookMinPrice = tempEbookMinPrice;
+                                    _ebookMaxPrice = tempEbookMaxPrice;
+                                  } else {
+                                    _selectedLevel = tempLevel;
+                                    _selectedLanguage = tempLanguage;
+                                    _selectedOrdering = tempOrdering;
+                                    _selectedPricePreset = tempPricePreset;
+                                    _minPrice = tempMinPrice;
+                                    _maxPrice = tempMaxPrice;
+                                    _minRating = tempMinRating;
+                                  }
                                 });
                               },
                               child: Text(tr(ref, 'Apply Filters'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
@@ -1271,6 +1445,8 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                 searchQuery: _searchQuery,
                 category: _selectedCategory == 'all' ? null : _selectedCategory,
                 instructorId: _selectedInstructorId,
+                minPrice: _ebookMinPrice,
+                maxPrice: _ebookMaxPrice,
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
               )

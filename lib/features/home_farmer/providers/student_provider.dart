@@ -96,11 +96,15 @@ class EbooksQuery {
   final String? search;
   final String? category;
   final String? instructorId;
+  final num? minPrice;
+  final num? maxPrice;
 
   const EbooksQuery({
     this.search,
     this.category,
     this.instructorId,
+    this.minPrice,
+    this.maxPrice,
   });
 
   static const empty = EbooksQuery();
@@ -112,10 +116,12 @@ class EbooksQuery {
           runtimeType == other.runtimeType &&
           search == other.search &&
           category == other.category &&
-          instructorId == other.instructorId;
+          instructorId == other.instructorId &&
+          minPrice == other.minPrice &&
+          maxPrice == other.maxPrice;
 
   @override
-  int get hashCode => Object.hash(search, category, instructorId);
+  int get hashCode => Object.hash(search, category, instructorId, minPrice, maxPrice);
 }
 
 /// Provider for fetching the ebooks catalog with search, category, and strict instructor filtering.
@@ -162,6 +168,17 @@ final studentEbooksProvider = FutureProvider.autoDispose.family<List<EBook>, Ebo
       final ebookCatSlug = category.slug.toLowerCase();
       final ebookCatId = (category.id ?? '').toLowerCase();
       return ebookCatSlug == catTarget || ebookCatId == catTarget;
+    }).toList();
+  }
+
+  // 4. Price filter
+  if (query.minPrice != null || query.maxPrice != null) {
+    list = list.where((ebook) {
+      final rawPrice = (ebook.price ?? '0.00').replaceAll('₹', '').trim();
+      final p = double.tryParse(rawPrice) ?? 0.0;
+      if (query.minPrice != null && p < query.minPrice!) return false;
+      if (query.maxPrice != null && p > query.maxPrice!) return false;
+      return true;
     }).toList();
   }
 

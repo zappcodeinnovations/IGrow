@@ -16,6 +16,8 @@ class EbooksTab extends ConsumerWidget {
     this.searchQuery = '',
     this.category,
     this.instructorId,
+    this.minPrice,
+    this.maxPrice,
     this.shrinkWrap = false,
     this.physics,
   });
@@ -23,6 +25,8 @@ class EbooksTab extends ConsumerWidget {
   final String searchQuery;
   final String? category;
   final String? instructorId;
+  final num? minPrice;
+  final num? maxPrice;
   final bool shrinkWrap;
   final ScrollPhysics? physics;
 
@@ -33,6 +37,8 @@ class EbooksTab extends ConsumerWidget {
       search: searchQuery.trim().isEmpty ? null : searchQuery.trim(),
       category: category,
       instructorId: instructorId,
+      minPrice: minPrice,
+      maxPrice: maxPrice,
     );
     
     return RefreshIndicator(
@@ -45,7 +51,9 @@ class EbooksTab extends ConsumerWidget {
           if (ebooks.isEmpty) {
             final isFiltering = searchQuery.trim().isNotEmpty ||
                 (category != null && category!.isNotEmpty && category != 'all') ||
-                (instructorId != null && instructorId!.isNotEmpty);
+                (instructorId != null && instructorId!.isNotEmpty) ||
+                minPrice != null ||
+                maxPrice != null;
 
             return ListView(
               shrinkWrap: shrinkWrap,
