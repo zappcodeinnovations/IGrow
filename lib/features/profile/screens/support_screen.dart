@@ -938,7 +938,7 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
               // Direct Email Hint
               Center(
                 child: Text(
-                  tr(ref, 'Need urgent help? Reach us at support@iagrow.zappcode.in'),
+                  tr(ref, 'Need urgent help? Reach us at support@agrilearn.com'),
                   style: TextStyle(
                     fontSize: 12,
                     color: isDark ? Colors.white54 : AppColors.inkSoft,
