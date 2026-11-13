@@ -118,9 +118,18 @@ class ProfileScreen extends ConsumerWidget {
         ],
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          child: Column(
+        child: RefreshIndicator(
+          color: const Color(0xFF1B4D2E),
+          backgroundColor: isDark ? const Color(0xFF242724) : Colors.white,
+          onRefresh: () async {
+            await ref.read(authProvider.notifier).refreshUserSilent();
+            ref.invalidate(studentEnrollmentsProvider);
+            ref.invalidate(myCertificatesProvider);
+          },
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               const SizedBox(height: 12),
@@ -812,9 +821,17 @@ class ProfileScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Column(
+        child: RefreshIndicator(
+          color: const Color(0xFF1B4D2E),
+          backgroundColor: isDark ? const Color(0xFF242724) : Colors.white,
+          onRefresh: () async {
+            await ref.read(authProvider.notifier).refreshUserSilent();
+            ref.invalidate(instructorStatsProvider);
+          },
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(20),
+            child: Column(
             children: [
               AppCard(
                 padding: const EdgeInsets.all(20),
