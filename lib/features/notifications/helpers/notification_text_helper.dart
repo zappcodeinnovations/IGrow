@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../core/localization/app_strings.dart';
-import '../../data/models/api_models/notification_models.dart';
+import 'package:krushi_siksha/core/localization/app_strings.dart';
+import 'package:krushi_siksha/data/models/api_models/notification_models.dart';
 
 /// Helper to resolve localized notification text dynamically based on the active language.
 ///
@@ -81,3 +81,4 @@ class NotificationTextHelper {
     return result;
   }
 }
+
