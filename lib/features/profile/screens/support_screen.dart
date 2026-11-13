@@ -37,6 +37,53 @@ const List<SupportCategoryItem> kSupportCategories = [
   ),
 ];
 
+class SupportPriorityOption {
+  final String value;
+  final String label;
+  final String subtitle;
+  final IconData icon;
+  final Color color;
+
+  const SupportPriorityOption({
+    required this.value,
+    required this.label,
+    required this.subtitle,
+    required this.icon,
+    required this.color,
+  });
+}
+
+const List<SupportPriorityOption> kSupportPriorities = [
+  SupportPriorityOption(
+    value: 'LOW',
+    label: 'Low (General guidance)',
+    subtitle: 'General inquiries or non-urgent assistance',
+    icon: Icons.arrow_downward_rounded,
+    color: Color(0xFF0284C7),
+  ),
+  SupportPriorityOption(
+    value: 'MEDIUM',
+    label: 'Medium (Standard query)',
+    subtitle: 'Standard queries and general account requests',
+    icon: Icons.remove_rounded,
+    color: Color(0xFFD97706),
+  ),
+  SupportPriorityOption(
+    value: 'HIGH',
+    label: 'High (Urgent action needed)',
+    subtitle: 'Payment issues, account access, or course errors',
+    icon: Icons.arrow_upward_rounded,
+    color: Color(0xFFEA580C),
+  ),
+  SupportPriorityOption(
+    value: 'URGENT',
+    label: 'Urgent (Critical blocker / crash)',
+    subtitle: 'App crashes, webinar blockers, critical failures',
+    icon: Icons.priority_high_rounded,
+    color: Color(0xFFDC2626),
+  ),
+];
+
 class SupportScreen extends ConsumerStatefulWidget {
   final int initialTabIndex;
 
@@ -58,6 +105,7 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
   final _subjectController = TextEditingController();
   final _messageController = TextEditingController();
   String _selectedCategory = 'General Query';
+  String _selectedPriority = 'MEDIUM';
   bool _isSubmitting = false;
 
   // ── Tickets List State ──
@@ -253,6 +301,7 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
     final subject = _subjectController.text.trim();
     final message = _messageController.text.trim();
     final category = _selectedCategory;
+    final priority = _selectedPriority;
 
     setState(() => _isSubmitting = true);
 
@@ -267,6 +316,7 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
       category: category,
       subject: subject,
       message: message,
+      priority: priority,
       status: 'OPEN',
       createdAt: now,
       updatedAt: now,
@@ -294,6 +344,8 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
         'query_type': category,
         'type': category,
         'ticket_type': category,
+        'priority': priority,
+        'priority_level': priority,
         'subject': subject,
         'title': subject,
         'message': message,
@@ -388,6 +440,7 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
         _messageController.clear();
         setState(() {
           _selectedCategory = 'General Query';
+          _selectedPriority = 'MEDIUM';
         });
         _tabController.animateTo(1);
         _fetchTickets();
@@ -411,6 +464,10 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
         // Safe fallback: ticket was already persisted locally
         _subjectController.clear();
         _messageController.clear();
+        setState(() {
+          _selectedCategory = 'General Query';
+          _selectedPriority = 'MEDIUM';
+        });
         _tabController.animateTo(1);
       }
     } finally {
@@ -641,6 +698,84 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
                 onChanged: (val) {
                   if (val != null) {
                     setState(() => _selectedCategory = val);
+                  }
+                },
+              ),
+
+              const SizedBox(height: 18),
+
+              // Priority Dropdown Field
+              Text(
+                'Priority *',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : AppColors.inkDark,
+                ),
+              ),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(
+                initialValue: _selectedPriority,
+                isExpanded: true,
+                dropdownColor: isDark ? AppColors.cardDark : Colors.white,
+                style: TextStyle(
+                  color: isDark ? Colors.white : AppColors.inkDark,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: isDark ? AppColors.cardDark : Colors.white,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: isDark ? AppColors.lineDark : const Color(0xFFCBD5E1),
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: isDark ? AppColors.lineDark : const Color(0xFFCBD5E1),
+                      width: 1.2,
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(
+                      color: AppColors.primaryGreen,
+                      width: 1.8,
+                    ),
+                  ),
+                ),
+                items: kSupportPriorities.map((priority) {
+                  return DropdownMenuItem<String>(
+                    value: priority.value,
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: priority.color.withValues(alpha: 0.15),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(priority.icon, size: 14, color: priority.color),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            priority.label,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontWeight: FontWeight.w500),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+                onChanged: (val) {
+                  if (val != null) {
+                    setState(() => _selectedPriority = val);
                   }
                 },
               ),
@@ -1069,40 +1204,83 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
                 ),
                 const SizedBox(width: 8),
 
-                // Status Badge
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? ticket.statusBgColor.withValues(alpha: 0.18)
-                        : ticket.statusBgColor,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: isDark
-                          ? ticket.statusBorderColor.withValues(alpha: 0.4)
-                          : ticket.statusBorderColor,
-                      width: 1,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        ticket.statusIcon,
-                        size: 12,
-                        color: ticket.statusTextColor,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        ticket.statusDisplay,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: ticket.statusTextColor,
+                // Badges: Priority + Status
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Priority Badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3.5),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? ticket.priorityBgColor.withValues(alpha: 0.18)
+                            : ticket.priorityBgColor,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: isDark
+                              ? ticket.priorityBorderColor.withValues(alpha: 0.4)
+                              : ticket.priorityBorderColor,
+                          width: 1,
                         ),
                       ),
-                    ],
-                  ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            ticket.priorityIcon,
+                            size: 11,
+                            color: ticket.priorityTextColor,
+                          ),
+                          const SizedBox(width: 3),
+                          Text(
+                            ticket.priorityDisplay,
+                            style: TextStyle(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.bold,
+                              color: ticket.priorityTextColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+
+                    // Status Badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? ticket.statusBgColor.withValues(alpha: 0.18)
+                            : ticket.statusBgColor,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: isDark
+                              ? ticket.statusBorderColor.withValues(alpha: 0.4)
+                              : ticket.statusBorderColor,
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            ticket.statusIcon,
+                            size: 12,
+                            color: ticket.statusTextColor,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            ticket.statusDisplay,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: ticket.statusTextColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
