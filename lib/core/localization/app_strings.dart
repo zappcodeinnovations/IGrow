@@ -635,6 +635,37 @@ class AppStrings {
       'In Progress': 'In Progress',
       'Resolved': 'Resolved',
       'Closed': 'Closed',
+
+      // Analytics & Payouts Screen
+      'Analytics & Payouts': 'Analytics & Payouts',
+      'Financial Performance': 'Financial Performance',
+      'Track your real-time earnings, sales ledger, and course enrollments.': 'Track your real-time earnings, sales ledger, and course enrollments.',
+      'NET INSTRUCTOR EARNINGS': 'NET INSTRUCTOR EARNINGS',
+      '70% Split': '70% Split',
+      'Gross Sales Revenue': 'Gross Sales Revenue',
+      'Active Courses': 'Active Courses',
+      'Published courses': 'Published courses',
+      'enrollments': 'enrollments',
+      'Avg Rating': 'Avg Rating',
+      'From student reviews': 'From student reviews',
+      'Standing': 'Standing',
+      'Account health': 'Account health',
+      'GOOD': 'GOOD',
+      'Good': 'Good',
+      'Recent Sales Ledger': 'Recent Sales Ledger',
+      'transactions': 'transactions',
+      'No Sales Transactions Recorded Yet': 'No Sales Transactions Recorded Yet',
+      'When students enroll in and purchase your courses, their verified payments will appear in this ledger.': 'When students enroll in and purchase your courses, their verified payments will appear in this ledger.',
+      'Buyer': 'Buyer',
+      'Course Purchase': 'Course Purchase',
+      'Course Enrollment': 'Course Enrollment',
+      'Total Settled Earnings': 'Total Settled Earnings',
+      'Total Orders': 'Total Orders',
+      'Successful': 'Successful',
+      'SUCCESS': 'SUCCESS',
+      'FAILED': 'FAILED',
+      'PENDING': 'PENDING',
+      'Online Payment': 'Online Payment',
     },
 
     'hi': {
@@ -1244,6 +1275,37 @@ class AppStrings {
       'In Progress': 'प्रगति पर',
       'Resolved': 'समाधान हो गया',
       'Closed': 'बंद',
+
+      // Analytics & Payouts Screen
+      'Analytics & Payouts': 'विश्लेषण एवं भुगतान',
+      'Financial Performance': 'वित्तीय प्रदर्शन',
+      'Track your real-time earnings, sales ledger, and course enrollments.': 'अपनी वास्तविक कमाई, बिक्री खाता और कोर्स नामांकन ट्रैक करें।',
+      'NET INSTRUCTOR EARNINGS': 'प्रशिक्षक की शुद्ध कमाई',
+      '70% Split': '70% हिस्सा',
+      'Gross Sales Revenue': 'सकल बिक्री राजस्व',
+      'Active Courses': 'सक्रिय कोर्सेस',
+      'Published courses': 'प्रकाशित कोर्सेस',
+      'enrollments': 'नामांकन',
+      'Avg Rating': 'औसत रेटिंग',
+      'From student reviews': 'छात्र समीक्षाओं से',
+      'Standing': 'खाता स्थिति',
+      'Account health': 'खाता स्थिति',
+      'GOOD': 'उत्कृष्ट',
+      'Good': 'अच्छा',
+      'Recent Sales Ledger': 'हालिया बिक्री खाता',
+      'transactions': 'लेनदेन',
+      'No Sales Transactions Recorded Yet': 'अभी तक कोई बिक्री लेनदेन दर्ज नहीं है',
+      'When students enroll in and purchase your courses, their verified payments will appear in this ledger.': 'जब छात्र आपके कोर्सेस में नामांकन और खरीद करेंगे, तो उनके सत्यापित भुगतान यहाँ दिखाई देंगे।',
+      'Buyer': 'खरीदार',
+      'Course Purchase': 'कोर्स खरीद',
+      'Course Enrollment': 'कोर्स नामांकन',
+      'Total Settled Earnings': 'कुल प्राप्त कमाई',
+      'Total Orders': 'कुल ऑर्डर',
+      'Successful': 'सफल',
+      'SUCCESS': 'सफल',
+      'FAILED': 'असफल',
+      'PENDING': 'प्रलंबित',
+      'Online Payment': 'ऑनलाइन भुगतान',
     },
 
     'mr': {
@@ -1853,6 +1915,37 @@ class AppStrings {
       'In Progress': 'प्रगतीपथावर',
       'Resolved': 'निराकरण झाले',
       'Closed': 'बंद',
+
+      // Analytics & Payouts Screen
+      'Analytics & Payouts': 'विश्लेषण आणि देयके',
+      'Financial Performance': 'वित्तीय कामगिरी',
+      'Track your real-time earnings, sales ledger, and course enrollments.': 'तुमची रिअल-टाइम कमाई, विक्री लेजर आणि कोर्स नोंदणी ट्रॅक करा.',
+      'NET INSTRUCTOR EARNINGS': 'शिक्षकाची निव्वळ कमाई',
+      '70% Split': '७०% वाटा',
+      'Gross Sales Revenue': 'एकूण विक्री महसूल',
+      'Active Courses': 'सक्रिय कोर्सेस',
+      'Published courses': 'प्रकाशित कोर्सेस',
+      'enrollments': 'नोंदणी',
+      'Avg Rating': 'सरासरी रेटिंग',
+      'From student reviews': 'विद्यार्थी पुनरावलोकनांमधून',
+      'Standing': 'खाते स्थिती',
+      'Account health': 'खाते स्थिती',
+      'GOOD': 'उत्कृष्ट',
+      'Good': 'चांगले',
+      'Recent Sales Ledger': 'अलीकडील विक्री नोंदवही',
+      'transactions': 'व्यवहार',
+      'No Sales Transactions Recorded Yet': 'अद्याप कोणतेही विक्री व्यवहार नोंदवलेले नाहीत',
+      'When students enroll in and purchase your courses, their verified payments will appear in this ledger.': 'जेव्हा विद्यार्थी तुमच्या कोर्सेसमध्ये नोंदणी करतील आणि खरेदी करतील, तेव्हा त्यांचे सत्यापित देयक येथे दिसतील.',
+      'Buyer': 'खरेदीदार',
+      'Course Purchase': 'कोर्स खरेदी',
+      'Course Enrollment': 'कोर्स नोंदणी',
+      'Total Settled Earnings': 'एकूण जमा झालेली कमाई',
+      'Total Orders': 'एकूण ऑर्डर्स',
+      'Successful': 'यशस्वी',
+      'SUCCESS': 'यशस्वी',
+      'FAILED': 'अयशस्वी',
+      'PENDING': 'प्रलंबित',
+      'Online Payment': 'ऑनलाइन देयक',
     },
   };
 
@@ -1862,12 +1955,12 @@ class AppStrings {
     final langMap = _translations[code] ?? _translations['en'];
     if (langMap != null) {
       if (langMap.containsKey(key)) {
-        return langMap[key]!;
+        return formatDigits(langMap[key]!, languageCode: code);
       }
       final keyLower = key.toLowerCase().trim();
       for (final entry in langMap.entries) {
         if (entry.key.toLowerCase().trim() == keyLower) {
-          return entry.value;
+          return formatDigits(entry.value, languageCode: code);
         }
       }
     }
@@ -1875,16 +1968,39 @@ class AppStrings {
     final enMap = _translations['en'];
     if (enMap != null) {
       if (enMap.containsKey(key)) {
-        return enMap[key]!;
+        return formatDigits(enMap[key]!, languageCode: code);
       }
       final keyLower = key.toLowerCase().trim();
       for (final entry in enMap.entries) {
         if (entry.key.toLowerCase().trim() == keyLower) {
-          return entry.value;
+          return formatDigits(entry.value, languageCode: code);
         }
       }
     }
-    return key;
+    return formatDigits(key, languageCode: code);
+  }
+
+  /// Maps Western Arabic numerals ('0'-'9') to Devanagari numerals ('०'-'९')
+  /// when [languageCode] is 'hi' (Hindi) or 'mr' (Marathi).
+  static String formatDigits(dynamic input, {required String languageCode}) {
+    if (input == null) return '';
+    final str = input.toString();
+    final code = languageCode.toLowerCase().trim();
+    if (code == 'hi' || code == 'mr') {
+      const devanagariDigits = ['०', '१', '२', '३', '४', '५', '६', '७', '८', '९'];
+      final buffer = StringBuffer();
+      for (int i = 0; i < str.length; i++) {
+        final codeUnit = str.codeUnitAt(i);
+        // ASCII digits '0' (48) to '9' (57)
+        if (codeUnit >= 48 && codeUnit <= 57) {
+          buffer.write(devanagariDigits[codeUnit - 48]);
+        } else {
+          buffer.writeCharCode(codeUnit);
+        }
+      }
+      return buffer.toString();
+    }
+    return str;
   }
 }
 
@@ -1953,4 +2069,10 @@ extension LocalizationContextExtension on BuildContext {
 String tr(WidgetRef ref, String key) {
   final langCode = ref.watch(languageProvider);
   return AppStrings.tr(key, languageCode: langCode);
+}
+
+/// Helper method to format numbers/amounts into localized digits ('0'-'9' -> '०'-'९' in Hindi & Marathi)
+String formatNum(WidgetRef ref, dynamic number) {
+  final langCode = ref.watch(languageProvider);
+  return AppStrings.formatDigits(number, languageCode: langCode);
 }

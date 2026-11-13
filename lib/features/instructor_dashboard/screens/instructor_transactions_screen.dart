@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/localization/app_strings.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/shimmer_placeholders.dart';
 import '../../home_instructor/providers/instructor_home_provider.dart';
@@ -286,14 +287,14 @@ class _InstructorTransactionsScreenState
     return Scaffold(
       backgroundColor: isDark ? AppColors.bgDark : const Color(0xFFF8FAF7),
       appBar: AppBar(
-        title: const Text(
-          'All Transactions',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        title: Text(
+          tr(ref, 'All Transactions'),
+          style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
-            tooltip: 'Refresh',
+            tooltip: tr(ref, 'Retry'),
             onPressed: () {
               ref.invalidate(instructorTransactionsProvider);
             },
@@ -423,9 +424,9 @@ class _InstructorTransactionsScreenState
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
-                                'Total Settled Earnings',
-                                style: TextStyle(
+                              Text(
+                                tr(ref, 'Total Settled Earnings'),
+                                style: const TextStyle(
                                   fontSize: 12,
                                   color: Colors.white70,
                                   fontWeight: FontWeight.w500,
@@ -433,7 +434,7 @@ class _InstructorTransactionsScreenState
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                '₹${totalEarned.toStringAsFixed(2)}',
+                                '₹${formatNum(ref, totalEarned.toStringAsFixed(2))}',
                                 style: const TextStyle(
                                   fontSize: 26,
                                   fontWeight: FontWeight.bold,
@@ -444,8 +445,8 @@ class _InstructorTransactionsScreenState
                               Row(
                                 children: [
                                   _buildSummaryStat(
-                                    label: 'Total Orders',
-                                    value: '${allTransactions.length}',
+                                    label: tr(ref, 'Total Orders'),
+                                    value: formatNum(ref, allTransactions.length),
                                   ),
                                   Container(
                                     width: 1,
@@ -454,8 +455,8 @@ class _InstructorTransactionsScreenState
                                     margin: const EdgeInsets.symmetric(horizontal: 16),
                                   ),
                                   _buildSummaryStat(
-                                    label: 'Successful',
-                                    value: '$successfulCount',
+                                    label: tr(ref, 'Successful'),
+                                    value: formatNum(ref, successfulCount),
                                   ),
                                   if (pendingCount > 0) ...[
                                     Container(
@@ -465,8 +466,8 @@ class _InstructorTransactionsScreenState
                                       margin: const EdgeInsets.symmetric(horizontal: 16),
                                     ),
                                     _buildSummaryStat(
-                                      label: 'Pending',
-                                      value: '$pendingCount',
+                                      label: tr(ref, 'Pending'),
+                                      value: formatNum(ref, pendingCount),
                                     ),
                                   ],
                                 ],
@@ -526,16 +527,16 @@ class _InstructorTransactionsScreenState
                           scrollDirection: Axis.horizontal,
                           child: Row(
                             children: [
-                              _buildFilterChip('ALL', 'All (${allTransactions.length})'),
+                              _buildFilterChip('ALL', '${tr(ref, 'All')} (${formatNum(ref, allTransactions.length)})'),
                               const SizedBox(width: 8),
-                              _buildFilterChip('SUCCESS', 'Successful ($successfulCount)'),
+                              _buildFilterChip('SUCCESS', '${tr(ref, 'Successful')} (${formatNum(ref, successfulCount)})'),
                               if (pendingCount > 0) ...[
                                 const SizedBox(width: 8),
-                                _buildFilterChip('PENDING', 'Pending ($pendingCount)'),
+                                _buildFilterChip('PENDING', '${tr(ref, 'Pending')} (${formatNum(ref, pendingCount)})'),
                               ],
                               if (failedCount > 0) ...[
                                 const SizedBox(width: 8),
-                                _buildFilterChip('FAILED', 'Failed ($failedCount)'),
+                                _buildFilterChip('FAILED', '${tr(ref, 'FAILED')} (${formatNum(ref, failedCount)})'),
                               ],
                             ],
                           ),
@@ -709,7 +710,7 @@ class _InstructorTransactionsScreenState
                                         crossAxisAlignment: CrossAxisAlignment.end,
                                         children: [
                                           Text(
-                                            '+₹$amount',
+                                            '+₹${formatNum(ref, amount)}',
                                             style: const TextStyle(
                                               fontSize: 15,
                                               fontWeight: FontWeight.bold,
@@ -729,7 +730,7 @@ class _InstructorTransactionsScreenState
                                               borderRadius: BorderRadius.circular(4),
                                             ),
                                             child: Text(
-                                              rawStatus,
+                                              tr(ref, rawStatus),
                                               style: TextStyle(
                                                 fontSize: 9.5,
                                                 fontWeight: FontWeight.bold,

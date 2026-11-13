@@ -864,7 +864,7 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                         child: _StatCard(
                           icon: Icons.people_alt_rounded,
                           label: tr(ref, 'Students'),
-                          value: '$distinctStudentCount',
+                          value: formatNum(ref, distinctStudentCount),
                           color: AppColors.skyBlue,
                           onTap: () => _showStudentsBottomSheet(context, stats),
                         ),
@@ -874,7 +874,7 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                         child: _StatCard(
                           icon: Icons.play_lesson_rounded,
                           label: tr(ref, 'Courses'),
-                          value: '${stats['total_courses'] ?? 0}',
+                          value: formatNum(ref, stats['total_courses'] ?? 0),
                           color: AppColors.primaryGreen,
                           onTap: () => context.push(RouteNames.instructorUploads),
                         ),
@@ -890,7 +890,7 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                             return _StatCard(
                               icon: Icons.menu_book_rounded,
                               label: tr(ref, 'E-Books'),
-                              value: '$totalEbooks',
+                              value: formatNum(ref, totalEbooks),
                               color: AppColors.accentOrange,
                               onTap: () => context.push('${RouteNames.instructorUploads}?tab=1'),
                             );
@@ -911,7 +911,7 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                             return _StatCard(
                               icon: Icons.star_rounded,
                               label: tr(ref, 'Reviews'),
-                              value: '$totalReviewsCount',
+                              value: formatNum(ref, totalReviewsCount),
                               color: AppColors.signalYellow,
                               onTap: () => _showReviewsBottomSheet(context, stats),
                             );

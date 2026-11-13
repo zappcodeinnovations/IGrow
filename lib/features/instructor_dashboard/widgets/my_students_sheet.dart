@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/localization/app_strings.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
 
@@ -105,7 +107,7 @@ class InstructorStudentProfile {
 }
 
 /// The main "My Students" bottom sheet displaying only distinct students.
-class MyStudentsSheet extends StatefulWidget {
+class MyStudentsSheet extends ConsumerStatefulWidget {
   final List<Map<String, dynamic>> transactions;
   final int totalStudents;
   final int totalEnrollments;
@@ -124,10 +126,10 @@ class MyStudentsSheet extends StatefulWidget {
   });
 
   @override
-  State<MyStudentsSheet> createState() => _MyStudentsSheetState();
+  ConsumerState<MyStudentsSheet> createState() => _MyStudentsSheetState();
 }
 
-class _MyStudentsSheetState extends State<MyStudentsSheet> {
+class _MyStudentsSheetState extends ConsumerState<MyStudentsSheet> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
   final String _sortMode = 'COURSES';
@@ -222,14 +224,14 @@ class _MyStudentsSheetState extends State<MyStudentsSheet> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'My Students',
+                        tr(ref, 'My Students'),
                         style: Theme.of(context)
                             .textTheme
                             .titleLarge
                             ?.copyWith(fontWeight: FontWeight.bold),
                       ),
                       Text(
-                        '$displayStudentCount total students • $displayEnrollmentCount enrollments',
+                        '${formatNum(ref, displayStudentCount)} ${tr(ref, 'Total Students').toLowerCase()} • ${formatNum(ref, displayEnrollmentCount)} ${tr(ref, 'enrollments')}',
                         style: const TextStyle(
                           fontSize: 12,
                           color: AppColors.inkSoft,

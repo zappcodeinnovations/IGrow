@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/localization/app_strings.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/shimmer_placeholders.dart';
 import '../../home_instructor/providers/instructor_home_provider.dart';
@@ -54,9 +55,9 @@ class _InstructorStudentsScreenState
       backgroundColor:
           isDark ? AppColors.bgDark : const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text(
-          'My Students',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        title: Text(
+          tr(ref, 'My Students'),
+          style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         elevation: 0,
         backgroundColor: isDark ? AppColors.cardDark : Colors.white,
@@ -154,7 +155,7 @@ class _InstructorStudentsScreenState
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      '${allStudents.length} Distinct Students',
+                                      '${formatNum(ref, allStudents.length)} ${tr(ref, 'Total Students')}',
                                       style: TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.bold,
@@ -165,7 +166,7 @@ class _InstructorStudentsScreenState
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
-                                      '${txs.length} total course enrollments recorded',
+                                      '${formatNum(ref, txs.length)} ${tr(ref, 'enrollments')}',
                                       style: const TextStyle(
                                         fontSize: 12,
                                         color: AppColors.inkSoft,
