@@ -9,6 +9,8 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:http/http.dart' as http;
 import 'package:pdf/pdf.dart';
 import 'package:printing/printing.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../localization/app_strings.dart';
 import '../network/token_storage.dart';
 
 /// Top-level background message handler for FCM.
@@ -38,12 +40,26 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   final rawTitle = message.notification?.title ?? message.data['title'];
   final rawBody  = message.notification?.body  ?? message.data['body'];
 
-  final title = (rawTitle != null && rawTitle.toString().trim().isNotEmpty)
-      ? rawTitle.toString().trim()
+  // Check for localized keys in notification or data payload
+  final titleLocKey = message.notification?.titleLocKey ?? message.data['title_loc_key'] ?? message.data['title_key'];
+  final bodyLocKey = message.notification?.bodyLocKey ?? message.data['body_loc_key'] ?? message.data['message_key'];
+  final titleLocArgs = message.notification?.titleLocArgs;
+  final bodyLocArgs = message.notification?.bodyLocArgs;
+
+  final resolved = await NotificationService.resolveNotificationText(
+    title: rawTitle?.toString(),
+    body: rawBody?.toString(),
+    titleLocKey: titleLocKey?.toString(),
+    bodyLocKey: bodyLocKey?.toString(),
+    titleLocArgs: titleLocArgs,
+    bodyLocArgs: bodyLocArgs,
+    data: message.data,
+  );
+
+  final title = (resolved.title.trim().isNotEmpty)
+      ? resolved.title.trim()
       : (message.data.isNotEmpty ? 'iAgrow Notification' : null);
-  final body  = (rawBody != null && rawBody.toString().trim().isNotEmpty)
-      ? rawBody.toString().trim()
-      : '';
+  final body = resolved.body.trim();
 
   if (title != null) {
     try {
@@ -319,12 +335,25 @@ class NotificationService {
     final rawTitle = notification?.title ?? message.data['title'];
     final rawBody  = notification?.body  ?? message.data['body'];
 
-    final title = (rawTitle != null && rawTitle.toString().trim().isNotEmpty)
-        ? rawTitle.toString().trim()
+    final titleLocKey = notification?.titleLocKey ?? message.data['title_loc_key'] ?? message.data['title_key'];
+    final bodyLocKey = notification?.bodyLocKey ?? message.data['body_loc_key'] ?? message.data['message_key'];
+    final titleLocArgs = notification?.titleLocArgs;
+    final bodyLocArgs = notification?.bodyLocArgs;
+
+    final resolved = await NotificationService.resolveNotificationText(
+      title: rawTitle?.toString(),
+      body: rawBody?.toString(),
+      titleLocKey: titleLocKey?.toString(),
+      bodyLocKey: bodyLocKey?.toString(),
+      titleLocArgs: titleLocArgs,
+      bodyLocArgs: bodyLocArgs,
+      data: message.data,
+    );
+
+    final title = (resolved.title.trim().isNotEmpty)
+        ? resolved.title.trim()
         : 'iAgrow Notification';
-    final body = (rawBody != null && rawBody.toString().trim().isNotEmpty)
-        ? rawBody.toString().trim()
-        : '';
+    final body = resolved.body.trim();
 
     // Defer premature course creation push notification while video/media upload is active
     final lowerTitle = title.toLowerCase();
@@ -477,6 +506,139 @@ class NotificationService {
     } catch (e) {
       if (kDebugMode) {
         print('⚠️ Failed to delete FCM token on logout: $e');
+      }
+    }
+  }
+
+  /// Resolves multilingual notification text for push banners based on active app language.
+  static Future<({String title, String body})> resolveNotificationText({
+    String? title,
+    String? body,
+    String? titleLocKey,
+    String? bodyLocKey,
+    List<String>? titleLocArgs,
+    List<String>? bodyLocArgs,
+    Map<String, dynamic>? data,
+  }) async {
+    String lang = 'en';
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      lang = prefs.getString('app_user_language_code') ?? 'en';
+    } catch (_) {}
+
+    String resolvedTitle = title ?? '';
+    String resolvedBody = body ?? '';
+
+    // 1. Try local dictionary resolution with loc_key
+    if (titleLocKey != null && titleLocKey.isNotEmpty) {
+      final translated = AppStrings.tr(titleLocKey, languageCode: lang);
+      if (translated != titleLocKey) {
+        resolvedTitle = _interpolateLocKey(translated, titleLocArgs, data, lang);
+      }
+    }
+
+    if (bodyLocKey != null && bodyLocKey.isNotEmpty) {
+      final translated = AppStrings.tr(bodyLocKey, languageCode: lang);
+      if (translated != bodyLocKey) {
+        resolvedBody = _interpolateLocKey(translated, bodyLocArgs, data, lang);
+      }
+    }
+
+    // 2. Try translations object in data payload if present
+    if (data != null && data['translations'] != null) {
+      try {
+        dynamic trans = data['translations'];
+        if (trans is String) {
+          trans = jsonDecode(trans);
+        }
+        if (trans is Map && trans[lang] is Map) {
+          final lMap = trans[lang] as Map;
+          if (resolvedTitle.isEmpty || titleLocKey == null) {
+            final t = lMap['title']?.toString();
+            if (t != null && t.isNotEmpty) resolvedTitle = t;
+          }
+          if (resolvedBody.isEmpty || bodyLocKey == null) {
+            final b = lMap['message']?.toString() ?? lMap['body']?.toString();
+            if (b != null && b.isNotEmpty) resolvedBody = b;
+          }
+        }
+      } catch (_) {}
+    }
+
+    return (
+      title: resolvedTitle.isNotEmpty ? resolvedTitle : (title ?? 'iAgrow Notification'),
+      body: resolvedBody.isNotEmpty ? resolvedBody : (body ?? ''),
+    );
+  }
+
+  static String _interpolateLocKey(
+    String template,
+    List<String>? args,
+    Map<String, dynamic>? data,
+    String lang,
+  ) {
+    var result = template;
+    // Replace positional args %s or {0}, {1}
+    if (args != null) {
+      for (int i = 0; i < args.length; i++) {
+        final val = AppStrings.formatDigits(args[i], languageCode: lang);
+        result = result.replaceFirst('%s', val);
+        result = result.replaceAll('{$i}', val);
+      }
+    }
+    // Replace named params from data['params'] or data directly
+    Map<String, dynamic>? params;
+    if (data != null) {
+      if (data['params'] is Map) {
+        params = Map<String, dynamic>.from(data['params'] as Map);
+      } else if (data['params'] is String) {
+        try {
+          params = jsonDecode(data['params'] as String) as Map<String, dynamic>;
+        } catch (_) {}
+      }
+      params ??= data;
+      params.forEach((k, v) {
+        final val = AppStrings.formatDigits(v.toString(), languageCode: lang);
+        result = result.replaceAll('{$k}', val);
+      });
+    }
+    return result;
+  }
+
+  /// Synchronize user's preferred language with backend profile API
+  /// (PATCH /api/v1/accounts/profile/) so future push notifications and email alerts
+  /// match the chosen language.
+  static Future<void> syncPreferredLanguageWithBackend(String langCode) async {
+    try {
+      final tokenStorage = TokenStorage();
+      final accessToken = await tokenStorage.getAccessToken();
+      if (accessToken == null || accessToken.isEmpty) return;
+
+      final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/accounts/profile/');
+      final response = await http
+          .patch(
+            uri,
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+              'Authorization': 'Bearer $accessToken',
+            },
+            body: jsonEncode({
+              'preferred_language': langCode,
+            }),
+          )
+          .timeout(const Duration(seconds: 8));
+
+      if (kDebugMode) {
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+          print('✅ [NotificationService] Synchronized preferred_language: $langCode with backend profile.');
+        } else {
+          print('⚠️ [NotificationService] Failed to sync preferred_language (${response.statusCode}): ${response.body}');
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('⚠️ [NotificationService] Exception syncing preferred_language: $e');
       }
     }
   }

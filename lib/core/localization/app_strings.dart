@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../services/notification_service.dart';
 import '../theme/theme_provider.dart';
 
 /// Supported language options in iAgrow.
@@ -885,6 +888,15 @@ class AppStrings {
       'Most Popular': 'Most Popular',
       'Reset All': 'Reset All',
       'Apply Filters': 'Apply Filters',
+      'notif_welcome_title': 'Welcome to iAgrow! 🌱',
+      'notif_welcome_student_body': 'Explore top agricultural courses and elevate your farming skills.',
+      'notif_welcome_instructor_body': 'Start sharing your farming expertise and build your instructor community.',
+      'notif_new_course_title': 'New Course Available! 🎓',
+      'notif_new_course_body': 'Explore {course_title} now.',
+      'notif_new_ebook_title': 'New E-Book Added! 📖',
+      'notif_new_ebook_body': 'Read {ebook_title} now.',
+      'notif_support_ticket_title': 'Support Ticket Update: #{ticket_num}',
+      'notif_support_ticket_status_updated': 'Your support ticket status has been updated to {status}.',
       'active': 'active',
     },
 
@@ -1745,6 +1757,15 @@ class AppStrings {
       'Most Popular': 'सर्वाधिक लोकप्रिय',
       'Reset All': 'सभी रीसेट करें',
       'Apply Filters': 'फ़िल्टर लागू करें',
+      'notif_welcome_title': 'iAgrow में आपका स्वागत है! 🌱',
+      'notif_welcome_student_body': 'सर्वश्रेष्ठ कृषि पाठ्यक्रम देखें और अपने खेती के कौशल को बढ़ाएं।',
+      'notif_welcome_instructor_body': 'अपना कृषि अनुभव साझा करें और अपना किसान समुदाय बनाएं।',
+      'notif_new_course_title': 'नया पाठ्यक्रम उपलब्ध! 🎓',
+      'notif_new_course_body': '"{course_title}" नया कोर्स अब उपलब्ध है।',
+      'notif_new_ebook_title': 'नई ई-बुक उपलब्ध! 📖',
+      'notif_new_ebook_body': '"{ebook_title}" ई-बुक अब पढ़ें।',
+      'notif_support_ticket_title': 'सपोर्ट टिकट अपडेट: #{ticket_num}',
+      'notif_support_ticket_status_updated': 'आपके सपोर्ट टिकट की स्थिति \'{status}\' अपडेट कर दी गई है।',
       'active': 'सक्रिय',
     },
 
@@ -2605,6 +2626,15 @@ class AppStrings {
       'Most Popular': 'सर्वात लोकप्रिय',
       'Reset All': 'सर्व रीसेट करा',
       'Apply Filters': 'फिल्टर्स लागू करा',
+      'notif_welcome_title': 'iAgrow मध्ये आपले स्वागत आहे! 🌱',
+      'notif_welcome_student_body': 'उत्कृष्ट कृषी अभ्यासक्रम एक्सप्लोर करा आणि आपले शेती कौशल्य वाढवा.',
+      'notif_welcome_instructor_body': 'तुमचे शेतीचे ज्ञान आणि अनुभव शेअर करून शेतकरी समुदाय घडवा.',
+      'notif_new_course_title': 'नवीन अभ्यासक्रम उपलब्ध! 🎓',
+      'notif_new_course_body': '"{course_title}" हा नवीन अभ्यासक्रम आता उपलब्ध आहे.',
+      'notif_new_ebook_title': 'नवीन ई-पुस्तक उपलब्ध! 📖',
+      'notif_new_ebook_body': '"{ebook_title}" हे ई-पुस्तक आता वाचा.',
+      'notif_support_ticket_title': 'सपोर्ट तिकीट अपडेट: #{ticket_num}',
+      'notif_support_ticket_status_updated': 'तुमच्या सपोर्ट तिकिटाची स्थिती \'{status}\' अशी अपडेट केली गेली आहे.',
       'active': 'सक्रिय',
     },
   };
@@ -2691,6 +2721,9 @@ class LanguageNotifier extends StateNotifier<String> {
     try {
       await _prefs?.setString(_langKey, code);
     } catch (_) {}
+
+    // Synchronize preferred language to backend profile non-blockingly
+    unawaited(NotificationService.syncPreferredLanguageWithBackend(code));
   }
 
   static String _normalizeCode(String input) {

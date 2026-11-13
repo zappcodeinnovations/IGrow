@@ -8,6 +8,7 @@ import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../data/models/api_models/notification_models.dart';
+import '../helpers/notification_text_helper.dart';
 import '../providers/notification_provider.dart';
 
 class NotificationsScreen extends ConsumerStatefulWidget {
@@ -469,7 +470,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                                         children: [
                                           Expanded(
                                             child: Text(
-                                              item.title,
+                                              NotificationTextHelper.getTitle(ref, item),
                                               style: TextStyle(
                                                 fontWeight: item.isRead ? FontWeight.w600 : FontWeight.bold,
                                                 fontSize: 14,
@@ -493,7 +494,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
-                                        item.message,
+                                        NotificationTextHelper.getBody(ref, item),
                                         style: TextStyle(
                                           color: isDark ? Colors.white70 : AppColors.editorialOnSurfaceVariant,
                                           fontSize: 13,
