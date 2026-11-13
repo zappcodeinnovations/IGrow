@@ -102,6 +102,9 @@ class CommunityHub {
   final String rules;
   final int memberCount;
   final bool isMember;
+  final bool isOwner;
+  final bool isActive;
+  final String disabledReason;
   final DateTime createdAt;
 
   CommunityHub({
@@ -119,6 +122,9 @@ class CommunityHub {
     this.rules = '',
     required this.memberCount,
     required this.isMember,
+    this.isOwner = false,
+    this.isActive = true,
+    this.disabledReason = '',
     required this.createdAt,
   });
 
@@ -144,6 +150,10 @@ class CommunityHub {
         instAvatar = json['instructor_avatar']?.toString();
       }
 
+    final activeVal = json['is_active'];
+    final bool active = activeVal == null ? true : (activeVal == true || activeVal == 1 || activeVal == 'true');
+    final String reason = (json['disabled_reason'] ?? json['deactivated_reason'] ?? '').toString();
+
     return CommunityHub(
       id: (json['id'] ?? '').toString(),
       name: (json['name'] ?? '').toString(),
@@ -163,6 +173,9 @@ class CommunityHub {
       isMember: (json['is_member'] ?? json['is_joined'] ?? json['joined'] ?? json['has_joined']) == true ||
           (json['is_member'] ?? json['is_joined'] ?? json['joined'] ?? json['has_joined']) == 1 ||
           (json['is_member'] ?? json['is_joined'] ?? json['joined'] ?? json['has_joined']) == 'true',
+      isOwner: json['is_owner'] == true || json['is_host'] == true,
+      isActive: active,
+      disabledReason: reason,
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'].toString()) ?? DateTime.now()
           : DateTime.now(),
@@ -184,6 +197,9 @@ class CommunityHub {
     String? rules,
     int? memberCount,
     bool? isMember,
+    bool? isOwner,
+    bool? isActive,
+    String? disabledReason,
     DateTime? createdAt,
   }) {
     return CommunityHub(
@@ -201,6 +217,9 @@ class CommunityHub {
       rules: rules ?? this.rules,
       memberCount: memberCount ?? this.memberCount,
       isMember: isMember ?? this.isMember,
+      isOwner: isOwner ?? this.isOwner,
+      isActive: isActive ?? this.isActive,
+      disabledReason: disabledReason ?? this.disabledReason,
       createdAt: createdAt ?? this.createdAt,
     );
   }

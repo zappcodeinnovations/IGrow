@@ -449,6 +449,67 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                   ),
                 ),
 
+                // ─── Inactive Hub Warning Banner ───────────────────
+                if (!hub.isActive)
+                  SliverToBoxAdapter(
+                    child: Container(
+                      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withValues(alpha: isDark ? 0.15 : 0.08),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Colors.redAccent.withValues(alpha: isDark ? 0.4 : 0.3),
+                          width: 1.2,
+                        ),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Colors.redAccent.withValues(alpha: 0.2),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.info_outline_rounded,
+                              color: Colors.redAccent,
+                              size: 20,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'This Community is no longer active',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                    color: isDark ? Colors.red.shade200 : Colors.red.shade800,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  hub.disabledReason.isNotEmpty
+                                      ? hub.disabledReason
+                                      : 'This community hub has been paused or deactivated by administration. Interactions and replies are currently unavailable.',
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    height: 1.35,
+                                    color: isDark ? Colors.white70 : AppColors.inkSoft,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
                 // ─── Header Stats & Instructor Profile Bar ─────────
                 SliverToBoxAdapter(
                   child: Container(
@@ -515,7 +576,7 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                           ),
                         ),
                         // Join / Leave Button (For learners) or Delete Hub (For instructor)
-                        if (!isAuthorOrInstructor)
+                        if (!isAuthorOrInstructor && hub.isActive)
                           SizedBox(
                             height: 34,
                             child: hub.isMember
@@ -733,6 +794,7 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                             post: post,
                             hubId: hub.id,
                             isInstructorView: isAuthorOrInstructor,
+                            isHubActive: hub.isActive,
                           );
                         },
                         childCount: posts.length,

@@ -527,6 +527,13 @@ class PostCommentsNotifier extends StateNotifier<AsyncValue<List<CommunityCommen
     }
   }
 
+  Future<void> deleteComment(String commentId) async {
+    removeCommentLocally(commentId);
+    try {
+      await _repo.deleteComment(commentId);
+    } catch (_) {}
+  }
+
   Future<bool> reportComment(String commentId, {required String reason, String? details}) async {
     final success = await _repo.reportComment(commentId, reason: reason, details: details);
     return success;

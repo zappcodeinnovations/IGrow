@@ -21,11 +21,13 @@ class RichPostCard extends ConsumerStatefulWidget {
     required this.post,
     this.hubId,
     this.isInstructorView = false,
+    this.isHubActive = true,
   });
 
   final CommunityPost post;
   final String? hubId;
   final bool isInstructorView;
+  final bool isHubActive;
 
   @override
   ConsumerState<RichPostCard> createState() => _RichPostCardState();
@@ -1120,6 +1122,8 @@ class _RichPostCardState extends ConsumerState<RichPostCard> with SingleTickerPr
                         context,
                         postId: widget.post.id,
                         postAuthorName: widget.post.author.fullName,
+                        isHubActive: widget.isHubActive,
+                        isHostInstructor: widget.isInstructorView,
                       ),
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -1150,7 +1154,15 @@ class _RichPostCardState extends ConsumerState<RichPostCard> with SingleTickerPr
                     const SizedBox(width: 8),
                     // Emoji Reaction Button & Active Count
                     GestureDetector(
-                      onTap: _toggleEmojiPicker,
+                      onTap: widget.isHubActive
+                          ? _toggleEmojiPicker
+                          : () {
+                              AppToast.show(
+                                context,
+                                'This community hub has been deactivated by administration. Reactions are disabled.',
+                                isError: true,
+                              );
+                            },
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
