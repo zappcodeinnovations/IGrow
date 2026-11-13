@@ -11,13 +11,15 @@ import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/localization/app_strings.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/pdf_theme_helper.dart';
 import '../../../data/models/api_models/certificate_model.dart';
 import '../../../data/models/api_models/course_models.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class CertificateViewerDialog extends StatefulWidget {
+class CertificateViewerDialog extends ConsumerStatefulWidget {
   const CertificateViewerDialog({
     super.key,
     this.certificate,
@@ -48,10 +50,10 @@ class CertificateViewerDialog extends StatefulWidget {
   }
 
   @override
-  State<CertificateViewerDialog> createState() => _CertificateViewerDialogState();
+  ConsumerState<CertificateViewerDialog> createState() => _CertificateViewerDialogState();
 }
 
-class _CertificateViewerDialogState extends State<CertificateViewerDialog> {
+class _CertificateViewerDialogState extends ConsumerState<CertificateViewerDialog> {
   bool _isGeneratingPdf = false;
   String? _downloadSuccessMsg;
   Uint8List? _lastGeneratedPdfBytes;
@@ -489,7 +491,7 @@ class _CertificateViewerDialogState extends State<CertificateViewerDialog> {
                               const Icon(Icons.eco_rounded, color: AppColors.primaryGreen, size: 24),
                               const SizedBox(width: 8),
                               Text(
-                                'IAGROW ACADEMY',
+                                tr(ref, 'IAGROW ACADEMY'),
                                 style: TextStyle(
                                   color: Colors.green.shade900,
                                   fontWeight: FontWeight.w900,
@@ -503,12 +505,12 @@ class _CertificateViewerDialogState extends State<CertificateViewerDialog> {
                         const SizedBox(height: 10),
 
                         // Title
-                        const FittedBox(
+                        FittedBox(
                           fit: BoxFit.scaleDown,
                           child: Text(
-                            'CERTIFICATE OF COMPLETION',
+                            tr(ref, 'CERTIFICATE OF COMPLETION'),
                             textAlign: TextAlign.center,
-                            style: TextStyle(
+                            style: const TextStyle(
                               color: Color(0xFF8B6508), // Dark Gold
                               fontWeight: FontWeight.bold,
                               fontSize: 16,
@@ -517,9 +519,9 @@ class _CertificateViewerDialogState extends State<CertificateViewerDialog> {
                           ),
                         ),
                         const SizedBox(height: 5),
-                        const Text(
-                          'This is proudly presented to',
-                          style: TextStyle(
+                        Text(
+                          tr(ref, 'This is proudly presented to'),
+                          style: const TextStyle(
                             color: Colors.black54,
                             fontStyle: FontStyle.italic,
                             fontSize: 11.5,
@@ -547,10 +549,10 @@ class _CertificateViewerDialogState extends State<CertificateViewerDialog> {
                         ),
 
                         // Description
-                        const Text(
-                          'for successfully mastering and completing all practical lectures & assessments for the course',
+                        Text(
+                          tr(ref, 'for successfully mastering and completing all practical lectures & assessments for the course'),
                           textAlign: TextAlign.center,
-                          style: TextStyle(
+                          style: const TextStyle(
                             color: Colors.black87,
                             fontSize: 10.5,
                             height: 1.35,
@@ -585,7 +587,7 @@ class _CertificateViewerDialogState extends State<CertificateViewerDialog> {
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Text(
-                                    'Issue Date: $_issueDate',
+                                    '${tr(ref, 'Issue Date:')} $_issueDate',
                                     style: const TextStyle(fontSize: 9.5, color: Colors.black54),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
@@ -595,7 +597,7 @@ class _CertificateViewerDialogState extends State<CertificateViewerDialog> {
                                     children: [
                                       Flexible(
                                         child: Text(
-                                          'ID: $_certCode',
+                                          '${tr(ref, 'ID:')} $_certCode',
                                           style: const TextStyle(
                                             fontSize: 9.5,
                                             fontWeight: FontWeight.bold,
@@ -610,9 +612,9 @@ class _CertificateViewerDialogState extends State<CertificateViewerDialog> {
                                         onTap: () {
                                           Clipboard.setData(ClipboardData(text: _certCode));
                                           ScaffoldMessenger.of(context).showSnackBar(
-                                            const SnackBar(
-                                              content: Text('Certificate Code copied!'),
-                                              duration: Duration(seconds: 2),
+                                            SnackBar(
+                                              content: Text(tr(ref, 'Certificate Code copied!')),
+                                              duration: const Duration(seconds: 2),
                                             ),
                                           );
                                         },
@@ -723,7 +725,7 @@ class _CertificateViewerDialogState extends State<CertificateViewerDialog> {
                               const SizedBox(width: 6),
                               Expanded(
                                 child: Text(
-                                  'Public Verification URL: $_verificationUrl',
+                                  '${tr(ref, 'Public Verification URL:')} $_verificationUrl',
                                   style: const TextStyle(
                                     fontSize: 8.5,
                                     color: AppColors.primaryGreen,
@@ -766,9 +768,9 @@ class _CertificateViewerDialogState extends State<CertificateViewerDialog> {
                         padding: const EdgeInsets.symmetric(horizontal: 4),
                       ),
                       onPressed: () => Navigator.pop(context),
-                      child: const Text(
-                        'Close',
-                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                      child: Text(
+                        tr(ref, 'Close'),
+                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                       ),
                     ),
                   ),
@@ -786,11 +788,11 @@ class _CertificateViewerDialogState extends State<CertificateViewerDialog> {
                         padding: const EdgeInsets.symmetric(horizontal: 4),
                       ),
                       icon: const Icon(Icons.share_outlined, size: 15, color: AppColors.primaryGreen),
-                      label: const FittedBox(
+                      label: FittedBox(
                         fit: BoxFit.scaleDown,
                         child: Text(
-                          'Share Link',
-                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+                          tr(ref, 'Share Link'),
+                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
                         ),
                       ),
                       onPressed: _shareVerificationLink,
@@ -819,7 +821,7 @@ class _CertificateViewerDialogState extends State<CertificateViewerDialog> {
                       label: FittedBox(
                         fit: BoxFit.scaleDown,
                         child: Text(
-                          _isGeneratingPdf ? 'Saving...' : 'Download PDF',
+                          _isGeneratingPdf ? tr(ref, 'Saving...') : tr(ref, 'Download PDF'),
                           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
                         ),
                       ),
@@ -891,7 +893,7 @@ class _CertificateViewerDialogState extends State<CertificateViewerDialog> {
                             name: _lastGeneratedFileName ?? 'Certificate.pdf',
                           );
                         },
-                        child: const Text('Open', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                        child: Text(tr(ref, 'Open'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                       ),
                     ],
                     InkWell(

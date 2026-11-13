@@ -79,7 +79,7 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  isPending ? 'Verification Under Review' : 'KYC Required',
+                  isPending ? tr(ref, 'Verification Under Review') : tr(ref, 'KYC Required'),
                   style: Theme.of(dialogContext).textTheme.titleMedium
                       ?.copyWith(fontWeight: FontWeight.bold),
                 ),
@@ -88,8 +88,8 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
           ),
           content: Text(
             isPending
-                ? 'Your KYC documents have been submitted and are under review. E-book upload will unlock once approved.'
-                : 'As an AgriLearn instructor, you must complete your KYC verification before uploading and publishing e-books.',
+                ? tr(ref, 'Your KYC documents have been submitted and are under review. E-book upload will unlock once approved.')
+                : tr(ref, 'As an AgriLearn instructor, you must complete your KYC verification before uploading and publishing e-books.'),
             style: Theme.of(dialogContext).textTheme.bodyMedium?.copyWith(
               height: 1.5,
               color: AppColors.inkSoft,
@@ -98,7 +98,7 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('Cancel'),
+              child: Text(tr(ref, 'Cancel')),
             ),
             FilledButton(
               style: FilledButton.styleFrom(
@@ -110,7 +110,7 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
                 Navigator.of(dialogContext).pop();
                 context.push(RouteNames.instructorKyc);
               },
-              child: Text(isPending ? 'Check KYC Status' : 'Complete KYC Now'),
+              child: Text(isPending ? tr(ref, 'Check KYC Status') : tr(ref, 'Complete KYC Now')),
             ),
           ],
         );
@@ -591,7 +591,7 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
                                         Icons.crop_rotate_rounded,
                                         size: 16,
                                       ),
-                                      label: const Text('Crop & Rotate'),
+                                      label: Text(tr(ref, 'Crop & Rotate')),
                                       style: OutlinedButton.styleFrom(
                                         visualDensity: VisualDensity.compact,
                                         foregroundColor: AppColors.primaryGreen,
@@ -611,7 +611,7 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
                                               Icons.photo_library_outlined,
                                               size: 16,
                                             ),
-                                      label: Text(_isPickingImage ? 'Selecting...' : 'Change Cover Image'),
+                                      label: Text(_isPickingImage ? tr(ref, 'Selecting...') : tr(ref, 'Change Cover Image')),
                                       style: OutlinedButton.styleFrom(
                                         visualDensity: VisualDensity.compact,
                                       ),
@@ -668,7 +668,7 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
                                         const SizedBox(height: 12),
                                         Text(
                                           _isPickingImage
-                                              ? 'Opening Gallery...'
+                                              ? tr(ref, 'Opening Gallery...')
                                               : tr(ref, 'Tap to upload Cover Image / Thumbnail'),
                                           style: TextStyle(
                                             fontWeight: FontWeight.bold,
@@ -681,7 +681,7 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
                                         ),
                                         const SizedBox(height: 4),
                                         Text(
-                                          'JPEG, PNG, or WEBP (Max 5MB)',
+                                          tr(ref, 'JPEG, PNG, or WEBP (Max 5MB)'),
                                           style: TextStyle(
                                             fontSize: 12,
                                             color: isDark
@@ -776,7 +776,7 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
                                       const SizedBox(height: 12),
                                       Text(
                                         _selectedFile == null
-                                            ? 'Tap to select PDF or DOCX file'
+                                            ? tr(ref, 'Tap to select PDF or DOCX file')
                                             : _selectedFile!.name,
                                         style: TextStyle(
                                           fontWeight: FontWeight.bold,
@@ -790,8 +790,8 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
                                       const SizedBox(height: 4),
                                       Text(
                                         _selectedFile == null
-                                            ? 'Maximum file size: 50MB'
-                                            : '${(_selectedFile!.size / (1024 * 1024)).toStringAsFixed(2)} MB',
+                                            ? tr(ref, 'Maximum file size: 50MB')
+                                            : '${formatNum(ref, (_selectedFile!.size / (1024 * 1024)).toStringAsFixed(2))} MB',
                                         style: TextStyle(
                                           fontSize: 12,
                                           color: isDark

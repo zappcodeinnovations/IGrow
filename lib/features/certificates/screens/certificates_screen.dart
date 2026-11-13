@@ -82,7 +82,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                 ),
               ),
               title: Text(
-                'My Certificates',
+                tr(ref, 'My Certificates'),
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 18,
@@ -112,11 +112,11 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                     tabs: [
                       Tab(
                         text: certificatesAsync.maybeWhen(
-                          data: (list) => 'Earned (${list.length})',
-                          orElse: () => 'Earned',
+                          data: (list) => '${tr(ref, 'Earned')} (${formatNum(ref, list.length)})',
+                          orElse: () => tr(ref, 'Earned'),
                         ),
                       ),
-                      Tab(text: 'In Progress (${inProgress.length})'),
+                      Tab(text: '${tr(ref, 'In Progress')} (${formatNum(ref, inProgress.length)})'),
                     ],
                   ),
                 ),
@@ -257,7 +257,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                                     borderRadius: BorderRadius.circular(6),
                                   ),
                                   child: Text(
-                                    'OFFICIAL CERTIFICATE',
+                                    tr(ref, 'OFFICIAL CERTIFICATE'),
                                     style: TextStyle(
                                       fontSize: 10,
                                       fontWeight: FontWeight.bold,
@@ -302,7 +302,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
-                          'Recipient: ${cert.studentName}',
+                          '${tr(ref, 'Recipient:')} ${cert.studentName}',
                           style: TextStyle(color: isDark ? Colors.white70 : AppColors.inkSoft, fontSize: 12),
                         ),
                       ),
@@ -319,7 +319,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                         const Icon(Icons.school_outlined, size: 14, color: AppColors.inkSoft),
                         const SizedBox(width: 4),
                         Text(
-                          'Instructor: ${cert.instructorName}',
+                          '${tr(ref, 'Instructor:')} ${cert.instructorName}',
                           style: TextStyle(color: isDark ? Colors.white70 : AppColors.inkSoft, fontSize: 12),
                         ),
                       ],
@@ -339,7 +339,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                             ),
                           ),
                           icon: const Icon(Icons.remove_red_eye_outlined, size: 18),
-                          label: const Text('View Certificate', style: TextStyle(fontWeight: FontWeight.bold)),
+                          label: Text(tr(ref, 'View Certificate'), style: const TextStyle(fontWeight: FontWeight.bold)),
                           onPressed: () => CertificateViewerDialog.show(
                             context,
                             certificate: cert,
@@ -393,15 +393,15 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
             children: [
               Icon(Icons.school_outlined, size: 54, color: Colors.grey.shade400),
               const SizedBox(height: 14),
-              const Text(
-                'No Courses in Progress',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              Text(
+                tr(ref, 'No Courses in Progress'),
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
               const SizedBox(height: 6),
-              const Text(
-                'All enrolled courses are completed or you haven\'t started a course yet.',
+              Text(
+                tr(ref, 'All enrolled courses are completed or you haven\'t started a course yet.'),
                 textAlign: TextAlign.center,
-                style: TextStyle(color: AppColors.inkSoft, fontSize: 13),
+                style: const TextStyle(color: AppColors.inkSoft, fontSize: 13),
               ),
             ],
           ),
@@ -430,7 +430,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  item.courseTitle ?? 'Course',
+                  item.courseTitle ?? tr(ref, 'Courses'),
                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -440,7 +440,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      '${item.completionPercentage.toInt()}% Completed',
+                      '${formatNum(ref, item.completionPercentage.toInt())}% ${tr(ref, 'Completed')}',
                       style: TextStyle(
                         fontSize: 12, 
                         fontWeight: FontWeight.bold, 
@@ -448,7 +448,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                       ),
                     ),
                     Text(
-                      'Reach 100% to unlock Certificate',
+                      tr(ref, 'Reach 100% to unlock Certificate'),
                       style: TextStyle(fontSize: 11, color: isDark ? Colors.white60 : AppColors.inkSoft),
                     ),
                   ],
@@ -477,7 +477,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     ),
                     icon: const Icon(Icons.play_arrow_rounded, size: 18),
-                    label: const Text('Continue Course'),
+                    label: Text(tr(ref, 'Continue Course')),
                     onPressed: () {
                       final target = item.courseSlug ?? item.course;
                       context.push('/player/$target');
