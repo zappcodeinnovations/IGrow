@@ -13,6 +13,7 @@ import '../../../core/network/api_exception.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/app_toast.dart';
+import '../../../core/widgets/app_error_state.dart';
 import '../../../data/models/api_models/course_models.dart';
 import '../../../data/models/api_models/wishlist_model.dart';
 import '../../../data/models/user_role.dart';
@@ -1033,14 +1034,9 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
             ],
           ),
           error: (err, _) {
+            final isOffline = isOfflineOrNetworkError(err);
             final cleanErr = err.toString().replaceFirst('Exception: ', '');
             final errLower = cleanErr.toLowerCase();
-            final isOffline = errLower.contains('socket') ||
-                errLower.contains('connection') ||
-                errLower.contains('network') ||
-                errLower.contains('offline') ||
-                errLower.contains('clientexception') ||
-                errLower.contains('host lookup');
             final isNotApproved = !isOffline && (
                 errLower.contains('not approved') ||
                 errLower.contains('not published') ||
@@ -1106,7 +1102,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                     const SizedBox(height: 8),
                     Text(
                       isOffline
-                          ? tr(ref, 'Unable to load course details at this time. Please check your connection.')
+                          ? tr(ref, 'No internet connection. Please try again later.')
                           : (isDeletedOrNotFound
                               ? tr(ref, 'This course has been unpublished or removed by the instructor.')
                               : (isNotApproved

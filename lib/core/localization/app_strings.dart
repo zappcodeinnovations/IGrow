@@ -29,6 +29,8 @@ class AppStrings {
 
   static const Map<String, Map<String, String>> _translations = {
     'en': {
+      'No internet connection. Please try again later.': 'No internet connection. Please try again later.',
+      'Try Again': 'Try Again',
       // Bottom Navigation & Tabs
       'Change Password': 'Change Password',
       'Current Password': 'Current Password',
@@ -435,6 +437,8 @@ class AppStrings {
     },
 
     'hi': {
+      'No internet connection. Please try again later.': 'इंटरनेट कनेक्शन नहीं है। कृपया बाद में पुनः प्रयास करें।',
+      'Try Again': 'पुनः प्रयास करें',
       // Bottom Navigation & Tabs
       'Change Password': 'पासवर्ड बदलें',
       'Current Password': 'वर्तमान पासवर्ड',
@@ -841,6 +845,8 @@ class AppStrings {
     },
 
     'mr': {
+      'No internet connection. Please try again later.': 'इंटरनेट कनेक्शन नाही. कृपया नंतर पुन्हा प्रयत्न करा.',
+      'Try Again': 'पुन्हा प्रयत्न करा',
       // Bottom Navigation & Tabs
       'Change Password': 'पासवर्ड बदला',
       'Current Password': 'सध्याचा पासवर्ड',
@@ -1291,7 +1297,7 @@ class LanguageNotifier extends StateNotifier<String> {
   void _loadLanguage() {
     if (_prefs == null) return;
     try {
-      final savedLang = _prefs?.getString(_langKey);
+      final savedLang = _prefs!.getString(_langKey);
       if (savedLang != null && savedLang.isNotEmpty) {
         state = _normalizeCode(savedLang);
       }

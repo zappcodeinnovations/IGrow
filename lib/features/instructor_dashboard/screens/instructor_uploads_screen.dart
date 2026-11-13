@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/localization/app_strings.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/app_error_state.dart';
 import '../../../core/widgets/shimmer_placeholders.dart';
 import '../../../data/models/api_models/course_models.dart';
 import '../../explore/providers/explore_provider.dart';
@@ -418,7 +419,7 @@ class _CoursesTab extends ConsumerWidget {
               const Icon(Icons.wifi_off_rounded, size: 48, color: Colors.orange),
               const SizedBox(height: 12),
               Text(
-                tr(ref, 'Unable to load courses at this time. Please check your connection.'),
+                tr(ref, getUserFriendlyErrorMessage(err)),
                 textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 14, color: AppColors.inkSoft),
               ),
@@ -1096,7 +1097,7 @@ class _EBooksTab extends ConsumerWidget {
               const Icon(Icons.wifi_off_rounded, size: 48, color: Colors.orange),
               const SizedBox(height: 12),
               Text(
-                tr(ref, 'Unable to load e-books at this time. Please check your connection.'),
+                tr(ref, getUserFriendlyErrorMessage(err)),
                 textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 14, color: AppColors.inkSoft),
               ),

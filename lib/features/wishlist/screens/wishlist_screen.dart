@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/localization/app_strings.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/app_error_state.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../data/models/api_models/wishlist_model.dart';
 import '../providers/wishlist_provider.dart';
@@ -194,7 +195,7 @@ class _WishlistScreenState extends ConsumerState<WishlistScreen>
                   Text(
                     tr(
                       ref,
-                      'Unable to load wishlist at this time. Please check your connection.',
+                      getUserFriendlyErrorMessage(err),
                     ),
                     textAlign: TextAlign.center,
                     style: TextStyle(

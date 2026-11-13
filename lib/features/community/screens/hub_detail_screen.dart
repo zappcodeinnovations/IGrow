@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/app_toast.dart';
+import '../../../core/widgets/app_error_state.dart';
 import '../../../data/models/api_models/community_models.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../providers/community_provider.dart';
@@ -78,13 +80,19 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                         label: 'Undo',
                         textColor: const Color(0xFF4ADE80),
                         onPressed: () async {
-                          await ref.read(communityHubsProvider.notifier).toggleJoin(
-                                hub.id,
-                                currentIsMember: false,
-                                currentMemberCount: hub.memberCount > 0 ? hub.memberCount - 1 : 0,
-                              );
-                          ref.invalidate(suggestedHubsProvider);
-                          ref.invalidate(hubDetailsProvider(hub.id));
+                          try {
+                            await ref.read(communityHubsProvider.notifier).toggleJoin(
+                                  hub.id,
+                                  currentIsMember: false,
+                                  currentMemberCount: hub.memberCount > 0 ? hub.memberCount - 1 : 0,
+                                );
+                            ref.invalidate(suggestedHubsProvider);
+                            ref.invalidate(hubDetailsProvider(hub.id));
+                          } catch (e) {
+                            if (context.mounted) {
+                              AppToast.showFriendlyError(context, e, prefix: 'Failed to join');
+                            }
+                          }
                         },
                       ),
                     ),
@@ -92,9 +100,7 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                 }
               } catch (e) {
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Failed to leave: $e')),
-                  );
+                  AppToast.showFriendlyError(context, e, prefix: 'Failed to leave');
                 }
               }
             },
@@ -473,11 +479,17 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                     ),
                                     onPressed: () async {
-                                      await ref.read(communityHubsProvider.notifier).toggleJoin(
-                                            hub.id,
-                                            currentIsMember: false,
-                                            currentMemberCount: hub.memberCount,
-                                          );
+                                      try {
+                                        await ref.read(communityHubsProvider.notifier).toggleJoin(
+                                              hub.id,
+                                              currentIsMember: false,
+                                              currentMemberCount: hub.memberCount,
+                                            );
+                                      } catch (e) {
+                                        if (context.mounted) {
+                                          AppToast.showFriendlyError(context, e, prefix: 'Failed to join');
+                                        }
+                                      }
                                     },
                                     child: const Text(
                                       '+ Join',
@@ -634,7 +646,10 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                     child: Center(
                       child: Padding(
                         padding: const EdgeInsets.all(20),
-                        child: Text('Error loading feed: $e'),
+                        child: Text(
+                          getUserFriendlyErrorMessage(e, fallback: 'Error loading feed'),
+                          textAlign: TextAlign.center,
+                        ),
                       ),
                     ),
                   ),
@@ -649,7 +664,13 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
           child: CircularProgressIndicator(color: AppColors.primaryGreen),
         ),
         error: (e, _) => Center(
-          child: Text('Failed to load community hub: $e'),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(
+              getUserFriendlyErrorMessage(e, fallback: 'Failed to load community hub'),
+              textAlign: TextAlign.center,
+            ),
+          ),
         ),
       ),
     );

@@ -253,7 +253,7 @@ class CartRepository {
       ).timeout(const Duration(seconds: 15));
     } catch (e) {
       if (_isNetworkOrAbortError(e)) {
-        throw Exception('No internet connection. Please check your network and try again.');
+        throw ApiException.network();
       }
       throw Exception('Unable to reach server. Please try again.');
     }
@@ -330,7 +330,7 @@ class CartRepository {
       ).timeout(const Duration(seconds: 25));
     } catch (e) {
       if (_isNetworkOrAbortError(e)) {
-        throw Exception('No internet connection. Please check your network and try again.');
+        throw ApiException.network();
       }
       throw Exception('Payment request timed out. Please check your connection and try again.');
     }
@@ -398,7 +398,7 @@ class CartRepository {
       ).timeout(const Duration(seconds: 25));
     } catch (e) {
       if (_isNetworkOrAbortError(e)) {
-        throw Exception('No internet connection. Please check your network and try again.');
+        throw ApiException.network();
       }
       throw Exception('Verification request timed out. Please check your connection and try again.');
     }
@@ -471,7 +471,7 @@ class CartRepository {
       ).timeout(const Duration(seconds: 30));
     } catch (e) {
       if (_isNetworkOrAbortError(e)) {
-        throw Exception('No internet connection. Please check your network and try again.');
+        throw ApiException.network();
       }
       throw Exception('Apple In-App Purchase verification timed out. Please try again.');
     }
@@ -546,7 +546,7 @@ class CartRepository {
       ).timeout(const Duration(seconds: 25));
     } catch (e) {
       if (_isNetworkOrAbortError(e)) {
-        throw Exception('No internet connection. Please check your network and try again.');
+        throw ApiException.network();
       }
       throw Exception('Payment request timed out. Please check your connection and try again.');
     }

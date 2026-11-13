@@ -1,3 +1,6 @@
+/// Global standard user-friendly message when internet connection is lost.
+const String kNoInternetMessage = 'No internet connection. Please try again later.';
+
 /// Structured API error with status code and optional field-level errors.
 class ApiException implements Exception {
   const ApiException({
@@ -89,8 +92,34 @@ class ApiException implements Exception {
   /// Network error (no internet, timeout, DNS failure, etc.).
   factory ApiException.network([String? msg]) => ApiException(
         statusCode: 0,
-        message: msg ?? 'Network error. Check your internet connection.',
+        message: msg ?? kNoInternetMessage,
       );
+
+  /// Wrap any dynamic exception into a friendly ApiException.
+  factory ApiException.from(dynamic error) {
+    if (error is ApiException) return error;
+    final s = error.toString().toLowerCase();
+    if (s.contains('socket') ||
+        s.contains('handshake') ||
+        s.contains('network') ||
+        s.contains('connection') ||
+        s.contains('offline') ||
+        s.contains('timeout') ||
+        s.contains('host lookup') ||
+        s.contains('clientexception') ||
+        s.contains('failed host') ||
+        s.contains('no address associated with hostname')) {
+      return ApiException.network();
+    }
+    final clean = error
+        .toString()
+        .replaceFirst(RegExp(r'^(Exception|ApiException(\(\d+\))?):\s*'), '')
+        .trim();
+    return ApiException(
+      statusCode: 0,
+      message: clean.isNotEmpty ? clean : 'Something went wrong. Please try again.',
+    );
+  }
 
   bool get isUnauthorized => statusCode == 401;
   bool get isValidation => statusCode == 400;
@@ -98,5 +127,5 @@ class ApiException implements Exception {
   bool get isNetwork => statusCode == 0;
 
   @override
-  String toString() => 'ApiException($statusCode): $message';
+  String toString() => message;
 }

@@ -22,9 +22,7 @@ class TimeoutClient extends http.BaseClient {
     try {
       return await _inner.send(request).timeout(timeout);
     } on SocketException catch (_) {
-      throw ApiException.network(
-        'No internet connection. Please check your network and try again.',
-      );
+      throw ApiException.network();
     } on TimeoutException catch (_) {
       throw ApiException.network(
         'Connection timed out. Please check your internet connection and try again.',
@@ -36,9 +34,7 @@ class TimeoutClient extends http.BaseClient {
           s.contains('connection') ||
           s.contains('handshake') ||
           s.contains('host lookup')) {
-        throw ApiException.network(
-          'No internet connection. Please check your network and try again.',
-        );
+        throw ApiException.network();
       }
       rethrow;
     }
@@ -58,9 +54,7 @@ class NetworkErrorInterceptor implements Interceptor {
     try {
       return await chain.proceed(chain.request);
     } on SocketException catch (_) {
-      throw ApiException.network(
-        'No internet connection. Please check your network and try again.',
-      );
+      throw ApiException.network();
     } on TimeoutException catch (_) {
       throw ApiException.network(
         'Connection timed out. Please check your internet connection and try again.',
@@ -72,9 +66,7 @@ class NetworkErrorInterceptor implements Interceptor {
           s.contains('connection') ||
           s.contains('handshake') ||
           s.contains('host lookup')) {
-        throw ApiException.network(
-          'No internet connection. Please check your network and try again.',
-        );
+        throw ApiException.network();
       }
       rethrow;
     }

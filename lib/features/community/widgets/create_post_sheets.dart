@@ -6,6 +6,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../../core/localization/app_strings.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/app_toast.dart';
 import '../../../core/widgets/app_time_picker.dart';
 import '../../../data/models/api_models/course_models.dart';
 import '../../home_instructor/providers/instructor_home_provider.dart';
@@ -241,10 +242,7 @@ class _GeneralPostModalState extends ConsumerState<_GeneralPostModal> {
       }
     } catch (e) {
       if (mounted) {
-        final errText = e.toString().replaceFirst(RegExp(r'^ApiException\(\d+\):\s*'), '');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to publish post: $errText')),
-        );
+        AppToast.showFriendlyError(context, e, prefix: 'Failed to publish post');
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -460,9 +458,7 @@ class _AnnouncementModalState extends ConsumerState<_AnnouncementModal> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to publish announcement: $e')),
-        );
+        AppToast.showFriendlyError(context, e, prefix: 'Failed to publish announcement');
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -807,10 +803,7 @@ class _WebinarModalState extends ConsumerState<_WebinarModal> {
       }
     } catch (e) {
       if (mounted) {
-        final errText = e.toString().replaceFirst(RegExp(r'^ApiException\(\d+\):\s*'), '');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to schedule webinar: $errText')),
-        );
+        AppToast.showFriendlyError(context, e, prefix: 'Failed to schedule webinar');
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -1032,10 +1025,7 @@ class _SeminarModalState extends ConsumerState<_SeminarModal> {
       }
     } catch (e) {
       if (mounted) {
-        final errText = e.toString().replaceFirst(RegExp(r'^ApiException\(\d+\):\s*'), '');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to publish seminar: $errText')),
-        );
+        AppToast.showFriendlyError(context, e, prefix: 'Failed to publish seminar');
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);

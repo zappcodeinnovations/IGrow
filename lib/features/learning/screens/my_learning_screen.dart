@@ -6,6 +6,7 @@ import '../../../core/localization/app_strings.dart';
 import '../../../core/network/swagger_generated/app_api.swagger.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/app_error_state.dart';
 import '../../../core/widgets/shell_scaffold.dart';
 import '../../../core/widgets/shimmer_placeholders.dart';
 import '../../cart/providers/cart_provider.dart';
@@ -608,13 +609,13 @@ class _MyLearningScreenState extends ConsumerState<MyLearningScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                Icons.cloud_off_rounded,
+                isOfflineOrNetworkError(err) ? Icons.wifi_off_rounded : Icons.cloud_off_rounded,
                 size: 48,
-                color: isDark ? Colors.white38 : AppColors.editorialOutlineVariant,
+                color: isOfflineOrNetworkError(err) ? Colors.orange : (isDark ? Colors.white38 : AppColors.editorialOutlineVariant),
               ),
               const SizedBox(height: 12),
               Text(
-                tr(ref, 'Unable to load your courses right now.'),
+                tr(ref, isOfflineOrNetworkError(err) ? 'No internet connection. Please try again later.' : 'Unable to load your courses right now.'),
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
@@ -802,7 +803,7 @@ class _MyLearningScreenState extends ConsumerState<MyLearningScreen> {
               const Icon(Icons.wifi_off_rounded, size: 48, color: Colors.orange),
               const SizedBox(height: 12),
               Text(
-                tr(ref, 'Unable to load your e-books right now. Please check your connection.'),
+                tr(ref, isOfflineOrNetworkError(err) ? 'No internet connection. Please try again later.' : 'Unable to load your e-books right now.'),
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 14,

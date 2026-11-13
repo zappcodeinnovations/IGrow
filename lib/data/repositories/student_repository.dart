@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../../core/network/api_client.dart';
+import '../../core/network/api_exception.dart';
 import '../../core/network/token_storage.dart';
 import '../../core/services/quiz_service.dart';
 import '../models/api_models/instructor_model.dart';
@@ -39,14 +40,9 @@ class StudentRepository {
         throw Exception('Failed to load courses catalog: ${response.error}');
       }
       return response.body!;
-    } on Exception catch (e) {
-      final errStr = e.toString().toLowerCase();
-      if (errStr.contains('socket') ||
-          errStr.contains('handshake') ||
-          errStr.contains('network') ||
-          errStr.contains('connection') ||
-          errStr.contains('clientexception')) {
-        throw Exception('Unable to load courses at this time. Please check your connection.');
+    } catch (e) {
+      if (ApiException.from(e).isNetwork) {
+        throw ApiException.network();
       }
       rethrow;
     }
@@ -91,18 +87,26 @@ class StudentRepository {
       }
     } catch (e) {
       debugPrint('⚠️ [StudentRepository] Direct HTTP ebooks query failed: $e');
+      if (ApiException.from(e).isNetwork) {
+        throw ApiException.network();
+      }
     }
 
     // 2. Fallback to Swagger client
-    final response = await appApi.apiV1EbooksGet(
-      page: page,
-      search: search,
-      category: category,
-    );
-    if (!response.isSuccessful) {
-      throw Exception('Failed to load ebooks catalog: ${response.error}');
+    try {
+      final response = await appApi.apiV1EbooksGet(
+        page: page,
+        search: search,
+        category: category,
+      );
+      if (!response.isSuccessful) {
+        throw Exception('Failed to load ebooks catalog: ${response.error}');
+      }
+      return response.body!;
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException.from(e);
     }
-    return response.body!;
   }
 
   /// Fetch ebooks purchased by current student from /api/v1/ebooks/purchased/
@@ -182,9 +186,12 @@ class StudentRepository {
       }
     } catch (e) {
       debugPrint('❌ [StudentRepository] getEbookDetail direct HTTP error: $e');
+      if (ApiException.from(e).isNetwork) {
+        throw ApiException.network();
+      }
     }
 
-    throw Exception('Failed to load E-Book. Please check your connection.');
+    throw ApiException.network();
   }
 
   /// Fetch categories.
@@ -306,21 +313,26 @@ class StudentRepository {
 
     debugPrint('📤 [StudentRepository] addToCart: sending $body');
 
-    final response = await http.post(
-      uri,
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode(body),
-    );
+    try {
+      final response = await http.post(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(body),
+      ).timeout(const Duration(seconds: 15));
 
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      debugPrint('✅ [StudentRepository] addToCart SUCCESS');
-    } else {
-      debugPrint('❌ [StudentRepository] addToCart ERROR (${response.statusCode}): ${response.body}');
-      TokenStorage.checkResponse(response.statusCode, response.body);
-      throw Exception('Failed to add to cart: ${response.body}');
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        debugPrint('✅ [StudentRepository] addToCart SUCCESS');
+      } else {
+        debugPrint('❌ [StudentRepository] addToCart ERROR (${response.statusCode}): ${response.body}');
+        TokenStorage.checkResponse(response.statusCode, response.body);
+        throw Exception('Failed to add to cart: ${response.body}');
+      }
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException.from(e);
     }
   }
 
@@ -467,21 +479,26 @@ class StudentRepository {
     final token = await tokenStorage.getAccessToken();
     final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/progress/course/$cleanSlug/qa/');
     
-    final response = await http.post(
-      uri,
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode({
-        'question_text': question,
-        'question': question,
-        if (lectureId != null && lectureId.isNotEmpty) 'lecture_id': lectureId,
-      }),
-    );
-    if (response.statusCode >= 300) {
-      TokenStorage.checkResponse(response.statusCode, response.body);
-      throw Exception('Failed to post question: ${response.body}');
+    try {
+      final response = await http.post(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'question_text': question,
+          'question': question,
+          if (lectureId != null && lectureId.isNotEmpty) 'lecture_id': lectureId,
+        }),
+      ).timeout(const Duration(seconds: 15));
+      if (response.statusCode >= 300) {
+        TokenStorage.checkResponse(response.statusCode, response.body);
+        throw Exception('Failed to post question: ${response.body}');
+      }
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException.from(e);
     }
   }
 
@@ -525,21 +542,26 @@ class StudentRepository {
     final token = await tokenStorage.getAccessToken();
     final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/progress/course/$cleanSlug/notes/');
     
-    final response = await http.post(
-      uri,
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode({
-        'content': text,
-        'note_text': text,
-        'timestamp': timestampSeconds,
-        'timestamp_seconds': timestampSeconds,
-      }),
-    );
-    if (response.statusCode >= 300) {
-      throw Exception('Failed to post note: ${response.body}');
+    try {
+      final response = await http.post(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'content': text,
+          'note_text': text,
+          'timestamp': timestampSeconds,
+          'timestamp_seconds': timestampSeconds,
+        }),
+      ).timeout(const Duration(seconds: 15));
+      if (response.statusCode >= 300) {
+        throw Exception('Failed to post note: ${response.body}');
+      }
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException.from(e);
     }
   }
 

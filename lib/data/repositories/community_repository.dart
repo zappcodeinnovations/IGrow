@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../../core/network/api_exception.dart';
 import '../../core/network/token_storage.dart';
@@ -9,6 +11,15 @@ class CommunityRepository {
   final String baseUrl = 'https://iagrow.zappcode.in/api/v1/community';
 
   CommunityRepository({required this.tokenStorage});
+
+  Future<T> _safe<T>(Future<T> Function() call) async {
+    try {
+      return await call();
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException.from(e);
+    }
+  }
 
   Future<Map<String, String>> _getHeaders() async {
     final token = await tokenStorage.getAccessToken();
@@ -57,7 +68,7 @@ class CommunityRepository {
   // ─── Community Hubs ──────────────────────────────────────────────
 
   Future<List<CommunityHub>> getSuggestedHubs({String? district}) async {
-    try {
+    return _safe(() async {
       final queryParams = <String, String>{};
       if (district != null && district.trim().isNotEmpty) {
         queryParams['district'] = district.trim();
@@ -65,32 +76,26 @@ class CommunityRepository {
       final uri = Uri.parse('$baseUrl/hubs/suggestions/').replace(
         queryParameters: queryParams.isNotEmpty ? queryParams : null,
       );
-      final response = await http.get(uri, headers: await _getHeaders());
+      final response = await http
+          .get(uri, headers: await _getHeaders())
+          .timeout(const Duration(seconds: 15));
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final data = jsonDecode(response.body);
         final results = data is List
             ? data
             : (data is Map && data.containsKey('results')
                 ? data['results'] as List? ?? []
-                : (data is Map && data.containsKey('data') ? data['data'] as List? ?? [] : []));
+                : (data is Map && data.containsKey('data')
+                    ? data['data'] as List? ?? []
+                    : []));
 
         return results
             .whereType<Map<String, dynamic>>()
             .map((json) => CommunityHub.fromJson(json))
             .toList();
       }
-    } catch (e) {
-      final errStr = e.toString().toLowerCase();
-      if (errStr.contains('socket') ||
-          errStr.contains('handshake') ||
-          errStr.contains('network') ||
-          errStr.contains('connection') ||
-          errStr.contains('clientexception')) {
-        throw Exception('Unable to load community hubs. Please check your connection.');
-      }
-    }
-    // Fallback to district-based hubs query if suggestions endpoint is unavailable
-    return getHubs(district: district);
+      return getHubs(district: district);
+    });
   }
 
   Future<List<CommunityHub>> getHubs({
@@ -98,7 +103,7 @@ class CommunityRepository {
     String? district,
     String? search,
   }) async {
-    try {
+    return _safe(() async {
       final queryParams = <String, String>{};
       if (state != null && state.isNotEmpty) {
         queryParams['state'] = state;
@@ -114,7 +119,9 @@ class CommunityRepository {
         queryParameters: queryParams.isNotEmpty ? queryParams : null,
       );
 
-      final response = await http.get(uri, headers: await _getHeaders());
+      final response = await http
+          .get(uri, headers: await _getHeaders())
+          .timeout(const Duration(seconds: 15));
       _handleError(response);
 
       final data = jsonDecode(response.body);
@@ -122,43 +129,43 @@ class CommunityRepository {
           ? data
           : (data is Map && data.containsKey('results')
               ? data['results'] as List? ?? []
-              : (data is Map && data.containsKey('data') ? data['data'] as List? ?? [] : []));
+              : (data is Map && data.containsKey('data')
+                  ? data['data'] as List? ?? []
+                  : []));
 
       return results
           .whereType<Map<String, dynamic>>()
           .map((json) => CommunityHub.fromJson(json))
           .toList();
-    } on Exception catch (e) {
-      final errStr = e.toString().toLowerCase();
-      if (errStr.contains('socket') ||
-          errStr.contains('handshake') ||
-          errStr.contains('network') ||
-          errStr.contains('connection') ||
-          errStr.contains('clientexception')) {
-        throw Exception('Unable to load community hubs. Please check your connection.');
-      }
-      rethrow;
-    }
+    });
   }
 
   Future<CommunityHub> getHubDetails(String hubId) async {
-    final uri = Uri.parse('$baseUrl/hubs/$hubId/');
-    final response = await http.get(uri, headers: await _getHeaders());
-    _handleError(response);
+    return _safe(() async {
+      final uri = Uri.parse('$baseUrl/hubs/$hubId/');
+      final response = await http
+          .get(uri, headers: await _getHeaders())
+          .timeout(const Duration(seconds: 15));
+      _handleError(response);
 
-    final data = jsonDecode(response.body);
-    return CommunityHub.fromJson(data as Map<String, dynamic>);
+      final data = jsonDecode(response.body);
+      return CommunityHub.fromJson(data as Map<String, dynamic>);
+    });
   }
 
   Future<Map<String, dynamic>> toggleJoinHub(String hubId) async {
-    final uri = Uri.parse('$baseUrl/hubs/$hubId/join/');
-    final response = await http.post(
-      uri,
-      headers: await _getHeaders(),
-      body: jsonEncode({}),
-    );
-    _handleError(response);
-    return jsonDecode(response.body) as Map<String, dynamic>;
+    return _safe(() async {
+      final uri = Uri.parse('$baseUrl/hubs/$hubId/join/');
+      final response = await http
+          .post(
+            uri,
+            headers: await _getHeaders(),
+            body: jsonEncode({}),
+          )
+          .timeout(const Duration(seconds: 15));
+      _handleError(response);
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    });
   }
 
   Future<CommunityHub> createHub({
@@ -170,57 +177,63 @@ class CommunityRepository {
     String rules = '',
     String? logoPath,
   }) async {
-    final uri = Uri.parse('$baseUrl/hubs/');
-    final token = await tokenStorage.getAccessToken();
+    return _safe(() async {
+      final uri = Uri.parse('$baseUrl/hubs/');
+      final token = await tokenStorage.getAccessToken();
 
-    if (logoPath != null && logoPath.isNotEmpty) {
-      final request = http.MultipartRequest('POST', uri);
-      if (token != null) {
-        request.headers['Authorization'] = 'Bearer $token';
+      if (logoPath != null && logoPath.isNotEmpty) {
+        final request = http.MultipartRequest('POST', uri);
+        if (token != null) {
+          request.headers['Authorization'] = 'Bearer $token';
+        }
+        request.headers['Accept'] = 'application/json';
+        request.fields['name'] = name;
+        request.fields['description'] = description;
+        request.fields['state'] = state;
+        request.fields['districts'] = jsonEncode(districts);
+        request.fields['farming_topics'] = jsonEncode(farmingTopics);
+        request.fields['rules'] = rules;
+        request.files.add(await http.MultipartFile.fromPath('logo', logoPath));
+
+        final streamed = await request.send().timeout(const Duration(seconds: 30));
+        final response = await http.Response.fromStream(streamed);
+        _handleError(response);
+        final data = jsonDecode(response.body);
+        return CommunityHub.fromJson(data as Map<String, dynamic>);
+      } else {
+        final response = await http.post(
+          uri,
+          headers: await _getHeaders(),
+          body: jsonEncode({
+            'name': name,
+            'description': description,
+            'state': state,
+            'districts': districts,
+            'farming_topics': farmingTopics,
+            'rules': rules,
+          }),
+        ).timeout(const Duration(seconds: 15));
+        _handleError(response);
+        final data = jsonDecode(response.body);
+        return CommunityHub.fromJson(data as Map<String, dynamic>);
       }
-      request.headers['Accept'] = 'application/json';
-      request.fields['name'] = name;
-      request.fields['description'] = description;
-      request.fields['state'] = state;
-      request.fields['districts'] = jsonEncode(districts);
-      request.fields['farming_topics'] = jsonEncode(farmingTopics);
-      request.fields['rules'] = rules;
-      request.files.add(await http.MultipartFile.fromPath('logo', logoPath));
-
-      final streamed = await request.send();
-      final response = await http.Response.fromStream(streamed);
-      _handleError(response);
-      final data = jsonDecode(response.body);
-      return CommunityHub.fromJson(data as Map<String, dynamic>);
-    } else {
-      final response = await http.post(
-        uri,
-        headers: await _getHeaders(),
-        body: jsonEncode({
-          'name': name,
-          'description': description,
-          'state': state,
-          'districts': districts,
-          'farming_topics': farmingTopics,
-          'rules': rules,
-        }),
-      );
-      _handleError(response);
-      final data = jsonDecode(response.body);
-      return CommunityHub.fromJson(data as Map<String, dynamic>);
-    }
+    });
   }
 
   // ─── Topics ──────────────────────────────────────────────────────
 
   Future<List<CommunityTopic>> getTopics() async {
-    final uri = Uri.parse('$baseUrl/topics/');
-    final response = await http.get(uri, headers: await _getHeaders());
-    _handleError(response);
+    return _safe(() async {
+      final uri = Uri.parse('$baseUrl/topics/');
+      final response = await http
+          .get(uri, headers: await _getHeaders())
+          .timeout(const Duration(seconds: 15));
+      _handleError(response);
 
-    final data = jsonDecode(response.body);
-    final results = data['results'] as List? ?? (data is List ? data : []);
-    return results.map((json) => CommunityTopic.fromJson(json as Map<String, dynamic>)).toList();
+      final data = jsonDecode(response.body);
+      final results = data['results'] as List? ?? (data is List ? data : []);
+      return results.map((json) => CommunityTopic.fromJson(json as Map<String, dynamic>)).toList();
+    });
   }
 
   // ─── Posts ───────────────────────────────────────────────────────
@@ -231,29 +244,33 @@ class CommunityRepository {
     String? search,
     String? ordering,
   }) async {
-    final queryParams = <String, String>{};
-    if (hubId != null && hubId.isNotEmpty) {
-      queryParams['hub_id'] = hubId;
-    }
-    if (topicId != null && topicId.isNotEmpty) {
-      queryParams['topic_id'] = topicId;
-    }
-    if (search != null && search.isNotEmpty) {
-      queryParams['search'] = search;
-    }
-    if (ordering != null && ordering.isNotEmpty) {
-      queryParams['ordering'] = ordering;
-    }
+    return _safe(() async {
+      final queryParams = <String, String>{};
+      if (hubId != null && hubId.isNotEmpty) {
+        queryParams['hub_id'] = hubId;
+      }
+      if (topicId != null && topicId.isNotEmpty) {
+        queryParams['topic_id'] = topicId;
+      }
+      if (search != null && search.isNotEmpty) {
+        queryParams['search'] = search;
+      }
+      if (ordering != null && ordering.isNotEmpty) {
+        queryParams['ordering'] = ordering;
+      }
 
-    final uri = Uri.parse('$baseUrl/posts/').replace(
-      queryParameters: queryParams.isNotEmpty ? queryParams : null,
-    );
-    final response = await http.get(uri, headers: await _getHeaders());
-    _handleError(response);
+      final uri = Uri.parse('$baseUrl/posts/').replace(
+        queryParameters: queryParams.isNotEmpty ? queryParams : null,
+      );
+      final response = await http
+          .get(uri, headers: await _getHeaders())
+          .timeout(const Duration(seconds: 15));
+      _handleError(response);
 
-    final data = jsonDecode(response.body);
-    final results = data['results'] as List? ?? (data is List ? data : []);
-    return results.map((json) => CommunityPost.fromJson(json as Map<String, dynamic>)).toList();
+      final data = jsonDecode(response.body);
+      final results = data['results'] as List? ?? (data is List ? data : []);
+      return results.map((json) => CommunityPost.fromJson(json as Map<String, dynamic>)).toList();
+    });
   }
 
   Future<CommunityPost> createPost({
@@ -268,71 +285,75 @@ class CommunityRepository {
     String? link,
     String? imagePath,
   }) async {
-    final token = await tokenStorage.getAccessToken();
-    final uri = Uri.parse('$baseUrl/posts/');
+    return _safe(() async {
+      final token = await tokenStorage.getAccessToken();
+      final uri = Uri.parse('$baseUrl/posts/');
 
-    if (imagePath != null && imagePath.isNotEmpty) {
-      final request = http.MultipartRequest('POST', uri);
-      if (token != null) {
-        request.headers['Authorization'] = 'Bearer $token';
+      if (imagePath != null && imagePath.isNotEmpty) {
+        final request = http.MultipartRequest('POST', uri);
+        if (token != null) {
+          request.headers['Authorization'] = 'Bearer $token';
+        }
+        request.headers['Accept'] = 'application/json';
+        request.fields['title'] = title;
+        request.fields['content'] = content;
+        if (hubId != null && hubId.isNotEmpty) request.fields['hub_id'] = hubId;
+        if (postType != null && postType.isNotEmpty) request.fields['post_type'] = postType;
+        if (topicId != null && topicId.isNotEmpty) request.fields['topic_id'] = topicId;
+        if (courseId != null && courseId.isNotEmpty) {
+          request.fields['course_id'] = courseId;
+          request.fields['course'] = courseId;
+        }
+        if (eventDate != null) request.fields['event_date'] = eventDate.toUtc().toIso8601String();
+        if (venueAddress != null && venueAddress.isNotEmpty) request.fields['venue_address'] = venueAddress;
+        if (link != null && link.isNotEmpty) request.fields['link'] = link;
+
+        request.files.add(await http.MultipartFile.fromPath('image', imagePath));
+
+        final streamed = await request.send().timeout(const Duration(seconds: 30));
+        final response = await http.Response.fromStream(streamed);
+        _handleError(response);
+        final data = jsonDecode(response.body);
+        return CommunityPost.fromJson(data as Map<String, dynamic>);
+      } else {
+        final body = <String, dynamic>{
+          'title': title,
+          'content': content,
+          if (hubId != null && hubId.isNotEmpty) 'hub_id': hubId,
+          if (postType != null && postType.isNotEmpty) 'post_type': postType,
+          if (topicId != null && topicId.isNotEmpty) 'topic_id': topicId,
+          if (courseId != null && courseId.isNotEmpty) ...{
+            'course_id': courseId,
+            'course': courseId,
+          },
+          if (eventDate != null) 'event_date': eventDate.toUtc().toIso8601String(),
+          if (venueAddress != null && venueAddress.isNotEmpty) 'venue_address': venueAddress,
+          if (link != null && link.isNotEmpty) 'link': link,
+        };
+
+        final response = await http.post(
+          uri,
+          headers: await _getHeaders(),
+          body: jsonEncode(body),
+        ).timeout(const Duration(seconds: 15));
+        _handleError(response);
+        final data = jsonDecode(response.body);
+        return CommunityPost.fromJson(data as Map<String, dynamic>);
       }
-      request.headers['Accept'] = 'application/json';
-      request.fields['title'] = title;
-      request.fields['content'] = content;
-      if (hubId != null && hubId.isNotEmpty) request.fields['hub_id'] = hubId;
-      if (postType != null && postType.isNotEmpty) request.fields['post_type'] = postType;
-      if (topicId != null && topicId.isNotEmpty) request.fields['topic_id'] = topicId;
-      if (courseId != null && courseId.isNotEmpty) {
-        request.fields['course_id'] = courseId;
-        request.fields['course'] = courseId;
-      }
-      if (eventDate != null) request.fields['event_date'] = eventDate.toUtc().toIso8601String();
-      if (venueAddress != null && venueAddress.isNotEmpty) request.fields['venue_address'] = venueAddress;
-      if (link != null && link.isNotEmpty) request.fields['link'] = link;
-
-      request.files.add(await http.MultipartFile.fromPath('image', imagePath));
-
-      final streamed = await request.send();
-      final response = await http.Response.fromStream(streamed);
-      _handleError(response);
-      final data = jsonDecode(response.body);
-      return CommunityPost.fromJson(data as Map<String, dynamic>);
-    } else {
-      final body = <String, dynamic>{
-        'title': title,
-        'content': content,
-        if (hubId != null && hubId.isNotEmpty) 'hub_id': hubId,
-        if (postType != null && postType.isNotEmpty) 'post_type': postType,
-        if (topicId != null && topicId.isNotEmpty) 'topic_id': topicId,
-        if (courseId != null && courseId.isNotEmpty) ...{
-          'course_id': courseId,
-          'course': courseId,
-        },
-        if (eventDate != null) 'event_date': eventDate.toUtc().toIso8601String(),
-        if (venueAddress != null && venueAddress.isNotEmpty) 'venue_address': venueAddress,
-        if (link != null && link.isNotEmpty) 'link': link,
-      };
-
-      final response = await http.post(
-        uri,
-        headers: await _getHeaders(),
-        body: jsonEncode(body),
-      );
-      _handleError(response);
-      final data = jsonDecode(response.body);
-      return CommunityPost.fromJson(data as Map<String, dynamic>);
-    }
+    });
   }
 
   Future<Map<String, dynamic>> reactToPost(String postId, String reaction) async {
-    final uri = Uri.parse('$baseUrl/posts/$postId/react/');
-    final response = await http.post(
-      uri,
-      headers: await _getHeaders(),
-      body: jsonEncode({'reaction': reaction}),
-    );
-    _handleError(response);
-    return jsonDecode(response.body) as Map<String, dynamic>;
+    return _safe(() async {
+      final uri = Uri.parse('$baseUrl/posts/$postId/react/');
+      final response = await http.post(
+        uri,
+        headers: await _getHeaders(),
+        body: jsonEncode({'reaction': reaction}),
+      ).timeout(const Duration(seconds: 15));
+      _handleError(response);
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    });
   }
 
   Future<Map<String, dynamic>> incrementPostView(String postId) async {
@@ -342,7 +363,7 @@ class CommunityRepository {
         uri,
         headers: await _getHeaders(),
         body: jsonEncode({}),
-      );
+      ).timeout(const Duration(seconds: 10));
       if (response.statusCode >= 200 && response.statusCode < 300) {
         return jsonDecode(response.body) as Map<String, dynamic>;
       }
@@ -354,17 +375,25 @@ class CommunityRepository {
     try {
       return await reactToPost(postId, 'FARM');
     } catch (_) {
-      final uri = Uri.parse('$baseUrl/posts/$postId/like/');
-      final response = await http.post(uri, headers: await _getHeaders());
-      _handleError(response);
-      return jsonDecode(response.body) as Map<String, dynamic>;
+      return _safe(() async {
+        final uri = Uri.parse('$baseUrl/posts/$postId/like/');
+        final response = await http
+            .post(uri, headers: await _getHeaders())
+            .timeout(const Duration(seconds: 15));
+        _handleError(response);
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      });
     }
   }
 
   Future<void> deletePost(String postId) async {
-    final uri = Uri.parse('$baseUrl/posts/$postId/');
-    final response = await http.delete(uri, headers: await _getHeaders());
-    _handleError(response);
+    return _safe(() async {
+      final uri = Uri.parse('$baseUrl/posts/$postId/');
+      final response = await http
+          .delete(uri, headers: await _getHeaders())
+          .timeout(const Duration(seconds: 15));
+      _handleError(response);
+    });
   }
 
   // ─── Comments ────────────────────────────────────────────────────
@@ -432,9 +461,13 @@ class CommunityRepository {
   }
 
   Future<void> deleteComment(String commentId) async {
-    final uri = Uri.parse('$baseUrl/comments/$commentId/');
-    final response = await http.delete(uri, headers: await _getHeaders());
-    _handleError(response);
+    return _safe(() async {
+      final uri = Uri.parse('$baseUrl/comments/$commentId/');
+      final response = await http
+          .delete(uri, headers: await _getHeaders())
+          .timeout(const Duration(seconds: 15));
+      _handleError(response);
+    });
   }
 
   // ─── UGC Safety: Report & Block (Apple Guideline 1.2) ───────────

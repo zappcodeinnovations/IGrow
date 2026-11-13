@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../../core/network/api_client.dart';
+import '../../core/network/api_exception.dart';
 import '../../core/network/token_storage.dart';
 import '../models/api_models/course_models.dart';
 import '../models/api_models/review_models.dart';
@@ -64,6 +65,9 @@ class CourseRepository {
       }
     } catch (e) {
       debugPrint('⚠️ [CourseRepository] direct HTTP getCourseDetail error: $e');
+      if (ApiException.from(e).isNetwork) {
+        throw ApiException.network();
+      }
     }
 
     // 2. If not found in public courses, try instructor courses endpoint (if course is draft / creator preview)
@@ -79,6 +83,9 @@ class CourseRepository {
         }
       } catch (e) {
         debugPrint('⚠️ [CourseRepository] instructor getCourseDetail error: $e');
+        if (ApiException.from(e).isNetwork) {
+          throw ApiException.network();
+        }
       }
     }
 
@@ -102,6 +109,9 @@ class CourseRepository {
       }
     } catch (e) {
       debugPrint('⚠️ [CourseRepository] appApi fallback error: $e');
+      if (ApiException.from(e).isNetwork) {
+        throw ApiException.network();
+      }
     }
 
     // 4. Fallback: try catalog search if ID/slug lookup was mismatched
@@ -126,6 +136,9 @@ class CourseRepository {
       }
     } catch (e) {
       debugPrint('⚠️ [CourseRepository] catalog fallback error: $e');
+      if (ApiException.from(e).isNetwork) {
+        throw ApiException.network();
+      }
     }
 
     throw Exception('This course has not been approved or published yet.');
@@ -226,18 +239,23 @@ class CourseRepository {
     debugPrint('⭐ [CourseRepository] submitCourseReview: slug=$cleanSlug, rating=$rating');
     final token = await tokenStorage?.getAccessToken();
 
-    final response = await http.post(
-      Uri.parse('$_baseUrl/courses/$cleanSlug/reviews/'),
-      headers: {
-        if (token != null) 'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: jsonEncode({
-        'rating': rating,
-        'comment': comment,
-      }),
-    );
+    http.Response response;
+    try {
+      response = await http.post(
+        Uri.parse('$_baseUrl/courses/$cleanSlug/reviews/'),
+        headers: {
+          if (token != null) 'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({
+          'rating': rating,
+          'comment': comment,
+        }),
+      ).timeout(const Duration(seconds: 15));
+    } catch (e) {
+      throw ApiException.from(e);
+    }
 
     debugPrint('⭐ [CourseRepository] submit review status: ${response.statusCode}, body: ${response.body}');
 

@@ -7,6 +7,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../../core/localization/app_strings.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/app_error_state.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../data/models/api_models/certificate_model.dart';
 import '../../../data/models/api_models/course_models.dart';
@@ -401,7 +402,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                       const Icon(Icons.wifi_off_rounded, color: Colors.orange, size: 48),
                       const SizedBox(height: 12),
                       Text(
-                        tr(ref, 'Unable to load certificates at this time. Please check your connection.'),
+                        tr(ref, getUserFriendlyErrorMessage(err)),
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: isDark ? Colors.white70 : AppColors.inkSoft,

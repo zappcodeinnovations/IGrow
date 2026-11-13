@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/localization/app_strings.dart';
 import '../../../core/network/swagger_generated/app_api.swagger.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/app_error_state.dart';
 import '../../../core/widgets/shell_scaffold.dart';
 import '../../../core/widgets/shimmer_placeholders.dart';
 import '../../../data/models/api_models/course_models.dart' show CourseCategory;
@@ -879,7 +880,10 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                     children: [
                       const Icon(Icons.wifi_off_rounded, size: 40, color: Colors.grey),
                       const SizedBox(height: 10),
-                      Text(tr(ref, 'Unable to load categories')),
+                      Text(
+                        tr(ref, isOfflineOrNetworkError(err) ? 'No internet connection. Please try again later.' : 'Unable to load categories'),
+                        textAlign: TextAlign.center,
+                      ),
                       const SizedBox(height: 8),
                       TextButton(
                         onPressed: () => ref.invalidate(studentCategoriesProvider),
@@ -1254,9 +1258,16 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                 child: Center(
                   child: Column(
                     children: [
-                      const Icon(Icons.error_outline_rounded, size: 36, color: Colors.redAccent),
+                      Icon(
+                        isOfflineOrNetworkError(err) ? Icons.wifi_off_rounded : Icons.error_outline_rounded,
+                        size: 36,
+                        color: isOfflineOrNetworkError(err) ? Colors.orange : Colors.redAccent,
+                      ),
                       const SizedBox(height: 10),
-                      Text(tr(ref, 'Unable to load results')),
+                      Text(
+                        tr(ref, isOfflineOrNetworkError(err) ? 'No internet connection. Please try again later.' : 'Unable to load results'),
+                        textAlign: TextAlign.center,
+                      ),
                       const SizedBox(height: 8),
                       TextButton(
                         onPressed: () => ref.invalidate(studentCatalogProvider),

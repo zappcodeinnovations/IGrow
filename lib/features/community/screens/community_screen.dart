@@ -7,6 +7,8 @@ import '../../../core/localization/app_strings.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/services/weather_service.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/app_toast.dart';
+import '../../../core/widgets/app_error_state.dart';
 import '../../../core/widgets/shell_scaffold.dart';
 import '../../../data/models/api_models/community_models.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -76,10 +78,14 @@ class _InstructorCommunityView extends ConsumerWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 48),
+              Icon(
+                isOfflineOrNetworkError(e) ? Icons.wifi_off_rounded : Icons.error_outline_rounded,
+                color: isOfflineOrNetworkError(e) ? Colors.orange : AppColors.error,
+                size: 48,
+              ),
               const SizedBox(height: 12),
               Text(
-                'Failed to load community: $e',
+                tr(ref, getUserFriendlyErrorMessage(e, fallback: 'Failed to load community')),
                 textAlign: TextAlign.center,
                 style: TextStyle(color: isDark ? Colors.white70 : AppColors.inkDark),
               ),
@@ -726,7 +732,10 @@ class _InstructorStateB extends ConsumerWidget {
               child: Center(
                 child: Padding(
                   padding: const EdgeInsets.all(20),
-                  child: Text('Error loading feed: $e'),
+                  child: Text(
+                    tr(ref, getUserFriendlyErrorMessage(e, fallback: 'Error loading feed')),
+                    textAlign: TextAlign.center,
+                  ),
                 ),
               ),
             ),
@@ -1141,7 +1150,7 @@ class _RecommendedHubsList extends ConsumerWidget {
                 const Icon(Icons.wifi_off_rounded, size: 48, color: Colors.orange),
                 const SizedBox(height: 12),
                 Text(
-                  tr(ref, 'Unable to load community hubs at this time. Please check your connection.'),
+                  tr(ref, getUserFriendlyErrorMessage(e)),
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: isDark ? Colors.white70 : AppColors.inkSoft,
@@ -1208,7 +1217,7 @@ class _AllHubsList extends ConsumerWidget {
                 const Icon(Icons.wifi_off_rounded, size: 48, color: Colors.orange),
                 const SizedBox(height: 12),
                 Text(
-                  tr(ref, 'Unable to load community hubs at this time. Please check your connection.'),
+                  tr(ref, getUserFriendlyErrorMessage(e)),
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: isDark ? Colors.white70 : AppColors.inkSoft,
@@ -1278,7 +1287,7 @@ class _MyHubsList extends ConsumerWidget {
                 const Icon(Icons.wifi_off_rounded, size: 48, color: Colors.orange),
                 const SizedBox(height: 12),
                 Text(
-                  tr(ref, 'Unable to load community hubs at this time. Please check your connection.'),
+                  tr(ref, getUserFriendlyErrorMessage(e)),
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: isDark ? Colors.white70 : AppColors.inkSoft,
@@ -1372,13 +1381,19 @@ class _CommunityCard extends ConsumerWidget {
                         label: 'Undo',
                         textColor: const Color(0xFF4ADE80),
                         onPressed: () async {
-                          await ref.read(communityHubsProvider.notifier).toggleJoin(
-                                hub.id,
-                                currentIsMember: false,
-                                currentMemberCount: hub.memberCount > 0 ? hub.memberCount - 1 : 0,
-                              );
-                          ref.invalidate(suggestedHubsProvider);
-                          ref.invalidate(hubDetailsProvider(hub.id));
+                          try {
+                            await ref.read(communityHubsProvider.notifier).toggleJoin(
+                                  hub.id,
+                                  currentIsMember: false,
+                                  currentMemberCount: hub.memberCount > 0 ? hub.memberCount - 1 : 0,
+                                );
+                            ref.invalidate(suggestedHubsProvider);
+                            ref.invalidate(hubDetailsProvider(hub.id));
+                          } catch (e) {
+                            if (context.mounted) {
+                              AppToast.showFriendlyError(context, e, prefix: 'Failed to join');
+                            }
+                          }
                         },
                       ),
                     ),
@@ -1386,9 +1401,7 @@ class _CommunityCard extends ConsumerWidget {
                 }
               } catch (e) {
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Failed to leave community: $e')),
-                  );
+                  AppToast.showFriendlyError(context, e, prefix: 'Failed to leave community');
                 }
               }
             },
@@ -1623,9 +1636,7 @@ class _CommunityCard extends ConsumerWidget {
                                 }
                               } catch (e) {
                                 if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Failed to join: $e')),
-                                  );
+                                  AppToast.showFriendlyError(context, e, prefix: 'Failed to join');
                                 }
                               }
                             },

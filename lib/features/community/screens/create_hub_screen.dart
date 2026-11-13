@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/app_toast.dart';
 import '../../../core/widgets/app_text_field.dart';
 import '../providers/community_provider.dart';
 
@@ -239,9 +240,7 @@ class _CreateHubScreenState extends ConsumerState<CreateHubScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to create hub: $e')),
-        );
+        AppToast.showFriendlyError(context, e, prefix: 'Failed to create hub');
       }
     } finally {
       if (mounted) setState(() => _isSubmitting = false);

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/localization/app_strings.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/app_error_state.dart';
 import '../../cart/providers/cart_provider.dart';
 import '../../home_farmer/providers/student_provider.dart';
 import '../../../core/widgets/shimmer_placeholders.dart';
@@ -358,7 +359,7 @@ class EbooksTab extends ConsumerWidget {
               const Icon(Icons.wifi_off_rounded, size: 48, color: Colors.orange),
               const SizedBox(height: 12),
               Text(
-                tr(ref, 'Unable to load e-books at this time. Please check your connection.'),
+                tr(ref, getUserFriendlyErrorMessage(err)),
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: AppColors.inkSoft, fontSize: 14),
               ),

@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../../core/network/api_client.dart';
+import '../../core/network/api_exception.dart';
 import '../../core/network/token_storage.dart';
 import '../models/api_models/course_models.dart';
 import '../models/api_models/user_profile.dart';
@@ -673,9 +674,9 @@ class InstructorRepository {
           throw Exception('Failed to create ebook (${response.statusCode}): ${response.body}');
         }
       } on SocketException catch (_) {
-        throw Exception('No internet connection. Please check your network and try again.');
+        throw ApiException.network();
       } on TimeoutException catch (_) {
-        throw Exception('Connection timed out. Please check your internet connection and try again.');
+        throw ApiException.network();
       } on http.ClientException catch (e) {
         final s = e.toString().toLowerCase();
         if (s.contains('socket') ||
@@ -683,7 +684,7 @@ class InstructorRepository {
             s.contains('connection') ||
             s.contains('handshake') ||
             s.contains('host lookup')) {
-          throw Exception('No internet connection. Please check your network and try again.');
+          throw ApiException.network();
         }
         rethrow;
       }
@@ -875,10 +876,10 @@ class InstructorRepository {
         throw Exception('Failed to upload video (${response.statusCode}): ${response.body}');
       }
     } on TimeoutException {
-      rethrow;
+      throw ApiException.network();
     } on SocketException catch (sErr) {
       debugPrint('❌ [InstructorRepository] uploadVideo network error: $sErr');
-      throw Exception('Network connection failed during video upload. Please check your internet.');
+      throw ApiException.network();
     } catch (e) {
       debugPrint('❌ [InstructorRepository] uploadVideo error: $e');
       rethrow;
@@ -941,10 +942,10 @@ class InstructorRepository {
         throw Exception('Failed to upload resource (${response.statusCode}): ${response.body}');
       }
     } on TimeoutException {
-      rethrow;
+      throw ApiException.network();
     } on SocketException catch (sErr) {
       debugPrint('❌ [InstructorRepository] uploadResource network error: $sErr');
-      throw Exception('Network error while uploading study material. Please check your internet.');
+      throw ApiException.network();
     } catch (e) {
       debugPrint('❌ [InstructorRepository] uploadResource error: $e');
       rethrow;

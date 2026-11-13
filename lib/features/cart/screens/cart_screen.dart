@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/network/api_exception.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_button.dart';
+import '../../../core/widgets/app_error_state.dart';
 import '../../wishlist/providers/wishlist_provider.dart';
 import '../providers/cart_provider.dart';
 
@@ -626,10 +626,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
         child: CircularProgressIndicator(color: AppColors.editorialPrimary),
       ),
       error: (error, _) {
-        String displayError = 'Unable to load cart. Please check your internet connection.';
-        if (error is ApiException) {
-          displayError = error.message;
-        }
+        final displayError = getUserFriendlyErrorMessage(error);
         return Center(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -828,9 +825,10 @@ class _CartScreenState extends ConsumerState<CartScreen> {
       loading: () => const Center(
         child: CircularProgressIndicator(color: AppColors.editorialPrimary),
       ),
-      error: (_, __) => Center(
+      error: (err, _) => Center(
         child: Text(
-          'Unable to load wishlist',
+          getUserFriendlyErrorMessage(err, fallback: 'Unable to load wishlist'),
+          textAlign: TextAlign.center,
           style: TextStyle(color: isDark ? Colors.white70 : AppColors.editorialOnSurfaceVariant),
         ),
       ),

@@ -18,18 +18,25 @@ bool isOfflineOrNetworkError(dynamic error) {
       s.contains('timeout') ||
       s.contains('host lookup') ||
       s.contains('clientexception') ||
-      s.contains('failed host');
+      s.contains('failed host') ||
+      s.contains('no address associated with hostname') ||
+      s.contains('network is unreachable') ||
+      s.contains('errno = 7') ||
+      s.contains('os error: no address');
 }
 
 /// Returns a clean, user-friendly polite error message, masking raw socket exceptions.
 String getUserFriendlyErrorMessage(dynamic error, {String fallback = 'Something went wrong. Please try again.'}) {
   if (isOfflineOrNetworkError(error)) {
-    return 'Unable to connect. Please check your internet connection.';
+    return kNoInternetMessage;
   }
   if (error is ApiException) {
     return error.message;
   }
-  final s = error.toString().replaceAll('Exception: ', '').trim();
+  final s = error
+      .toString()
+      .replaceFirst(RegExp(r'^(Exception|ApiException(\(\d+\))?):\s*'), '')
+      .trim();
   if (s.isEmpty) return fallback;
   return s;
 }
@@ -63,7 +70,7 @@ class AppErrorState extends ConsumerWidget {
     final resolvedIcon = icon ?? (isOffline ? Icons.wifi_off_rounded : Icons.error_outline_rounded);
     final resolvedMessage = message ??
         (isOffline
-            ? tr(ref, 'Unable to connect. Please check your internet connection.')
+            ? tr(ref, 'No internet connection. Please try again later.')
             : (error != null ? getUserFriendlyErrorMessage(error) : tr(ref, 'Something went wrong. Please try again.')));
 
     final widgetBody = Center(
