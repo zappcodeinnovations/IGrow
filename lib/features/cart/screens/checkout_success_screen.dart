@@ -10,6 +10,7 @@ import 'package:printing/printing.dart';
 import '../../../core/network/swagger_generated/app_api.swagger.dart' show EBook;
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/pdf_theme_helper.dart';
 import '../../../data/models/api_models/course_models.dart';
 import '../../../data/models/api_models/order_models.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -991,7 +992,8 @@ class _CheckoutSuccessScreenState extends ConsumerState<CheckoutSuccessScreen> {
     String? couponCode,
     required List<dynamic> items,
   }) async {
-    final pdf = pw.Document();
+    final theme = await PdfThemeHelper.getInvoiceTheme();
+    final pdf = pw.Document(theme: theme);
     pdf.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.a4,
@@ -1008,18 +1010,25 @@ class _CheckoutSuccessScreenState extends ConsumerState<CheckoutSuccessScreen> {
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
                       pw.Text(
-                        'iAGROW EDUCATION',
+                        'iAgrow',
                         style: pw.TextStyle(
-                          fontSize: 18,
+                          fontSize: 22,
                           fontWeight: pw.FontWeight.bold,
-                          color: PdfColors.green800,
+                          color: PdfColors.green900,
                         ),
                       ),
                       pw.Text(
-                        'Kisan Ki Digital Pathshala',
+                        'Agricultural E-Learning Platform',
                         style: const pw.TextStyle(
-                          fontSize: 11,
-                          color: PdfColors.grey,
+                          fontSize: 10,
+                          color: PdfColors.grey700,
+                        ),
+                      ),
+                      pw.Text(
+                        'support@iagrow.zappcode.in',
+                        style: const pw.TextStyle(
+                          fontSize: 9,
+                          color: PdfColors.grey600,
                         ),
                       ),
                     ],
@@ -1027,7 +1036,8 @@ class _CheckoutSuccessScreenState extends ConsumerState<CheckoutSuccessScreen> {
                   pw.Container(
                     padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: pw.BoxDecoration(
-                      color: PdfColors.green100,
+                      color: PdfColors.green50,
+                      border: pw.Border.all(color: PdfColors.green700, width: 0.8),
                       borderRadius: pw.BorderRadius.circular(6),
                     ),
                     child: pw.Text(
@@ -1035,13 +1045,14 @@ class _CheckoutSuccessScreenState extends ConsumerState<CheckoutSuccessScreen> {
                       style: pw.TextStyle(
                         fontSize: 11,
                         fontWeight: pw.FontWeight.bold,
-                        color: PdfColors.green800,
+                        color: PdfColors.green900,
                       ),
                     ),
                   ),
                 ],
               ),
-              pw.Divider(color: PdfColors.grey300),
+              pw.Divider(color: PdfColors.green900, thickness: 1.2),
+              pw.SizedBox(height: 8),
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -1049,20 +1060,24 @@ class _CheckoutSuccessScreenState extends ConsumerState<CheckoutSuccessScreen> {
                   pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
-                      pw.Text('Billed To:', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey)),
-                      pw.Text(studentName, style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                      pw.Text(studentEmail, style: const pw.TextStyle(fontSize: 10)),
+                      pw.Text('BILLED TO:', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: PdfColors.grey600)),
+                      pw.Text(studentName, style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
+                      pw.Text(studentEmail, style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700)),
                     ],
                   ),
                   pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.end,
                     children: [
-                      pw.Text('Invoice No:', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey)),
+                      pw.Text('PAYMENT DETAILS:', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: PdfColors.grey600)),
                       pw.Text('INV-$safeShortId',
-                          style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                          style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11)),
                       pw.Text(
                         dateStr.replaceAll('•', '-').replaceAll('  ', ' ').trim(),
-                        style: const pw.TextStyle(fontSize: 10),
+                        style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700),
+                      ),
+                      pw.Text(
+                        'Status: PAID & VERIFIED',
+                        style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.green800),
                       ),
                     ],
                   ),
@@ -1070,21 +1085,32 @@ class _CheckoutSuccessScreenState extends ConsumerState<CheckoutSuccessScreen> {
               ),
               pw.SizedBox(height: 16),
               pw.TableHelper.fromTextArray(
-                headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11),
-                headerDecoration: const pw.BoxDecoration(color: PdfColors.green50),
-                cellStyle: const pw.TextStyle(fontSize: 11),
-                headers: ['Course / Description', 'SAC', 'Amount'],
-                data: items.map((item) {
-                  final (title, _, price, _) = extractItemInfo(item);
-                  return [title, '998311', 'Rs. $price'];
-                }).toList(),
+                headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10, color: PdfColors.white),
+                headerDecoration: const pw.BoxDecoration(color: PdfColors.green900),
+                cellStyle: const pw.TextStyle(fontSize: 10),
+                headers: ['#', 'Item / Description', 'Type', 'Amount'],
+                data: List<List<String>>.generate(
+                  items.length,
+                  (index) {
+                    final (title, _, price, _) = extractItemInfo(items[index]);
+                    final itemObj = items[index];
+                    final isEbook = (itemObj is EBook) ||
+                        (itemObj is Map && (itemObj['item_type'] == 'ebook' || itemObj['ebook'] != null));
+                    return [
+                      '${index + 1}',
+                      title,
+                      isEbook ? 'E-BOOK' : 'COURSE',
+                      '₹$price',
+                    ];
+                  },
+                ),
               ),
               pw.Divider(color: PdfColors.grey300),
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
                   pw.Text('Subtotal:', style: const pw.TextStyle(fontSize: 11)),
-                  pw.Text('Rs. ${originalTotal.toStringAsFixed(2)}', style: const pw.TextStyle(fontSize: 11)),
+                  pw.Text('₹${originalTotal.toStringAsFixed(2)}', style: const pw.TextStyle(fontSize: 11)),
                 ],
               ),
               if (effectiveDiscount > 0) ...[
@@ -1094,7 +1120,7 @@ class _CheckoutSuccessScreenState extends ConsumerState<CheckoutSuccessScreen> {
                   children: [
                     pw.Text('Coupon Discount (${couponCode ?? "PROMO"}):',
                         style: pw.TextStyle(fontSize: 11, color: PdfColors.green800)),
-                    pw.Text('-Rs. ${effectiveDiscount.toStringAsFixed(2)}',
+                    pw.Text('-₹${effectiveDiscount.toStringAsFixed(2)}',
                         style: pw.TextStyle(
                           fontSize: 11,
                           fontWeight: pw.FontWeight.bold,
@@ -1107,49 +1133,37 @@ class _CheckoutSuccessScreenState extends ConsumerState<CheckoutSuccessScreen> {
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
-                  pw.Text('CGST (0%):', style: const pw.TextStyle(fontSize: 11)),
-                  pw.Text('Rs. 0.00', style: const pw.TextStyle(fontSize: 11)),
+                  pw.Text('CGST (0%):', style: const pw.TextStyle(fontSize: 11, color: PdfColors.grey700)),
+                  pw.Text('₹0.00', style: const pw.TextStyle(fontSize: 11, color: PdfColors.grey700)),
                 ],
               ),
               pw.SizedBox(height: 4),
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
-                  pw.Text('SGST (0%):', style: const pw.TextStyle(fontSize: 11)),
-                  pw.Text('Rs. 0.00', style: const pw.TextStyle(fontSize: 11)),
+                  pw.Text('SGST (0%):', style: const pw.TextStyle(fontSize: 11, color: PdfColors.grey700)),
+                  pw.Text('₹0.00', style: const pw.TextStyle(fontSize: 11, color: PdfColors.grey700)),
                 ],
               ),
-              pw.SizedBox(height: 8),
+              pw.Divider(thickness: 1, color: PdfColors.grey400),
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
                   pw.Text('Grand Total Paid:',
                       style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 13)),
-                  pw.Text('Rs. ${finalTotal.toStringAsFixed(2)}',
+                  pw.Text('₹${finalTotal.toStringAsFixed(2)}',
                       style: pw.TextStyle(
                         fontWeight: pw.FontWeight.bold,
                         fontSize: 15,
-                        color: PdfColors.green800,
+                        color: PdfColors.green900,
                       )),
                 ],
               ),
-              pw.SizedBox(height: 24),
+              pw.Spacer(),
               pw.Center(
-                child: pw.Container(
-                  padding: const pw.EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: pw.BoxDecoration(
-                    border: pw.Border.all(color: PdfColors.green800, width: 2),
-                    borderRadius: pw.BorderRadius.circular(8),
-                  ),
-                  child: pw.Text(
-                    'PAID & VERIFIED  |  iAGROW',
-                    style: pw.TextStyle(
-                      fontWeight: pw.FontWeight.bold,
-                      color: PdfColors.green800,
-                      fontSize: 11,
-                      letterSpacing: 1.5,
-                    ),
-                  ),
+                child: pw.Text(
+                  'This is an electronically generated invoice issued by iAgrow. No signature required.',
+                  style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey600),
                 ),
               ),
             ],

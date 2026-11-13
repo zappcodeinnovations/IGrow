@@ -13,6 +13,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/services/notification_service.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/pdf_theme_helper.dart';
 import '../../../data/models/api_models/certificate_model.dart';
 import '../../../data/models/api_models/course_models.dart';
 
@@ -153,7 +154,8 @@ class _CertificateViewerDialogState extends State<CertificateViewerDialog> {
       }
 
       // 2. Build PDF Document
-      final pdf = pw.Document();
+      final theme = await PdfThemeHelper.getInvoiceTheme();
+      final pdf = pw.Document(theme: theme);
       pdf.addPage(
         pw.Page(
           pageFormat: PdfPageFormat.a4.landscape,

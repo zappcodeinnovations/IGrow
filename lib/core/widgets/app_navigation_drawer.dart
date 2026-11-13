@@ -97,6 +97,17 @@ class AppNavigationDrawer extends ConsumerWidget {
                   ),
                   _buildDrawerItem(
                     context: context,
+                    icon: Icons.workspace_premium_rounded,
+                    title: tr(ref, 'My Certificates'),
+                    iconColor: const Color(0xFFD97706),
+                    isDark: isDark,
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      context.push(RouteNames.certificates);
+                    },
+                  ),
+                  _buildDrawerItem(
+                    context: context,
                     icon: Icons.favorite_rounded,
                     title: tr(ref, 'Wishlist'),
                     iconColor: Colors.redAccent,
