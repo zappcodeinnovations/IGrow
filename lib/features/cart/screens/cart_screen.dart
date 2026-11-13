@@ -417,13 +417,11 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                 itemCount: cart.items.length,
                 itemBuilder: (context, index) {
                   final item = cart.items[index];
-                  final courseTitle = item.courseDetail?['title']?.toString() ??
-                      item.courseDetail?['name']?.toString() ??
-                      'Agriculture Course';
-                  final coursePrice = item.courseDetail?['price']?.toString() ?? '0.00';
-                  final instructor =
-                      item.courseDetail?['instructor_name']?.toString() ?? 'iAgrow Specialist';
-                  final thumbnail = item.courseDetail?['thumbnail']?.toString();
+                  final itemTitle = item.title;
+                  final itemPrice = item.price;
+                  final instructor = item.instructorOrAuthor;
+                  final thumbnail = item.thumbnail;
+                  final isEbook = item.isEbook;
 
                   return Container(
                     margin: const EdgeInsets.only(bottom: 12),
@@ -463,12 +461,16 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                                         color: AppColors.editorialPrimary,
                                       ),
                                     ),
-                                    errorWidget: (_, __, ___) => const Icon(
-                                      Icons.menu_book,
+                                    errorWidget: (_, __, ___) => Icon(
+                                      isEbook ? Icons.menu_book_rounded : Icons.play_lesson_rounded,
                                       color: AppColors.editorialSecondary,
                                     ),
                                   )
-                                : const Icon(Icons.menu_book, color: AppColors.editorialSecondary, size: 28),
+                                : Icon(
+                                    isEbook ? Icons.menu_book_rounded : Icons.play_lesson_rounded,
+                                    color: AppColors.editorialSecondary,
+                                    size: 28,
+                                  ),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -478,8 +480,27 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              Container(
+                                margin: const EdgeInsets.only(bottom: 4),
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: isEbook
+                                      ? Colors.orange.withValues(alpha: 0.15)
+                                      : AppColors.primaryGreen.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  isEbook ? 'E-BOOK' : 'COURSE',
+                                  style: TextStyle(
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 0.5,
+                                    color: isEbook ? Colors.orange.shade800 : AppColors.primaryGreen,
+                                  ),
+                                ),
+                              ),
                               Text(
-                                courseTitle,
+                                itemTitle,
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
@@ -500,7 +521,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                '₹$coursePrice',
+                                '₹$itemPrice',
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w900,
@@ -516,7 +537,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                           icon: const Icon(Icons.close, size: 18, color: Colors.redAccent),
                           tooltip: 'Remove',
                           onPressed: () {
-                            ref.read(cartProvider.notifier).removeFromCart(item.course);
+                            ref.read(cartProvider.notifier).removeFromCart(item.effectiveId, ebookId: item.ebook);
                           },
                         ),
                       ],

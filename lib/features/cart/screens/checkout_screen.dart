@@ -578,11 +578,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   String _getItemTitle(dynamic item) {
     if (item is ApiCourseDetail) return item.title;
     if (item is EBook) return item.title;
-    if (item is ApiCartItem) {
-      return item.courseDetail?['title']?.toString() ??
-          item.courseDetail?['name']?.toString() ??
-          'Course';
-    }
+    if (item is ApiCartItem) return item.title;
     if (item is Map) return item['title']?.toString() ?? 'Item';
     return 'Course';
   }
@@ -593,11 +589,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       final json = item.toJson();
       return json['price']?.toString() ?? json['discount_price']?.toString() ?? '0.00';
     }
-    if (item is ApiCartItem) {
-      return item.courseDetail?['price']?.toString() ??
-          item.courseDetail?['discount_price']?.toString() ??
-          '0.00';
-    }
+    if (item is ApiCartItem) return item.price;
     if (item is Map) return item['price']?.toString() ?? '0.00';
     return '0.00';
   }
@@ -605,9 +597,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   String _getItemInstructor(dynamic item) {
     if (item is ApiCourseDetail) return item.instructorName ?? 'iAgrow Faculty';
     if (item is EBook) return item.instructorName ?? item.authorName;
-    if (item is ApiCartItem) {
-      return item.courseDetail?['instructor_name']?.toString() ?? 'iAgrow Faculty';
-    }
+    if (item is ApiCartItem) return item.instructorOrAuthor;
     if (item is Map) return item['instructor_name']?.toString() ?? item['author_name']?.toString() ?? 'iAgrow Faculty';
     return 'iAgrow Faculty';
   }
@@ -617,12 +607,14 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       return widget.directCourseId!;
     }
     if (item is ApiCourseDetail) return item.id;
-    if (item is ApiCartItem) return item.course;
-    if (item is EBook) return item.id ?? item.slug ?? '';
+    if (item is ApiCartItem) return item.isEbook ? '' : item.course;
+    if (item is EBook) return '';
     if (item is Map) {
+      if (item['item_type']?.toString().toLowerCase() == 'ebook' || item['ebook_id'] != null) {
+        return '';
+      }
       return item['course_id']?.toString() ??
           item['course']?.toString() ??
-          item['ebook_id']?.toString() ??
           item['id']?.toString() ??
           '';
     }
@@ -634,6 +626,9 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       return widget.directEbookId!;
     }
     if (item is EBook) return item.id ?? item.slug ?? '';
+    if (item is ApiCartItem) {
+      return item.isEbook ? item.effectiveId : '';
+    }
     if (item is Map) {
       return item['ebook_id']?.toString() ??
           item['ebook']?.toString() ??

@@ -98,16 +98,7 @@ class _CheckoutSuccessScreenState extends ConsumerState<CheckoutSuccessScreen> {
     } else if (item is ApiCourseDetail) {
       return (item.title, item.id, item.price ?? '0.00', false);
     } else if (item is ApiCartItem) {
-      final isEbookItem = item.courseDetail?['item_type']?.toString().toLowerCase() == 'ebook' ||
-          item.courseDetail?['ebook_id'] != null;
-      final title = item.courseDetail?['title']?.toString() ??
-          item.courseDetail?['name']?.toString() ??
-          (isEbookItem ? 'E-Book' : 'Course');
-      final price = item.courseDetail?['price']?.toString() ??
-          item.courseDetail?['discount_price']?.toString() ??
-          '0.00';
-      final id = isEbookItem ? (item.courseDetail?['ebook_id']?.toString() ?? item.course) : item.course;
-      return (title, id, price, isEbookItem);
+      return (item.title, item.effectiveId, item.price, item.isEbook);
     } else if (item is ApiOrderItem) {
       final isEbookItem = item.itemType?.toLowerCase() == 'ebook' ||
           (item.ebookId != null && item.ebookId!.isNotEmpty) ||

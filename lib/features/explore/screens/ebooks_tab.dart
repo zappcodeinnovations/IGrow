@@ -254,7 +254,13 @@ class EbooksTab extends ConsumerWidget {
                                         it.id == ebook.id ||
                                         it.course == ebook.id ||
                                         it.id == ebook.slug ||
-                                        it.course == ebook.slug) ??
+                                        it.course == ebook.slug ||
+                                        it.ebook == ebook.id ||
+                                        it.ebook == ebook.slug ||
+                                        it.effectiveId == ebook.id ||
+                                        it.effectiveId == ebook.slug ||
+                                        it.ebookDetail?['id']?.toString() == ebook.id ||
+                                        it.ebookDetail?['slug']?.toString() == ebook.slug) ??
                                     false;
 
                                 return OutlinedButton(

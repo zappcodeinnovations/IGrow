@@ -51,37 +51,49 @@ class CartRepository {
   }
 
   Future<ApiCart> _fetchCartFromApi() async {
-    final response = await appApi.apiV1CartGet();
-    if (!response.isSuccessful) {
-      if (response.statusCode == 404) {
-        return const ApiCart(id: '');
+    final token = await tokenStorage.getAccessToken();
+    final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/cart/');
+    http.Response response;
+    try {
+      response = await http.get(
+        uri,
+        headers: {
+          if (token != null) 'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      ).timeout(const Duration(seconds: 15));
+    } catch (e) {
+      if (_isNetworkOrAbortError(e)) {
+        throw ApiException.network('Unable to load cart. Please check your internet connection.');
       }
-      throw ApiException(
-        statusCode: response.statusCode,
-        message: 'Failed to load cart (${response.statusCode})',
-      );
+      rethrow;
     }
 
-    final dynamic data = response.body;
-    if (data == null) {
+    if (response.statusCode == 404) {
       return const ApiCart(id: '');
     }
 
-    if (data is Map<String, dynamic>) {
-      return ApiCart.fromJson(data);
-    } else if (data is Map) {
-      return ApiCart.fromJson(Map<String, dynamic>.from(data));
-    } else {
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      if (response.body.isEmpty) return const ApiCart(id: '');
       try {
-        final jsonMap = (data as dynamic).toJson();
-        if (jsonMap is Map<String, dynamic>) {
-          return ApiCart.fromJson(jsonMap);
-        } else if (jsonMap is Map) {
-          return ApiCart.fromJson(Map<String, dynamic>.from(jsonMap));
+        final dynamic decoded = jsonDecode(response.body);
+        if (decoded is Map<String, dynamic>) {
+          return ApiCart.fromJson(decoded);
+        } else if (decoded is Map) {
+          return ApiCart.fromJson(Map<String, dynamic>.from(decoded));
         }
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('⚠️ [CartRepository] json parsing cart failed: $e');
+      }
+      return const ApiCart(id: '');
     }
-    return const ApiCart(id: '');
+
+    TokenStorage.checkResponse(response.statusCode, response.body);
+    throw ApiException(
+      statusCode: response.statusCode,
+      message: 'Failed to load cart (${response.statusCode})',
+    );
   }
 
   /// Add a course or ebook to cart.
@@ -148,23 +160,52 @@ class CartRepository {
     }
   }
 
-  /// Remove a course from cart.
-  Future<void> removeFromCart(String courseId) async {
-    debugPrint('🗑️ [CartRepository] removeFromCart: courseId=$courseId');
+  /// Remove a course or ebook from cart.
+  Future<void> removeFromCart(String id, {String? ebookId}) async {
+    final effectiveId = (ebookId != null && ebookId.isNotEmpty) ? ebookId : id;
+    debugPrint('🗑️ [CartRepository] removeFromCart: id=$id, ebookId=$ebookId, effectiveId=$effectiveId');
+    if (effectiveId.trim().isEmpty) {
+      debugPrint('⚠️ [CartRepository] removeFromCart: Empty ID passed, skipping.');
+      return;
+    }
     try {
       final token = await tokenStorage.getAccessToken();
-      final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/cart/remove/$courseId/');
+      final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/cart/remove/$effectiveId/');
+      final payload = <String, dynamic>{
+        if (id.isNotEmpty) 'course_id': id,
+        if (id.isNotEmpty) 'course': id,
+        if (effectiveId.isNotEmpty) 'ebook_id': effectiveId,
+        if (effectiveId.isNotEmpty) 'ebook': effectiveId,
+        if (id.isNotEmpty) 'item_id': id,
+      };
       final response = await http.delete(
         uri,
         headers: {
           if (token != null) 'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
         },
+        body: jsonEncode(payload),
       ).timeout(const Duration(seconds: 15));
+
       if (response.statusCode >= 200 && response.statusCode < 300) {
-        debugPrint('✅ [CartRepository] removeFromCart SUCCESS');
+        debugPrint('✅ [CartRepository] removeFromCart SUCCESS for $effectiveId');
       } else {
-        debugPrint('⚠️ [CartRepository] removeFromCart status: ${response.statusCode}');
+        debugPrint('⚠️ [CartRepository] removeFromCart status: ${response.statusCode}, body: ${response.body}');
+        // If 400+ and id is different from effectiveId, attempt fallback using id
+        if (response.statusCode >= 400 && id != effectiveId && id.isNotEmpty) {
+          final fallbackUri = Uri.parse('https://iagrow.zappcode.in/api/v1/cart/remove/$id/');
+          final fallbackResp = await http.delete(
+            fallbackUri,
+            headers: {
+              if (token != null) 'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: jsonEncode(payload),
+          ).timeout(const Duration(seconds: 15));
+          debugPrint('🔄 [CartRepository] removeFromCart fallback by item.id status: ${fallbackResp.statusCode}');
+        }
       }
     } catch (e) {
       debugPrint('⚠️ [CartRepository] removeFromCart network/timeout error: $e');

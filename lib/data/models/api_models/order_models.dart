@@ -1,30 +1,113 @@
 /// Order & Cart models matching the IAgrow Swagger schema.
+library;
 
 // ── Cart Item ───────────────────────────────────────────────────
 
 class ApiCartItem {
   const ApiCartItem({
     required this.id,
-    required this.course,
+    this.course = '',
     this.courseDetail,
+    this.ebook,
+    this.ebookDetail,
+    this.itemType,
     this.addedAt,
   });
 
   final String id;
   final String course;
   final Map<String, dynamic>? courseDetail;
+  final String? ebook;
+  final Map<String, dynamic>? ebookDetail;
+  final String? itemType;
   final DateTime? addedAt;
 
-  factory ApiCartItem.fromJson(Map<String, dynamic> json) => ApiCartItem(
-        id: json['id']?.toString() ?? '',
-        course: json['course']?.toString() ?? '',
-        courseDetail: json['course_detail'] is Map
-            ? Map<String, dynamic>.from(json['course_detail'] as Map)
-            : null,
-        addedAt: json['added_at'] != null
-            ? DateTime.tryParse(json['added_at'].toString())
-            : null,
-      );
+  bool get isEbook =>
+      itemType == 'ebook' || (ebook != null && ebook!.isNotEmpty) || ebookDetail != null;
+
+  /// Effective identifier (e.g. for cart removal or detail navigation)
+  String get effectiveId {
+    if (isEbook && ebook != null && ebook!.isNotEmpty) return ebook!;
+    if (course.isNotEmpty) return course;
+    return id;
+  }
+
+  /// Title of the course or ebook
+  String get title {
+    if (isEbook) {
+      return ebookDetail?['title']?.toString() ??
+          ebookDetail?['name']?.toString() ??
+          'Agriculture E-Book';
+    }
+    return courseDetail?['title']?.toString() ??
+        courseDetail?['name']?.toString() ??
+        'Agriculture Course';
+  }
+
+  /// Instructor or author name
+  String get instructorOrAuthor {
+    if (isEbook) {
+      return ebookDetail?['author_name']?.toString() ??
+          ebookDetail?['instructor_name']?.toString() ??
+          'iAgrow Author';
+    }
+    return courseDetail?['instructor_name']?.toString() ??
+        courseDetail?['author_name']?.toString() ??
+        'iAgrow Specialist';
+  }
+
+  /// Formatted or raw price
+  String get price {
+    if (isEbook) {
+      return ebookDetail?['price']?.toString() ??
+          ebookDetail?['discount_price']?.toString() ??
+          '0.00';
+    }
+    return courseDetail?['price']?.toString() ??
+        courseDetail?['discount_price']?.toString() ??
+        '0.00';
+  }
+
+  /// Thumbnail or cover image URL
+  String? get thumbnail {
+    if (isEbook) {
+      return ebookDetail?['cover_image']?.toString() ??
+          ebookDetail?['thumbnail']?.toString() ??
+          ebookDetail?['image']?.toString();
+    }
+    return courseDetail?['thumbnail']?.toString() ??
+        courseDetail?['cover_image']?.toString() ??
+        courseDetail?['image']?.toString();
+  }
+
+  factory ApiCartItem.fromJson(Map<String, dynamic> json) {
+    final ebookRaw = json['ebook'] ?? json['ebook_id'];
+    final ebookId = ebookRaw is Map ? ebookRaw['id']?.toString() : ebookRaw?.toString();
+    final ebookDetail = json['ebook_detail'] is Map
+        ? Map<String, dynamic>.from(json['ebook_detail'] as Map)
+        : (json['ebook'] is Map ? Map<String, dynamic>.from(json['ebook'] as Map) : null);
+
+    final courseRaw = json['course'] ?? json['course_id'];
+    final courseId = courseRaw is Map ? courseRaw['id']?.toString() : courseRaw?.toString();
+    final courseDetail = json['course_detail'] is Map
+        ? Map<String, dynamic>.from(json['course_detail'] as Map)
+        : (json['course'] is Map ? Map<String, dynamic>.from(json['course'] as Map) : null);
+
+    final itemType = json['item_type']?.toString().toLowerCase() ??
+        (ebookId != null && ebookId.isNotEmpty || ebookDetail != null ? 'ebook' : 'course');
+
+    return ApiCartItem(
+      id: json['id']?.toString() ?? '',
+      course: courseId ?? '',
+      courseDetail: courseDetail,
+      ebook: ebookId,
+      ebookDetail: ebookDetail,
+      itemType: itemType,
+      addedAt: json['added_at'] != null
+          ? DateTime.tryParse(json['added_at'].toString())
+          : null,
+    );
+  }
 }
 
 // ── Cart ────────────────────────────────────────────────────────
