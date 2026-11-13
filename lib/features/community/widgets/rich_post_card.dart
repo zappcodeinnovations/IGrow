@@ -1053,19 +1053,22 @@ class _RichPostCardState extends ConsumerState<RichPostCard> with SingleTickerPr
                     _EmojiItem(
                       emoji: '🌾',
                       label: 'Farm',
-                      isSelected: widget.post.userReaction == 'FARM' || widget.post.userReaction == 'LIKE',
+                      isSelected: widget.post.userReaction == 'FARM',
                       onTap: () => _onReact('FARM'),
                     ),
                     _EmojiItem(
                       emoji: '🌱',
                       label: 'Grow',
-                      isSelected: widget.post.userReaction == 'GROW',
-                      onTap: () => _onReact('GROW'),
+                      isSelected: widget.post.userReaction == 'LIKE' ||
+                          widget.post.userReaction == 'GROW' ||
+                          widget.post.userReaction == 'LEAF',
+                      onTap: () => _onReact('LIKE'),
                     ),
                     _EmojiItem(
                       emoji: '❤️',
                       label: 'Love',
-                      isSelected: widget.post.userReaction == 'LOVE',
+                      isSelected: widget.post.userReaction == 'LOVE' ||
+                          widget.post.userReaction == 'HEART',
                       onTap: () => _onReact('LOVE'),
                     ),
                     _EmojiItem(
@@ -1077,8 +1080,9 @@ class _RichPostCardState extends ConsumerState<RichPostCard> with SingleTickerPr
                     _EmojiItem(
                       emoji: '💡',
                       label: 'Helpful',
-                      isSelected: widget.post.userReaction == 'IDEA',
-                      onTap: () => _onReact('IDEA'),
+                      isSelected: widget.post.userReaction == 'HELPFUL' ||
+                          widget.post.userReaction == 'IDEA',
+                      onTap: () => _onReact('HELPFUL'),
                     ),
                   ],
                 ),
@@ -1193,17 +1197,20 @@ class _RichPostCardState extends ConsumerState<RichPostCard> with SingleTickerPr
   }
 
   String? _getReactionEmoji(String? reaction) {
-    switch (reaction) {
+    if (reaction == null) return null;
+    switch (reaction.toUpperCase()) {
       case 'FARM':
-      case 'LIKE':
         return '🌾';
+      case 'LIKE':
       case 'GROW':
       case 'LEAF':
         return '🌱';
       case 'LOVE':
+      case 'HEART':
         return '❤️';
       case 'CLAP':
         return '👏';
+      case 'HELPFUL':
       case 'IDEA':
         return '💡';
       default:

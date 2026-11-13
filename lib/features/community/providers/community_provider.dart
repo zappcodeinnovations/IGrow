@@ -364,9 +364,18 @@ class CommunityPostsNotifier extends StateNotifier<AsyncValue<List<CommunityPost
     final index = oldPosts.indexWhere((p) => p.id == postId);
     if (index == -1) return false;
 
+    // Canonical representation for consistent local & server state
+    String canonical = reaction.toUpperCase();
+    if (canonical == 'IDEA') canonical = 'HELPFUL';
+    if (canonical == 'GROW' || canonical == 'LEAF') canonical = 'LIKE';
+
     final post = oldPosts[index];
-    final isUnreacting = post.userReaction == reaction;
-    final newUserReaction = isUnreacting ? null : reaction;
+    final currentReaction = post.userReaction?.toUpperCase();
+    final isUnreacting = currentReaction == canonical ||
+        (canonical == 'LIKE' && (currentReaction == 'GROW' || currentReaction == 'LEAF')) ||
+        (canonical == 'HELPFUL' && currentReaction == 'IDEA');
+
+    final newUserReaction = isUnreacting ? null : canonical;
     int newCount = post.reactionsCount;
     if (isUnreacting) {
       newCount = (newCount > 0) ? newCount - 1 : 0;
@@ -384,21 +393,26 @@ class CommunityPostsNotifier extends StateNotifier<AsyncValue<List<CommunityPost
     state = AsyncValue.data(newPosts);
 
     try {
-      final response = await _repo.reactToPost(postId, reaction);
-      final serverCount = (response['reactions_count'] ?? response['likes_count']) as int?;
-      final serverReaction = response['user_reaction']?.toString();
+      final response = await _repo.reactToPost(postId, canonical);
+      final serverCount = (response['reactions_count'] ??
+          response['likes_count'] ??
+          response['upvotes_count']) as int?;
+      final rawServerReaction = response['user_reaction']?.toString();
+      final serverReaction = (rawServerReaction == null ||
+              rawServerReaction.isEmpty ||
+              rawServerReaction == 'null')
+          ? null
+          : rawServerReaction;
 
-      if (serverCount != null || serverReaction != null) {
-        final verifiedPost = newPost.copyWith(
-          reactionsCount: serverCount ?? newCount,
-          userReaction: serverReaction ?? newUserReaction,
-        );
-        final verifiedPosts = List<CommunityPost>.from(state.value ?? newPosts);
-        final vIdx = verifiedPosts.indexWhere((p) => p.id == postId);
-        if (vIdx != -1) {
-          verifiedPosts[vIdx] = verifiedPost;
-          state = AsyncValue.data(verifiedPosts);
-        }
+      final verifiedPost = newPost.copyWith(
+        reactionsCount: serverCount ?? newCount,
+        userReaction: serverReaction ?? newUserReaction,
+      );
+      final verifiedPosts = List<CommunityPost>.from(state.value ?? newPosts);
+      final vIdx = verifiedPosts.indexWhere((p) => p.id == postId);
+      if (vIdx != -1) {
+        verifiedPosts[vIdx] = verifiedPost;
+        state = AsyncValue.data(verifiedPosts);
       }
       return true;
     } catch (e) {

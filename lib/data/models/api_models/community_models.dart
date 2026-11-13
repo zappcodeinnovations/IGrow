@@ -350,7 +350,8 @@ class CommunityPost {
         0;
 
     String? parsedUserReaction = json['user_reaction']?.toString();
-    if (parsedUserReaction == null || parsedUserReaction.isEmpty) {
+    if (parsedUserReaction == null || parsedUserReaction.isEmpty || parsedUserReaction == 'null') {
+      parsedUserReaction = null;
       final isLiked = json['is_liked'] as bool? ?? json['is_liked_by_me'] as bool? ?? false;
       if (isLiked) {
         parsedUserReaction = 'FARM';

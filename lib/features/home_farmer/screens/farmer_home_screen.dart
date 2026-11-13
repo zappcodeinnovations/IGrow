@@ -169,7 +169,7 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                           ),
                           const SizedBox(width: 6),
                           const Text(
-                            'IAGROW ACADEMY',
+                            'IAGROW',
                             style: TextStyle(
                               fontSize: 12.5,
                               fontWeight: FontWeight.w800,
@@ -334,9 +334,7 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                   Container(
                     height: 48,
                     decoration: BoxDecoration(
-                      color: isDark
-                          ? const Color(0xFF0F2618)
-                          : Colors.white,
+                      color: isDark ? const Color(0xFF0F2618) : Colors.white,
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
                         color: isDark
@@ -346,7 +344,9 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.12),
+                          color: Colors.black.withValues(
+                            alpha: isDark ? 0.3 : 0.12,
+                          ),
                           blurRadius: 10,
                           offset: const Offset(0, 3),
                         ),
@@ -364,17 +364,23 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                         hintText: tr(ref, 'Search farming courses...'),
                         hintStyle: TextStyle(
                           fontSize: 13.5,
-                          color: isDark ? Colors.white60 : const Color(0xFF888888),
+                          color: isDark
+                              ? Colors.white60
+                              : const Color(0xFF888888),
                         ),
                         prefixIcon: Icon(
                           Icons.search_rounded,
-                          color: isDark ? Colors.white70 : const Color(0xFF666666),
+                          color: isDark
+                              ? Colors.white70
+                              : const Color(0xFF666666),
                           size: 20,
                         ),
                         suffixIcon: _searchQuery.isNotEmpty
                             ? IconButton(
                                 icon: const Icon(Icons.clear_rounded, size: 18),
-                                color: isDark ? Colors.white70 : const Color(0xFF666666),
+                                color: isDark
+                                    ? Colors.white70
+                                    : const Color(0xFF666666),
                                 onPressed: () {
                                   _searchController.clear();
                                   setState(() {
@@ -393,7 +399,9 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                           vertical: 12,
                         ),
                       ),
-                      cursorColor: isDark ? Colors.white : AppColors.primaryGreen,
+                      cursorColor: isDark
+                          ? Colors.white
+                          : AppColors.primaryGreen,
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
@@ -1286,11 +1294,14 @@ class _CourseCard extends StatelessWidget {
         course.price == '0.00' ||
         course.price == '0.0';
     final priceText = isFree ? 'FREE' : '₹${course.price}';
-    final categoryName = course.category?.name ??
+    final categoryName =
+        course.category?.name ??
         CourseCategory.fromValue(course.category?.slug)?.display;
     final badgeLabel = (categoryName != null && categoryName.trim().isNotEmpty)
         ? categoryName.trim()
-        : (isFree ? 'Free course' : (index % 2 == 0 ? 'Bestseller' : 'Popular'));
+        : (isFree
+              ? 'Free course'
+              : (index % 2 == 0 ? 'Bestseller' : 'Popular'));
 
     return Material(
       color: Colors.transparent,
@@ -1646,10 +1657,7 @@ class _InstructorCard extends StatelessWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(18),
           onTap: () {
-            context.push(
-              '/farmer/instructor/${inst.id}',
-              extra: inst,
-            );
+            context.push('/farmer/instructor/${inst.id}', extra: inst);
           },
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,

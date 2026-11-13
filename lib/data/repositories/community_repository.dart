@@ -367,12 +367,45 @@ class CommunityRepository {
 
   Future<Map<String, dynamic>> reactToPost(String postId, String reaction) async {
     return _safe(() async {
+      // Normalize reaction to canonical backend choices:
+      // Backend expects: LIKE, LOVE, CLAP, HELPFUL, FARM
+      String primary = reaction.toUpperCase();
+      if (primary == 'IDEA') primary = 'HELPFUL';
+      if (primary == 'GROW' || primary == 'LEAF') primary = 'LIKE';
+
       final uri = Uri.parse('$baseUrl/posts/$postId/react/');
-      final response = await http.post(
+      final headers = await _getHeaders();
+      http.Response response = await http.post(
         uri,
-        headers: await _getHeaders(),
-        body: jsonEncode({'reaction': reaction}),
+        headers: headers,
+        body: jsonEncode({'reaction': primary}),
       ).timeout(const Duration(seconds: 15));
+
+      // Resilient fallback: if 400 Bad Request, try alternate representation
+      if (response.statusCode == 400) {
+        String? alternate;
+        if (primary == 'HELPFUL') {
+          alternate = 'IDEA';
+        } else if (primary == 'LIKE') {
+          alternate = 'GROW';
+        } else if (primary == 'GROW') {
+          alternate = 'LIKE';
+        } else if (primary == 'IDEA') {
+          alternate = 'HELPFUL';
+        }
+
+        if (alternate != null) {
+          final altResponse = await http.post(
+            uri,
+            headers: headers,
+            body: jsonEncode({'reaction': alternate}),
+          ).timeout(const Duration(seconds: 15));
+          if (altResponse.statusCode >= 200 && altResponse.statusCode < 300) {
+            response = altResponse;
+          }
+        }
+      }
+
       _handleError(response);
       return jsonDecode(response.body) as Map<String, dynamic>;
     });
