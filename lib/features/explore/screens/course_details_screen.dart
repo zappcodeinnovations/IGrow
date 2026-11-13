@@ -651,11 +651,14 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
             lower.contains('item already')) {
           // If already in cart on backend, refresh cart provider so UI updates to "Go to Cart"
           ref.invalidate(cartProvider);
-          messenger.showSnackBar(
-            const SnackBar(
-              content: Text('Course is already in your cart. 🛒'),
-              backgroundColor: Color(0xFFC88528),
-              duration: Duration(seconds: 2),
+          AppToast.showWarning(
+            context,
+            tr(ref, 'Course is already in your cart. 🛒'),
+            duration: const Duration(seconds: 3),
+            action: SnackBarAction(
+              label: tr(ref, 'View Cart'),
+              textColor: Colors.white,
+              onPressed: () => context.push(RouteNames.cart),
             ),
           );
         } else if (lower.contains('only student') ||

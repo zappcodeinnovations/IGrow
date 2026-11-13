@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/localization/app_strings.dart';
+import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/app_toast.dart';
 import '../../../core/widgets/app_error_state.dart';
 import '../../cart/providers/cart_provider.dart';
 import '../../home_farmer/providers/student_provider.dart';
@@ -275,33 +277,72 @@ class EbooksTab extends ConsumerWidget {
                                   ),
                                   onPressed: () async {
                                     if (isInCart) {
-                                      context.push('/cart');
+                                      context.push(RouteNames.cart);
                                       return;
                                     }
+                                    final targetId = (ebook.id != null && ebook.id!.isNotEmpty)
+                                        ? ebook.id!
+                                        : identifier;
                                     try {
-                                      final targetId = ebook.id ?? identifier;
                                       await ref.read(cartProvider.notifier).addToCart('', ebookId: targetId);
                                       if (context.mounted) {
-                                        final messenger = ScaffoldMessenger.of(context);
-                                        messenger.clearSnackBars();
-                                        messenger.showSnackBar(
-                                          const SnackBar(
-                                            content: Text('E-Book added to cart! 🛒'),
-                                            backgroundColor: AppColors.primaryGreen,
-                                            duration: Duration(seconds: 2),
+                                        AppToast.showSuccess(
+                                          context,
+                                          tr(ref, 'E-Book added to cart! 🛒'),
+                                          duration: const Duration(seconds: 2),
+                                          action: SnackBarAction(
+                                            label: tr(ref, 'View Cart'),
+                                            textColor: Colors.white,
+                                            onPressed: () => context.push(RouteNames.cart),
                                           ),
                                         );
                                       }
                                     } catch (e) {
                                       if (context.mounted) {
-                                        final messenger = ScaffoldMessenger.of(context);
-                                        messenger.clearSnackBars();
-                                        messenger.showSnackBar(
-                                          SnackBar(
-                                            content: Text('Failed to add to cart: $e'),
-                                            backgroundColor: AppColors.error,
-                                          ),
-                                        );
+                                        final cleanMsg = getUserFriendlyErrorMessage(e);
+                                        final lower = cleanMsg.toLowerCase();
+
+                                        if (lower.contains('already in cart') ||
+                                            lower.contains('already added') ||
+                                            lower.contains('item already')) {
+                                          // Refresh cart provider so UI icon updates to shopping_cart
+                                          ref.invalidate(cartProvider);
+                                          AppToast.showWarning(
+                                            context,
+                                            tr(ref, 'E-Book is already in your cart. 🛒'),
+                                            duration: const Duration(seconds: 3),
+                                            action: SnackBarAction(
+                                              label: tr(ref, 'View Cart'),
+                                              textColor: Colors.white,
+                                              onPressed: () => context.push(RouteNames.cart),
+                                            ),
+                                          );
+                                        } else if (lower.contains('already enrolled') ||
+                                            lower.contains('already purchased') ||
+                                            lower.contains('already own')) {
+                                          ref.invalidate(studentPurchasedEbooksProvider);
+                                          AppToast.showSuccess(
+                                            context,
+                                            tr(ref, 'You already own this E-Book! 📚'),
+                                            duration: const Duration(seconds: 3),
+                                            action: SnackBarAction(
+                                              label: tr(ref, 'Read Now'),
+                                              textColor: Colors.white,
+                                              onPressed: () {
+                                                final idOrSlug = (ebook.id != null && ebook.id!.isNotEmpty)
+                                                    ? ebook.id!
+                                                    : identifier;
+                                                context.push('/farmer/ebook/$idOrSlug');
+                                              },
+                                            ),
+                                          );
+                                        } else {
+                                          AppToast.showFriendlyError(
+                                            context,
+                                            e,
+                                            prefix: 'Failed to add to cart',
+                                          );
+                                        }
                                       }
                                     }
                                   },

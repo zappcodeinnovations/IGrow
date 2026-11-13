@@ -39,6 +39,12 @@ class AppStrings {
       'Password changed successfully!': 'Password changed successfully!',
       'Add to Cart': 'Add to Cart',
       'Go to Cart': 'Go to Cart',
+      'View Cart': 'View Cart',
+      'Read Now': 'Read Now',
+      'E-Book added to cart! 🛒': 'E-Book added to cart! 🛒',
+      'E-Book is already in your cart. 🛒': 'E-Book is already in your cart. 🛒',
+      'Course is already in your cart. 🛒': 'Course is already in your cart. 🛒',
+      'You already own this E-Book! 📚': 'You already own this E-Book! 📚',
       'Student Login': 'Student Login',
       'Instructor Login': 'Instructor Login',
       'This account is registered as a Student. Please switch to Student login.': 'This account is registered as a Student. Please switch to Student login.',
@@ -447,6 +453,12 @@ class AppStrings {
       'Password changed successfully!': 'पासवर्ड सफलतापूर्वक बदल दिया गया!',
       'Add to Cart': 'कार्ट में जोड़ें',
       'Go to Cart': 'कार्ट पर जाएं',
+      'View Cart': 'कार्ट देखें',
+      'Read Now': 'अभी पढ़ें',
+      'E-Book added to cart! 🛒': 'ई-बुक कार्ट में जोड़ी गई! 🛒',
+      'E-Book is already in your cart. 🛒': 'ई-बुक पहले से ही आपकी कार्ट में है। 🛒',
+      'Course is already in your cart. 🛒': 'कोर्स पहले से ही आपकी कार्ट में है। 🛒',
+      'You already own this E-Book! 📚': 'यह ई-बुक आपके पास पहले से उपलब्ध है! 📚',
       'Student Login': 'छात्र लॉगिन',
       'Instructor Login': 'प्रशिक्षक लॉगिन',
       'This account is registered as a Student. Please switch to Student login.': 'यह खाता एक छात्र/किसान (Student) के रूप में पंजीकृत है। कृपया छात्र लॉगिन से साइन इन करें।',
@@ -855,6 +867,12 @@ class AppStrings {
       'Password changed successfully!': 'पासवर्ड यशस्वीरित्या बदलला गेला!',
       'Add to Cart': 'कार्टमध्ये जोडा',
       'Go to Cart': 'कार्टवर जा',
+      'View Cart': 'कार्ट पहा',
+      'Read Now': 'आता वाचा',
+      'E-Book added to cart! 🛒': 'ई-बुक कार्टमध्ये जोडली गेली! 🛒',
+      'E-Book is already in your cart. 🛒': 'ई-बुक आधीपासूनच तुमच्या कार्टमध्ये आहे. 🛒',
+      'Course is already in your cart. 🛒': 'कोर्स आधीपासूनच तुमच्या कार्टमध्ये आहे. 🛒',
+      'You already own this E-Book! 📚': 'ही ई-बुक तुमच्याकडे आधीपासून उपलब्ध आहे! 📚',
       'Student Login': 'विद्यार्थी लॉगिन',
       'Instructor Login': 'शिक्षक लॉगिन',
       'This account is registered as a Student. Please switch to Student login.': 'हे खाते विद्यार्थी (Student) म्हणून नोंदणीकृत आहे. कृपया विद्यार्थी लॉगिन वापरा.',
@@ -1297,7 +1315,7 @@ class LanguageNotifier extends StateNotifier<String> {
   void _loadLanguage() {
     if (_prefs == null) return;
     try {
-      final savedLang = _prefs!.getString(_langKey);
+      final savedLang = _prefs.getString(_langKey);
       if (savedLang != null && savedLang.isNotEmpty) {
         state = _normalizeCode(savedLang);
       }

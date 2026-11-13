@@ -16,7 +16,9 @@ class CartRepository {
   final TokenStorage tokenStorage;
 
   bool _isNetworkOrAbortError(dynamic e) {
-    if (e is SocketException || e is TimeoutException || e is http.ClientException) {
+    if (e is SocketException ||
+        e is TimeoutException ||
+        e is http.ClientException) {
       return true;
     }
     final s = e.toString().toLowerCase();
@@ -37,13 +39,17 @@ class CartRepository {
       return await _fetchCartFromApi();
     } catch (e) {
       if (_isNetworkOrAbortError(e)) {
-        debugPrint('🔄 [CartRepository] getCart network/abort failure ($e). Retrying once after 350ms...');
+        debugPrint(
+          '🔄 [CartRepository] getCart network/abort failure ($e). Retrying once after 350ms...',
+        );
         await Future.delayed(const Duration(milliseconds: 350));
         try {
           return await _fetchCartFromApi();
         } catch (retryErr) {
           debugPrint('❌ [CartRepository] getCart retry also failed: $retryErr');
-          throw ApiException.network('Unable to load cart. Please check your internet connection.');
+          throw ApiException.network(
+            'Unable to load cart. Please check your internet connection.',
+          );
         }
       }
       rethrow;
@@ -55,17 +61,21 @@ class CartRepository {
     final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/cart/');
     http.Response response;
     try {
-      response = await http.get(
-        uri,
-        headers: {
-          if (token != null) 'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-      ).timeout(const Duration(seconds: 15));
+      response = await http
+          .get(
+            uri,
+            headers: {
+              if (token != null) 'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 15));
     } catch (e) {
       if (_isNetworkOrAbortError(e)) {
-        throw ApiException.network('Unable to load cart. Please check your internet connection.');
+        throw ApiException.network(
+          'Unable to load cart. Please check your internet connection.',
+        );
       }
       rethrow;
     }
@@ -98,10 +108,12 @@ class CartRepository {
 
   /// Add a course or ebook to cart.
   Future<void> addToCart(String courseId, {String? ebookId}) async {
-    debugPrint('➕ [CartRepository] addToCart: courseId=$courseId, ebookId=$ebookId');
+    debugPrint(
+      '➕ [CartRepository] addToCart: courseId=$courseId, ebookId=$ebookId',
+    );
     final token = await tokenStorage.getAccessToken();
     final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/cart/add/');
-    
+
     final payload = <String, dynamic>{};
     if (courseId.isNotEmpty) {
       payload['course_id'] = courseId;
@@ -114,18 +126,22 @@ class CartRepository {
 
     http.Response response;
     try {
-      response = await http.post(
-        uri,
-        headers: {
-          if (token != null) 'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode(payload),
-      ).timeout(const Duration(seconds: 15));
+      response = await http
+          .post(
+            uri,
+            headers: {
+              if (token != null) 'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode(payload),
+          )
+          .timeout(const Duration(seconds: 15));
     } catch (e) {
       debugPrint('❌ [CartRepository] addToCart network error: $e');
       if (_isNetworkOrAbortError(e)) {
-        throw ApiException.network('Unable to add item to cart. Please check your internet connection.');
+        throw ApiException.network(
+          'Unable to add item to cart. Please check your internet connection.',
+        );
       }
       rethrow;
     }
@@ -133,16 +149,20 @@ class CartRepository {
     if (response.statusCode >= 200 && response.statusCode < 300) {
       debugPrint('✅ [CartRepository] addToCart SUCCESS');
     } else {
-      debugPrint('❌ [CartRepository] addToCart ERROR (${response.statusCode}): ${response.body}');
+      debugPrint(
+        '❌ [CartRepository] addToCart ERROR (${response.statusCode}): ${response.body}',
+      );
       String errorMessage = 'Failed to add to cart (${response.statusCode})';
       try {
         final decoded = jsonDecode(response.body);
         if (decoded is Map) {
           if (decoded.containsKey('error') && decoded['error'] != null) {
             errorMessage = decoded['error'].toString();
-          } else if (decoded.containsKey('detail') && decoded['detail'] != null) {
+          } else if (decoded.containsKey('detail') &&
+              decoded['detail'] != null) {
             errorMessage = decoded['detail'].toString();
-          } else if (decoded.containsKey('message') && decoded['message'] != null) {
+          } else if (decoded.containsKey('message') &&
+              decoded['message'] != null) {
             errorMessage = decoded['message'].toString();
           }
         }
@@ -163,14 +183,20 @@ class CartRepository {
   /// Remove a course or ebook from cart.
   Future<void> removeFromCart(String id, {String? ebookId}) async {
     final effectiveId = (ebookId != null && ebookId.isNotEmpty) ? ebookId : id;
-    debugPrint('🗑️ [CartRepository] removeFromCart: id=$id, ebookId=$ebookId, effectiveId=$effectiveId');
+    debugPrint(
+      '🗑️ [CartRepository] removeFromCart: id=$id, ebookId=$ebookId, effectiveId=$effectiveId',
+    );
     if (effectiveId.trim().isEmpty) {
-      debugPrint('⚠️ [CartRepository] removeFromCart: Empty ID passed, skipping.');
+      debugPrint(
+        '⚠️ [CartRepository] removeFromCart: Empty ID passed, skipping.',
+      );
       return;
     }
     try {
       final token = await tokenStorage.getAccessToken();
-      final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/cart/remove/$effectiveId/');
+      final uri = Uri.parse(
+        'https://iagrow.zappcode.in/api/v1/cart/remove/$effectiveId/',
+      );
       final payload = <String, dynamic>{
         if (id.isNotEmpty) 'course_id': id,
         if (id.isNotEmpty) 'course': id,
@@ -178,37 +204,51 @@ class CartRepository {
         if (effectiveId.isNotEmpty) 'ebook': effectiveId,
         if (id.isNotEmpty) 'item_id': id,
       };
-      final response = await http.delete(
-        uri,
-        headers: {
-          if (token != null) 'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: jsonEncode(payload),
-      ).timeout(const Duration(seconds: 15));
-
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        debugPrint('✅ [CartRepository] removeFromCart SUCCESS for $effectiveId');
-      } else {
-        debugPrint('⚠️ [CartRepository] removeFromCart status: ${response.statusCode}, body: ${response.body}');
-        // If 400+ and id is different from effectiveId, attempt fallback using id
-        if (response.statusCode >= 400 && id != effectiveId && id.isNotEmpty) {
-          final fallbackUri = Uri.parse('https://iagrow.zappcode.in/api/v1/cart/remove/$id/');
-          final fallbackResp = await http.delete(
-            fallbackUri,
+      final response = await http
+          .delete(
+            uri,
             headers: {
               if (token != null) 'Authorization': 'Bearer $token',
               'Content-Type': 'application/json',
               'Accept': 'application/json',
             },
             body: jsonEncode(payload),
-          ).timeout(const Duration(seconds: 15));
-          debugPrint('🔄 [CartRepository] removeFromCart fallback by item.id status: ${fallbackResp.statusCode}');
+          )
+          .timeout(const Duration(seconds: 15));
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        debugPrint(
+          '✅ [CartRepository] removeFromCart SUCCESS for $effectiveId',
+        );
+      } else {
+        debugPrint(
+          '⚠️ [CartRepository] removeFromCart status: ${response.statusCode}, body: ${response.body}',
+        );
+        // If 400+ and id is different from effectiveId, attempt fallback using id
+        if (response.statusCode >= 400 && id != effectiveId && id.isNotEmpty) {
+          final fallbackUri = Uri.parse(
+            'https://iagrow.zappcode.in/api/v1/cart/remove/$id/',
+          );
+          final fallbackResp = await http
+              .delete(
+                fallbackUri,
+                headers: {
+                  if (token != null) 'Authorization': 'Bearer $token',
+                  'Content-Type': 'application/json',
+                  'Accept': 'application/json',
+                },
+                body: jsonEncode(payload),
+              )
+              .timeout(const Duration(seconds: 15));
+          debugPrint(
+            '🔄 [CartRepository] removeFromCart fallback by item.id status: ${fallbackResp.statusCode}',
+          );
         }
       }
     } catch (e) {
-      debugPrint('⚠️ [CartRepository] removeFromCart network/timeout error: $e');
+      debugPrint(
+        '⚠️ [CartRepository] removeFromCart network/timeout error: $e',
+      );
     }
   }
 
@@ -218,13 +258,15 @@ class CartRepository {
     try {
       final token = await tokenStorage.getAccessToken();
       final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/cart/clear/');
-      final response = await http.delete(
-        uri,
-        headers: {
-          if (token != null) 'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-      ).timeout(const Duration(seconds: 15));
+      final response = await http
+          .delete(
+            uri,
+            headers: {
+              if (token != null) 'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 15));
       if (response.statusCode >= 200 && response.statusCode < 300) {
         debugPrint('✅ [CartRepository] clearCart SUCCESS');
       }
@@ -234,23 +276,30 @@ class CartRepository {
   }
 
   /// Validate and apply coupon code via backend API.
-  Future<Map<String, dynamic>> applyCoupon(String code, {String? courseId}) async {
-    debugPrint('🎟️ [CartRepository] applyCoupon: code=$code, courseId=$courseId');
+  Future<Map<String, dynamic>> applyCoupon(
+    String code, {
+    String? courseId,
+  }) async {
+    debugPrint(
+      '🎟️ [CartRepository] applyCoupon: code=$code, courseId=$courseId',
+    );
     final token = await tokenStorage.getAccessToken();
     final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/apply-coupon/');
     http.Response response;
     try {
-      response = await http.post(
-        uri,
-        headers: {
-          if (token != null) 'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
-          'code': code,
-          if (courseId != null) 'course_id': courseId,
-        }),
-      ).timeout(const Duration(seconds: 15));
+      response = await http
+          .post(
+            uri,
+            headers: {
+              if (token != null) 'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode({
+              'code': code,
+              if (courseId != null) 'course_id': courseId,
+            }),
+          )
+          .timeout(const Duration(seconds: 15));
     } catch (e) {
       if (_isNetworkOrAbortError(e)) {
         throw ApiException.network();
@@ -266,9 +315,13 @@ class CartRepository {
       }
       return Map<String, dynamic>.from(decoded as Map);
     } else {
-      debugPrint('⚠️ [CartRepository] applyCoupon FAILED (${response.statusCode}): ${response.body}');
+      debugPrint(
+        '⚠️ [CartRepository] applyCoupon FAILED (${response.statusCode}): ${response.body}',
+      );
       if (response.statusCode >= 500) {
-        throw Exception('Server is temporarily unavailable. Please try again in a few moments.');
+        throw Exception(
+          'Server is temporarily unavailable. Please try again in a few moments.',
+        );
       }
       String errMsg = 'Invalid or expired coupon code.';
       try {
@@ -276,9 +329,11 @@ class CartRepository {
         if (decoded is Map) {
           if (decoded.containsKey('error') && decoded['error'] != null) {
             errMsg = decoded['error'].toString();
-          } else if (decoded.containsKey('message') && decoded['message'] != null) {
+          } else if (decoded.containsKey('message') &&
+              decoded['message'] != null) {
             errMsg = decoded['message'].toString();
-          } else if (decoded.containsKey('detail') && decoded['detail'] != null) {
+          } else if (decoded.containsKey('detail') &&
+              decoded['detail'] != null) {
             errMsg = decoded['detail'].toString();
           }
         }
@@ -286,10 +341,14 @@ class CartRepository {
 
       // Clean up technical backend exceptions if any
       final lower = errMsg.toLowerCase();
-      if (lower.contains('matching query does not exist') || lower.contains('not found') || lower.contains('doesnotexist')) {
+      if (lower.contains('matching query does not exist') ||
+          lower.contains('not found') ||
+          lower.contains('doesnotexist')) {
         errMsg = 'Invalid coupon code. Please verify the code and try again.';
-      } else if (lower.contains('already used') || lower.contains('limit reached')) {
-        errMsg = 'This coupon has already been used or reached its usage limit.';
+      } else if (lower.contains('already used') ||
+          lower.contains('limit reached')) {
+        errMsg =
+            'This coupon has already been used or reached its usage limit.';
       } else if (lower.contains('expired')) {
         errMsg = 'This coupon code has expired.';
       }
@@ -305,9 +364,13 @@ class CartRepository {
     String? courseId,
     String? ebookId,
   }) async {
-    debugPrint('💳 [CartRepository] createRazorpayOrder START: coupon=$couponCode, courseId=$courseId, ebookId=$ebookId');
+    debugPrint(
+      '💳 [CartRepository] createRazorpayOrder START: coupon=$couponCode, courseId=$courseId, ebookId=$ebookId',
+    );
     final token = await tokenStorage.getAccessToken();
-    final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/orders/razorpay/create/');
+    final uri = Uri.parse(
+      'https://iagrow.zappcode.in/api/v1/orders/razorpay/create/',
+    );
 
     final payload = <String, dynamic>{
       if (couponCode != null && couponCode.trim().isNotEmpty)
@@ -320,23 +383,29 @@ class CartRepository {
 
     http.Response response;
     try {
-      response = await http.post(
-        uri,
-        headers: {
-          if (token != null) 'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode(payload),
-      ).timeout(const Duration(seconds: 25));
+      response = await http
+          .post(
+            uri,
+            headers: {
+              if (token != null) 'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode(payload),
+          )
+          .timeout(const Duration(seconds: 25));
     } catch (e) {
       if (_isNetworkOrAbortError(e)) {
         throw ApiException.network();
       }
-      throw Exception('Payment request timed out. Please check your connection and try again.');
+      throw Exception(
+        'Payment request timed out. Please check your connection and try again.',
+      );
     }
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
-      debugPrint('✅ [CartRepository] createRazorpayOrder SUCCESS (${response.statusCode}): ${response.body}');
+      debugPrint(
+        '✅ [CartRepository] createRazorpayOrder SUCCESS (${response.statusCode}): ${response.body}',
+      );
       try {
         final decoded = jsonDecode(response.body);
         if (decoded is Map<String, dynamic>) {
@@ -347,7 +416,9 @@ class CartRepository {
         throw Exception('Unexpected response format from payment server.');
       }
     } else {
-      debugPrint('❌ [CartRepository] createRazorpayOrder ERROR (${response.statusCode}): ${response.body}');
+      debugPrint(
+        '❌ [CartRepository] createRazorpayOrder ERROR (${response.statusCode}): ${response.body}',
+      );
       String message = 'Unable to initiate order. Please try again.';
       try {
         final decoded = jsonDecode(response.body);
@@ -358,11 +429,13 @@ class CartRepository {
         } else if (decoded is Map && decoded['detail'] != null) {
           message = decoded['detail'].toString();
         } else if (response.statusCode >= 500) {
-          message = 'Payment server is temporarily unavailable. Please try again in a few moments.';
+          message =
+              'Payment server is temporarily unavailable. Please try again in a few moments.';
         }
       } catch (_) {
         if (response.statusCode >= 500) {
-          message = 'Payment server is temporarily unavailable. Please try again in a few moments.';
+          message =
+              'Payment server is temporarily unavailable. Please try again in a few moments.';
         }
       }
       throw Exception(message);
@@ -376,9 +449,13 @@ class CartRepository {
     required String orderId,
     required String signature,
   }) async {
-    debugPrint('🔐 [CartRepository] verifyRazorpayPayment START: paymentId=$paymentId, orderId=$orderId');
+    debugPrint(
+      '🔐 [CartRepository] verifyRazorpayPayment START: paymentId=$paymentId, orderId=$orderId',
+    );
     final token = await tokenStorage.getAccessToken();
-    final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/orders/razorpay/verify/');
+    final uri = Uri.parse(
+      'https://iagrow.zappcode.in/api/v1/orders/razorpay/verify/',
+    );
 
     final payload = <String, dynamic>{
       'razorpay_payment_id': paymentId,
@@ -388,23 +465,29 @@ class CartRepository {
 
     http.Response response;
     try {
-      response = await http.post(
-        uri,
-        headers: {
-          if (token != null) 'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode(payload),
-      ).timeout(const Duration(seconds: 25));
+      response = await http
+          .post(
+            uri,
+            headers: {
+              if (token != null) 'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode(payload),
+          )
+          .timeout(const Duration(seconds: 25));
     } catch (e) {
       if (_isNetworkOrAbortError(e)) {
         throw ApiException.network();
       }
-      throw Exception('Verification request timed out. Please check your connection and try again.');
+      throw Exception(
+        'Verification request timed out. Please check your connection and try again.',
+      );
     }
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
-      debugPrint('✅ [CartRepository] verifyRazorpayPayment SUCCESS (${response.statusCode}): ${response.body}');
+      debugPrint(
+        '✅ [CartRepository] verifyRazorpayPayment SUCCESS (${response.statusCode}): ${response.body}',
+      );
       try {
         final decoded = jsonDecode(response.body);
         if (decoded is Map<String, dynamic>) {
@@ -412,10 +495,15 @@ class CartRepository {
         }
         return Map<String, dynamic>.from(decoded as Map);
       } catch (_) {
-        return {'status': 'success', 'message': 'Payment verified and order fulfilled successfully.'};
+        return {
+          'status': 'success',
+          'message': 'Payment verified and order fulfilled successfully.',
+        };
       }
     } else {
-      debugPrint('❌ [CartRepository] verifyRazorpayPayment ERROR (${response.statusCode}): ${response.body}');
+      debugPrint(
+        '❌ [CartRepository] verifyRazorpayPayment ERROR (${response.statusCode}): ${response.body}',
+      );
       String message = 'Payment verification failed.';
       try {
         final decoded = jsonDecode(response.body);
@@ -446,13 +534,19 @@ class CartRepository {
     required String transactionId,
     required String receiptData,
   }) async {
-    debugPrint('🍏 [CartRepository] processIosAppleTransaction START: courseId=$courseId, ebookId=$ebookId, productId=$productId, txId=$transactionId');
+    debugPrint(
+      '🍏 [CartRepository] processIosAppleTransaction START: courseId=$courseId, ebookId=$ebookId, productId=$productId, txId=$transactionId',
+    );
     final token = await tokenStorage.getAccessToken();
-    final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/orders/ios/payment/transaction/');
+    final uri = Uri.parse(
+      'https://iagrow.zappcode.in/api/v1/orders/ios/payment/transaction/',
+    );
 
     final payload = <String, dynamic>{
-      if (courseId != null && courseId.trim().isNotEmpty) 'course_id': courseId.trim(),
-      if (ebookId != null && ebookId.trim().isNotEmpty) 'ebook_id': ebookId.trim(),
+      if (courseId != null && courseId.trim().isNotEmpty)
+        'course_id': courseId.trim(),
+      if (ebookId != null && ebookId.trim().isNotEmpty)
+        'ebook_id': ebookId.trim(),
       'product_id': productId.trim(),
       'transaction_id': transactionId.trim(),
       'receipt_data': receiptData.trim(),
@@ -460,24 +554,30 @@ class CartRepository {
 
     http.Response response;
     try {
-      response = await http.post(
-        uri,
-        headers: {
-          if (token != null) 'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: jsonEncode(payload),
-      ).timeout(const Duration(seconds: 30));
+      response = await http
+          .post(
+            uri,
+            headers: {
+              if (token != null) 'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: jsonEncode(payload),
+          )
+          .timeout(const Duration(seconds: 30));
     } catch (e) {
       if (_isNetworkOrAbortError(e)) {
         throw ApiException.network();
       }
-      throw Exception('Apple In-App Purchase verification timed out. Please try again.');
+      throw Exception(
+        'Apple In-App Purchase verification timed out. Please try again.',
+      );
     }
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
-      debugPrint('✅ [CartRepository] processIosAppleTransaction SUCCESS (${response.statusCode}): ${response.body}');
+      debugPrint(
+        '✅ [CartRepository] processIosAppleTransaction SUCCESS (${response.statusCode}): ${response.body}',
+      );
       try {
         final decoded = jsonDecode(response.body);
         if (decoded is Map<String, dynamic>) {
@@ -487,12 +587,15 @@ class CartRepository {
       } catch (_) {
         return {
           'success': true,
-          'message': 'Apple In-App Purchase processed successfully and access granted.',
+          'message':
+              'Apple In-App Purchase processed successfully and access granted.',
           'enrolled': true,
         };
       }
     } else {
-      debugPrint('❌ [CartRepository] processIosAppleTransaction ERROR (${response.statusCode}): ${response.body}');
+      debugPrint(
+        '❌ [CartRepository] processIosAppleTransaction ERROR (${response.statusCode}): ${response.body}',
+      );
       String message = 'Apple In-App Purchase verification failed.';
       try {
         final decoded = jsonDecode(response.body);
@@ -519,7 +622,9 @@ class CartRepository {
     String? cardHolder,
     String? couponCode,
   }) async {
-    debugPrint('💳 [CartRepository] checkout START: method=$paymentMethod, courseId=$courseId, coupon=$couponCode');
+    debugPrint(
+      '💳 [CartRepository] checkout START: method=$paymentMethod, courseId=$courseId, coupon=$couponCode',
+    );
     final token = await tokenStorage.getAccessToken();
     final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/checkout/');
 
@@ -536,41 +641,57 @@ class CartRepository {
 
     http.Response response;
     try {
-      response = await http.post(
-        uri,
-        headers: {
-          if (token != null) 'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode(payload),
-      ).timeout(const Duration(seconds: 25));
+      response = await http
+          .post(
+            uri,
+            headers: {
+              if (token != null) 'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode(payload),
+          )
+          .timeout(const Duration(seconds: 25));
     } catch (e) {
       if (_isNetworkOrAbortError(e)) {
         throw ApiException.network();
       }
-      throw Exception('Payment request timed out. Please check your connection and try again.');
+      throw Exception(
+        'Payment request timed out. Please check your connection and try again.',
+      );
     }
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
-      debugPrint('✅ [CartRepository] checkout SUCCESS (${response.statusCode}): ${response.body}');
+      debugPrint(
+        '✅ [CartRepository] checkout SUCCESS (${response.statusCode}): ${response.body}',
+      );
       try {
         return jsonDecode(response.body) as Map<String, dynamic>;
       } catch (_) {
         return {'status': 'SUCCESS', 'message': 'Payment successful!'};
       }
     } else {
-      debugPrint('❌ [CartRepository] checkout ERROR (${response.statusCode}): ${response.body}');
+      debugPrint(
+        '❌ [CartRepository] checkout ERROR (${response.statusCode}): ${response.body}',
+      );
       if (response.statusCode >= 500) {
-        throw Exception('Payment server is temporarily unavailable. Please try again in a few moments.');
+        throw Exception(
+          'Payment server is temporarily unavailable. Please try again in a few moments.',
+        );
       }
       String message = 'Payment failed. Please try again.';
       try {
         final decoded = jsonDecode(response.body);
-        if (decoded is Map && decoded.containsKey('error') && decoded['error'] != null) {
+        if (decoded is Map &&
+            decoded.containsKey('error') &&
+            decoded['error'] != null) {
           message = decoded['error'].toString();
-        } else if (decoded is Map && decoded.containsKey('message') && decoded['message'] != null) {
+        } else if (decoded is Map &&
+            decoded.containsKey('message') &&
+            decoded['message'] != null) {
           message = decoded['message'].toString();
-        } else if (decoded is Map && decoded.containsKey('detail') && decoded['detail'] != null) {
+        } else if (decoded is Map &&
+            decoded.containsKey('detail') &&
+            decoded['detail'] != null) {
           message = decoded['detail'].toString();
         }
       } catch (_) {}

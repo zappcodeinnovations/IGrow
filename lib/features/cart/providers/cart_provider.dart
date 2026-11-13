@@ -128,8 +128,18 @@ class CartNotifier extends AsyncNotifier<ApiCart> {
     try {
       await _repository.addToCart(courseId, ebookId: ebookId);
     } catch (e) {
-      // POST failed! Revert state to previous cart so UI state is NOT desynced or wiped.
-      state = previousState;
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('already in cart') || errStr.contains('already added')) {
+        try {
+          final updatedCart = await _repository.getCart();
+          state = AsyncData(updatedCart);
+        } catch (_) {
+          state = previousState;
+        }
+      } else {
+        // POST failed! Revert state to previous cart so UI state is NOT desynced or wiped.
+        state = previousState;
+      }
       rethrow;
     }
 
