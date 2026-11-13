@@ -1452,13 +1452,16 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
           const SizedBox(height: 20),
 
           // Category
-          _buildFieldLabel('Category'),
+          _buildFieldLabel(tr(ref, 'Category')),
           DropdownButtonFormField<String>(
             isExpanded: true,
             initialValue: _selectedCategory,
-            decoration: const InputDecoration(border: OutlineInputBorder()),
+            decoration: InputDecoration(
+              border: const OutlineInputBorder(),
+              hintText: tr(ref, 'Select a category'),
+            ),
             items: _categories.map((c) {
-              return DropdownMenuItem(value: c, child: Text(c, overflow: TextOverflow.ellipsis));
+              return DropdownMenuItem(value: c, child: Text(tr(ref, c), overflow: TextOverflow.ellipsis));
             }).toList(),
             onChanged: (val) {
               if (val != null) setState(() => _selectedCategory = val);
@@ -1467,13 +1470,16 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
           const SizedBox(height: 18),
 
           // Level
-          _buildFieldLabel('Course Level'),
+          _buildFieldLabel(tr(ref, 'Course Level')),
           DropdownButtonFormField<String>(
             isExpanded: true,
             initialValue: _selectedLevel,
-            decoration: const InputDecoration(border: OutlineInputBorder()),
+            decoration: InputDecoration(
+              border: const OutlineInputBorder(),
+              hintText: tr(ref, 'Select level'),
+            ),
             items: _levels.map((l) {
-              return DropdownMenuItem(value: l, child: Text(l));
+              return DropdownMenuItem(value: l, child: Text(tr(ref, l)));
             }).toList(),
             onChanged: (val) {
               if (val != null) setState(() => _selectedLevel = val);
@@ -1524,22 +1530,34 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildFieldLabel('Course Price Tier *'),
+                  _buildFieldLabel(tr(ref, 'Course Price Tier *')),
                   DropdownButtonFormField<String>(
                     initialValue: const ['0', '249', '499', '999', '1499'].contains(_priceController.text.trim())
                         ? _priceController.text.trim()
                         : '0',
-                    decoration: const InputDecoration(
-                      helperText: 'Select one of the standard price tiers.',
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: InputDecoration(
+                      helperText: tr(ref, 'Select one of the standard price tiers.'),
+                      border: const OutlineInputBorder(),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                     ),
                     items: [
                       DropdownMenuItem(value: '0', child: Text(tr(ref, 'Free'))),
-                      DropdownMenuItem(value: '249', child: const Text('₹249 — Tier 1')),
-                      DropdownMenuItem(value: '499', child: const Text('₹499 — Tier 1.5')),
-                      DropdownMenuItem(value: '999', child: const Text('₹999 — Tier 2')),
-                      DropdownMenuItem(value: '1499', child: const Text('₹1,499 — Tier 3')),
+                      DropdownMenuItem(
+                        value: '249',
+                        child: Text('₹${formatNum(ref, '249')} — ${tr(ref, 'Tier 1')}'),
+                      ),
+                      DropdownMenuItem(
+                        value: '499',
+                        child: Text('₹${formatNum(ref, '499')} — ${tr(ref, 'Tier 1.5')}'),
+                      ),
+                      DropdownMenuItem(
+                        value: '999',
+                        child: Text('₹${formatNum(ref, '999')} — ${tr(ref, 'Tier 2')}'),
+                      ),
+                      DropdownMenuItem(
+                        value: '1499',
+                        child: Text('₹${formatNum(ref, '1,499')} — ${tr(ref, 'Tier 3')}'),
+                      ),
                     ],
                     onChanged: (val) {
                       if (val != null) {
@@ -1553,13 +1571,16 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
           ),
           const SizedBox(height: 18),
 
-          _buildFieldLabel('Language'),
+          _buildFieldLabel(tr(ref, 'Language')),
           DropdownButtonFormField<String>(
             isExpanded: true,
             initialValue: _selectedLanguage,
-            decoration: const InputDecoration(border: OutlineInputBorder()),
+            decoration: InputDecoration(
+              border: const OutlineInputBorder(),
+              hintText: tr(ref, 'Select language'),
+            ),
             items: _languages.map((l) {
-              return DropdownMenuItem(value: l, child: Text(l));
+              return DropdownMenuItem(value: l, child: Text(tr(ref, l)));
             }).toList(),
             onChanged: (val) {
               if (val != null) setState(() => _selectedLanguage = val);
@@ -1918,9 +1939,9 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                                       borderSide: BorderSide(color: Colors.grey.shade300),
                                     ),
                                   ),
-                                  hint: const Text('-- No E-Book Attached --', style: TextStyle(fontSize: 12)),
+                                  hint: Text(tr(ref, '-- No E-Book Attached --'), style: const TextStyle(fontSize: 12)),
                                   items: [
-                                    const DropdownMenuItem(value: null, child: Text('-- No E-Book Attached --', style: TextStyle(fontSize: 12))),
+                                    DropdownMenuItem(value: null, child: Text(tr(ref, '-- No E-Book Attached --'), style: const TextStyle(fontSize: 12))),
                                     ...ebooks.map((eb) {
                                       return DropdownMenuItem(
                                         value: eb.id,
@@ -1936,7 +1957,7 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                                 );
                               },
                               loading: () => const LinearProgressIndicator(),
-                              error: (_, __) => const Text('Could not load e-books', style: TextStyle(fontSize: 11)),
+                              error: (_, __) => Text(tr(ref, 'Could not load e-books'), style: const TextStyle(fontSize: 11)),
                             ),
                           ],
                         ),

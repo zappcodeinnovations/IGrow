@@ -446,16 +446,28 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
                                         : '0',
                                     decoration: InputDecoration(
                                       labelText: tr(ref, 'E-Book Price Tier *'),
-                                      helperText: 'Select one of the standard price tiers.',
+                                      helperText: tr(ref, 'Select one of the standard price tiers.'),
                                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                                       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                                     ),
                                     items: [
                                       DropdownMenuItem(value: '0', child: Text(tr(ref, 'Free (₹0)'))),
-                                      const DropdownMenuItem(value: '249', child: Text('₹249 — Tier 1')),
-                                      const DropdownMenuItem(value: '499', child: Text('₹499 — Tier 1.5')),
-                                      const DropdownMenuItem(value: '999', child: Text('₹999 — Tier 2')),
-                                      const DropdownMenuItem(value: '1499', child: Text('₹1,499 — Tier 3')),
+                                      DropdownMenuItem(
+                                        value: '249',
+                                        child: Text('₹${formatNum(ref, '249')} — ${tr(ref, 'Tier 1')}'),
+                                      ),
+                                      DropdownMenuItem(
+                                        value: '499',
+                                        child: Text('₹${formatNum(ref, '499')} — ${tr(ref, 'Tier 1.5')}'),
+                                      ),
+                                      DropdownMenuItem(
+                                        value: '999',
+                                        child: Text('₹${formatNum(ref, '999')} — ${tr(ref, 'Tier 2')}'),
+                                      ),
+                                      DropdownMenuItem(
+                                        value: '1499',
+                                        child: Text('₹${formatNum(ref, '1,499')} — ${tr(ref, 'Tier 3')}'),
+                                      ),
                                     ],
                                     onChanged: (val) {
                                       if (val != null) {
