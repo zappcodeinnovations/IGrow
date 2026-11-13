@@ -522,17 +522,17 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
       context: context,
       builder: (c) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Deactivate Course', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(tr(ref, 'Deactivate Course'), style: const TextStyle(fontWeight: FontWeight.bold)),
         content: Text(
-          'Are you sure you want to deactivate "${course.title}"?\n\n'
-          'The course will be moved to Draft status and hidden from the public marketplace. You can review and manage it anytime.',
+          '${tr(ref, 'Are you sure you want to deactivate')} "${course.title}"?\n\n'
+          '${tr(ref, 'The course will be moved to Draft status and hidden from the public marketplace. You can review and manage it anytime.')}',
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(c, false), child: Text(tr(ref, 'Cancel'))),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: const Color(0xFFF59E0B)),
             onPressed: () => Navigator.pop(c, true),
-            child: const Text('Deactivate'),
+            child: Text(tr(ref, 'Deactivate')),
           ),
         ],
       ),
@@ -547,8 +547,8 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
         final messenger = ScaffoldMessenger.of(context);
         messenger.clearSnackBars();
         messenger.showSnackBar(
-          const SnackBar(
-            content: Text('Course deactivated and moved to Drafts'),
+          SnackBar(
+            content: Text(tr(ref, 'Course deactivated and moved to Drafts')),
             backgroundColor: AppColors.primaryGreen,
           ),
         );
@@ -564,7 +564,7 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
         messenger.clearSnackBars();
         messenger.showSnackBar(
           SnackBar(
-            content: Text('Failed to deactivate course: $e'),
+            content: Text('${tr(ref, 'Failed to deactivate course:')} $e'),
             backgroundColor: AppColors.error,
           ),
         );
@@ -576,17 +576,17 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (c) => AlertDialog(
-        title: const Text('Delete Course'),
-        content: Text('Are you sure you want to permanently delete "${course.title}"? This action cannot be undone.'),
+        title: Text(tr(ref, 'Delete Course')),
+        content: Text('${tr(ref, 'Are you sure you want to permanently delete')} "${course.title}"? ${tr(ref, 'This action cannot be undone.')}'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(c, false),
-            child: const Text('Cancel'),
+            child: Text(tr(ref, 'Cancel')),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.error),
             onPressed: () => Navigator.pop(c, true),
-            child: const Text('Delete'),
+            child: Text(tr(ref, 'Delete')),
           ),
         ],
       ),
@@ -599,8 +599,8 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
         final messenger = ScaffoldMessenger.of(context);
         messenger.clearSnackBars();
         messenger.showSnackBar(
-          const SnackBar(
-            content: Text('Course deleted successfully'),
+          SnackBar(
+            content: Text(tr(ref, 'Course deleted successfully')),
             backgroundColor: AppColors.primaryGreen,
           ),
         );

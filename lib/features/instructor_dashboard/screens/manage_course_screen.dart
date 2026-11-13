@@ -323,7 +323,7 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
       context: parentContext,
       builder: (c) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Add Section', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(tr(ref, 'Add Section'), style: const TextStyle(fontWeight: FontWeight.bold)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -331,19 +331,19 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
             TextField(
               controller: titleController,
               autofocus: true,
-              decoration: const InputDecoration(
-                hintText: 'e.g., Introduction to Soil Science',
-                labelText: 'Section Title *',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                hintText: tr(ref, 'e.g., Introduction to Soil Science'),
+                labelText: tr(ref, 'Section Title *'),
+                border: const OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 14),
             TextField(
               controller: descController,
-              decoration: const InputDecoration(
-                hintText: 'Brief summary of what this section covers',
-                labelText: 'Description (optional)',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                hintText: tr(ref, 'Brief summary of what this section covers'),
+                labelText: tr(ref, 'Description (optional)'),
+                border: const OutlineInputBorder(),
               ),
               maxLines: 2,
             ),
@@ -352,18 +352,18 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(c, false),
-            child: const Text('Cancel'),
+            child: Text(tr(ref, 'Cancel')),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.primaryGreen),
             onPressed: () {
               if (titleController.text.trim().isEmpty) {
-                _showFeedback('Section title is required.', isError: true);
+                _showFeedback(tr(ref, 'Section title is required.'), isError: true);
                 return;
               }
               Navigator.pop(c, true);
             },
-            child: const Text('Add Section'),
+            child: Text(tr(ref, 'Add Section')),
           ),
         ],
       ),
@@ -400,7 +400,7 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
       context: parentContext,
       builder: (c) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Edit Section', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(tr(ref, 'Edit Section'), style: const TextStyle(fontWeight: FontWeight.bold)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -408,17 +408,17 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
             TextField(
               controller: titleController,
               autofocus: true,
-              decoration: const InputDecoration(
-                labelText: 'Section Title *',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: tr(ref, 'Section Title *'),
+                border: const OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 14),
             TextField(
               controller: descController,
-              decoration: const InputDecoration(
-                labelText: 'Description',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: tr(ref, 'Description (optional)'),
+                border: const OutlineInputBorder(),
               ),
               maxLines: 2,
             ),
@@ -427,18 +427,18 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(c, false),
-            child: const Text('Cancel'),
+            child: Text(tr(ref, 'Cancel')),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.primaryGreen),
             onPressed: () {
               if (titleController.text.trim().isEmpty) {
-                _showFeedback('Section title is required.', isError: true);
+                _showFeedback(tr(ref, 'Section title is required.'), isError: true);
                 return;
               }
               Navigator.pop(c, true);
             },
-            child: const Text('Save Changes'),
+            child: Text(tr(ref, 'Save Changes')),
           ),
         ],
       ),
@@ -476,16 +476,16 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
       context: parentContext,
       builder: (c) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Delete Section', style: TextStyle(fontWeight: FontWeight.bold)),
-        content: const Text(
-          'Are you sure you want to delete this section? All lectures and uploaded materials inside this section will be permanently deleted.',
+        title: Text(tr(ref, 'Delete Section'), style: const TextStyle(fontWeight: FontWeight.bold)),
+        content: Text(
+          tr(ref, 'Are you sure you want to delete this section? All lectures and uploaded materials inside this section will be permanently deleted.'),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(c, false), child: Text(tr(ref, 'Cancel'))),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.error),
             onPressed: () => Navigator.pop(c, true),
-            child: const Text('Delete'),
+            child: Text(tr(ref, 'Delete')),
           ),
         ],
       ),
@@ -1085,16 +1085,16 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
       context: parentContext,
       builder: (c) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Delete Lecture', style: TextStyle(fontWeight: FontWeight.bold)),
-        content: const Text(
-          'Are you sure you want to delete this lecture? Any video streams and study materials will be removed.',
+        title: Text(tr(ref, 'Delete Lecture'), style: const TextStyle(fontWeight: FontWeight.bold)),
+        content: Text(
+          tr(ref, 'Are you sure you want to delete this lecture? Any video streams and study materials will be removed.'),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(c, false), child: Text(tr(ref, 'Cancel'))),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.error),
             onPressed: () => Navigator.pop(c, true),
-            child: const Text('Delete'),
+            child: Text(tr(ref, 'Delete')),
           ),
         ],
       ),
@@ -1137,22 +1137,22 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
       context: context,
       builder: (c) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.rocket_launch, color: AppColors.primaryGreen),
-            SizedBox(width: 10),
-            Text('Submit for Review', style: TextStyle(fontWeight: FontWeight.bold)),
+            const Icon(Icons.rocket_launch, color: AppColors.primaryGreen),
+            const SizedBox(width: 10),
+            Text(tr(ref, 'Submit for Review'), style: const TextStyle(fontWeight: FontWeight.bold)),
           ],
         ),
-        content: const Text(
-          'Your course will be submitted for automated AI safety review and administrator verification. Editing will be temporarily locked until the review completes.',
+        content: Text(
+          tr(ref, 'Your course will be submitted for automated AI safety review and administrator verification. Editing will be temporarily locked until the review completes.'),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(c, false), child: Text(tr(ref, 'Cancel'))),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.primaryGreen),
             onPressed: () => Navigator.pop(c, true),
-            child: const Text('Submit Now'),
+            child: Text(tr(ref, 'Submit Now')),
           ),
         ],
       ),
@@ -1216,14 +1216,14 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
       context: context,
       builder: (c) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Delete Certificate Template', style: TextStyle(fontWeight: FontWeight.bold)),
-        content: const Text('Are you sure you want to remove this certificate template?'),
+        title: Text(tr(ref, 'Delete Certificate Template'), style: const TextStyle(fontWeight: FontWeight.bold)),
+        content: Text(tr(ref, 'Are you sure you want to remove this certificate template?')),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(c, false), child: Text(tr(ref, 'Cancel'))),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.error),
             onPressed: () => Navigator.pop(c, true),
-            child: const Text('Delete'),
+            child: Text(tr(ref, 'Delete')),
           ),
         ],
       ),
@@ -1325,10 +1325,10 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
             labelColor: AppColors.primaryGreen,
             unselectedLabelColor: Colors.grey,
             labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-            tabs: const [
-              Tab(text: 'Curriculum'),
-              Tab(text: 'Certificates'),
-              Tab(text: 'Settings'),
+            tabs: [
+              Tab(text: tr(ref, 'Curriculum')),
+              Tab(text: tr(ref, 'Certificates')),
+              Tab(text: tr(ref, 'Settings')),
             ],
           ),
           actions: [
@@ -1347,7 +1347,7 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                     context.push('/course/$targetSlug');
                   },
                   icon: const Icon(Icons.visibility_outlined, size: 16),
-                  label: const Text('View Live', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  label: Text(tr(ref, 'View Live'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                 ),
               ),
             if (!isLocked && (course.status == 'DRAFT' || course.status == 'REJECTED'))
@@ -1360,7 +1360,7 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                   ),
                   onPressed: () => _submitForReview(course),
                   icon: const Icon(Icons.auto_awesome_rounded, size: 16),
-                  label: const Text('Submit for AI Review', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                  label: Text(tr(ref, 'Submit for AI Review'), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
                 ),
               ),
           ],
@@ -1379,7 +1379,7 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                 foregroundColor: Colors.white,
                 onPressed: () => _addSection(context, course.sections.length),
                 icon: const Icon(Icons.add),
-                label: const Text('Add Section', style: TextStyle(fontWeight: FontWeight.bold)),
+                label: Text(tr(ref, 'Add Section'), style: const TextStyle(fontWeight: FontWeight.bold)),
               )
             : null,
       );
@@ -1387,7 +1387,7 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
 
     if (courseAsync.isLoading) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Loading Course...')),
+        appBar: AppBar(title: Text(tr(ref, 'Loading Course...'))),
         body: ListView.separated(
           padding: const EdgeInsets.all(20),
           itemCount: 4,
@@ -1684,7 +1684,7 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                     Icon(statusIcon, size: 14, color: statusColor),
                     const SizedBox(width: 4),
                     Text(
-                      statusLabel,
+                      tr(ref, statusLabel),
                       style: TextStyle(color: statusColor, fontSize: 11, fontWeight: FontWeight.bold),
                     ),
                   ],
@@ -1698,10 +1698,10 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
             runSpacing: 6,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              _buildStatChip(Icons.folder_outlined, '${course.sections.length} Sections'),
-              _buildStatChip(Icons.play_lesson_outlined, '$totalLectures Lectures'),
+              _buildStatChip(Icons.folder_outlined, '${formatNum(ref, course.sections.length)} ${tr(ref, 'Sections')}'),
+              _buildStatChip(Icons.play_lesson_outlined, '${formatNum(ref, totalLectures)} ${tr(ref, 'Lectures')}'),
               if (course.price != null)
-                _buildStatChip(Icons.currency_rupee, course.price == '0' || course.price == '0.00' ? 'Free' : '₹${course.price}'),
+                _buildStatChip(Icons.currency_rupee, course.price == '0' || course.price == '0.00' ? tr(ref, 'Free') : '₹${formatNum(ref, course.price)}'),
               if (course.status == 'APPROVED' || course.status == 'ACTIVE')
                 InkWell(
                   onTap: () => context.push('/course/${course.slug ?? course.id}'),
@@ -1713,12 +1713,12 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                       borderRadius: BorderRadius.circular(6),
                       border: Border.all(color: AppColors.primaryGreen.withValues(alpha: 0.4)),
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.visibility_outlined, size: 13, color: AppColors.primaryGreen),
-                        SizedBox(width: 4),
-                        Text('View Live', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primaryGreen)),
+                        const Icon(Icons.visibility_outlined, size: 13, color: AppColors.primaryGreen),
+                        const SizedBox(width: 4),
+                        Text(tr(ref, 'View Live'), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primaryGreen)),
                       ],
                     ),
                   ),
@@ -2244,7 +2244,7 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                   ),
                   const SizedBox(height: 14),
                   Text(
-                    'No Certificate Template Attached',
+                    tr(ref, 'No Certificate Template Attached'),
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -2253,7 +2253,7 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Upload a PDF or high-resolution image template (Max 5MB).',
+                    tr(ref, 'Upload a PDF or high-resolution image template (Max 5MB).'),
                     style: TextStyle(
                       fontSize: 12,
                       color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
@@ -2265,7 +2265,7 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                       style: FilledButton.styleFrom(backgroundColor: AppColors.primaryGreen),
                       onPressed: _uploadCertificateTemplate,
                       icon: const Icon(Icons.upload_file),
-                      label: const Text('Upload Template'),
+                      label: Text(tr(ref, 'Upload Template')),
                     ),
                 ],
               ),
@@ -2295,16 +2295,16 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                 children: [
                   const Icon(Icons.remove_red_eye_rounded, color: Color(0xFF8B6508), size: 22),
                   const SizedBox(width: 8),
-                  const Text(
-                    'Live Demo Certificate Preview',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF8B6508)),
+                  Text(
+                    tr(ref, 'Live Demo Certificate Preview'),
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF8B6508)),
                   ),
                 ],
               ),
               const SizedBox(height: 6),
-              const Text(
-                'See exactly how the official certificate will appear to students with instructor signature and verification link.',
-                style: TextStyle(fontSize: 12, color: Colors.black87),
+              Text(
+                tr(ref, 'See exactly how the official certificate will appear to students with instructor signature and verification link.'),
+                style: const TextStyle(fontSize: 12, color: Colors.black87),
               ),
               const SizedBox(height: 14),
               SizedBox(
@@ -2316,7 +2316,7 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                   icon: const Icon(Icons.workspace_premium_rounded, size: 18),
-                  label: const Text('Preview Certificate Demo', style: TextStyle(fontWeight: FontWeight.bold)),
+                  label: Text(tr(ref, 'Preview Certificate Demo'), style: const TextStyle(fontWeight: FontWeight.bold)),
                   onPressed: () => _previewCertificateDemo(),
                 ),
               ),
