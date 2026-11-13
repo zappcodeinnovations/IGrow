@@ -574,7 +574,7 @@ class _CompleteSocialProfileDialogState
               // Label / Selected Text
               Expanded(
                 child: Text(
-                  hasValue ? value : hintText,
+                  hasValue ? tr(ref, value) : hintText,
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 15,
                     fontWeight: hasValue ? FontWeight.w600 : FontWeight.w400,
@@ -670,7 +670,10 @@ class _LocationPickerBottomSheetState extends State<_LocationPickerBottomSheet> 
   @override
   Widget build(BuildContext context) {
     final filtered = widget.items.where((it) {
-      return it.toLowerCase().contains(_query.toLowerCase().trim());
+      final translated = AppStrings.tr(it, languageCode: 'en'); // Check fallback or key
+      return it.toLowerCase().contains(_query.toLowerCase().trim()) ||
+          AppStrings.tr(it, languageCode: 'hi').toLowerCase().contains(_query.toLowerCase().trim()) ||
+          AppStrings.tr(it, languageCode: 'mr').toLowerCase().contains(_query.toLowerCase().trim());
     }).toList();
 
     return Container(
@@ -753,63 +756,65 @@ class _LocationPickerBottomSheetState extends State<_LocationPickerBottomSheet> 
             // Single Clean Search Input Field (No nested cards/boxes)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
-              child: TextField(
-                controller: _searchController,
-                autofocus: false,
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 14.5,
-                  fontWeight: FontWeight.w500,
-                  color: widget.isDark ? Colors.white : AppColors.inkDark,
+              child: Consumer(
+                builder: (context, searchRef, _) => TextField(
+                  controller: _searchController,
+                  autofocus: false,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w500,
+                    color: widget.isDark ? Colors.white : AppColors.inkDark,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: tr(searchRef, 'Search...'),
+                    hintStyle: GoogleFonts.plusJakartaSans(
+                      fontSize: 14,
+                      color: widget.isDark ? Colors.white38 : AppColors.inkSoft,
+                    ),
+                    prefixIcon: Icon(
+                      Icons.search_rounded,
+                      size: 20,
+                      color: widget.isDark ? Colors.grey.shade400 : AppColors.organicIconLight,
+                    ),
+                    suffixIcon: _query.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.close_rounded, size: 18),
+                            color: widget.isDark ? Colors.white60 : Colors.grey.shade600,
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() => _query = '');
+                            },
+                          )
+                        : null,
+                    filled: true,
+                    fillColor: widget.isDark ? Colors.white.withValues(alpha: 0.06) : const Color(0xFFF3F7F3),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24),
+                      borderSide: BorderSide(
+                        color: widget.isDark ? AppColors.lineDark : const Color(0xFFE2EBE0),
+                        width: 1.2,
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24),
+                      borderSide: BorderSide(
+                        color: widget.isDark ? AppColors.lineDark : const Color(0xFFE2EBE0),
+                        width: 1.2,
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24),
+                      borderSide: const BorderSide(
+                        color: AppColors.primaryGreen,
+                        width: 1.6,
+                      ),
+                    ),
+                  ),
+                  onChanged: (val) {
+                    setState(() => _query = val);
+                  },
                 ),
-                decoration: InputDecoration(
-                  hintText: 'Search...',
-                  hintStyle: GoogleFonts.plusJakartaSans(
-                    fontSize: 14,
-                    color: widget.isDark ? Colors.white38 : AppColors.inkSoft,
-                  ),
-                  prefixIcon: Icon(
-                    Icons.search_rounded,
-                    size: 20,
-                    color: widget.isDark ? Colors.grey.shade400 : AppColors.organicIconLight,
-                  ),
-                  suffixIcon: _query.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.close_rounded, size: 18),
-                          color: widget.isDark ? Colors.white60 : Colors.grey.shade600,
-                          onPressed: () {
-                            _searchController.clear();
-                            setState(() => _query = '');
-                          },
-                        )
-                      : null,
-                  filled: true,
-                  fillColor: widget.isDark ? Colors.white.withValues(alpha: 0.06) : const Color(0xFFF3F7F3),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
-                    borderSide: BorderSide(
-                      color: widget.isDark ? AppColors.lineDark : const Color(0xFFE2EBE0),
-                      width: 1.2,
-                    ),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
-                    borderSide: BorderSide(
-                      color: widget.isDark ? AppColors.lineDark : const Color(0xFFE2EBE0),
-                      width: 1.2,
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
-                    borderSide: const BorderSide(
-                      color: AppColors.primaryGreen,
-                      width: 1.6,
-                    ),
-                  ),
-                ),
-                onChanged: (val) {
-                  setState(() => _query = val);
-                },
               ),
             ),
 
@@ -834,12 +839,14 @@ class _LocationPickerBottomSheetState extends State<_LocationPickerBottomSheet> 
                             color: widget.isDark ? Colors.white24 : Colors.grey.shade400,
                           ),
                           const SizedBox(height: 8),
-                          Text(
-                            'No matches found',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              color: widget.isDark ? Colors.white38 : AppColors.inkSoft,
+                          Consumer(
+                            builder: (context, emptyRef, _) => Text(
+                              tr(emptyRef, 'No matches found'),
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: widget.isDark ? Colors.white38 : AppColors.inkSoft,
+                              ),
                             ),
                           ),
                         ],
@@ -875,14 +882,16 @@ class _LocationPickerBottomSheetState extends State<_LocationPickerBottomSheet> 
                               child: Row(
                                 children: [
                                   Expanded(
-                                    child: Text(
-                                      item,
-                                      style: GoogleFonts.plusJakartaSans(
-                                        fontSize: 14.5,
-                                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                                        color: isSelected
-                                            ? (widget.isDark ? const Color(0xFF4ADE80) : AppColors.primaryGreen)
-                                            : (widget.isDark ? Colors.white : AppColors.inkDark),
+                                    child: Consumer(
+                                      builder: (context, itemRef, _) => Text(
+                                        tr(itemRef, item),
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 14.5,
+                                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                                          color: isSelected
+                                              ? (widget.isDark ? const Color(0xFF4ADE80) : AppColors.primaryGreen)
+                                              : (widget.isDark ? Colors.white : AppColors.inkDark),
+                                        ),
                                       ),
                                     ),
                                   ),
