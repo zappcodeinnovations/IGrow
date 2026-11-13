@@ -10,6 +10,7 @@ import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../../core/localization/app_strings.dart';
 import '../../../core/network/swagger_generated/app_api.swagger.dart'
     show CertificateTemplate;
 import '../../../core/theme/app_colors.dart';
