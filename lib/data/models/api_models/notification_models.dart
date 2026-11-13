@@ -27,10 +27,6 @@ class ApiNotification {
     required this.notificationType,
     required this.title,
     required this.message,
-    this.titleKey,
-    this.messageKey,
-    this.params,
-    this.translations,
     this.course,
     this.courseTitle,
     this.ebookId,
@@ -43,10 +39,6 @@ class ApiNotification {
   final String notificationType;
   final String title;
   final String message;
-  final String? titleKey;
-  final String? messageKey;
-  final Map<String, dynamic>? params;
-  final Map<String, dynamic>? translations;
   final String? course;
   final String? courseTitle;
   final String? ebookId;
@@ -61,10 +53,6 @@ class ApiNotification {
         notificationType: notificationType,
         title: title,
         message: message,
-        titleKey: titleKey,
-        messageKey: messageKey,
-        params: params,
-        translations: translations,
         course: course,
         courseTitle: courseTitle,
         ebookId: ebookId,
@@ -79,14 +67,6 @@ class ApiNotification {
         notificationType: json['notification_type'] as String? ?? '',
         title: json['title'] as String? ?? '',
         message: json['message'] as String? ?? '',
-        titleKey: json['title_key'] as String?,
-        messageKey: json['message_key'] as String?,
-        params: json['params'] is Map<String, dynamic>
-            ? json['params'] as Map<String, dynamic>
-            : (json['params'] is Map ? Map<String, dynamic>.from(json['params'] as Map) : null),
-        translations: json['translations'] is Map<String, dynamic>
-            ? json['translations'] as Map<String, dynamic>
-            : (json['translations'] is Map ? Map<String, dynamic>.from(json['translations'] as Map) : null),
         course: (json['course'] ?? json['course_id'] ?? json['course_slug'])?.toString(),
         courseTitle: json['course_title'] as String?,
         ebookId: (json['ebook'] ?? json['ebook_id'] ?? json['ebook_slug'])?.toString(),

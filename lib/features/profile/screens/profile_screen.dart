@@ -723,15 +723,15 @@ class ProfileScreen extends ConsumerWidget {
                       // Dark Mode Toggle
                       ListTile(
                         leading: Icon(
-                          sheetIsDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+                          Icons.dark_mode_rounded,
                           color: iconColor,
                         ),
                         title: Text(
-                          sheetIsDark ? tr(sheetRef, 'Light Mode') : tr(sheetRef, 'Dark Mode'),
+                          tr(sheetRef, 'Dark Mode'),
                           style: TextStyle(color: textColor, fontWeight: FontWeight.w600),
                         ),
                         subtitle: Text(
-                          sheetIsDark ? tr(sheetRef, 'Tap switch for light theme') : tr(sheetRef, 'Tap switch for dark theme'),
+                          tr(sheetRef, 'Tap switch for dark theme'),
                           style: TextStyle(color: subtitleColor, fontSize: 13),
                         ),
                         trailing: Switch(
@@ -1040,8 +1040,8 @@ class ProfileScreen extends ConsumerWidget {
                     onTap: () => _showLanguageBottomSheet(context, ref),
                   ),
                   _MenuItemData(
-                    icon: isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
-                    label: isDark ? tr(ref, 'Light Mode') : tr(ref, 'Dark Mode'),
+                    icon: Icons.dark_mode_rounded,
+                    label: tr(ref, 'Dark Mode'),
                     trailingWidget: Switch(
                       value: isDark,
                       activeThumbColor: AppColors.primaryGreen,
