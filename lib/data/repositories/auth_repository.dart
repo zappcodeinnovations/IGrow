@@ -383,34 +383,47 @@ class ApiAuthRepository implements AuthRepository {
     };
     body.removeWhere((key, value) => value == null);
 
-    final response = await http.post(
-      uri,
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: jsonEncode(body),
-    );
+    try {
+      final response = await http.post(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode(body),
+      );
 
-    if (response.statusCode >= 400) {
-      String errorMessage = 'Registration failed (${response.statusCode})';
-      try {
-        final errorData = jsonDecode(response.body);
-        if (response.statusCode == 400) {
-          throw ApiException.validation(errorData);
+      if (response.statusCode >= 400) {
+        String errorMessage = 'Registration failed (${response.statusCode})';
+        try {
+          final errorData = jsonDecode(response.body);
+          if (response.statusCode == 400) {
+            throw ApiException.validation(errorData);
+          }
+          if (errorData is Map && errorData.containsKey('detail')) {
+            errorMessage = errorData['detail'].toString();
+          } else if (errorData is Map && errorData.containsKey('non_field_errors')) {
+            final nfe = errorData['non_field_errors'];
+            errorMessage = nfe is List ? nfe.first.toString() : nfe.toString();
+          } else {
+            errorMessage = errorData.toString();
+          }
+        } catch (e) {
+          if (e is ApiException) rethrow;
         }
-        if (errorData is Map && errorData.containsKey('detail')) {
-          errorMessage = errorData['detail'].toString();
-        } else if (errorData is Map && errorData.containsKey('non_field_errors')) {
-          final nfe = errorData['non_field_errors'];
-          errorMessage = nfe is List ? nfe.first.toString() : nfe.toString();
-        } else {
-          errorMessage = errorData.toString();
-        }
-      } catch (e) {
-        if (e is ApiException) rethrow;
+        throw ApiException(statusCode: response.statusCode, message: errorMessage);
       }
-      throw ApiException(statusCode: response.statusCode, message: errorMessage);
+    } on SocketException catch (_) {
+      throw ApiException.network();
+    } on TimeoutException catch (_) {
+      throw ApiException.network(
+        'Connection timed out. Please check your internet connection and try again.',
+      );
+    } on http.ClientException catch (e) {
+      throw ApiException.from(e);
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException.from(e);
     }
   }
 

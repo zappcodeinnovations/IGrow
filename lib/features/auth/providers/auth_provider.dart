@@ -187,9 +187,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
       state = AuthState(status: AuthStatus.authenticated, user: user);
       _startPeriodicSync();
     } on ApiException catch (e) {
-      state = AuthState(status: AuthStatus.error, error: e.message);
+      state = AuthState(status: AuthStatus.error, error: ApiException.userFriendlyMessage(e));
     } catch (e) {
-      state = AuthState(status: AuthStatus.error, error: e.toString());
+      state = AuthState(status: AuthStatus.error, error: ApiException.userFriendlyMessage(e));
     }
   }
 
@@ -214,10 +214,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
       _startPeriodicSync();
       return true;
     } on ApiException catch (e) {
-      state = AuthState(status: AuthStatus.error, error: e.message);
+      state = AuthState(status: AuthStatus.error, error: ApiException.userFriendlyMessage(e));
       return false;
     } catch (e) {
-      state = AuthState(status: AuthStatus.error, error: e.toString());
+      state = AuthState(status: AuthStatus.error, error: ApiException.userFriendlyMessage(e));
       return false;
     }
   }
@@ -244,9 +244,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
       // Registration successful. Keep status as unauthenticated so user can login manually.
       state = const AuthState(status: AuthStatus.unauthenticated);
     } on ApiException catch (e) {
-      state = AuthState(status: AuthStatus.error, error: e.message);
+      state = AuthState(status: AuthStatus.error, error: ApiException.userFriendlyMessage(e));
     } catch (e) {
-      state = AuthState(status: AuthStatus.error, error: e.toString());
+      state = AuthState(status: AuthStatus.error, error: ApiException.userFriendlyMessage(e));
     }
   }
 
@@ -256,10 +256,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
       await _repo.forgotPassword(email: email);
       return true;
     } on ApiException catch (e) {
-      state = state.copyWith(error: e.message);
+      state = state.copyWith(error: ApiException.userFriendlyMessage(e));
       return false;
     } catch (e) {
-      state = state.copyWith(error: e.toString());
+      state = state.copyWith(error: ApiException.userFriendlyMessage(e));
       return false;
     }
   }
@@ -273,10 +273,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final token = await _repo.verifyResetOtp(email: email, otp: otp);
       return token;
     } on ApiException catch (e) {
-      state = state.copyWith(error: e.message);
+      state = state.copyWith(error: ApiException.userFriendlyMessage(e));
       return null;
     } catch (e) {
-      state = state.copyWith(error: e.toString());
+      state = state.copyWith(error: ApiException.userFriendlyMessage(e));
       return null;
     }
   }
@@ -295,10 +295,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
       );
       return true;
     } on ApiException catch (e) {
-      state = state.copyWith(error: e.message);
+      state = state.copyWith(error: ApiException.userFriendlyMessage(e));
       return false;
     } catch (e) {
-      state = state.copyWith(error: e.toString());
+      state = state.copyWith(error: ApiException.userFriendlyMessage(e));
       return false;
     }
   }
@@ -309,10 +309,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
       await _repo.resendOtp(email: email);
       return true;
     } on ApiException catch (e) {
-      state = state.copyWith(error: e.message);
+      state = state.copyWith(error: ApiException.userFriendlyMessage(e));
       return false;
     } catch (e) {
-      state = state.copyWith(error: e.toString());
+      state = state.copyWith(error: ApiException.userFriendlyMessage(e));
       return false;
     }
   }
@@ -331,10 +331,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
       );
       return true;
     } on ApiException catch (e) {
-      state = state.copyWith(error: e.message);
+      state = state.copyWith(error: ApiException.userFriendlyMessage(e));
       return false;
     } catch (e) {
-      state = state.copyWith(error: e.toString());
+      state = state.copyWith(error: ApiException.userFriendlyMessage(e));
       return false;
     }
   }
@@ -346,7 +346,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final user = await _repo.switchRole(newRole);
       state = AuthState(status: AuthStatus.authenticated, user: user);
     } catch (e) {
-      state = state.copyWith(status: AuthStatus.authenticated, error: e.toString());
+      state = state.copyWith(status: AuthStatus.authenticated, error: ApiException.userFriendlyMessage(e));
     }
   }
 
@@ -375,7 +375,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final user = await _repo.updateProfile(request);
       state = AuthState(status: AuthStatus.authenticated, user: user);
     } catch (e) {
-      state = state.copyWith(status: AuthStatus.authenticated, error: e.toString());
+      state = state.copyWith(status: AuthStatus.authenticated, error: ApiException.userFriendlyMessage(e));
       rethrow;
     }
   }
@@ -387,7 +387,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final user = await _repo.updateInstructorProfile(request);
       state = AuthState(status: AuthStatus.authenticated, user: user);
     } catch (e) {
-      state = state.copyWith(status: AuthStatus.authenticated, error: e.toString());
+      state = state.copyWith(status: AuthStatus.authenticated, error: ApiException.userFriendlyMessage(e));
       rethrow;
     }
   }
@@ -418,7 +418,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       state = AuthState(status: AuthStatus.authenticated, user: user);
     } catch (e) {
       print('❌ [AUTH PROVIDER] submitKycProfile failed: $e');
-      state = state.copyWith(status: AuthStatus.authenticated, error: e.toString());
+      state = state.copyWith(status: AuthStatus.authenticated, error: ApiException.userFriendlyMessage(e));
       rethrow;
     }
   }
@@ -434,7 +434,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         state = AuthState(status: AuthStatus.authenticated, user: user);
       }
     } catch (e) {
-      state = state.copyWith(status: AuthStatus.authenticated, error: e.toString());
+      state = state.copyWith(status: AuthStatus.authenticated, error: ApiException.userFriendlyMessage(e));
       rethrow;
     }
   }
@@ -450,7 +450,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         state = AuthState(status: AuthStatus.authenticated, user: user);
       }
     } catch (e) {
-      state = state.copyWith(status: AuthStatus.authenticated, error: e.toString());
+      state = state.copyWith(status: AuthStatus.authenticated, error: ApiException.userFriendlyMessage(e));
       rethrow;
     }
   }

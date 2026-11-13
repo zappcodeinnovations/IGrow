@@ -10,6 +10,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/localization/app_strings.dart';
 import '../../../core/utils/app_toast.dart';
 import '../../../core/utils/responsive_layout.dart';
+import '../../../core/widgets/app_error_state.dart';
 import '../../../core/widgets/app_elevated_back_button.dart';
 import '../../../core/widgets/app_gradient_button.dart';
 import '../../../core/widgets/app_pill_text_field.dart';
@@ -203,7 +204,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     } catch (e, st) {
       print('❌ [LOGIN_SCREEN] Google Sign-In Exception: $e\n$st');
       if (mounted) {
-        AppToast.show(context, e.toString().replaceAll('Exception: ', ''), isError: true);
+        AppToast.show(context, getUserFriendlyErrorMessage(e), isError: true);
       }
     } finally {
       if (mounted) {
@@ -233,7 +234,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       }
     } catch (e) {
       if (mounted) {
-        AppToast.show(context, e.toString().replaceAll('Exception: ', ''), isError: true);
+        AppToast.show(context, getUserFriendlyErrorMessage(e), isError: true);
       }
     } finally {
       if (mounted) {
@@ -249,7 +250,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           next.error != null &&
           next.error!.isNotEmpty &&
           previous?.error != next.error) {
-        AppToast.show(context, tr(ref, next.error!), isError: true);
+        AppToast.show(context, tr(ref, getUserFriendlyErrorMessage(next.error!)), isError: true);
         ref.read(authProvider.notifier).clearError();
       }
     });

@@ -45,6 +45,11 @@ class AppToast {
     final messenger = ScaffoldMessenger.of(context);
     messenger.clearSnackBars();
 
+    // Sanitize any error message or technical exception passed into toast
+    final cleanMessage = (isError || severity == ToastSeverity.error || severity == ToastSeverity.warning)
+        ? getUserFriendlyErrorMessage(message, fallback: message)
+        : message;
+
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final ToastSeverity effectiveSeverity = severity ??
         (isError ? ToastSeverity.warning : ToastSeverity.success);
@@ -118,7 +123,7 @@ class AppToast {
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                message,
+                cleanMessage,
                 style: TextStyle(
                   fontSize: 13.5,
                   fontWeight: FontWeight.w600,

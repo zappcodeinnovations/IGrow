@@ -15,6 +15,7 @@ import '../../../core/widgets/app_social_button.dart';
 import '../../../core/widgets/app_text_field.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/utils/app_toast.dart';
+import '../../../core/widgets/app_error_state.dart';
 import '../../../core/services/social_auth_service.dart';
 import '../../../core/widgets/eula_terms_dialog.dart';
 import '../../profile/screens/privacy_screen.dart';
@@ -162,7 +163,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     } catch (e, st) {
       print('❌ [REGISTER_SCREEN] Google Sign-In Exception: $e\n$st');
       if (mounted) {
-        AppToast.show(context, e.toString().replaceAll('Exception: ', ''), isError: true);
+        AppToast.show(context, getUserFriendlyErrorMessage(e), isError: true);
       }
     } finally {
       if (mounted) {
@@ -192,7 +193,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       }
     } catch (e) {
       if (mounted) {
-        AppToast.show(context, e.toString().replaceAll('Exception: ', ''), isError: true);
+        AppToast.show(context, getUserFriendlyErrorMessage(e), isError: true);
       }
     } finally {
       if (mounted) {
@@ -211,7 +212,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             (lower.contains('email') && (lower.contains('already exists') || lower.contains('taken')))) {
           displayError = tr(ref, 'Email already used for an account.');
         } else {
-          displayError = tr(ref, displayError);
+          displayError = tr(ref, getUserFriendlyErrorMessage(displayError));
         }
         AppToast.show(context, displayError, isError: true);
         ref.read(authProvider.notifier).clearError();

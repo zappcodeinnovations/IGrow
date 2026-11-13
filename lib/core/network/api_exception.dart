@@ -108,17 +108,39 @@ class ApiException implements Exception {
         s.contains('host lookup') ||
         s.contains('clientexception') ||
         s.contains('failed host') ||
-        s.contains('no address associated with hostname')) {
+        s.contains('no address associated with hostname') ||
+        s.contains('network is unreachable') ||
+        s.contains('connection refused') ||
+        s.contains('errno = 7')) {
+      if (s.contains('timeout')) {
+        return ApiException.network(
+          'Connection timed out. Please check your internet connection and try again.',
+        );
+      }
       return ApiException.network();
     }
-    final clean = error
+    if (s.contains('500') ||
+        s.contains('502') ||
+        s.contains('503') ||
+        s.contains('internal server error') ||
+        s.contains('bad gateway')) {
+      return ApiException.server();
+    }
+    var clean = error
         .toString()
-        .replaceFirst(RegExp(r'^(Exception|ApiException(\(\d+\))?):\s*'), '')
+        .replaceFirst(RegExp(r'^(Exception|ApiException(\(\d+\))?|ClientException|SocketException|HttpException|FormatException):\s*', caseSensitive: false), '')
         .trim();
+    clean = clean.replaceAll(RegExp(r',?\s*uri\s*=\s*https?://\S+', caseSensitive: false), '').trim();
     return ApiException(
       statusCode: 0,
       message: clean.isNotEmpty ? clean : 'Something went wrong. Please try again.',
     );
+  }
+
+  /// Get a clean, user-friendly message string directly from any error.
+  static String userFriendlyMessage(dynamic error, {String fallback = 'Something went wrong. Please try again.'}) {
+    if (error == null) return fallback;
+    return ApiException.from(error).message;
   }
 
   bool get isUnauthorized => statusCode == 401;

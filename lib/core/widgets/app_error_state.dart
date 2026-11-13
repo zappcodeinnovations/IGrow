@@ -22,22 +22,96 @@ bool isOfflineOrNetworkError(dynamic error) {
       s.contains('no address associated with hostname') ||
       s.contains('network is unreachable') ||
       s.contains('errno = 7') ||
+      s.contains('errno = 101') ||
+      s.contains('errno = 111') ||
+      s.contains('connection refused') ||
+      s.contains('connection reset') ||
+      s.contains('broken pipe') ||
+      s.contains('software caused connection abort') ||
       s.contains('os error: no address');
 }
 
-/// Returns a clean, user-friendly polite error message, masking raw socket exceptions.
+/// Returns a clean, user-friendly polite error message, masking raw socket exceptions,
+/// server stack traces, and technical API errors.
 String getUserFriendlyErrorMessage(dynamic error, {String fallback = 'Something went wrong. Please try again.'}) {
+  if (error == null) return fallback;
+
   if (isOfflineOrNetworkError(error)) {
+    final s = error.toString().toLowerCase();
+    if (s.contains('timeout')) {
+      return 'Connection timed out. Please check your internet connection and try again.';
+    }
     return kNoInternetMessage;
   }
+
   if (error is ApiException) {
-    return error.message;
+    return _cleanTechnicalErrorString(error.message, fallback: fallback);
   }
-  final s = error
-      .toString()
-      .replaceFirst(RegExp(r'^(Exception|ApiException(\(\d+\))?):\s*'), '')
-      .trim();
+
+  return _cleanTechnicalErrorString(error.toString(), fallback: fallback);
+}
+
+/// Helper that strips raw stack traces, URI dumps, JSON brackets, and technical class names.
+String _cleanTechnicalErrorString(String raw, {String fallback = 'Something went wrong. Please try again.'}) {
+  var s = raw.trim();
+
+  // Strip leading Dart exception wrappers
+  s = s.replaceFirst(RegExp(r'^(Exception|ApiException(\(\d+\))?|ClientException|SocketException|HttpException|FormatException):\s*', caseSensitive: false), '').trim();
+
+  // If it still contains raw client / socket exception artifacts or URI details
+  final lower = s.toLowerCase();
+  if (lower.contains('failed host lookup') ||
+      lower.contains('clientexception with socketexception') ||
+      lower.contains('no address associated with hostname') ||
+      lower.contains('network is unreachable') ||
+      lower.contains('connection refused') ||
+      lower.contains('os error:')) {
+    return kNoInternetMessage;
+  }
+
+  if (lower.contains('timed out') || lower.contains('timeout')) {
+    return 'Connection timed out. Please check your internet connection and try again.';
+  }
+
+  if (lower.contains('internal server error') ||
+      lower.contains('502 bad gateway') ||
+      lower.contains('503 service unavailable') ||
+      lower.contains('504 gateway timeout') ||
+      lower.contains('server error (500)') ||
+      lower.contains('server error (502)') ||
+      lower.contains('server error (503)')) {
+    return 'Our server is temporarily unavailable. Please try again shortly.';
+  }
+
+  // Remove trailing uri=... if present
+  s = s.replaceAll(RegExp(r',?\s*uri\s*=\s*https?://\S+', caseSensitive: false), '').trim();
+
+  // Clean raw json map brackets if it was a dumped map string like {"detail": "..."}
+  if (s.startsWith('{') && s.endsWith('}')) {
+    final detailMatch = RegExp(r'''['"]detail['"]\s*:\s*['"]([^'"]+)['"]''').firstMatch(s);
+    if (detailMatch != null) {
+      s = detailMatch.group(1) ?? s;
+    } else {
+      final msgMatch = RegExp(r'''['"]message['"]\s*:\s*['"]([^'"]+)['"]''').firstMatch(s);
+      if (msgMatch != null) {
+        s = msgMatch.group(1) ?? s;
+      }
+    }
+  }
+
+  // Clean raw list brackets like ["Error text"]
+  if (s.startsWith('["') && s.endsWith('"]')) {
+    s = s.substring(2, s.length - 2);
+  } else if (s.startsWith("['") && s.endsWith("']")) {
+    s = s.substring(2, s.length - 2);
+  }
+
+  // If after cleaning it's empty or looks like raw code
   if (s.isEmpty) return fallback;
+  if (s.length > 200 && (s.contains('\n') || s.contains('at ') || s.contains('package:'))) {
+    return fallback;
+  }
+
   return s;
 }
 
