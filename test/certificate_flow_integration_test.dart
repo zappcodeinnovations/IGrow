@@ -167,8 +167,8 @@ void main() {
       expect(find.text('Earned (0)'), findsOneWidget);
       expect(find.text('In Progress (0)'), findsOneWidget);
 
-      // Check verification icon in AppBar
-      expect(find.byIcon(Icons.qr_code_scanner_rounded), findsOneWidget);
+      // Verification scan icon should not be present in AppBar
+      expect(find.byIcon(Icons.qr_code_scanner_rounded), findsNothing);
 
       // Empty state text
       expect(find.text('No Certificates Earned Yet'), findsOneWidget);
