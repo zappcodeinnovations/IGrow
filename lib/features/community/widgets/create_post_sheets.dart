@@ -10,6 +10,7 @@ import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/app_toast.dart';
 import '../../../core/widgets/app_time_picker.dart';
+import '../../../core/widgets/image_crop_rotate_screen.dart';
 import '../../../data/models/api_models/course_models.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../home_instructor/providers/instructor_home_provider.dart';
@@ -263,9 +264,18 @@ class _GeneralPostModalState extends ConsumerState<_GeneralPostModal> {
 
   Future<void> _pickImage(ImageSource source) async {
     try {
-      final picked = await _picker.pickImage(source: source, maxWidth: 1400, imageQuality: 85);
-      if (picked != null) {
-        setState(() => _imageFile = File(picked.path));
+      final picked = await _picker.pickImage(source: source, maxWidth: 1800, imageQuality: 88);
+      if (picked != null && mounted) {
+        final original = File(picked.path);
+        final edited = await ImageCropRotateScreen.cropAndRotate(
+          context,
+          imageFile: original,
+          title: 'Crop & Rotate Post Image',
+          allowFreeCrop: true,
+        );
+        if (mounted) {
+          setState(() => _imageFile = edited ?? original);
+        }
       }
     } catch (_) {}
   }

@@ -11,6 +11,7 @@ import '../../../core/utils/app_toast.dart';
 import '../../../core/utils/responsive_layout.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_text_field.dart';
+import '../../../core/widgets/image_crop_rotate_screen.dart';
 import '../../../core/widgets/kyc_restricted_view.dart';
 import '../../../data/models/user_model.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -126,14 +127,23 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
     try {
       final picked = await _imagePicker.pickImage(
         source: ImageSource.gallery,
-        maxWidth: 1920,
-        maxHeight: 1080,
-        imageQuality: 85,
+        maxWidth: 2400,
+        maxHeight: 2400,
+        imageQuality: 90,
       );
-      if (picked != null) {
-        setState(() {
-          _coverImage = File(picked.path);
-        });
+      if (picked != null && mounted) {
+        final original = File(picked.path);
+        final edited = await ImageCropRotateScreen.cropAndRotate(
+          context,
+          imageFile: original,
+          title: 'Crop & Rotate E-Book Cover',
+          allowFreeCrop: true,
+        );
+        if (mounted) {
+          setState(() {
+            _coverImage = edited ?? original;
+          });
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -149,6 +159,19 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
       if (mounted) {
         setState(() => _isPickingImage = false);
       }
+    }
+  }
+
+  Future<void> _cropAndRotateCurrentCover() async {
+    if (_coverImage == null) return;
+    final edited = await ImageCropRotateScreen.cropAndRotate(
+      context,
+      imageFile: _coverImage!,
+      title: 'Crop & Rotate E-Book Cover',
+      allowFreeCrop: true,
+    );
+    if (edited != null && mounted) {
+      setState(() => _coverImage = edited);
     }
   }
 
@@ -547,22 +570,41 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
                                   ),
                                 ),
                                 const SizedBox(height: 10),
-                                OutlinedButton.icon(
-                                  onPressed: _isPickingImage ? null : _pickCoverImage,
-                                  icon: _isPickingImage
-                                      ? const SizedBox(
-                                          width: 16,
-                                          height: 16,
-                                          child: CircularProgressIndicator(strokeWidth: 2),
-                                        )
-                                      : const Icon(
-                                          Icons.photo_library_outlined,
-                                          size: 16,
-                                        ),
-                                  label: Text(_isPickingImage ? 'Selecting...' : 'Change Cover Image'),
-                                  style: OutlinedButton.styleFrom(
-                                    visualDensity: VisualDensity.compact,
-                                  ),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    OutlinedButton.icon(
+                                      onPressed: _cropAndRotateCurrentCover,
+                                      icon: const Icon(
+                                        Icons.crop_rotate_rounded,
+                                        size: 16,
+                                      ),
+                                      label: const Text('Crop & Rotate'),
+                                      style: OutlinedButton.styleFrom(
+                                        visualDensity: VisualDensity.compact,
+                                        foregroundColor: AppColors.primaryGreen,
+                                        side: const BorderSide(color: AppColors.primaryGreen),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    OutlinedButton.icon(
+                                      onPressed: _isPickingImage ? null : _pickCoverImage,
+                                      icon: _isPickingImage
+                                          ? const SizedBox(
+                                              width: 16,
+                                              height: 16,
+                                              child: CircularProgressIndicator(strokeWidth: 2),
+                                            )
+                                          : const Icon(
+                                              Icons.photo_library_outlined,
+                                              size: 16,
+                                            ),
+                                      label: Text(_isPickingImage ? 'Selecting...' : 'Change Cover Image'),
+                                      style: OutlinedButton.styleFrom(
+                                        visualDensity: VisualDensity.compact,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ] else ...[
                                 InkWell(

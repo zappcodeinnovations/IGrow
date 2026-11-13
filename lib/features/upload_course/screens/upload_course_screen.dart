@@ -15,6 +15,7 @@ import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/app_toast.dart';
 import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/image_crop_rotate_screen.dart';
 import '../../../core/widgets/kyc_restricted_view.dart';
 import '../../../data/models/api_models/certificate_model.dart';
 import '../../../data/models/user_model.dart';
@@ -149,31 +150,41 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
     try {
       final picked = await _picker.pickImage(
         source: ImageSource.gallery,
-        maxWidth: 1920,
-        maxHeight: 1080,
-        imageQuality: 85,
+        maxWidth: 2400,
+        maxHeight: 1800,
+        imageQuality: 90,
       );
-      if (picked != null) {
+      if (picked != null && mounted) {
         final originalFile = File(picked.path);
-        File persistentFile = originalFile;
+        final editedFile = await ImageCropRotateScreen.cropAndRotate(
+          context,
+          imageFile: originalFile,
+          title: 'Crop & Rotate Thumbnail',
+          initialAspectRatio: 16.0 / 9.0,
+        );
+
+        final sourceFile = editedFile ?? originalFile;
+        File persistentFile = sourceFile;
         try {
-          if (await originalFile.exists()) {
+          if (await sourceFile.exists()) {
             final appDir = await getApplicationDocumentsDirectory();
             final mediaDir = Directory('${appDir.path}/course_covers');
             if (!await mediaDir.exists()) {
               await mediaDir.create(recursive: true);
             }
-            final ext = picked.path.contains('.')
-                ? picked.path.substring(picked.path.lastIndexOf('.'))
+            final ext = sourceFile.path.contains('.')
+                ? sourceFile.path.substring(sourceFile.path.lastIndexOf('.'))
                 : '.jpg';
             final persistentPath =
                 '${mediaDir.path}/cover_${DateTime.now().millisecondsSinceEpoch}$ext';
-            persistentFile = await originalFile.copy(persistentPath);
+            persistentFile = await sourceFile.copy(persistentPath);
           }
         } catch (copyErr) {
           debugPrint('⚠️ Could not persist cover image to app storage: $copyErr');
         }
-        setState(() => _coverImage = persistentFile);
+        if (mounted) {
+          setState(() => _coverImage = persistentFile);
+        }
       }
     } catch (e) {
       final errorStr = e.toString();
@@ -184,6 +195,19 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
       if (mounted) {
         setState(() => _isPickingCoverImage = false);
       }
+    }
+  }
+
+  Future<void> _cropAndRotateCurrentCover() async {
+    if (_coverImage == null) return;
+    final edited = await ImageCropRotateScreen.cropAndRotate(
+      context,
+      imageFile: _coverImage!,
+      title: 'Crop & Rotate Thumbnail',
+      initialAspectRatio: 16.0 / 9.0,
+    );
+    if (edited != null && mounted) {
+      setState(() => _coverImage = edited);
     }
   }
 
@@ -645,32 +669,55 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
     try {
       final picked = await _picker.pickImage(
         source: ImageSource.gallery,
-        imageQuality: 90,
+        imageQuality: 95,
       );
-      if (picked != null) {
+      if (picked != null && mounted) {
         final originalFile = File(picked.path);
-        File persistentFile = originalFile;
+        final editedFile = await ImageCropRotateScreen.cropAndRotate(
+          context,
+          imageFile: originalFile,
+          title: 'Crop & Rotate Signature',
+          allowFreeCrop: true,
+        );
+
+        final sourceFile = editedFile ?? originalFile;
+        File persistentFile = sourceFile;
         try {
-          if (await originalFile.exists()) {
+          if (await sourceFile.exists()) {
             final appDir = await getApplicationDocumentsDirectory();
             final mediaDir = Directory('${appDir.path}/signatures');
             if (!await mediaDir.exists()) {
               await mediaDir.create(recursive: true);
             }
-            final ext = picked.path.contains('.')
-                ? picked.path.substring(picked.path.lastIndexOf('.'))
+            final ext = sourceFile.path.contains('.')
+                ? sourceFile.path.substring(sourceFile.path.lastIndexOf('.'))
                 : '.png';
             final persistentPath =
                 '${mediaDir.path}/sig_${DateTime.now().millisecondsSinceEpoch}$ext';
-            persistentFile = await originalFile.copy(persistentPath);
+            persistentFile = await sourceFile.copy(persistentPath);
           }
         } catch (copyErr) {
           debugPrint('⚠️ Could not persist signature image to app storage: $copyErr');
         }
-        setState(() => _signatureImage = persistentFile);
+        if (mounted) {
+          setState(() => _signatureImage = persistentFile);
+        }
       }
     } catch (e) {
       _showErrorSnackbar('Failed to pick signature image: $e');
+    }
+  }
+
+  Future<void> _cropAndRotateCurrentSignature() async {
+    if (_signatureImage == null) return;
+    final edited = await ImageCropRotateScreen.cropAndRotate(
+      context,
+      imageFile: _signatureImage!,
+      title: 'Crop & Rotate Signature',
+      allowFreeCrop: true,
+    );
+    if (edited != null && mounted) {
+      setState(() => _signatureImage = edited);
     }
   }
 
@@ -1380,6 +1427,16 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                           ? 'Opening...'
                           : (_coverImage != null ? 'Change Thumbnail' : tr(ref, 'Upload Thumbnail'))),
                     ),
+                    if (_coverImage != null)
+                      OutlinedButton.icon(
+                        onPressed: _cropAndRotateCurrentCover,
+                        icon: const Icon(Icons.crop_rotate_rounded, size: 16),
+                        label: const Text('Crop & Rotate'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.primaryGreen,
+                          side: const BorderSide(color: AppColors.primaryGreen),
+                        ),
+                      ),
                     Text(
                       tr(ref, '16:9 (1280x720), JPG/PNG'),
                       style: TextStyle(
@@ -2195,6 +2252,20 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                         Image.file(_signatureImage!, fit: BoxFit.contain, height: 100),
                         Positioned(
                           top: 6,
+                          left: 6,
+                          child: CircleAvatar(
+                            radius: 14,
+                            backgroundColor: Colors.black54,
+                            child: IconButton(
+                              padding: EdgeInsets.zero,
+                              tooltip: 'Crop & Rotate',
+                              icon: const Icon(Icons.crop_rotate_rounded, size: 16, color: Colors.white),
+                              onPressed: _cropAndRotateCurrentSignature,
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          top: 6,
                           right: 6,
                           child: CircleAvatar(
                             radius: 14,
@@ -2226,6 +2297,36 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                     ),
             ),
           ),
+          if (_signatureImage != null) ...[
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: _cropAndRotateCurrentSignature,
+                  icon: const Icon(Icons.crop_rotate_rounded, size: 15),
+                  label: const Text('Crop & Rotate'),
+                  style: OutlinedButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    foregroundColor: AppColors.primaryGreen,
+                    side: const BorderSide(color: AppColors.primaryGreen),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                TextButton.icon(
+                  onPressed: _pickSignatureImage,
+                  icon: const Icon(Icons.sync_rounded, size: 15),
+                  label: const Text('Change Signature'),
+                  style: TextButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: 24),
 
           // Instructor Title / Designation

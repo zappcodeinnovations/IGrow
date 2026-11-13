@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/app_toast.dart';
 import '../../../core/widgets/app_text_field.dart';
+import '../../../core/widgets/image_crop_rotate_screen.dart';
 import '../../../core/widgets/kyc_restricted_view.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../providers/community_provider.dart';
@@ -204,8 +205,17 @@ class _CreateHubScreenState extends ConsumerState<CreateHubScreen> {
   Future<void> _pickLogo(ImageSource source) async {
     try {
       final picked = await _picker.pickImage(source: source, maxWidth: 1000, imageQuality: 85);
-      if (picked != null) {
-        setState(() => _selectedLogo = File(picked.path));
+      if (picked != null && mounted) {
+        final original = File(picked.path);
+        final edited = await ImageCropRotateScreen.cropAndRotate(
+          context,
+          imageFile: original,
+          title: 'Crop & Rotate Hub Logo',
+          initialAspectRatio: 1.0,
+        );
+        if (mounted) {
+          setState(() => _selectedLogo = edited ?? original);
+        }
       }
     } catch (_) {}
   }

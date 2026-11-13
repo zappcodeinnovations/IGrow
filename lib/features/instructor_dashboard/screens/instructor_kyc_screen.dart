@@ -12,6 +12,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/responsive_layout.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_text_field.dart';
+import '../../../core/widgets/image_crop_rotate_screen.dart';
 import '../../auth/providers/auth_provider.dart';
 
 /// Mapping of 4-letter IFSC prefixes to major Indian commercial and public banks.
@@ -310,14 +311,28 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
     try {
       final pickedFile = await _picker.pickImage(
         source: source,
-        maxWidth: 1600,
-        maxHeight: 1600,
-        imageQuality: 85,
+        maxWidth: 2400,
+        maxHeight: 2400,
+        imageQuality: 92,
       );
-      if (pickedFile != null) {
-        setState(() {
-          _selectedDocImage = File(pickedFile.path);
-        });
+      if (pickedFile != null && mounted) {
+        final original = File(pickedFile.path);
+        final edited = await ImageCropRotateScreen.cropAndRotate(
+          context,
+          imageFile: original,
+          title: 'Crop & Rotate ID Document',
+          allowFreeCrop: true,
+        );
+        if (edited != null && mounted) {
+          setState(() {
+            _selectedDocImage = edited;
+          });
+        } else if (mounted && _selectedDocImage == null) {
+          // If cancelled without crop, keep the original picked photo
+          setState(() {
+            _selectedDocImage = original;
+          });
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -328,6 +343,21 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
           ),
         );
       }
+    }
+  }
+
+  Future<void> _cropAndRotateCurrentDoc() async {
+    if (_selectedDocImage == null) return;
+    final edited = await ImageCropRotateScreen.cropAndRotate(
+      context,
+      imageFile: _selectedDocImage!,
+      title: 'Crop & Rotate ID Document',
+      allowFreeCrop: true,
+    );
+    if (edited != null && mounted) {
+      setState(() {
+        _selectedDocImage = edited;
+      });
     }
   }
 
@@ -1250,12 +1280,32 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
               ],
             ),
             const SizedBox(height: 10),
-            Center(
-              child: TextButton.icon(
-                onPressed: _showImagePickerSheet,
-                icon: const Icon(Icons.sync_rounded, size: 18),
-                label: const Text('Change Photo'),
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: _cropAndRotateCurrentDoc,
+                  icon: const Icon(Icons.crop_rotate_rounded, size: 16),
+                  label: const Text('Crop & Rotate'),
+                  style: OutlinedButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    foregroundColor: AppColors.primaryGreen,
+                    side: const BorderSide(color: AppColors.primaryGreen),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                TextButton.icon(
+                  onPressed: _showImagePickerSheet,
+                  icon: const Icon(Icons.sync_rounded, size: 16),
+                  label: const Text('Change Photo'),
+                  style: TextButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ),
+              ],
             ),
           ] else if (existingUrl != null && existingUrl.isNotEmpty) ...[
             Stack(
