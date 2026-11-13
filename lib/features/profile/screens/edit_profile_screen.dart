@@ -10,6 +10,7 @@ import '../../../core/network/api_exception.dart';
 import '../../../core/network/swagger_generated/app_api.swagger.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/delete_account_dialog.dart';
+import '../../../core/widgets/image_crop_rotate_screen.dart';
 import '../../../data/models/user_role.dart';
 import '../../../data/models/user_model.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -343,13 +344,106 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     super.dispose();
   }
 
-  Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
-      setState(() {
-        _selectedImage = File(pickedFile.path);
-      });
+  Future<void> _pickImage([ImageSource? preferredSource]) async {
+    ImageSource source = preferredSource ?? ImageSource.gallery;
+    if (preferredSource == null) {
+      final selected = await showModalBottomSheet<ImageSource>(
+        context: context,
+        backgroundColor: Colors.transparent,
+        builder: (ctx) {
+          final isDark = Theme.of(ctx).brightness == Brightness.dark;
+          return Container(
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.cardDark : Colors.white,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: SafeArea(
+              top: false,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Profile Photo',
+                    style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ),
+                  const SizedBox(height: 16),
+                  ListTile(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryGreen.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.photo_camera_rounded, color: AppColors.primaryGreen),
+                    ),
+                    title: const Text('Take a Photo', style: TextStyle(fontWeight: FontWeight.w600)),
+                    onTap: () => Navigator.pop(ctx, ImageSource.camera),
+                  ),
+                  const SizedBox(height: 6),
+                  ListTile(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.skyBlue.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.photo_library_rounded, color: AppColors.skyBlue),
+                    ),
+                    title: const Text('Choose from Gallery', style: TextStyle(fontWeight: FontWeight.w600)),
+                    onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+                  ),
+                  const SizedBox(height: 8),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+      if (selected == null) return;
+      source = selected;
+    }
+
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(
+        source: source,
+        maxWidth: 2400,
+        maxHeight: 2400,
+        imageQuality: 92,
+      );
+      if (pickedFile != null && mounted) {
+        final original = File(pickedFile.path);
+        final edited = await ImageCropRotateScreen.cropAndRotate(
+          context,
+          imageFile: original,
+          title: 'Crop & Rotate Profile Photo',
+          initialAspectRatio: 1.0,
+          allowFreeCrop: true,
+        );
+        if (edited != null && mounted) {
+          setState(() {
+            _selectedImage = edited;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error picking profile image: $e');
     }
   }
 
