@@ -77,6 +77,7 @@ final isCourseInCartProvider = Provider.family<bool, String>((ref, courseIdOrSlu
   final cartAsync = ref.watch(cartProvider);
   return cartAsync.maybeWhen(
     data: (cart) => cart.items.any((item) {
+      if (item.isEbook) return false;
       final matchesCourseId = item.course == target || item.id == target;
       final matchesDetailId = item.courseDetail?['id']?.toString() == target;
       final matchesDetailSlug = item.courseDetail?['slug']?.toString() == target;
@@ -93,6 +94,7 @@ final isEbookInCartProvider = Provider.family<bool, String>((ref, ebookIdOrSlug)
   final cartAsync = ref.watch(cartProvider);
   return cartAsync.maybeWhen(
     data: (cart) => cart.items.any((item) {
+      if (!item.isEbook) return false;
       final matchesEbookId = item.ebook == target || item.id == target || item.effectiveId == target;
       final matchesDetailId = item.ebookDetail?['id']?.toString() == target;
       final matchesDetailSlug = item.ebookDetail?['slug']?.toString() == target;

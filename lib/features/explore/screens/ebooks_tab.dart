@@ -253,22 +253,31 @@ class EbooksTab extends ConsumerWidget {
                             Consumer(
                               builder: (context, ref, _) {
                                 final cart = ref.watch(cartProvider).valueOrNull;
-                                final isInCart = cart?.items.any((it) =>
-                                        it.id == ebook.id ||
-                                        it.course == ebook.id ||
-                                        it.id == ebook.slug ||
-                                        it.course == ebook.slug ||
-                                        it.ebook == ebook.id ||
-                                        it.ebook == ebook.slug ||
-                                        it.effectiveId == ebook.id ||
-                                        it.effectiveId == ebook.slug ||
-                                        it.ebookDetail?['id']?.toString() == ebook.id ||
-                                        it.ebookDetail?['slug']?.toString() == ebook.slug) ??
-                                    false;
+                                final eId = ebook.id?.trim();
+                                final eSlug = ebook.slug?.trim();
+                                final validEId = (eId != null && eId.isNotEmpty) ? eId : null;
+                                final validESlug = (eSlug != null && eSlug.isNotEmpty) ? eSlug : null;
+
+                                final isInCart = cart?.items.any((it) {
+                                  if (!it.isEbook) return false;
+                                  final matchesId = validEId != null && (
+                                    it.ebook == validEId ||
+                                    it.id == validEId ||
+                                    it.effectiveId == validEId ||
+                                    it.ebookDetail?['id']?.toString() == validEId
+                                  );
+                                  final matchesSlug = validESlug != null && (
+                                    it.ebook == validESlug ||
+                                    it.effectiveId == validESlug ||
+                                    it.ebookDetail?['slug']?.toString() == validESlug
+                                  );
+                                  return matchesId || matchesSlug;
+                                }) ?? false;
 
                                 return OutlinedButton(
                                   style: OutlinedButton.styleFrom(
-                                    foregroundColor: AppColors.primaryGreen,
+                                    backgroundColor: isInCart ? AppColors.primaryGreen : Colors.transparent,
+                                    foregroundColor: isInCart ? Colors.white : AppColors.primaryGreen,
                                     side: const BorderSide(color: AppColors.primaryGreen, width: 1.2),
                                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -277,7 +286,16 @@ class EbooksTab extends ConsumerWidget {
                                   ),
                                   onPressed: () async {
                                     if (isInCart) {
-                                      context.push(RouteNames.cart);
+                                      AppToast.showWarning(
+                                        context,
+                                        tr(ref, 'E-Book is already in your cart. 🛒'),
+                                        duration: const Duration(seconds: 3),
+                                        action: SnackBarAction(
+                                          label: tr(ref, 'View Cart'),
+                                          textColor: Colors.white,
+                                          onPressed: () => context.push(RouteNames.cart),
+                                        ),
+                                      );
                                       return;
                                     }
                                     final targetId = (ebook.id != null && ebook.id!.isNotEmpty)
@@ -347,8 +365,9 @@ class EbooksTab extends ConsumerWidget {
                                     }
                                   },
                                   child: Icon(
-                                    isInCart ? Icons.shopping_cart : Icons.add_shopping_cart,
+                                    isInCart ? Icons.shopping_cart_rounded : Icons.add_shopping_cart_rounded,
                                     size: 16,
+                                    color: isInCart ? Colors.white : AppColors.primaryGreen,
                                   ),
                                 );
                               },
