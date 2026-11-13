@@ -1,24 +1,91 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../../core/localization/app_strings.dart';
+import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/app_toast.dart';
 import '../../../core/widgets/app_time_picker.dart';
 import '../../../data/models/api_models/course_models.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../../home_instructor/providers/instructor_home_provider.dart';
 import '../providers/community_provider.dart';
 
 class CreatePostSheets {
   CreatePostSheets._();
 
+  static bool _ensureKycVerified(BuildContext context, WidgetRef ref) {
+    final user = ref.read(authProvider).user;
+    final isVerified = user?.isKycVerified == true || user?.isAdmin == true;
+    if (!isVerified) {
+      final isPending = user?.isKycPending == true;
+      showDialog(
+        context: context,
+        builder: (dialogContext) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: (isPending ? AppColors.accentOrange : AppColors.error).withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    isPending ? Icons.hourglass_top_rounded : Icons.verified_user_outlined,
+                    color: isPending ? AppColors.accentOrange : AppColors.error,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    isPending ? 'Verification Under Review' : 'KYC Required',
+                    style: Theme.of(dialogContext).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+            content: Text(
+              isPending
+                  ? 'Your KYC documents have been submitted and are under review. Broadcast publishing will unlock once approved.'
+                  : 'As per platform policy, you must complete your KYC verification before publishing community broadcast updates.',
+              style: Theme.of(dialogContext).textTheme.bodyMedium?.copyWith(height: 1.5, color: AppColors.inkSoft),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: isPending ? AppColors.accentOrange : AppColors.primaryGreen,
+                ),
+                onPressed: () {
+                  Navigator.of(dialogContext).pop();
+                  context.push(RouteNames.instructorKyc);
+                },
+                child: Text(isPending ? 'Check KYC Status' : 'Complete KYC Now'),
+              ),
+            ],
+          );
+        },
+      );
+      return false;
+    }
+    return true;
+  }
+
   // ─────────────────────────────────────────────────────────────────
   // A. 📝 GENERAL POST BOTTOM SHEET
   // ─────────────────────────────────────────────────────────────────
   static void showGeneralPost(BuildContext context, WidgetRef ref, String hubId) {
+    if (!_ensureKycVerified(context, ref)) return;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -31,6 +98,7 @@ class CreatePostSheets {
   // B. 📢 COURSE ANNOUNCEMENT BOTTOM SHEET
   // ─────────────────────────────────────────────────────────────────
   static void showAnnouncement(BuildContext context, WidgetRef ref, String hubId) {
+    if (!_ensureKycVerified(context, ref)) return;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -43,6 +111,7 @@ class CreatePostSheets {
   // C. 💻 ONLINE WEBINAR BOTTOM SHEET
   // ─────────────────────────────────────────────────────────────────
   static void showWebinar(BuildContext context, WidgetRef ref, String hubId) {
+    if (!_ensureKycVerified(context, ref)) return;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -55,6 +124,7 @@ class CreatePostSheets {
   // D. 🚜 OFFLINE SEMINAR BOTTOM SHEET
   // ─────────────────────────────────────────────────────────────────
   static void showSeminar(BuildContext context, WidgetRef ref, String hubId) {
+    if (!_ensureKycVerified(context, ref)) return;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,

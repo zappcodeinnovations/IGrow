@@ -9,6 +9,7 @@ import '../../../core/services/weather_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/app_toast.dart';
 import '../../../core/widgets/app_error_state.dart';
+import '../../../core/widgets/kyc_restricted_view.dart';
 import '../../../core/widgets/shell_scaffold.dart';
 import '../../../data/models/api_models/community_models.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -59,6 +60,17 @@ class _InstructorCommunityView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final currentUser = ref.watch(authProvider).user;
+    final isKycVerified = currentUser?.isKycVerified == true || currentUser?.isAdmin == true;
+
+    // Platform Policy: Community hub creation, management, and broadcast publishing
+    // are strictly restricted until instructor KYC verification is approved.
+    if (!isKycVerified) {
+      return const KycRestrictedView(
+        featureName: 'Community Hub & Broadcasts',
+      );
+    }
+
     final myHubAsync = ref.watch(myInstructorHubProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 

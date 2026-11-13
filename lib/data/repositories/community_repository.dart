@@ -32,6 +32,19 @@ class CommunityRepository {
   void _handleError(http.Response response) {
     if (response.statusCode >= 400) {
       TokenStorage.checkResponse(response.statusCode, response.body);
+
+      // Explicit 403 Forbidden / KYC Authorization Guard
+      if (response.statusCode == 403) {
+        String errorMessage = 'Access restricted: KYC verification is required before creating a community hub or publishing updates.';
+        try {
+          final data = jsonDecode(response.body);
+          if (data is Map && (data.containsKey('detail') || data.containsKey('error'))) {
+            errorMessage = (data['detail'] ?? data['error']).toString();
+          }
+        } catch (_) {}
+        throw ApiException(statusCode: 403, message: errorMessage);
+      }
+
       String errorMessage = 'Community Error (${response.statusCode})';
       try {
         final data = jsonDecode(response.body);

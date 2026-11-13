@@ -7,6 +7,8 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/app_toast.dart';
 import '../../../core/widgets/app_text_field.dart';
+import '../../../core/widgets/kyc_restricted_view.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../providers/community_provider.dart';
 
 class CreateHubScreen extends ConsumerStatefulWidget {
@@ -217,6 +219,12 @@ class _CreateHubScreenState extends ConsumerState<CreateHubScreen> {
       return;
     }
 
+    final currentUser = ref.read(authProvider).user;
+    if (currentUser != null && !currentUser.isKycVerified && !currentUser.isAdmin) {
+      AppToast.showWarning(context, 'KYC verification is required before creating a community hub.');
+      return;
+    }
+
     setState(() => _isSubmitting = true);
     try {
       final repo = ref.read(communityRepositoryProvider);
@@ -249,7 +257,21 @@ class _CreateHubScreenState extends ConsumerState<CreateHubScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final currentUser = ref.watch(authProvider).user;
+    final isKycVerified = currentUser?.isKycVerified == true || currentUser?.isAdmin == true;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    if (!isKycVerified) {
+      return Scaffold(
+        backgroundColor: isDark ? AppColors.bgDark : const Color(0xFFF7FAF6),
+        appBar: AppBar(
+          title: const Text('Create Regional Hub', style: TextStyle(fontWeight: FontWeight.bold)),
+          elevation: 0,
+        ),
+        body: const KycRestrictedView(featureName: 'Community Creation'),
+      );
+    }
+
     final cardBorder = isDark ? AppColors.lineDark : const Color(0xFFE2EBE0);
     final cardBg = isDark ? AppColors.cardDark : AppColors.white;
 
