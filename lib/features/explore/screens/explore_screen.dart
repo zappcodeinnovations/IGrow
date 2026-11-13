@@ -38,6 +38,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
   String _selectedCategory = 'all';
   String? _selectedInstructorId;
   String _selectedLevel = '';
+  String _selectedLanguage = '';
   String _selectedOrdering = '';
   String _selectedPricePreset = 'all';
   String _selectedQuickFilter = 'All';
@@ -58,6 +59,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
   int get _activeFilterCount {
     int count = 0;
     if (_selectedLevel.isNotEmpty) count++;
+    if (_selectedLanguage.isNotEmpty) count++;
     if (_selectedOrdering.isNotEmpty && _selectedOrdering != '-created_at') count++;
     if (_selectedPricePreset != 'all') count++;
     if (_minRating != null && _minRating! > 0) count++;
@@ -123,6 +125,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
       _selectedCategory = 'all';
       _selectedQuickFilter = 'All';
       _selectedLevel = '';
+      _selectedLanguage = '';
       _selectedOrdering = '';
       _selectedPricePreset = 'all';
       _minPrice = null;
@@ -134,6 +137,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
 
   void _showFilterBottomSheet() {
     String tempLevel = _selectedLevel;
+    String tempLanguage = _selectedLanguage;
     String tempOrdering = _selectedOrdering;
     String tempPricePreset = _selectedPricePreset;
     num? tempMinPrice = _minPrice;
@@ -151,6 +155,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
             int getTempCount() {
               int count = 0;
               if (tempLevel.isNotEmpty) count++;
+              if (tempLanguage.isNotEmpty) count++;
               if (tempOrdering.isNotEmpty && tempOrdering != '-created_at') count++;
               if (tempPricePreset != 'all') count++;
               if (tempMinRating != null && tempMinRating! > 0) count++;
@@ -435,6 +440,119 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                       ),
                       const SizedBox(height: 20),
 
+                      // Language Filter
+                      Row(
+                        children: [
+                          const Icon(Icons.language_rounded, size: 18, color: Color(0xFF1B4D2E)),
+                          const SizedBox(width: 6),
+                          Text(tr(ref, 'Language Filter'), style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, fontSize: 14)),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          ChoiceChip(
+                            label: Text(tr(ref, 'All Languages')),
+                            selected: tempLanguage.isEmpty,
+                            selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
+                            labelStyle: TextStyle(
+                              color: tempLanguage.isEmpty ? const Color(0xFF1B4D2E) : null,
+                              fontWeight: tempLanguage.isEmpty ? FontWeight.bold : FontWeight.normal,
+                            ),
+                            onSelected: (val) {
+                              if (val) setModalState(() => tempLanguage = '');
+                            },
+                          ),
+                          ChoiceChip(
+                            label: Text(tr(ref, 'Hindi')),
+                            selected: tempLanguage == 'Hindi',
+                            selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
+                            labelStyle: TextStyle(
+                              color: tempLanguage == 'Hindi' ? const Color(0xFF1B4D2E) : null,
+                              fontWeight: tempLanguage == 'Hindi' ? FontWeight.bold : FontWeight.normal,
+                            ),
+                            onSelected: (val) {
+                              setModalState(() => tempLanguage = val ? 'Hindi' : '');
+                            },
+                          ),
+                          ChoiceChip(
+                            label: Text(tr(ref, 'Marathi')),
+                            selected: tempLanguage == 'Marathi',
+                            selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
+                            labelStyle: TextStyle(
+                              color: tempLanguage == 'Marathi' ? const Color(0xFF1B4D2E) : null,
+                              fontWeight: tempLanguage == 'Marathi' ? FontWeight.bold : FontWeight.normal,
+                            ),
+                            onSelected: (val) {
+                              setModalState(() => tempLanguage = val ? 'Marathi' : '');
+                            },
+                          ),
+                          ChoiceChip(
+                            label: Text(tr(ref, 'English')),
+                            selected: tempLanguage == 'English',
+                            selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
+                            labelStyle: TextStyle(
+                              color: tempLanguage == 'English' ? const Color(0xFF1B4D2E) : null,
+                              fontWeight: tempLanguage == 'English' ? FontWeight.bold : FontWeight.normal,
+                            ),
+                            onSelected: (val) {
+                              setModalState(() => tempLanguage = val ? 'English' : '');
+                            },
+                          ),
+                          ChoiceChip(
+                            label: Text(tr(ref, 'Gujarati')),
+                            selected: tempLanguage == 'Gujarati',
+                            selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
+                            labelStyle: TextStyle(
+                              color: tempLanguage == 'Gujarati' ? const Color(0xFF1B4D2E) : null,
+                              fontWeight: tempLanguage == 'Gujarati' ? FontWeight.bold : FontWeight.normal,
+                            ),
+                            onSelected: (val) {
+                              setModalState(() => tempLanguage = val ? 'Gujarati' : '');
+                            },
+                          ),
+                          ChoiceChip(
+                            label: Text(tr(ref, 'Punjabi')),
+                            selected: tempLanguage == 'Punjabi',
+                            selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
+                            labelStyle: TextStyle(
+                              color: tempLanguage == 'Punjabi' ? const Color(0xFF1B4D2E) : null,
+                              fontWeight: tempLanguage == 'Punjabi' ? FontWeight.bold : FontWeight.normal,
+                            ),
+                            onSelected: (val) {
+                              setModalState(() => tempLanguage = val ? 'Punjabi' : '');
+                            },
+                          ),
+                          ChoiceChip(
+                            label: Text(tr(ref, 'Telugu')),
+                            selected: tempLanguage == 'Telugu',
+                            selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
+                            labelStyle: TextStyle(
+                              color: tempLanguage == 'Telugu' ? const Color(0xFF1B4D2E) : null,
+                              fontWeight: tempLanguage == 'Telugu' ? FontWeight.bold : FontWeight.normal,
+                            ),
+                            onSelected: (val) {
+                              setModalState(() => tempLanguage = val ? 'Telugu' : '');
+                            },
+                          ),
+                          ChoiceChip(
+                            label: Text(tr(ref, 'Tamil')),
+                            selected: tempLanguage == 'Tamil',
+                            selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
+                            labelStyle: TextStyle(
+                              color: tempLanguage == 'Tamil' ? const Color(0xFF1B4D2E) : null,
+                              fontWeight: tempLanguage == 'Tamil' ? FontWeight.bold : FontWeight.normal,
+                            ),
+                            onSelected: (val) {
+                              setModalState(() => tempLanguage = val ? 'Tamil' : '');
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+
                       // Sort By
                       Row(
                         children: [
@@ -488,6 +606,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                               onPressed: () {
                                 setModalState(() {
                                   tempLevel = '';
+                                  tempLanguage = '';
                                   tempOrdering = '';
                                   tempPricePreset = 'all';
                                   tempMinPrice = null;
@@ -513,6 +632,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                                 Navigator.pop(context);
                                 setState(() {
                                   _selectedLevel = tempLevel;
+                                  _selectedLanguage = tempLanguage;
                                   _selectedOrdering = tempOrdering;
                                   _selectedPricePreset = tempPricePreset;
                                   _minPrice = tempMinPrice;
@@ -1158,17 +1278,26 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
               // Results List of Large Course Cards
               catalogAsync.when(
               data: (courses) {
-                // Apply language filter if Hindi or Marathi is selected
+                // Apply language filter (from filter sheet or quick filter)
                 var filteredCourses = courses;
-                if (_selectedQuickFilter == 'Hindi') {
+                final activeLang = _selectedLanguage.isNotEmpty
+                    ? _selectedLanguage
+                    : (_selectedQuickFilter != 'All' ? _selectedQuickFilter : '');
+
+                if (activeLang.isNotEmpty) {
+                  final lang = activeLang.toLowerCase();
                   filteredCourses = courses.where((c) {
                     final t = c.title.toLowerCase();
-                    return t.contains('hindi') || t.contains('हिंदी') || t.contains('हिन्दी');
-                  }).toList();
-                } else if (_selectedQuickFilter == 'Marathi') {
-                  filteredCourses = courses.where((c) {
-                    final t = c.title.toLowerCase();
-                    return t.contains('marathi') || t.contains('मराठी');
+                    final desc = (c.shortDescription ?? '').toLowerCase();
+                    if (lang == 'hindi') {
+                      return t.contains('hindi') || t.contains('हिंदी') || t.contains('हिन्दी') || desc.contains('hindi') || desc.contains('हिंदी');
+                    } else if (lang == 'marathi') {
+                      return t.contains('marathi') || t.contains('मराठी') || desc.contains('marathi') || desc.contains('मराठी');
+                    } else if (lang == 'english') {
+                      return t.contains('english') || desc.contains('english') || (!t.contains('hindi') && !t.contains('हिंदी') && !t.contains('marathi') && !t.contains('मराठी'));
+                    } else {
+                      return t.contains(lang) || desc.contains(lang);
+                    }
                   }).toList();
                 }
 
