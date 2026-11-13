@@ -624,6 +624,18 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                               },
                             ),
                             ChoiceChip(
+                              label: Text(tr(ref, 'English')),
+                              selected: tempLanguage == 'English',
+                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
+                              labelStyle: TextStyle(
+                                color: tempLanguage == 'English' ? const Color(0xFF1B4D2E) : null,
+                                fontWeight: tempLanguage == 'English' ? FontWeight.bold : FontWeight.normal,
+                              ),
+                              onSelected: (val) {
+                                setModalState(() => tempLanguage = val ? 'English' : '');
+                              },
+                            ),
+                            ChoiceChip(
                               label: Text(tr(ref, 'Hindi')),
                               selected: tempLanguage == 'Hindi',
                               selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
@@ -645,66 +657,6 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                               ),
                               onSelected: (val) {
                                 setModalState(() => tempLanguage = val ? 'Marathi' : '');
-                              },
-                            ),
-                            ChoiceChip(
-                              label: Text(tr(ref, 'English')),
-                              selected: tempLanguage == 'English',
-                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
-                              labelStyle: TextStyle(
-                                color: tempLanguage == 'English' ? const Color(0xFF1B4D2E) : null,
-                                fontWeight: tempLanguage == 'English' ? FontWeight.bold : FontWeight.normal,
-                              ),
-                              onSelected: (val) {
-                                setModalState(() => tempLanguage = val ? 'English' : '');
-                              },
-                            ),
-                            ChoiceChip(
-                              label: Text(tr(ref, 'Gujarati')),
-                              selected: tempLanguage == 'Gujarati',
-                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
-                              labelStyle: TextStyle(
-                                color: tempLanguage == 'Gujarati' ? const Color(0xFF1B4D2E) : null,
-                                fontWeight: tempLanguage == 'Gujarati' ? FontWeight.bold : FontWeight.normal,
-                              ),
-                              onSelected: (val) {
-                                setModalState(() => tempLanguage = val ? 'Gujarati' : '');
-                              },
-                            ),
-                            ChoiceChip(
-                              label: Text(tr(ref, 'Punjabi')),
-                              selected: tempLanguage == 'Punjabi',
-                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
-                              labelStyle: TextStyle(
-                                color: tempLanguage == 'Punjabi' ? const Color(0xFF1B4D2E) : null,
-                                fontWeight: tempLanguage == 'Punjabi' ? FontWeight.bold : FontWeight.normal,
-                              ),
-                              onSelected: (val) {
-                                setModalState(() => tempLanguage = val ? 'Punjabi' : '');
-                              },
-                            ),
-                            ChoiceChip(
-                              label: Text(tr(ref, 'Telugu')),
-                              selected: tempLanguage == 'Telugu',
-                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
-                              labelStyle: TextStyle(
-                                color: tempLanguage == 'Telugu' ? const Color(0xFF1B4D2E) : null,
-                                fontWeight: tempLanguage == 'Telugu' ? FontWeight.bold : FontWeight.normal,
-                              ),
-                              onSelected: (val) {
-                                setModalState(() => tempLanguage = val ? 'Telugu' : '');
-                              },
-                            ),
-                            ChoiceChip(
-                              label: Text(tr(ref, 'Tamil')),
-                              selected: tempLanguage == 'Tamil',
-                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
-                              labelStyle: TextStyle(
-                                color: tempLanguage == 'Tamil' ? const Color(0xFF1B4D2E) : null,
-                                fontWeight: tempLanguage == 'Tamil' ? FontWeight.bold : FontWeight.normal,
-                              ),
-                              onSelected: (val) {
-                                setModalState(() => tempLanguage = val ? 'Tamil' : '');
                               },
                             ),
                           ],
