@@ -309,8 +309,9 @@ class ProfileScreen extends ConsumerWidget {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   // ── Metric Card Widget (Courses / Certificates) ──
   Widget _buildMetricCard({
@@ -1172,8 +1173,9 @@ class ProfileScreen extends ConsumerWidget {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
   Widget _buildMenuSection({
     required BuildContext context,
     required WidgetRef ref,
