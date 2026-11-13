@@ -635,53 +635,6 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.transparent,
-        title: Container(
-          height: 44,
-          decoration: BoxDecoration(
-            color: isDark ? AppColors.cardDark : AppColors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: isDark ? AppColors.lineDark : AppColors.lineLight,
-            ),
-          ),
-          child: Row(
-            children: [
-              const SizedBox(width: 12),
-              Icon(Icons.search_rounded, color: AppColors.inkSoft, size: 20),
-              const SizedBox(width: 8),
-              Expanded(
-                child: TextField(
-                  controller: _searchController,
-                  onChanged: (value) {
-                    setState(() {
-                      _searchQuery = value;
-                    });
-                  },
-                  onSubmitted: (value) {
-                    setState(() {
-                      _searchQuery = value;
-                    });
-                  },
-                  style: Theme.of(context).textTheme.bodyMedium,
-                  decoration: InputDecoration(
-                    hintText: _selectedDashboardTab == 1
-                        ? tr(ref, 'Search e-books...')
-                        : tr(ref, 'Search courses...'),
-                    hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.inkSoft),
-                    filled: false,
-                    isDense: true,
-                    border: InputBorder.none,
-                    enabledBorder: InputBorder.none,
-                    focusedBorder: InputBorder.none,
-                    errorBorder: InputBorder.none,
-                    focusedErrorBorder: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 10),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.tune),
