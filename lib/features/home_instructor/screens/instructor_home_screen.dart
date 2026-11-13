@@ -18,6 +18,7 @@ import '../../home_farmer/providers/student_provider.dart';
 import '../../notifications/providers/notification_provider.dart';
 import '../../../core/widgets/logout_dialog.dart';
 import '../../../core/widgets/shimmer_placeholders.dart';
+import '../../instructor_dashboard/widgets/my_students_sheet.dart';
 
 class InstructorHomeScreen extends ConsumerStatefulWidget {
   const InstructorHomeScreen({super.key});
@@ -115,162 +116,43 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
 
   void _showStudentsBottomSheet(BuildContext context, Map<String, dynamic> stats) {
     final transactionsAsync = ref.read(instructorTransactionsProvider);
-    final totalStudents = stats['total_students'] ?? 0;
-    final totalEnrollments = stats['total_enrollments'] ?? totalStudents;
+    final txs = transactionsAsync.value ?? [];
+    final distinctProfiles = InstructorStudentProfile.groupTransactions(txs);
+    final totalStudents = distinctProfiles.isNotEmpty
+        ? distinctProfiles.length
+        : (stats['total_students'] ?? 0);
+    final totalEnrollments = txs.isNotEmpty
+        ? txs.length
+        : (stats['total_enrollments'] ?? totalStudents);
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (sheetContext) {
-        final isDark = Theme.of(sheetContext).brightness == Brightness.dark;
         return DraggableScrollableSheet(
-          initialChildSize: 0.65,
-          minChildSize: 0.4,
-          maxChildSize: 0.9,
+          initialChildSize: 0.72,
+          minChildSize: 0.45,
+          maxChildSize: 0.95,
           expand: false,
           builder: (_, scrollController) {
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              child: ListView(
-                controller: scrollController,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade300,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: AppColors.skyBlue.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: const Icon(Icons.people_alt_rounded, color: AppColors.skyBlue, size: 22),
-                          ),
-                          const SizedBox(width: 12),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'My Students',
-                                style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-                              ),
-                              Text(
-                                '$totalStudents total students • $totalEnrollments enrollments',
-                                style: const TextStyle(fontSize: 12, color: AppColors.inkSoft),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close_rounded),
-                        onPressed: () => Navigator.pop(sheetContext),
-                      ),
-                    ],
-                  ),
-                  const Divider(height: 24),
-                  Text(
-                    'Recent Student Enrollments',
-                    style: Theme.of(sheetContext).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: 12),
-                  transactionsAsync.when(
-                    data: (txs) {
-                      if (txs.isEmpty) {
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 32),
-                          child: Center(
-                            child: Column(
-                              children: [
-                                Icon(Icons.school_outlined, size: 48, color: Colors.grey.shade400),
-                                const SizedBox(height: 10),
-                                const Text('No students enrolled yet', style: TextStyle(fontWeight: FontWeight.bold)),
-                                const SizedBox(height: 4),
-                                const Text(
-                                  'When students enroll in your courses, their names and course details will appear here.',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(fontSize: 12, color: AppColors.inkSoft),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      }
-                      return Column(
-                        children: txs.take(10).map((tx) {
-                          final buyer = tx['buyer']?.toString() ?? 'Student';
-                          final course = tx['course_title']?.toString() ?? 'Enrolled Course';
-                          final date = tx['date']?.toString() ?? 'Recent';
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 10),
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: isDark ? AppColors.cardDark : AppColors.bgLight,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Row(
-                              children: [
-                                CircleAvatar(
-                                  backgroundColor: AppColors.skyBlue.withValues(alpha: 0.15),
-                                  foregroundColor: AppColors.skyBlue,
-                                  radius: 20,
-                                  child: Text(
-                                    buyer.isNotEmpty ? buyer[0].toUpperCase() : 'S',
-                                    style: const TextStyle(fontWeight: FontWeight.bold),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(buyer, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                                      const SizedBox(height: 2),
-                                      Text(course, style: const TextStyle(fontSize: 12, color: AppColors.inkSoft), maxLines: 1, overflow: TextOverflow.ellipsis),
-                                    ],
-                                  ),
-                                ),
-                                Text(date, style: const TextStyle(fontSize: 11, color: AppColors.inkSoft)),
-                              ],
-                            ),
-                          );
-                        }).toList(),
-                      );
-                    },
-                    loading: () => const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator())),
-                    error: (_, __) => const Center(child: Text('Unable to load student enrollments')),
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryGreen,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                    ),
-                    icon: const Icon(Icons.receipt_long_rounded, size: 18),
-                    label: const Text('View Full Financial & Payout Ledger'),
-                    onPressed: () {
-                      Navigator.pop(sheetContext);
-                      context.push(RouteNames.instructorAnalytics);
-                    },
-                  ),
-                ],
+            return Container(
+              decoration: BoxDecoration(
+                color: Theme.of(sheetContext).scaffoldBackgroundColor,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: MyStudentsSheet(
+                transactions: txs,
+                totalStudents: totalStudents,
+                totalEnrollments: totalEnrollments,
+                scrollController: scrollController,
+                onOpenLedger: () {
+                  Navigator.pop(sheetContext);
+                  context.push(RouteNames.instructorAnalytics);
+                },
               ),
             );
           },
@@ -969,13 +851,20 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
               // Stats Row
               ref.watch(instructorStatsProvider).when(
                 data: (stats) {
+                  final transactionsAsync = ref.watch(instructorTransactionsProvider);
+                  final txs = transactionsAsync.value ?? [];
+                  final distinctProfiles = InstructorStudentProfile.groupTransactions(txs);
+                  final distinctStudentCount = distinctProfiles.isNotEmpty
+                      ? distinctProfiles.length
+                      : (stats['total_students'] ?? 0);
+
                   return Row(
                     children: [
                       Expanded(
                         child: _StatCard(
                           icon: Icons.people_alt_rounded,
                           label: tr(ref, 'Students'),
-                          value: '${stats['total_students'] ?? 0}',
+                          value: '$distinctStudentCount',
                           color: AppColors.skyBlue,
                           onTap: () => _showStudentsBottomSheet(context, stats),
                         ),
