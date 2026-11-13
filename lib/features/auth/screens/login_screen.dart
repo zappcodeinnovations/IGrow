@@ -31,7 +31,8 @@ class LoginScreen extends ConsumerStatefulWidget {
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends ConsumerState<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen>
+    with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -42,10 +43,47 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _isAppleLoading = false;
   String? _persistedRole;
 
+  late final AnimationController _pulseController;
+  late final Animation<double> _pulseScale;
+  late final Animation<double> _pulseGlow;
+  bool _shouldPulseSwitchRole = false;
+
   @override
   void initState() {
     super.initState();
     _loadPersistedRole();
+
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    );
+
+    _pulseScale = Tween<double>(begin: 1.0, end: 1.08).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+
+    _pulseGlow = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+  }
+
+  void _triggerSwitchRolePulse() {
+    setState(() => _shouldPulseSwitchRole = true);
+    _pulseController.forward(from: 0.0).then((_) {
+      _pulseController.reverse().then((_) {
+        _pulseController.forward().then((_) {
+          _pulseController.reverse().then((_) {
+            _pulseController.forward().then((_) {
+              _pulseController.reverse().then((_) {
+                if (mounted) {
+                  setState(() => _shouldPulseSwitchRole = false);
+                }
+              });
+            });
+          });
+        });
+      });
+    });
   }
 
   Future<void> _loadPersistedRole() async {
@@ -65,6 +103,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   void dispose() {
+    _pulseController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _scrollController.dispose();
@@ -250,7 +289,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           next.error != null &&
           next.error!.isNotEmpty &&
           previous?.error != next.error) {
-        AppToast.show(context, tr(ref, getUserFriendlyErrorMessage(next.error!)), isError: true);
+        final errorMsg = next.error!;
+        final lower = errorMsg.toLowerCase();
+        if (lower.contains('switch to student') ||
+            lower.contains('switch to instructor') ||
+            lower.contains('registered as a student') ||
+            lower.contains('registered as an instructor') ||
+            lower.contains('role')) {
+          _triggerSwitchRolePulse();
+        }
+        AppToast.show(context, tr(ref, getUserFriendlyErrorMessage(errorMsg)), isError: true);
         ref.read(authProvider.notifier).clearError();
       }
     });
@@ -427,57 +475,96 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            GestureDetector(
-                              onTap: () async {
-                                final targetRole = _isInstructorRole ? 'farmer' : 'instructor';
-                                final prefs = await SharedPreferences.getInstance();
-                                await prefs.setString('selected_auth_role', targetRole);
-                                if (context.mounted) {
-                                  context.go('${RouteNames.login}?role=$targetRole');
-                                }
-                              },
-                              behavior: HitTestBehavior.opaque,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 6,
-                                  horizontal: 10,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: isDark
-                                      ? AppColors.cardDark
-                                      : const Color(0xFFF3F7F4),
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(
-                                    color: isDark
-                                        ? AppColors.lineDark
-                                        : AppColors.organicBorderLight,
-                                    width: 1,
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.swap_horiz_rounded,
-                                      size: 16,
-                                      color: isDark
-                                          ? AppColors.organicActionLinkDark
-                                          : AppColors.organicActionLink,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      tr(ref, _isInstructorRole ? 'Student Login' : 'Instructor Login'),
-                                      style: GoogleFonts.plusJakartaSans(
-                                        fontSize: 12.5,
-                                        fontWeight: FontWeight.w700,
-                                        color: isDark
-                                          ? AppColors.organicActionLinkDark
-                                          : AppColors.organicActionLink,
+                            AnimatedBuilder(
+                              animation: _pulseController,
+                              builder: (context, child) {
+                                final glowVal = _pulseGlow.value;
+                                final scaleVal = _shouldPulseSwitchRole ? _pulseScale.value : 1.0;
+                                final pulseColor = _isInstructorRole
+                                    ? AppColors.primaryGreen
+                                    : const Color(0xFFF59E0B);
+
+                                return Transform.scale(
+                                  scale: scaleVal,
+                                  child: GestureDetector(
+                                    onTap: () async {
+                                      final targetRole = _isInstructorRole ? 'farmer' : 'instructor';
+                                      final prefs = await SharedPreferences.getInstance();
+                                      await prefs.setString('selected_auth_role', targetRole);
+                                      if (context.mounted) {
+                                        context.go('${RouteNames.login}?role=$targetRole');
+                                      }
+                                    },
+                                    behavior: HitTestBehavior.opaque,
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 6,
+                                        horizontal: 10,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: _shouldPulseSwitchRole
+                                            ? Color.lerp(
+                                                isDark ? AppColors.cardDark : const Color(0xFFF3F7F4),
+                                                pulseColor.withValues(alpha: 0.18),
+                                                glowVal,
+                                              )
+                                            : (isDark ? AppColors.cardDark : const Color(0xFFF3F7F4)),
+                                        borderRadius: BorderRadius.circular(16),
+                                        border: Border.all(
+                                          color: _shouldPulseSwitchRole
+                                              ? Color.lerp(
+                                                  isDark ? AppColors.lineDark : AppColors.organicBorderLight,
+                                                  pulseColor,
+                                                  glowVal,
+                                                )!
+                                              : (isDark ? AppColors.lineDark : AppColors.organicBorderLight),
+                                          width: _shouldPulseSwitchRole ? (1.0 + 1.2 * glowVal) : 1,
+                                        ),
+                                        boxShadow: _shouldPulseSwitchRole
+                                            ? [
+                                                BoxShadow(
+                                                  color: pulseColor.withValues(alpha: 0.45 * glowVal),
+                                                  blurRadius: 10 * glowVal,
+                                                  spreadRadius: 2 * glowVal,
+                                                )
+                                              ]
+                                            : null,
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            Icons.swap_horiz_rounded,
+                                            size: 16,
+                                            color: _shouldPulseSwitchRole
+                                                ? Color.lerp(
+                                                    isDark ? AppColors.organicActionLinkDark : AppColors.organicActionLink,
+                                                    pulseColor,
+                                                    glowVal,
+                                                  )
+                                                : (isDark ? AppColors.organicActionLinkDark : AppColors.organicActionLink),
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            tr(ref, _isInstructorRole ? 'Student Login' : 'Instructor Login'),
+                                            style: GoogleFonts.plusJakartaSans(
+                                              fontSize: 12.5,
+                                              fontWeight: FontWeight.w700,
+                                              color: _shouldPulseSwitchRole
+                                                  ? Color.lerp(
+                                                      isDark ? AppColors.organicActionLinkDark : AppColors.organicActionLink,
+                                                      pulseColor,
+                                                      glowVal,
+                                                    )
+                                                  : (isDark ? AppColors.organicActionLinkDark : AppColors.organicActionLink),
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
-                                  ],
-                                ),
-                              ),
+                                  ),
+                                );
+                              },
                             ),
                             GestureDetector(
                               onTap: () => context.push(RouteNames.forgotPassword),
