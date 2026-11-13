@@ -277,9 +277,35 @@ class CommunityPost {
   final int viewsCount;
   final int reactionsCount;
   final String? userReaction; // 'LIKE' | 'LOVE' | 'CLAP' | 'HELPFUL' | 'IDEA' | 'FARM'
+  final Map<String, int> reactionsBreakdown;
   final int commentsCount;
   final DateTime createdAt;
   final DateTime? updatedAt;
+
+  // Granular counts for thumbs up (LIKE) and heart (LOVE)
+  int get likeCount {
+    final count = reactionsBreakdown['LIKE'] ??
+        reactionsBreakdown['THUMBS_UP'] ??
+        reactionsBreakdown['GROW'] ??
+        reactionsBreakdown['LEAF'] ??
+        reactionsBreakdown['FARM'];
+    if (count != null) return count;
+    // Fallback if breakdown not populated:
+    if (userReaction == 'LIKE' || userReaction == 'FARM' || userReaction == 'GROW') {
+      return reactionsCount > 0 ? reactionsCount : 1;
+    }
+    return 0;
+  }
+
+  int get loveCount {
+    final count = reactionsBreakdown['LOVE'] ?? reactionsBreakdown['HEART'];
+    if (count != null) return count;
+    // Fallback if breakdown not populated:
+    if (userReaction == 'LOVE' || userReaction == 'HEART') {
+      return reactionsCount > 0 ? reactionsCount : 1;
+    }
+    return 0;
+  }
 
   // Backward-compatible getters
   int get likesCount => reactionsCount;
@@ -306,12 +332,14 @@ class CommunityPost {
     this.viewsCount = 0,
     int? reactionsCount,
     this.userReaction,
+    Map<String, int>? reactionsBreakdown,
     int? likesCount,
     bool? isLikedByMe,
     required this.commentsCount,
     required this.createdAt,
     this.updatedAt,
-  })  : reactionsCount = reactionsCount ?? likesCount ?? 0;
+  })  : reactionsCount = reactionsCount ?? likesCount ?? 0,
+        reactionsBreakdown = reactionsBreakdown ?? const {};
 
   factory CommunityPost.fromJson(Map<String, dynamic> json) {
     final authorMap = json['author'] is Map<String, dynamic>
@@ -368,12 +396,22 @@ class CommunityPost {
         json['likes_count'] as int? ??
         0;
 
+    final breakdownRaw = json['reactions_breakdown'];
+    final Map<String, int> parsedBreakdown = {};
+    if (breakdownRaw is Map) {
+      breakdownRaw.forEach((k, v) {
+        if (v is num) {
+          parsedBreakdown[k.toString().toUpperCase()] = v.toInt();
+        }
+      });
+    }
+
     String? parsedUserReaction = json['user_reaction']?.toString();
     if (parsedUserReaction == null || parsedUserReaction.isEmpty || parsedUserReaction == 'null') {
       parsedUserReaction = null;
       final isLiked = json['is_liked'] as bool? ?? json['is_liked_by_me'] as bool? ?? false;
       if (isLiked) {
-        parsedUserReaction = 'FARM';
+        parsedUserReaction = 'LIKE';
       }
     }
 
@@ -398,6 +436,7 @@ class CommunityPost {
       viewsCount: json['views_count'] as int? ?? 0,
       reactionsCount: parsedReactionsCount,
       userReaction: parsedUserReaction,
+      reactionsBreakdown: parsedBreakdown,
       commentsCount: json['comments_count'] as int? ?? 0,
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'].toString())?.toLocal() ?? DateTime.now()
@@ -485,6 +524,7 @@ class CommunityPost {
     int? viewsCount,
     int? reactionsCount,
     String? userReaction,
+    Map<String, int>? reactionsBreakdown,
     int? likesCount,
     bool? isLikedByMe,
     int? commentsCount,
@@ -511,7 +551,8 @@ class CommunityPost {
       tag: tag ?? this.tag,
       viewsCount: viewsCount ?? this.viewsCount,
       reactionsCount: reactionsCount ?? likesCount ?? this.reactionsCount,
-      userReaction: userReaction ?? (isLikedByMe != null ? (isLikedByMe ? 'FARM' : null) : this.userReaction),
+      userReaction: userReaction ?? (isLikedByMe != null ? (isLikedByMe ? 'LIKE' : null) : this.userReaction),
+      reactionsBreakdown: reactionsBreakdown ?? this.reactionsBreakdown,
       commentsCount: commentsCount ?? this.commentsCount,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

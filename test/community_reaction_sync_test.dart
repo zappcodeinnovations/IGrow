@@ -64,10 +64,10 @@ void main() {
       expect(post.isLikedByMe, isTrue);
     });
 
-    testWidgets('RichPostCard displays correct emoji icon for HELPFUL and LIKE', (tester) async {
+    testWidgets('RichPostCard displays separate Thumbs Up and Heart reaction buttons', (tester) async {
       await tester.binding.setSurfaceSize(const Size(800, 1200));
 
-      final testPostHelpful = CommunityPost(
+      final testPost = CommunityPost(
         id: 'post-1',
         author: CommunityAuthor(
           id: 'author-1',
@@ -79,7 +79,8 @@ void main() {
         title: 'New Organic Farming Post',
         content: 'Helpful content',
         reactionsCount: 5,
-        userReaction: 'HELPFUL',
+        userReaction: 'LIKE',
+        reactionsBreakdown: {'LIKE': 4, 'LOVE': 1},
         commentsCount: 2,
         createdAt: DateTime.now(),
       );
@@ -93,11 +94,11 @@ void main() {
               overrides: [
                 communityRepositoryProvider.overrideWithValue(mockRepo),
                 communityPostsProvider.overrideWith(
-                  (ref) => TestCommunityPostsNotifier(mockRepo, ref, initialPost: testPostHelpful),
+                  (ref) => TestCommunityPostsNotifier(mockRepo, ref, initialPost: testPost),
                 ),
               ],
               child: SingleChildScrollView(
-                child: RichPostCard(post: testPostHelpful),
+                child: RichPostCard(post: testPost),
               ),
             ),
           ),
@@ -106,12 +107,14 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      // Lightbulb emoji '💡' must be rendered for HELPFUL
-      expect(find.text('💡'), findsOneWidget);
-      expect(find.text('5'), findsOneWidget);
+      // Both 👍 and ❤️ buttons are shown separately with independent counts
+      expect(find.text('👍'), findsOneWidget);
+      expect(find.text('4'), findsOneWidget);
+      expect(find.text('❤️'), findsOneWidget);
+      expect(find.text('1'), findsOneWidget);
     });
 
-    testWidgets('Tapping lightbulb sends HELPFUL and tapping leaf sends LIKE without revert', (tester) async {
+    testWidgets('Tapping Thumbs Up sends LIKE and tapping Heart sends LOVE independently', (tester) async {
       await tester.binding.setSurfaceSize(const Size(800, 1400));
 
       final mockRepo = MockCommunityRepository();
@@ -128,7 +131,8 @@ void main() {
         title: 'Fruit Farming Course',
         content: 'Check out the new fruit farming course!',
         reactionsCount: 1,
-        userReaction: 'FARM',
+        userReaction: 'LIKE',
+        reactionsBreakdown: {'LIKE': 1, 'LOVE': 0},
         commentsCount: 0,
         createdAt: DateTime.now(),
       );
@@ -158,39 +162,19 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      // Initial active reaction is 🌾 Farm (count 1)
-      expect(find.text('🌾'), findsOneWidget);
+      // Initial active reaction is 👍 (count 1), ❤️ is 0
+      expect(find.text('👍'), findsOneWidget);
       expect(find.text('1'), findsOneWidget);
-
-      // Open emoji picker by tapping on the reaction counter button
-      await tester.tap(find.text('1'));
-      await tester.pumpAndSettle();
-
-      // Verify all 5 emojis are shown in the reaction bar: 🌾, 🌱, ❤️, 👏, 💡
-      expect(find.text('🌾'), findsWidgets);
-      expect(find.text('🌱'), findsOneWidget);
       expect(find.text('❤️'), findsOneWidget);
-      expect(find.text('👏'), findsOneWidget);
-      expect(find.text('💡'), findsOneWidget);
+      expect(find.text('0'), findsOneWidget);
 
-      // Tap on Lightbulb 💡 (Helpful)
-      await tester.tap(find.text('💡'));
+      // Tap on Heart ❤️ (Love)
+      await tester.tap(find.text('❤️'));
       await tester.pumpAndSettle();
 
-      // Verify repository received canonical 'HELPFUL' instead of 'IDEA'
-      expect(mockRepo.lastReactionSent, equals('HELPFUL'));
-      expect(mockRepo.lastReactedPostId, equals('post-test-123'));
-
-      // Re-open emoji picker
-      await tester.tap(find.text('💡'));
-      await tester.pumpAndSettle();
-
-      // Tap on Leaf 🌱 (Grow / Like)
-      await tester.tap(find.text('🌱'));
-      await tester.pumpAndSettle();
-
-      // Verify repository received canonical 'LIKE' instead of 'GROW'
-      expect(mockRepo.lastReactionSent, equals('LIKE'));
+      // Verify repository received canonical 'LOVE'
+      expect(mockRepo.lastReactedPostId, 'post-test-123');
+      expect(mockRepo.lastReactionSent, 'LOVE');
     });
   });
 }

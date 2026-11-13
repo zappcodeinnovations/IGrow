@@ -33,23 +33,10 @@ class RichPostCard extends ConsumerStatefulWidget {
   ConsumerState<RichPostCard> createState() => _RichPostCardState();
 }
 
-class _RichPostCardState extends ConsumerState<RichPostCard> with SingleTickerProviderStateMixin {
-  bool _isEmojiPickerOpen = false;
-  late AnimationController _pickerAnimController;
-  late Animation<double> _pickerScaleAnim;
-
+class _RichPostCardState extends ConsumerState<RichPostCard> {
   @override
   void initState() {
     super.initState();
-    _pickerAnimController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 180),
-    );
-    _pickerScaleAnim = CurvedAnimation(
-      parent: _pickerAnimController,
-      curve: Curves.easeOutBack,
-    );
-
     // Record view automatically on appearance
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
@@ -62,26 +49,15 @@ class _RichPostCardState extends ConsumerState<RichPostCard> with SingleTickerPr
     });
   }
 
-  @override
-  void dispose() {
-    _pickerAnimController.dispose();
-    super.dispose();
-  }
-
-  void _toggleEmojiPicker() {
-    setState(() {
-      _isEmojiPickerOpen = !_isEmojiPickerOpen;
-      if (_isEmojiPickerOpen) {
-        _pickerAnimController.forward();
-      } else {
-        _pickerAnimController.reverse();
-      }
-    });
-  }
-
   void _onReact(String reaction) {
-    _pickerAnimController.reverse();
-    setState(() => _isEmojiPickerOpen = false);
+    if (!widget.isHubActive) {
+      AppToast.show(
+        context,
+        'This community hub has been deactivated by administration. Reactions are disabled.',
+        isError: true,
+      );
+      return;
+    }
     if (widget.hubId != null && widget.hubId!.isNotEmpty) {
       ref.read(communityHubPostsProvider(widget.hubId!).notifier).reactToPost(widget.post.id, reaction);
     } else {
@@ -1029,71 +1005,9 @@ class _RichPostCardState extends ConsumerState<RichPostCard> with SingleTickerPr
             ),
           ],
 
-          // ─── Animated Floating Emoji Reaction Picker ─────────────
-          if (_isEmojiPickerOpen)
-            ScaleTransition(
-              scale: _pickerScaleAnim,
-              alignment: Alignment.bottomRight,
-              child: Container(
-                margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF223528) : const Color(0xFFF0FDF4),
-                  borderRadius: BorderRadius.circular(30),
-                  border: Border.all(color: AppColors.primaryGreen.withValues(alpha: 0.35)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primaryGreen.withValues(alpha: isDark ? 0.25 : 0.15),
-                      blurRadius: 14,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _EmojiItem(
-                      emoji: '🌾',
-                      label: 'Farm',
-                      isSelected: widget.post.userReaction == 'FARM',
-                      onTap: () => _onReact('FARM'),
-                    ),
-                    _EmojiItem(
-                      emoji: '🌱',
-                      label: 'Grow',
-                      isSelected: widget.post.userReaction == 'LIKE' ||
-                          widget.post.userReaction == 'GROW' ||
-                          widget.post.userReaction == 'LEAF',
-                      onTap: () => _onReact('LIKE'),
-                    ),
-                    _EmojiItem(
-                      emoji: '❤️',
-                      label: 'Love',
-                      isSelected: widget.post.userReaction == 'LOVE' ||
-                          widget.post.userReaction == 'HEART',
-                      onTap: () => _onReact('LOVE'),
-                    ),
-                    _EmojiItem(
-                      emoji: '👏',
-                      label: 'Clap',
-                      isSelected: widget.post.userReaction == 'CLAP',
-                      onTap: () => _onReact('CLAP'),
-                    ),
-                    _EmojiItem(
-                      emoji: '💡',
-                      label: 'Helpful',
-                      isSelected: widget.post.userReaction == 'HELPFUL' ||
-                          widget.post.userReaction == 'IDEA',
-                      onTap: () => _onReact('HELPFUL'),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
           Divider(height: 18, color: borderColor),
 
-          // ─── Footer: Views Tally & Emoji Reactions ────────────────
+          // ─── Footer: Views Tally & Separated Emoji Reactions ────────
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
             child: Row(
@@ -1152,51 +1066,97 @@ class _RichPostCardState extends ConsumerState<RichPostCard> with SingleTickerPr
                       ),
                     ),
                     const SizedBox(width: 8),
-                    // Emoji Reaction Button & Active Count
-                    GestureDetector(
-                      onTap: widget.isHubActive
-                          ? _toggleEmojiPicker
-                          : () {
-                              AppToast.show(
-                                context,
-                                'This community hub has been deactivated by administration. Reactions are disabled.',
-                                isError: true,
-                              );
-                            },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: widget.post.userReaction != null
-                              ? (isDark ? const Color(0xFF263B2B) : const Color(0xFFDCFCE7))
-                              : (isDark ? Colors.white10 : const Color(0xFFF1F5F9)),
-                          borderRadius: BorderRadius.circular(18),
-                          border: Border.all(
-                            color: widget.post.userReaction != null
-                                ? AppColors.primaryGreen
-                                : Colors.transparent,
-                            width: 1.2,
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Text(
-                              _getReactionEmoji(widget.post.userReaction) ?? '🌾',
-                              style: const TextStyle(fontSize: 16),
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              '${widget.post.reactionsCount}',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: widget.post.userReaction != null
-                                    ? AppColors.primaryGreen
-                                    : (isDark ? Colors.white70 : AppColors.inkDark),
+
+                    // Separated Thumbs Up (👍) Reaction Button
+                    Builder(
+                      builder: (context) {
+                        final isLiked = widget.post.userReaction == 'LIKE' ||
+                            widget.post.userReaction == 'THUMBS_UP' ||
+                            widget.post.userReaction == 'GROW' ||
+                            widget.post.userReaction == 'LEAF' ||
+                            widget.post.userReaction == 'FARM';
+                        return GestureDetector(
+                          onTap: () => _onReact('LIKE'),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 150),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: isLiked
+                                  ? (isDark ? const Color(0xFF263B2B) : const Color(0xFFDCFCE7))
+                                  : (isDark ? Colors.white10 : const Color(0xFFF1F5F9)),
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(
+                                color: isLiked ? AppColors.primaryGreen : Colors.transparent,
+                                width: 1.2,
                               ),
                             ),
-                          ],
-                        ),
-                      ),
+                            child: Row(
+                              children: [
+                                const Text(
+                                  '👍',
+                                  style: TextStyle(fontSize: 15),
+                                ),
+                                const SizedBox(width: 5),
+                                Text(
+                                  '${widget.post.likeCount}',
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.bold,
+                                    color: isLiked
+                                        ? AppColors.primaryGreen
+                                        : (isDark ? Colors.white70 : AppColors.inkDark),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(width: 8),
+
+                    // Separated Heart (❤️) Reaction Button
+                    Builder(
+                      builder: (context) {
+                        final isLoved = widget.post.userReaction == 'LOVE' ||
+                            widget.post.userReaction == 'HEART';
+                        return GestureDetector(
+                          onTap: () => _onReact('LOVE'),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 150),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: isLoved
+                                  ? (isDark ? const Color(0xFF3B1E26) : const Color(0xFFFFE4E6))
+                                  : (isDark ? Colors.white10 : const Color(0xFFF1F5F9)),
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(
+                                color: isLoved ? const Color(0xFFE11D48) : Colors.transparent,
+                                width: 1.2,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                const Text(
+                                  '❤️',
+                                  style: TextStyle(fontSize: 15),
+                                ),
+                                const SizedBox(width: 5),
+                                Text(
+                                  '${widget.post.loveCount}',
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.bold,
+                                    color: isLoved
+                                        ? const Color(0xFFE11D48)
+                                        : (isDark ? Colors.white70 : AppColors.inkDark),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -1204,60 +1164,6 @@ class _RichPostCardState extends ConsumerState<RichPostCard> with SingleTickerPr
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  String? _getReactionEmoji(String? reaction) {
-    if (reaction == null) return null;
-    switch (reaction.toUpperCase()) {
-      case 'FARM':
-        return '🌾';
-      case 'LIKE':
-      case 'GROW':
-      case 'LEAF':
-        return '🌱';
-      case 'LOVE':
-      case 'HEART':
-        return '❤️';
-      case 'CLAP':
-        return '👏';
-      case 'HELPFUL':
-      case 'IDEA':
-        return '💡';
-      default:
-        return null;
-    }
-  }
-}
-
-class _EmojiItem extends StatelessWidget {
-  const _EmojiItem({
-    required this.emoji,
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  final String emoji;
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.primaryGreen.withValues(alpha: 0.3) : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Text(
-          emoji,
-          style: TextStyle(fontSize: isSelected ? 24 : 20),
-        ),
       ),
     );
   }

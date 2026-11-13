@@ -371,9 +371,7 @@ class CommunityPostsNotifier extends StateNotifier<AsyncValue<List<CommunityPost
 
     final post = oldPosts[index];
     final currentReaction = post.userReaction?.toUpperCase();
-    final isUnreacting = currentReaction == canonical ||
-        (canonical == 'LIKE' && (currentReaction == 'GROW' || currentReaction == 'LEAF')) ||
-        (canonical == 'HELPFUL' && currentReaction == 'IDEA');
+    final isUnreacting = currentReaction == canonical;
 
     final newUserReaction = isUnreacting ? null : canonical;
     int newCount = post.reactionsCount;
@@ -383,9 +381,22 @@ class CommunityPostsNotifier extends StateNotifier<AsyncValue<List<CommunityPost
       newCount += 1;
     }
 
+    final newBreakdown = Map<String, int>.from(post.reactionsBreakdown);
+    if (isUnreacting) {
+      final prevCount = newBreakdown[canonical] ?? 0;
+      newBreakdown[canonical] = (prevCount > 0) ? prevCount - 1 : 0;
+    } else {
+      if (currentReaction != null) {
+        final prevOther = newBreakdown[currentReaction] ?? 0;
+        newBreakdown[currentReaction] = (prevOther > 0) ? prevOther - 1 : 0;
+      }
+      newBreakdown[canonical] = (newBreakdown[canonical] ?? 0) + 1;
+    }
+
     final newPost = post.copyWith(
       userReaction: newUserReaction,
       reactionsCount: newCount,
+      reactionsBreakdown: newBreakdown,
     );
 
     final newPosts = List<CommunityPost>.from(oldPosts);
@@ -404,9 +415,21 @@ class CommunityPostsNotifier extends StateNotifier<AsyncValue<List<CommunityPost
           ? null
           : rawServerReaction;
 
+      final serverBreakdownRaw = response['reactions_breakdown'];
+      Map<String, int>? serverBreakdown;
+      if (serverBreakdownRaw is Map) {
+        serverBreakdown = {};
+        serverBreakdownRaw.forEach((k, v) {
+          if (v is num) {
+            serverBreakdown![k.toString().toUpperCase()] = v.toInt();
+          }
+        });
+      }
+
       final verifiedPost = newPost.copyWith(
         reactionsCount: serverCount ?? newCount,
         userReaction: serverReaction ?? newUserReaction,
+        reactionsBreakdown: serverBreakdown ?? newBreakdown,
       );
       final verifiedPosts = List<CommunityPost>.from(state.value ?? newPosts);
       final vIdx = verifiedPosts.indexWhere((p) => p.id == postId);
