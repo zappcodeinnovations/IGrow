@@ -1439,7 +1439,25 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
               const SizedBox(height: 28),
 
               // Recent Activity (Transactions)
-              Text(tr(ref, 'Recent Transactions'), style: Theme.of(context).textTheme.headlineSmall),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(tr(ref, 'Recent Transactions'), style: Theme.of(context).textTheme.headlineSmall),
+                  TextButton.icon(
+                    onPressed: () => context.push(RouteNames.instructorTransactions),
+                    icon: const Icon(Icons.arrow_forward_rounded, size: 16),
+                    label: Text(
+                      tr(ref, 'View All'),
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.primaryGreen,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: 14),
               ref.watch(instructorTransactionsProvider).when(
                 data: (transactions) {
@@ -1450,22 +1468,40 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                     );
                   }
                   return Column(
-                    children: transactions.take(5).map((txn) {
-                      final amount = txn['amount'] ?? '0';
-                      final desc = txn['description'] ?? txn['item'] ?? txn['course_title'] ?? 'Transaction';
-                      final date = txn['date'] ?? 'Recently';
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: _ActivityItem(
-                          icon: Icons.payment_rounded,
-                          color: AppColors.primaryGreen,
-                          title: '₹$amount',
-                          subtitle: desc,
-                          time: date,
-                          onTap: () => _showTransactionDetailsModal(context, txn),
+                    children: [
+                      ...transactions.take(5).map((txn) {
+                        final amount = txn['amount'] ?? '0';
+                        final desc = txn['description'] ?? txn['item'] ?? txn['course_title'] ?? 'Transaction';
+                        final date = txn['date'] ?? 'Recently';
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: _ActivityItem(
+                            icon: Icons.payment_rounded,
+                            color: AppColors.primaryGreen,
+                            title: '₹$amount',
+                            subtitle: desc,
+                            time: date,
+                            onTap: () => _showTransactionDetailsModal(context, txn),
+                          ),
+                        );
+                      }),
+                      if (transactions.length > 5) ...[
+                        const SizedBox(height: 4),
+                        Center(
+                          child: OutlinedButton.icon(
+                            onPressed: () => context.push(RouteNames.instructorTransactions),
+                            icon: const Icon(Icons.receipt_long_rounded, size: 16),
+                            label: Text('View All ${transactions.length} Transactions'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.primaryGreen,
+                              side: const BorderSide(color: AppColors.primaryGreen),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              visualDensity: VisualDensity.compact,
+                            ),
+                          ),
                         ),
-                      );
-                    }).toList(),
+                      ],
+                    ],
                   );
                 },
                 loading: () => Column(
