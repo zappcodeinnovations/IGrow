@@ -216,7 +216,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text(
-                                '$tempCount active',
+                                '$tempCount ${tr(ref, 'active')}',
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 11,
@@ -233,7 +233,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                         children: [
                           const Icon(Icons.star_rounded, size: 18, color: Colors.amber),
                           const SizedBox(width: 6),
-                          Text('Minimum Rating', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, fontSize: 14)),
+                          Text(tr(ref, 'Minimum Rating'), style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, fontSize: 14)),
                         ],
                       ),
                       const SizedBox(height: 8),
@@ -242,7 +242,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                         runSpacing: 8,
                         children: [
                           ChoiceChip(
-                            label: const Text('All Ratings'),
+                            label: Text(tr(ref, 'All Ratings')),
                             selected: tempMinRating == null,
                             selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
                             labelStyle: TextStyle(
@@ -263,7 +263,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                                 children: [
                                   const Icon(Icons.star_rounded, size: 14, color: Colors.amber),
                                   const SizedBox(width: 4),
-                                  Text('$rating & up'),
+                                  Text('${formatNum(ref, rating)} ${tr(ref, '& up')}'),
                                 ],
                               ),
                               selected: isSelected,
@@ -286,7 +286,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                         children: [
                           const Icon(Icons.payments_outlined, size: 18, color: Color(0xFF1B4D2E)),
                           const SizedBox(width: 6),
-                          Text('Price Filter', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, fontSize: 14)),
+                          Text(tr(ref, 'Price Filter'), style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, fontSize: 14)),
                         ],
                       ),
                       const SizedBox(height: 8),
@@ -295,7 +295,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                         runSpacing: 8,
                         children: [
                           ChoiceChip(
-                            label: const Text('All Prices'),
+                            label: Text(tr(ref, 'All Prices')),
                             selected: tempPricePreset == 'all',
                             selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
                             labelStyle: TextStyle(
@@ -313,7 +313,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                             },
                           ),
                           ChoiceChip(
-                            label: const Text('Free Courses'),
+                            label: Text(tr(ref, 'Free Courses')),
                             selected: tempPricePreset == 'free',
                             selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
                             labelStyle: TextStyle(
@@ -331,7 +331,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                             },
                           ),
                           ChoiceChip(
-                            label: const Text('Paid Courses'),
+                            label: Text(tr(ref, 'Paid Courses')),
                             selected: tempPricePreset == 'paid',
                             selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
                             labelStyle: TextStyle(
@@ -349,7 +349,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                             },
                           ),
                           ChoiceChip(
-                            label: const Text('Under ₹500'),
+                            label: Text(tr(ref, 'Under ₹500')),
                             selected: tempPricePreset == 'under_500',
                             selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
                             labelStyle: TextStyle(
@@ -375,7 +375,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                         children: [
                           const Icon(Icons.signal_cellular_alt_rounded, size: 18, color: Color(0xFF1B4D2E)),
                           const SizedBox(width: 6),
-                          Text('Skill Level', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, fontSize: 14)),
+                          Text(tr(ref, 'Skill Level'), style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, fontSize: 14)),
                         ],
                       ),
                       const SizedBox(height: 8),
@@ -384,7 +384,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                         runSpacing: 8,
                         children: [
                           ChoiceChip(
-                            label: const Text('All Levels'),
+                            label: Text(tr(ref, 'All Levels')),
                             selected: tempLevel.isEmpty,
                             selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
                             labelStyle: TextStyle(
@@ -396,7 +396,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                             },
                           ),
                           ChoiceChip(
-                            label: const Text('Beginner'),
+                            label: Text(tr(ref, 'Beginner')),
                             selected: tempLevel == 'beginner',
                             selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
                             labelStyle: TextStyle(
@@ -408,7 +408,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                             },
                           ),
                           ChoiceChip(
-                            label: const Text('Intermediate'),
+                            label: Text(tr(ref, 'Intermediate')),
                             selected: tempLevel == 'intermediate',
                             selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
                             labelStyle: TextStyle(
@@ -420,7 +420,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                             },
                           ),
                           ChoiceChip(
-                            label: const Text('Advanced'),
+                            label: Text(tr(ref, 'Advanced')),
                             selected: tempLevel == 'advanced',
                             selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
                             labelStyle: TextStyle(
@@ -440,7 +440,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                         children: [
                           const Icon(Icons.sort_rounded, size: 18, color: Color(0xFF1B4D2E)),
                           const SizedBox(width: 6),
-                          Text('Sort by', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, fontSize: 14)),
+                          Text(tr(ref, 'Sort by'), style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, fontSize: 14)),
                         ],
                       ),
                       const SizedBox(height: 8),
@@ -449,7 +449,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                         runSpacing: 8,
                         children: [
                           ChoiceChip(
-                            label: const Text('Newest'),
+                            label: Text(tr(ref, 'Newest')),
                             selected: tempOrdering == '-created_at' || tempOrdering == '',
                             selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
                             labelStyle: TextStyle(
@@ -461,7 +461,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                             },
                           ),
                           ChoiceChip(
-                            label: const Text('Most Popular'),
+                            label: Text(tr(ref, 'Most Popular')),
                             selected: tempOrdering == '-views_count',
                             selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
                             labelStyle: TextStyle(
@@ -495,7 +495,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                                   tempMinRating = null;
                                 });
                               },
-                              child: const Text('Reset All', style: TextStyle(fontWeight: FontWeight.bold)),
+                              child: Text(tr(ref, 'Reset All'), style: const TextStyle(fontWeight: FontWeight.bold)),
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -520,7 +520,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                                   _minRating = tempMinRating;
                                 });
                               },
-                              child: const Text('Apply Filters', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                              child: Text(tr(ref, 'Apply Filters'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                             ),
                           ),
                         ],
@@ -603,13 +603,8 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
           IconButton(
             icon: const Icon(Icons.more_vert_rounded),
             color: isDark ? Colors.white70 : const Color(0xFF1B4D2E),
-            onPressed: () {
-              // Quick action: switch directly to Search view
-              setState(() {
-                _searchQuery = ' ';
-                _searchController.text = '';
-              });
-            },
+            tooltip: tr(ref, 'Filter Courses'),
+            onPressed: _showFilterBottomSheet,
           ),
           const SizedBox(width: 8),
         ],
