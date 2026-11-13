@@ -1061,8 +1061,8 @@ class _CheckoutSuccessScreenState extends ConsumerState<CheckoutSuccessScreen> {
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
                       pw.Text('BILLED TO:', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: PdfColors.grey600)),
-                      pw.Text(studentName, style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
-                      pw.Text(studentEmail, style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700)),
+                      pw.Text(PdfThemeHelper.sanitizePdfText(studentName), style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
+                      pw.Text(PdfThemeHelper.sanitizePdfText(studentEmail), style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700)),
                     ],
                   ),
                   pw.Column(
@@ -1098,7 +1098,7 @@ class _CheckoutSuccessScreenState extends ConsumerState<CheckoutSuccessScreen> {
                         (itemObj is Map && (itemObj['item_type'] == 'ebook' || itemObj['ebook'] != null));
                     return [
                       '${index + 1}',
-                      title,
+                      PdfThemeHelper.sanitizePdfText(title),
                       isEbook ? 'E-BOOK' : 'COURSE',
                       '₹$price',
                     ];

@@ -238,7 +238,7 @@ class _CertificateViewerDialogState extends State<CertificateViewerDialog> {
                       ),
                       pw.SizedBox(height: 8),
                       pw.Text(
-                        _studentName,
+                        PdfThemeHelper.sanitizePdfText(_studentName),
                         style: pw.TextStyle(
                           fontSize: 26,
                           fontWeight: pw.FontWeight.bold,
@@ -258,7 +258,7 @@ class _CertificateViewerDialogState extends State<CertificateViewerDialog> {
                       ),
                       pw.SizedBox(height: 6),
                       pw.Text(
-                        _courseTitle,
+                        PdfThemeHelper.sanitizePdfText(_courseTitle),
                         textAlign: pw.TextAlign.center,
                         style: pw.TextStyle(
                           fontSize: 16,
@@ -354,11 +354,11 @@ class _CertificateViewerDialogState extends State<CertificateViewerDialog> {
                             color: PdfColors.grey600,
                           ),
                           pw.Text(
-                            _instructorName,
+                            PdfThemeHelper.sanitizePdfText(_instructorName),
                             style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
                           ),
                           pw.Text(
-                            _instructorTitle ?? 'Lead Instructor & Agronomist',
+                            PdfThemeHelper.sanitizePdfText(_instructorTitle ?? 'Lead Instructor & Agronomist'),
                             style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700),
                           ),
                         ],

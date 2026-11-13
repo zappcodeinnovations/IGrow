@@ -969,8 +969,8 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
                       pw.Text('BILLED TO:', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: PdfColors.grey600)),
-                      pw.Text(studentName, style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
-                      pw.Text(studentEmail, style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700)),
+                      pw.Text(PdfThemeHelper.sanitizePdfText(studentName), style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
+                      pw.Text(PdfThemeHelper.sanitizePdfText(studentEmail), style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700)),
                     ],
                   ),
                   pw.Column(
@@ -1006,7 +1006,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                         : 'COURSE';
                     return [
                       '${index + 1}',
-                      item.courseTitle ?? 'Agriculture Course',
+                      PdfThemeHelper.sanitizePdfText(item.courseTitle ?? 'Agriculture Course'),
                       itemType,
                       '₹${item.priceAtPurchase}',
                     ];
