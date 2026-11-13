@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:krushi_siksha/features/home_instructor/providers/instructor_home_provider.dart';
+import 'package:krushi_siksha/features/instructor_dashboard/screens/instructor_students_screen.dart';
 import 'package:krushi_siksha/features/instructor_dashboard/widgets/my_students_sheet.dart';
 
 void main() {
@@ -78,8 +81,10 @@ void main() {
       expect(profiles[1].totalSpent, equals(599.0 + 499.0));
     });
 
-    testWidgets('MyStudentsSheet renders distinct student cards and allows drilling into details', (tester) async {
+    testWidgets('MyStudentsSheet renders distinct student cards, View All button, and removes ledger button', (tester) async {
       await tester.binding.setSurfaceSize(const Size(800, 1200));
+
+      bool viewAllTapped = false;
 
       await tester.pumpWidget(
         MaterialApp(
@@ -89,7 +94,9 @@ void main() {
               totalStudents: 2,
               totalEnrollments: 7,
               scrollController: ScrollController(),
-              onOpenLedger: () {},
+              onViewAll: () {
+                viewAllTapped = true;
+              },
             ),
           ),
         ),
@@ -100,6 +107,17 @@ void main() {
       // Check header counts
       expect(find.text('My Students'), findsOneWidget);
       expect(find.text('2 total students • 7 enrollments'), findsOneWidget);
+
+      // Verify "View All" button is present in the Enrolled Students row
+      expect(find.text('View All'), findsOneWidget);
+
+      // Verify "View Full Financial & Payout Ledger" button is removed
+      expect(find.text('View Full Financial & Payout Ledger'), findsNothing);
+
+      // Tap "View All" and verify callback fires
+      await tester.tap(find.text('View All'));
+      await tester.pumpAndSettle();
+      expect(viewAllTapped, isTrue);
 
       // Check distinct student names are present
       expect(find.text('Rashmi Joshi'), findsOneWidget);
@@ -130,6 +148,60 @@ void main() {
 
       expect(find.text('Rashmi Joshi'), findsOneWidget);
       expect(find.text('kajal nawghare'), findsNothing);
+    });
+
+    testWidgets('InstructorStudentsScreen displays all students with fully functional search and filters', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(800, 1200));
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            instructorTransactionsProvider.overrideWith((ref) => Future.value(mockTransactions)),
+          ],
+          child: const MaterialApp(
+            home: InstructorStudentsScreen(),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // Check App Bar and Stats Banner
+      expect(find.text('My Students'), findsOneWidget);
+      expect(find.text('2 Distinct Students'), findsOneWidget);
+      expect(find.text('7 total course enrollments recorded'), findsOneWidget);
+
+      // Check Both Students are listed
+      expect(find.text('Rashmi Joshi'), findsOneWidget);
+      expect(find.text('kajal nawghare'), findsOneWidget);
+
+      // Search functionality test: search for 'kajal'
+      final searchField = find.byType(TextField);
+      expect(searchField, findsOneWidget);
+
+      await tester.enterText(searchField, 'kajal');
+      await tester.pumpAndSettle();
+
+      expect(find.text('kajal nawghare'), findsOneWidget);
+      expect(find.text('Rashmi Joshi'), findsNothing);
+
+      // Clear search via clear icon button
+      final clearButton = find.byIcon(Icons.close_rounded);
+      expect(clearButton, findsOneWidget);
+      await tester.tap(clearButton);
+      await tester.pumpAndSettle();
+
+      // Both back in list
+      expect(find.text('Rashmi Joshi'), findsOneWidget);
+      expect(find.text('kajal nawghare'), findsOneWidget);
+
+      // Tap on a student card opens their details modal
+      await tester.tap(find.text('Rashmi Joshi'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Active Enrolled Student'), findsOneWidget);
+      expect(find.text('Enrolled Courses (5)'), findsOneWidget);
+      expect(find.text('सेंद्रिय खत निर्मिती'), findsOneWidget);
     });
   });
 }

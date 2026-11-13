@@ -30,6 +30,7 @@ import '../../features/instructor_dashboard/screens/manage_course_screen.dart';
 import '../../features/instructor_dashboard/screens/instructor_kyc_screen.dart';
 import '../../features/instructor_dashboard/screens/instructor_reviews_screen.dart';
 import '../../features/instructor_dashboard/screens/instructor_transactions_screen.dart';
+import '../../features/instructor_dashboard/screens/instructor_students_screen.dart';
 import '../../features/home_farmer/screens/farmer_home_screen.dart';
 import '../../features/home_instructor/screens/instructor_home_screen.dart';
 import '../../features/learning/screens/my_learning_screen.dart';
@@ -547,6 +548,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: RouteNames.instructorTransactions,
             builder: (context, state) => const InstructorTransactionsScreen(),
+          ),
+          GoRoute(
+            path: RouteNames.instructorStudents,
+            builder: (context, state) => const InstructorStudentsScreen(),
           ),
         ],
       ),

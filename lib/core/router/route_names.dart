@@ -49,6 +49,7 @@ class RouteNames {
   static const instructorKyc = '/instructor/kyc';
   static const instructorReviews = '/instructor/reviews';
   static const instructorTransactions = '/instructor/transactions';
+  static const instructorStudents = '/instructor/students';
 
   // ─── Shared ──────────────────────────────────────────────────────
   static const wallet = '/wallet';

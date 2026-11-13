@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
 
 /// Represents a distinct student enrolled with an instructor,
@@ -108,7 +110,8 @@ class MyStudentsSheet extends StatefulWidget {
   final int totalStudents;
   final int totalEnrollments;
   final ScrollController scrollController;
-  final VoidCallback onOpenLedger;
+  final VoidCallback? onOpenLedger;
+  final VoidCallback? onViewAll;
 
   const MyStudentsSheet({
     super.key,
@@ -116,7 +119,8 @@ class MyStudentsSheet extends StatefulWidget {
     required this.totalStudents,
     required this.totalEnrollments,
     required this.scrollController,
-    required this.onOpenLedger,
+    this.onOpenLedger,
+    this.onViewAll,
   });
 
   @override
@@ -126,7 +130,7 @@ class MyStudentsSheet extends StatefulWidget {
 class _MyStudentsSheetState extends State<MyStudentsSheet> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
-  String _sortMode = 'COURSES'; // 'COURSES' | 'RECENT' | 'NAME'
+  final String _sortMode = 'COURSES';
 
   @override
   void initState() {
@@ -288,9 +292,10 @@ class _MyStudentsSheetState extends State<MyStudentsSheet> {
 
           const SizedBox(height: 14),
 
-          // Section Label & Filter Count
+          // Section Label & View All Button
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Text(
                 'Enrolled Students (${filteredStudents.length})',
@@ -299,35 +304,39 @@ class _MyStudentsSheetState extends State<MyStudentsSheet> {
                     .titleSmall
                     ?.copyWith(fontWeight: FontWeight.bold),
               ),
-              if (filteredStudents.length > 1)
-                PopupMenuButton<String>(
-                  initialValue: _sortMode,
-                  onSelected: (val) => setState(() => _sortMode = val),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              InkWell(
+                borderRadius: BorderRadius.circular(8),
+                onTap: () {
+                  if (widget.onViewAll != null) {
+                    widget.onViewAll!();
+                  } else {
+                    Navigator.pop(context);
+                    context.push(RouteNames.instructorStudents);
+                  }
+                },
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                   child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.sort_rounded, size: 16, color: AppColors.primaryGreen),
-                      const SizedBox(width: 4),
                       Text(
-                        _sortMode == 'NAME'
-                            ? 'A to Z'
-                            : _sortMode == 'RECENT'
-                                ? 'Recent'
-                                : 'Most Courses',
-                        style: const TextStyle(
-                          fontSize: 12,
+                        'View All',
+                        style: TextStyle(
+                          fontSize: 13,
                           fontWeight: FontWeight.bold,
                           color: AppColors.primaryGreen,
                         ),
                       ),
+                      SizedBox(width: 3),
+                      Icon(
+                        Icons.arrow_forward_ios_rounded,
+                        size: 11,
+                        color: AppColors.primaryGreen,
+                      ),
                     ],
                   ),
-                  itemBuilder: (_) => const [
-                    PopupMenuItem(value: 'COURSES', child: Text('Most Courses Enrolled')),
-                    PopupMenuItem(value: 'RECENT', child: Text('Recently Active')),
-                    PopupMenuItem(value: 'NAME', child: Text('Name (A-Z)')),
-                  ],
                 ),
+              ),
             ],
           ),
 
@@ -482,20 +491,6 @@ class _MyStudentsSheetState extends State<MyStudentsSheet> {
           ],
 
           const SizedBox(height: 16),
-
-          // Bottom Action
-          ElevatedButton.icon(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primaryGreen,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              padding: const EdgeInsets.symmetric(vertical: 14),
-            ),
-            icon: const Icon(Icons.receipt_long_rounded, size: 18),
-            label: const Text('View Full Financial & Payout Ledger'),
-            onPressed: widget.onOpenLedger,
-          ),
-          const SizedBox(height: 12),
         ],
       ),
     );
