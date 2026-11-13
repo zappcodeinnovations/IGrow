@@ -376,7 +376,7 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Transaction Receipt',
+                              tr(ref, 'Transaction Receipt'),
                               style: Theme.of(sheetCtx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                             ),
                             Text(
@@ -412,9 +412,9 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Amount Credited', style: TextStyle(fontSize: 13, color: AppColors.inkSoft)),
+                          Text(tr(ref, 'Amount Credited'), style: const TextStyle(fontSize: 13, color: AppColors.inkSoft)),
                           Text(
-                            amount,
+                            formatNum(ref, amount),
                             style: const TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
@@ -427,7 +427,7 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Status', style: TextStyle(fontSize: 13, color: AppColors.inkSoft)),
+                          Text(tr(ref, 'Status'), style: const TextStyle(fontSize: 13, color: AppColors.inkSoft)),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(
@@ -437,7 +437,7 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
-                              status,
+                              tr(ref, status),
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,
@@ -451,7 +451,7 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Item / Course', style: TextStyle(fontSize: 13, color: AppColors.inkSoft)),
+                          Text(tr(ref, 'Item / Course'), style: const TextStyle(fontSize: 13, color: AppColors.inkSoft)),
                           Flexible(
                             child: Text(
                               item,
@@ -467,7 +467,7 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Enrolled Student', style: TextStyle(fontSize: 13, color: AppColors.inkSoft)),
+                          Text(tr(ref, 'Enrolled Student'), style: const TextStyle(fontSize: 13, color: AppColors.inkSoft)),
                           Text(buyer, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                         ],
                       ),
@@ -475,16 +475,16 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Date & Time', style: TextStyle(fontSize: 13, color: AppColors.inkSoft)),
-                          Text(date, style: const TextStyle(fontSize: 12, color: AppColors.inkSoft)),
+                          Text(tr(ref, 'Date & Time'), style: const TextStyle(fontSize: 13, color: AppColors.inkSoft)),
+                          Text(formatNum(ref, date), style: const TextStyle(fontSize: 12, color: AppColors.inkSoft)),
                         ],
                       ),
                       const SizedBox(height: 12),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Payment Method', style: TextStyle(fontSize: 13, color: AppColors.inkSoft)),
-                          Text(paymentMethod, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+                          Text(tr(ref, 'Payment Method'), style: const TextStyle(fontSize: 13, color: AppColors.inkSoft)),
+                          Text(tr(ref, paymentMethod), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
                         ],
                       ),
                     ],
@@ -501,7 +501,7 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                     icon: const Icon(Icons.analytics_outlined, size: 18),
-                    label: const Text('View Full Financial Ledger', style: TextStyle(fontWeight: FontWeight.bold)),
+                    label: Text(tr(ref, 'View Full Financial Ledger'), style: const TextStyle(fontWeight: FontWeight.bold)),
                     onPressed: () {
                       Navigator.pop(sheetCtx);
                       context.push(RouteNames.instructorAnalytics);

@@ -109,7 +109,7 @@ class _InstructorTransactionsScreenState
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Transaction Receipt',
+                              tr(ref, 'Transaction Receipt'),
                               style: Theme.of(sheetCtx)
                                   .textTheme
                                   .titleMedium
@@ -150,12 +150,12 @@ class _InstructorTransactionsScreenState
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
-                            'Amount Credited',
-                            style: TextStyle(fontSize: 13, color: AppColors.inkSoft),
+                          Text(
+                            tr(ref, 'Amount Credited'),
+                            style: const TextStyle(fontSize: 13, color: AppColors.inkSoft),
                           ),
                           Text(
-                            amount,
+                            formatNum(ref, amount),
                             style: const TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
@@ -168,9 +168,9 @@ class _InstructorTransactionsScreenState
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
-                            'Status',
-                            style: TextStyle(fontSize: 13, color: AppColors.inkSoft),
+                          Text(
+                            tr(ref, 'Status'),
+                            style: const TextStyle(fontSize: 13, color: AppColors.inkSoft),
                           ),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -183,7 +183,7 @@ class _InstructorTransactionsScreenState
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
-                              status,
+                              tr(ref, status),
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,
@@ -201,9 +201,9 @@ class _InstructorTransactionsScreenState
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
-                            'Item / Course',
-                            style: TextStyle(fontSize: 13, color: AppColors.inkSoft),
+                          Text(
+                            tr(ref, 'Item / Course'),
+                            style: const TextStyle(fontSize: 13, color: AppColors.inkSoft),
                           ),
                           Flexible(
                             child: Text(
@@ -223,9 +223,9 @@ class _InstructorTransactionsScreenState
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
-                            'Enrolled Student',
-                            style: TextStyle(fontSize: 13, color: AppColors.inkSoft),
+                          Text(
+                            tr(ref, 'Enrolled Student'),
+                            style: const TextStyle(fontSize: 13, color: AppColors.inkSoft),
                           ),
                           Text(
                             buyer,
@@ -240,12 +240,12 @@ class _InstructorTransactionsScreenState
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
-                            'Date & Time',
-                            style: TextStyle(fontSize: 13, color: AppColors.inkSoft),
+                          Text(
+                            tr(ref, 'Date & Time'),
+                            style: const TextStyle(fontSize: 13, color: AppColors.inkSoft),
                           ),
                           Text(
-                            date,
+                            formatNum(ref, date),
                             style: const TextStyle(fontSize: 12, color: AppColors.inkSoft),
                           ),
                         ],
@@ -254,12 +254,12 @@ class _InstructorTransactionsScreenState
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
-                            'Payment Method',
-                            style: TextStyle(fontSize: 13, color: AppColors.inkSoft),
+                          Text(
+                            tr(ref, 'Payment Method'),
+                            style: const TextStyle(fontSize: 13, color: AppColors.inkSoft),
                           ),
                           Text(
-                            paymentMethod,
+                            tr(ref, paymentMethod),
                             style: const TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w500,

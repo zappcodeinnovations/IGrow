@@ -497,21 +497,21 @@ class _AnnouncementModalState extends ConsumerState<_AnnouncementModal> {
   Future<void> _submit() async {
     if (_selectedCourse == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a course to announce')),
+        SnackBar(content: Text(tr(ref, 'Please select a course to announce'))),
       );
       return;
     }
     final courseStatus = _selectedCourse!.status?.toUpperCase();
     if (courseStatus != 'APPROVED' && courseStatus != 'PUBLISHED') {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Only approved courses can be announced to students')),
+        SnackBar(content: Text(tr(ref, 'Only approved courses can be announced to students'))),
       );
       return;
     }
     final content = _contentController.text.trim();
     if (content.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter an announcement message')),
+        SnackBar(content: Text(tr(ref, 'Please enter an announcement message'))),
       );
       return;
     }
@@ -635,9 +635,9 @@ class _AnnouncementModalState extends ConsumerState<_AnnouncementModal> {
                                 color: AppColors.primaryGreen.withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(6),
                               ),
-                              child: const Text(
-                                'APPROVED',
-                                style: TextStyle(
+                              child: Text(
+                                tr(ref, 'APPROVED'),
+                                style: const TextStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.bold,
                                   color: AppColors.primaryGreen,
@@ -812,7 +812,7 @@ class _WebinarModalState extends ConsumerState<_WebinarModal> {
     final now = DateTime.now();
     final pickedDate = await showDatePicker(
       context: context,
-      initialDate: _eventDate ?? now.add(const Duration(days: 1)),
+      initialDate: _eventDate ?? now,
       firstDate: now,
       lastDate: now.add(const Duration(days: 180)),
     );
@@ -1033,7 +1033,7 @@ class _SeminarModalState extends ConsumerState<_SeminarModal> {
     final now = DateTime.now();
     final pickedDate = await showDatePicker(
       context: context,
-      initialDate: _eventDate ?? now.add(const Duration(days: 2)),
+      initialDate: _eventDate ?? now,
       firstDate: now,
       lastDate: now.add(const Duration(days: 180)),
     );

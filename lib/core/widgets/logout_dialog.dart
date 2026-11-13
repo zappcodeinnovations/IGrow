@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../localization/app_strings.dart';
 import '../theme/app_colors.dart';
 import '../utils/app_toast.dart';
 import '../../data/models/user_role.dart';
@@ -61,7 +62,7 @@ class _LogoutConfirmationDialogState extends ConsumerState<LogoutConfirmationDia
       if (!mounted) return;
       AppToast.show(
         context,
-        'Logged out successfully.',
+        tr(ref, 'Logged out successfully.'),
         severity: ToastSeverity.success,
         duration: const Duration(milliseconds: 1800),
       );
@@ -72,7 +73,7 @@ class _LogoutConfirmationDialogState extends ConsumerState<LogoutConfirmationDia
         setState(() => _isLoading = false);
         AppToast.show(
           context,
-          'Logout failed: $e',
+          '${tr(ref, 'Logout failed: ')}$e',
           severity: ToastSeverity.error,
         );
       }
@@ -106,7 +107,7 @@ class _LogoutConfirmationDialogState extends ConsumerState<LogoutConfirmationDia
           ),
           const SizedBox(height: 16),
           Text(
-            'Confirm Logout',
+            tr(ref, 'Confirm Logout'),
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                   color: isDark ? AppColors.white : AppColors.inkDark,
@@ -114,7 +115,7 @@ class _LogoutConfirmationDialogState extends ConsumerState<LogoutConfirmationDia
           ),
           const SizedBox(height: 10),
           Text(
-            'Are you sure you want to log out? You will need to sign in again to access your courses and account data.',
+            tr(ref, 'Are you sure you want to log out? You will need to sign in again to access your courses and account data.'),
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: isDark ? AppColors.lineLight : AppColors.inkSoft,
@@ -140,7 +141,7 @@ class _LogoutConfirmationDialogState extends ConsumerState<LogoutConfirmationDia
                   ),
                 ),
                 child: Text(
-                  'Cancel',
+                  tr(ref, 'Cancel'),
                   style: TextStyle(
                     color: isDark ? AppColors.white : AppColors.inkDark,
                     fontWeight: FontWeight.w600,
@@ -168,9 +169,9 @@ class _LogoutConfirmationDialogState extends ConsumerState<LogoutConfirmationDia
                           color: Colors.white,
                         ),
                       )
-                    : const Text(
-                        'Log Out',
-                        style: TextStyle(
+                    : Text(
+                        tr(ref, 'Log Out'),
+                        style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
                         ),
