@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../../core/network/api_exception.dart';
 import '../../core/network/token_storage.dart';
@@ -217,6 +216,16 @@ class CommunityRepository {
         final data = jsonDecode(response.body);
         return CommunityHub.fromJson(data as Map<String, dynamic>);
       }
+    });
+  }
+
+  Future<void> deleteHub(String hubId) async {
+    return _safe(() async {
+      final uri = Uri.parse('$baseUrl/hubs/$hubId/');
+      final response = await http
+          .delete(uri, headers: await _getHeaders())
+          .timeout(const Duration(seconds: 15));
+      _handleError(response);
     });
   }
 

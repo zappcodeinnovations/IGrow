@@ -355,6 +355,76 @@ class _InstructorStateB extends ConsumerWidget {
   final CommunityHub hub;
   final bool isDark;
 
+  void _confirmDeleteHub(BuildContext context, WidgetRef ref, CommunityHub hub) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: isDark ? const Color(0xFF1B281F) : Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.delete_forever_rounded, color: Colors.red, size: 22),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                tr(ref, 'Delete Community Hub?'),
+                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          tr(ref, 'Are you sure you want to permanently delete "${hub.name}"? This action cannot be undone and will remove all broadcast updates and member connections.'),
+          style: TextStyle(
+            fontSize: 13.5,
+            color: isDark ? Colors.white70 : AppColors.inkSoft,
+            height: 1.4,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(
+              tr(ref, 'Cancel'),
+              style: TextStyle(color: isDark ? Colors.white60 : Colors.grey, fontWeight: FontWeight.w600),
+            ),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.red,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                await ref.read(communityHubsProvider.notifier).deleteHub(hub.id);
+                if (context.mounted) {
+                  AppToast.showSuccess(context, 'Community Hub deleted successfully.');
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  AppToast.showFriendlyError(context, e, prefix: 'Failed to delete hub');
+                }
+              }
+            },
+            child: Text(
+              tr(ref, 'Delete'),
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final postsAsync = ref.watch(communityHubPostsProvider(hub.id));
@@ -374,172 +444,220 @@ class _InstructorStateB extends ConsumerWidget {
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: isDark
-                        ? [const Color(0xFF1B2E21), const Color(0xFF14241A)]
-                        : [Colors.white, const Color(0xFFF9FCF8)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
                   borderRadius: BorderRadius.circular(22),
-                  border: Border.all(color: borderColor, width: 1.2),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primaryGreen.withValues(alpha: isDark ? 0.25 : 0.08),
-                      blurRadius: 18,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Official Badge Row
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
-                          decoration: BoxDecoration(
-                            color: AppColors.primaryGreen.withValues(alpha: isDark ? 0.25 : 0.12),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: AppColors.primaryGreen.withValues(alpha: 0.3)),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.verified_rounded, size: 13, color: AppColors.primaryGreen),
-                              const SizedBox(width: 4),
-                              Text(
-                                tr(ref, 'OFFICIAL INSTRUCTOR HUB'),
-                                style: const TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.primaryGreen,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const Spacer(),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: isDark ? Colors.white10 : const Color(0xFFF1F5F9),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.podcasts_rounded, size: 12, color: Color(0xFF2563EB)),
-                              const SizedBox(width: 4),
-                              Text(
-                                tr(ref, 'Broadcast Channel'),
-                                style: const TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF2563EB),
-                                ),
-                              ),
-                            ],
-                          ),
+                  onTap: () => context.push('/community/hub/${hub.id}'),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: isDark
+                            ? [const Color(0xFF1B2E21), const Color(0xFF14241A)]
+                            : [Colors.white, const Color(0xFFF9FCF8)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(22),
+                      border: Border.all(color: borderColor, width: 1.2),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primaryGreen.withValues(alpha: isDark ? 0.25 : 0.08),
+                          blurRadius: 18,
+                          offset: const Offset(0, 4),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 14),
-
-                    // Hub Logo, Title & Metadata
-                    Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          width: 58,
-                          height: 58,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                AppColors.primaryGreen.withValues(alpha: 0.25),
-                                AppColors.primaryGreen.withValues(alpha: 0.08),
-                              ],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: AppColors.primaryGreen.withValues(alpha: 0.4), width: 1.5),
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(14),
-                            child: hub.logo != null && hub.logo!.isNotEmpty
-                                ? CachedNetworkImage(
-                                    imageUrl: hub.logo!,
-                                    fit: BoxFit.cover,
-                                    errorWidget: (_, __, ___) =>
-                                        const Icon(Icons.agriculture_rounded, color: AppColors.primaryGreen, size: 30),
-                                  )
-                                : const Icon(Icons.agriculture_rounded, color: AppColors.primaryGreen, size: 30),
-                          ),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                hub.name,
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 18,
-                                  color: isDark ? Colors.white : AppColors.inkDark,
-                                  letterSpacing: -0.3,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                        // Official Badge Row
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
+                              decoration: BoxDecoration(
+                                color: AppColors.primaryGreen.withValues(alpha: isDark ? 0.25 : 0.12),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: AppColors.primaryGreen.withValues(alpha: 0.3)),
                               ),
-                              const SizedBox(height: 6),
-                              Wrap(
-                                spacing: 6,
-                                runSpacing: 4,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.primaryGreen.withValues(alpha: isDark ? 0.25 : 0.12),
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: Text(
-                                      '👥 ${hub.memberCount} Members',
-                                      style: const TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.bold,
-                                        color: AppColors.primaryGreen,
-                                      ),
-                                    ),
-                                  ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                    decoration: BoxDecoration(
-                                      color: isDark ? Colors.white10 : const Color(0xFFF1F5F9),
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: Text(
-                                      '📍 ${hub.state}, ${hub.districts.isNotEmpty ? hub.districts.first : ""}',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        color: isDark ? Colors.white70 : AppColors.inkSoft,
-                                        fontWeight: FontWeight.w600,
-                                      ),
+                                  const Icon(Icons.verified_rounded, size: 13, color: AppColors.primaryGreen),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    tr(ref, 'OFFICIAL INSTRUCTOR HUB'),
+                                    style: const TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppColors.primaryGreen,
+                                      letterSpacing: 0.5,
                                     ),
                                   ),
                                 ],
                               ),
-                            ],
-                          ),
+                            ),
+                            const Spacer(),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: isDark ? Colors.white10 : const Color(0xFFF1F5F9),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.podcasts_rounded, size: 12, color: Color(0xFF2563EB)),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    tr(ref, 'Broadcast Channel'),
+                                    style: const TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF2563EB),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+
+                        // Hub Logo, Title & Metadata
+                        Row(
+                          children: [
+                            Container(
+                              width: 58,
+                              height: 58,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    AppColors.primaryGreen.withValues(alpha: 0.25),
+                                    AppColors.primaryGreen.withValues(alpha: 0.08),
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: AppColors.primaryGreen.withValues(alpha: 0.4), width: 1.5),
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(14),
+                                child: hub.logo != null && hub.logo!.isNotEmpty
+                                    ? CachedNetworkImage(
+                                        imageUrl: hub.logo!,
+                                        fit: BoxFit.cover,
+                                        errorWidget: (_, __, ___) =>
+                                            const Icon(Icons.agriculture_rounded, color: AppColors.primaryGreen, size: 30),
+                                      )
+                                    : const Icon(Icons.agriculture_rounded, color: AppColors.primaryGreen, size: 30),
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    hub.name,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 18,
+                                      color: isDark ? Colors.white : AppColors.inkDark,
+                                      letterSpacing: -0.3,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Wrap(
+                                    spacing: 6,
+                                    runSpacing: 4,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.primaryGreen.withValues(alpha: isDark ? 0.25 : 0.12),
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                        child: Text(
+                                          '👥 ${hub.memberCount} Members',
+                                          style: const TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                            color: AppColors.primaryGreen,
+                                          ),
+                                        ),
+                                      ),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                        decoration: BoxDecoration(
+                                          color: isDark ? Colors.white10 : const Color(0xFFF1F5F9),
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                        child: Text(
+                                          '📍 ${hub.state}, ${hub.districts.isNotEmpty ? hub.districts.first : ""}',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: isDark ? Colors.white70 : AppColors.inkSoft,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Tooltip(
+                              message: tr(ref, 'Delete Community Hub'),
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(10),
+                                  onTap: () => _confirmDeleteHub(context, ref, hub),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFEF4444).withValues(alpha: isDark ? 0.2 : 0.08),
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(
+                                        color: const Color(0xFFEF4444).withValues(alpha: 0.35),
+                                        width: 1,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(
+                                          Icons.delete_outline_rounded,
+                                          size: 16,
+                                          color: Color(0xFFEF4444),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          tr(ref, 'Delete'),
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w700,
+                                            color: Color(0xFFEF4444),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),

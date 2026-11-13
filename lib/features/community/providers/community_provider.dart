@@ -168,6 +168,18 @@ class CommunityHubsNotifier extends StateNotifier<AsyncValue<List<CommunityHub>>
       rethrow;
     }
   }
+
+  Future<void> deleteHub(String hubId) async {
+    await _repo.deleteHub(hubId);
+    if (state.value != null) {
+      final updated = state.value!.where((h) => h.id != hubId).toList();
+      state = AsyncValue.data(updated);
+    }
+    ref?.invalidate(myInstructorHubProvider);
+    ref?.invalidate(suggestedHubsProvider);
+    ref?.invalidate(hubDetailsProvider(hubId));
+    fetchHubs();
+  }
 }
 
 final hubDetailsProvider = FutureProvider.family<CommunityHub, String>((ref, hubId) async {

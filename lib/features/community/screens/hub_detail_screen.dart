@@ -111,6 +111,68 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
     );
   }
 
+  void _confirmDeleteHub(BuildContext context, CommunityHub hub) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: isDark ? const Color(0xFF1B281F) : Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.delete_forever_rounded, color: Colors.red, size: 22),
+            ),
+            const SizedBox(width: 10),
+            const Expanded(
+              child: Text('Delete Community Hub?', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+        content: Text(
+          'Are you sure you want to permanently delete "${hub.name}"? This action cannot be undone and will remove all broadcast updates and member connections.',
+          style: TextStyle(
+            fontSize: 13.5,
+            color: isDark ? Colors.white70 : AppColors.inkSoft,
+            height: 1.4,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Cancel', style: TextStyle(color: isDark ? Colors.white60 : Colors.grey, fontWeight: FontWeight.w600)),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.red,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                await ref.read(communityHubsProvider.notifier).deleteHub(hub.id);
+                if (context.mounted) {
+                  Navigator.of(context).pop();
+                  AppToast.showSuccess(context, 'Community Hub deleted successfully');
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  AppToast.showFriendlyError(context, e, prefix: 'Failed to delete hub');
+                }
+              }
+            },
+            child: const Text('Delete', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showRulesSheet(BuildContext context, CommunityHub hub) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -241,7 +303,8 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
       body: hubAsync.when(
         data: (hub) {
           final isAuthorOrInstructor = (currentUser?.isInstructor == true || currentUser?.isAdmin == true) &&
-              (hub.instructorId.isNotEmpty && currentUser?.id == hub.instructorId);
+              ((hub.instructorId.isNotEmpty && currentUser?.id == hub.instructorId) ||
+               (hub.instructorName.trim().isNotEmpty && currentUser?.fullName.trim().toLowerCase() == hub.instructorName.trim().toLowerCase()));
 
           return RefreshIndicator(
             color: AppColors.primaryGreen,
@@ -270,6 +333,19 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                     onPressed: () => Navigator.of(context).pop(),
                   ),
                   actions: [
+                    if (isAuthorOrInstructor)
+                      IconButton(
+                        tooltip: 'Delete Hub',
+                        icon: Container(
+                          padding: const EdgeInsets.all(7),
+                          decoration: const BoxDecoration(
+                            color: Colors.redAccent,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.delete_outline_rounded, color: Colors.white, size: 20),
+                        ),
+                        onPressed: () => _confirmDeleteHub(context, hub),
+                      ),
                     // Info Icon for Community Rules & Guidelines
                     IconButton(
                       tooltip: 'Community Rules',
@@ -435,7 +511,7 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                             ],
                           ),
                         ),
-                        // Join / Leave Button (For learners)
+                        // Join / Leave Button (For learners) or Delete Hub (For instructor)
                         if (!isAuthorOrInstructor)
                           SizedBox(
                             height: 34,
@@ -500,6 +576,30 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                                       ),
                                     ),
                                   ),
+                          )
+                        else
+                          SizedBox(
+                            height: 34,
+                            child: OutlinedButton.icon(
+                              style: OutlinedButton.styleFrom(
+                                side: BorderSide(
+                                  color: Colors.red.withValues(alpha: 0.5),
+                                  width: 1.2,
+                                ),
+                                backgroundColor: Colors.red.withValues(alpha: isDark ? 0.15 : 0.08),
+                                foregroundColor: Colors.redAccent,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                padding: const EdgeInsets.symmetric(horizontal: 12),
+                                minimumSize: Size.zero,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                              onPressed: () => _confirmDeleteHub(context, hub),
+                              icon: const Icon(Icons.delete_outline_rounded, size: 15, color: Colors.redAccent),
+                              label: const Text(
+                                'Delete Hub',
+                                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+                              ),
+                            ),
                           ),
                       ],
                     ),
