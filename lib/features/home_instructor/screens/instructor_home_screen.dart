@@ -635,21 +635,86 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.transparent,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.tune),
-            color: AppColors.primaryGreen,
-            tooltip: tr(ref, 'Filter'),
-            onPressed: _showFilterBottomSheet,
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout_rounded),
-            color: AppColors.error,
-            tooltip: tr(ref, 'Logout'),
-            onPressed: () => showLogoutConfirmationDialog(context, ref),
-          ),
-          const SizedBox(width: 8),
-        ],
+        automaticallyImplyLeading: false,
+        titleSpacing: 20,
+        toolbarHeight: 70,
+        title: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    '${tr(ref, 'Welcome Back')} 👨‍🏫',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: AppColors.inkSoft,
+                        ),
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      Text(
+                        userName,
+                        style: Theme.of(context).textTheme.displaySmall,
+                      ),
+                      if (user?.isKycVerified == true) ...[
+                        const SizedBox(width: 6),
+                        const Icon(
+                          Icons.verified_rounded,
+                          color: AppColors.primaryGreen,
+                          size: 22,
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            Builder(
+              builder: (context) {
+                final unreadCount = ref.watch(unreadNotificationsCountProvider);
+                return InkWell(
+                  borderRadius: BorderRadius.circular(16),
+                  onTap: () => context.push(RouteNames.notifications),
+                  child: Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: isDark ? AppColors.cardDark : AppColors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isDark ? AppColors.lineDark : AppColors.lineLight,
+                      ),
+                    ),
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Icon(
+                          Icons.notifications_outlined,
+                          color: isDark ? AppColors.white : AppColors.inkDark,
+                        ),
+                        if (unreadCount > 0)
+                          Positioned(
+                            top: 8,
+                            right: 8,
+                            child: Container(
+                              width: 8,
+                              height: 8,
+                              decoration: const BoxDecoration(
+                                color: AppColors.accentOrange,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
       ),
       body: SafeArea(
         child: RefreshIndicator(
@@ -668,82 +733,6 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
             child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 16),
-              // Greeting
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${tr(ref, 'Welcome Back')} 👨‍🏫',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.inkSoft,),
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Text(
-                              userName,
-                              style: Theme.of(context).textTheme.displaySmall,
-                            ),
-                            if (user?.isKycVerified == true) ...[
-                              const SizedBox(width: 6),
-                              const Icon(
-                                Icons.verified_rounded,
-                                color: AppColors.primaryGreen,
-                                size: 22,
-                              ),
-                            ],
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  Builder(
-                    builder: (context) {
-                      final unreadCount = ref.watch(unreadNotificationsCountProvider);
-                      return InkWell(
-                        borderRadius: BorderRadius.circular(16),
-                        onTap: () => context.push(RouteNames.notifications),
-                        child: Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: isDark ? AppColors.cardDark : AppColors.white,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: isDark ? AppColors.lineDark : AppColors.lineLight,
-                            ),
-                          ),
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              Icon(
-                                Icons.notifications_outlined,
-                                color: isDark ? AppColors.white : AppColors.inkDark,
-                              ),
-                              if (unreadCount > 0)
-                                Positioned(
-                                  top: 10,
-                                  right: 10,
-                                  child: Container(
-                                    width: 8,
-                                    height: 8,
-                                    decoration: const BoxDecoration(
-                                      color: AppColors.accentOrange,
-                                      shape: BoxShape.circle,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
               const SizedBox(height: 8),
               Text(
                 tr(ref, 'Manage your courses, revenue, and AI moderation status.'),
