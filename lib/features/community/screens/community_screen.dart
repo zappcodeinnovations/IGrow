@@ -350,6 +350,9 @@ class _FeaturePoint extends StatelessWidget {
 }
 
 // ─── State B: Active Instructor Community Hub Feed ───────────────────
+// Flag to control hub deletion availability (kept false until backend completes development)
+const bool _kEnableDeleteHub = false;
+
 class _InstructorStateB extends ConsumerWidget {
   const _InstructorStateB({required this.hub, required this.isDark});
   final CommunityHub hub;
@@ -612,47 +615,49 @@ class _InstructorStateB extends ConsumerWidget {
                                 ],
                               ),
                             ),
-                            const SizedBox(width: 8),
-                            Tooltip(
-                              message: tr(ref, 'Delete Community Hub'),
-                              child: Material(
-                                color: Colors.transparent,
-                                child: InkWell(
-                                  borderRadius: BorderRadius.circular(10),
-                                  onTap: () => _confirmDeleteHub(context, ref, hub),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFEF4444).withValues(alpha: isDark ? 0.2 : 0.08),
-                                      borderRadius: BorderRadius.circular(10),
-                                      border: Border.all(
-                                        color: const Color(0xFFEF4444).withValues(alpha: 0.35),
-                                        width: 1,
-                                      ),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        const Icon(
-                                          Icons.delete_outline_rounded,
-                                          size: 16,
-                                          color: Color(0xFFEF4444),
+                            if (_kEnableDeleteHub) ...[
+                              const SizedBox(width: 8),
+                              Tooltip(
+                                message: tr(ref, 'Delete Community Hub'),
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(10),
+                                    onTap: () => _confirmDeleteHub(context, ref, hub),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFEF4444).withValues(alpha: isDark ? 0.2 : 0.08),
+                                        borderRadius: BorderRadius.circular(10),
+                                        border: Border.all(
+                                          color: const Color(0xFFEF4444).withValues(alpha: 0.35),
+                                          width: 1,
                                         ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          tr(ref, 'Delete'),
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w700,
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(
+                                            Icons.delete_outline_rounded,
+                                            size: 16,
                                             color: Color(0xFFEF4444),
                                           ),
-                                        ),
-                                      ],
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            tr(ref, 'Delete'),
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w700,
+                                              color: Color(0xFFEF4444),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ),
                               ),
-                            ),
+                            ],
                           ],
                         ),
                       ],

@@ -401,12 +401,29 @@ class CommunityPost {
     return '$day/$month/$year • $hour12:$minute $period';
   }
 
-  /// Whether a scheduled webinar is currently open for joining (starts 15 minutes before event date).
+  /// Whether a scheduled webinar is currently open for joining (starts 15 minutes before event date up to 4 hours after).
   bool get isWebinarJoinable {
     if (eventDate == null) return true;
     final now = DateTime.now();
     final joinWindowStart = eventDate!.toLocal().subtract(const Duration(minutes: 15));
-    return now.isAfter(joinWindowStart);
+    final sessionEnd = eventDate!.toLocal().add(const Duration(hours: 4));
+    return now.isAfter(joinWindowStart) && now.isBefore(sessionEnd);
+  }
+
+  /// Whether the webinar is scheduled in the future (starts more than 15 minutes ahead).
+  bool get isWebinarUpcoming {
+    if (eventDate == null) return false;
+    final now = DateTime.now();
+    final joinWindowStart = eventDate!.toLocal().subtract(const Duration(minutes: 15));
+    return now.isBefore(joinWindowStart);
+  }
+
+  /// Whether the webinar has already concluded (more than 4 hours past start).
+  bool get isWebinarEnded {
+    if (eventDate == null) return false;
+    final now = DateTime.now();
+    final sessionEnd = eventDate!.toLocal().add(const Duration(hours: 4));
+    return now.isAfter(sessionEnd);
   }
 
   /// Human-readable time remaining until the webinar starts (or null if already started or joinable).

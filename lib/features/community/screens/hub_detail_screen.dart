@@ -11,6 +11,9 @@ import '../providers/community_provider.dart';
 import '../widgets/create_post_sheets.dart';
 import '../widgets/rich_post_card.dart';
 
+// Flag to control hub deletion availability (kept false until backend completes development)
+const bool _kEnableDeleteHub = false;
+
 class HubDetailScreen extends ConsumerStatefulWidget {
   const HubDetailScreen({super.key, required this.hubId});
 
@@ -333,7 +336,7 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                     onPressed: () => Navigator.of(context).pop(),
                   ),
                   actions: [
-                    if (isAuthorOrInstructor)
+                    if (_kEnableDeleteHub && isAuthorOrInstructor)
                       IconButton(
                         tooltip: 'Delete Hub',
                         icon: Container(
@@ -577,7 +580,7 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                                     ),
                                   ),
                           )
-                        else
+                        else if (_kEnableDeleteHub)
                           SizedBox(
                             height: 34,
                             child: OutlinedButton.icon(

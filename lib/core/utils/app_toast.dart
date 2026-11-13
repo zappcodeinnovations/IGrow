@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../network/api_exception.dart';
 import '../router/app_router.dart';
 import '../router/route_names.dart';
 import '../theme/app_colors.dart';
@@ -157,6 +156,22 @@ class AppToast {
       context,
       message,
       severity: ToastSeverity.warning,
+      duration: duration,
+      action: action,
+    );
+  }
+
+  /// Informational toast with calm neutral styling.
+  static ScaffoldFeatureController<SnackBar, SnackBarClosedReason> showInfo(
+    BuildContext context,
+    String message, {
+    Duration duration = defaultDuration,
+    SnackBarAction? action,
+  }) {
+    return show(
+      context,
+      message,
+      severity: ToastSeverity.info,
       duration: duration,
       action: action,
     );

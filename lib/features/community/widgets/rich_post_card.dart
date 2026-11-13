@@ -7,6 +7,7 @@ import 'package:timeago/timeago.dart' as timeago;
 
 import '../../../core/localization/app_strings.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/app_toast.dart';
 import '../../../core/widgets/ugc_report_dialog.dart';
 import '../../../data/models/api_models/community_models.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -579,48 +580,135 @@ class _RichPostCardState extends ConsumerState<RichPostCard> with SingleTickerPr
                           ),
                           const SizedBox(width: 8),
                           Expanded(
-                            child: Text(
-                              'Live: ${widget.post.formattedEventDateTime!}',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13.5,
-                                color: isDark ? const Color(0xFF93C5FD) : const Color(0xFF2563EB),
-                              ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Live: ${widget.post.formattedEventDateTime!}',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13.5,
+                                    color: isDark ? const Color(0xFF93C5FD) : const Color(0xFF2563EB),
+                                  ),
+                                ),
+                                if (widget.post.webinarCountdownMessage != null) ...[
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    widget.post.webinarCountdownMessage!,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: isDark ? Colors.white60 : AppColors.inkSoft,
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
                           ),
+                          if (!widget.post.isWebinarJoinable)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: isDark ? Colors.white10 : const Color(0xFFE2E8F0),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                widget.post.isWebinarEnded ? tr(ref, 'ENDED') : tr(ref, 'UPCOMING'),
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  color: isDark ? Colors.white54 : const Color(0xFF64748B),
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ),
                         ],
                       ),
                       const SizedBox(height: 12),
                     ],
-                    SizedBox(
-                      width: double.infinity,
-                      height: 44,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
-                          ),
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFF2563EB).withValues(alpha: 0.3),
-                              blurRadius: 8,
-                              offset: const Offset(0, 3),
+                    Builder(
+                      builder: (ctx) {
+                        final isJoinable = widget.post.isWebinarJoinable;
+                        final isEnded = widget.post.isWebinarEnded;
+
+                        final buttonText = isEnded
+                            ? tr(ref, 'Webinar Ended')
+                            : tr(ref, 'Join Live Webinar');
+
+                        final buttonIcon = isEnded
+                            ? Icons.event_busy_rounded
+                            : (isJoinable ? Icons.link_rounded : Icons.schedule_rounded);
+
+                        return SizedBox(
+                          width: double.infinity,
+                          height: 44,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              gradient: isJoinable
+                                  ? const LinearGradient(
+                                      colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
+                                    )
+                                  : null,
+                              color: isJoinable
+                                  ? null
+                                  : (isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0)),
+                              borderRadius: BorderRadius.circular(12),
+                              border: isJoinable
+                                  ? null
+                                  : Border.all(
+                                      color: isDark ? Colors.white12 : const Color(0xFFCBD5E1),
+                                      width: 1,
+                                    ),
+                              boxShadow: isJoinable
+                                  ? [
+                                      BoxShadow(
+                                        color: const Color(0xFF2563EB).withValues(alpha: 0.3),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 3),
+                                      ),
+                                    ]
+                                  : null,
                             ),
-                          ],
-                        ),
-                        child: ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.transparent,
-                            foregroundColor: Colors.white,
-                            shadowColor: Colors.transparent,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            child: ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.transparent,
+                                foregroundColor: isJoinable
+                                    ? Colors.white
+                                    : (isDark ? Colors.white38 : const Color(0xFF64748B)),
+                                disabledForegroundColor: isDark ? Colors.white38 : const Color(0xFF64748B),
+                                disabledBackgroundColor: Colors.transparent,
+                                shadowColor: Colors.transparent,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              onPressed: isJoinable
+                                  ? () => _openLink(widget.post.link)
+                                  : () {
+                                      if (isEnded) {
+                                        AppToast.showInfo(context, tr(ref, 'This webinar session has ended.'));
+                                      } else {
+                                        final countdown = widget.post.webinarCountdownMessage;
+                                        AppToast.showInfo(
+                                          context,
+                                          countdown != null
+                                              ? tr(ref, 'Webinar has not started yet ($countdown). Joining opens 15 minutes before start.')
+                                              : tr(ref, 'Webinar has not started yet. Joining opens 15 minutes before the session.'),
+                                        );
+                                      }
+                                    },
+                              icon: Icon(buttonIcon, size: 18),
+                              label: Text(
+                                buttonText,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: isJoinable
+                                      ? Colors.white
+                                      : (isDark ? Colors.white38 : const Color(0xFF64748B)),
+                                ),
+                              ),
+                            ),
                           ),
-                          onPressed: () => _openLink(widget.post.link),
-                          icon: const Icon(Icons.link_rounded, size: 18),
-                          label: const Text('Join Live Webinar', style: TextStyle(fontWeight: FontWeight.bold)),
-                        ),
-                      ),
+                        );
+                      },
                     ),
                   ],
                 ),
