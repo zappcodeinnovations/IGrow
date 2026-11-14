@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:chopper/chopper.dart' as chopper;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/network/api_client.dart';
+import '../../core/network/swagger_generated/app_api.enums.swagger.dart' as enums;
 import '../../core/network/api_exception.dart';
 import '../../core/network/token_storage.dart';
 import '../../core/services/notification_service.dart';
@@ -457,13 +458,19 @@ class ApiAuthRepository implements AuthRepository {
       String errorMessage = 'Failed to verify OTP (${response.statusCode})';
       try {
         final errorData = jsonDecode(response.body);
-        if (errorData is Map && errorData.containsKey('detail')) {
-          errorMessage = errorData['detail'].toString();
-        } else if (errorData is Map && errorData.containsKey('non_field_errors')) {
-          final nfe = errorData['non_field_errors'];
-          errorMessage = nfe is List ? nfe.first.toString() : nfe.toString();
-        } else {
-          errorMessage = errorData.toString();
+        if (errorData is Map) {
+          if (errorData.containsKey('detail')) {
+            errorMessage = errorData['detail'].toString();
+          } else if (errorData.containsKey('error')) {
+            errorMessage = errorData['error'].toString();
+          } else if (errorData.containsKey('message')) {
+            errorMessage = errorData['message'].toString();
+          } else if (errorData.containsKey('non_field_errors')) {
+            final nfe = errorData['non_field_errors'];
+            errorMessage = nfe is List ? nfe.first.toString() : nfe.toString();
+          } else {
+            errorMessage = errorData.toString();
+          }
         }
       } catch (_) {}
       throw ApiException(statusCode: response.statusCode, message: errorMessage);
@@ -540,7 +547,10 @@ class ApiAuthRepository implements AuthRepository {
   @override
   Future<void> resendOtp({required String email}) async {
     final response = await appApi.apiV1AuthResendOtpPost(
-      body: ResendOTPRequest(email: email.trim()),
+      body: ResendOTPRequest(
+        email: email.trim(),
+        purpose: enums.PurposeEnum.passwordReset,
+      ),
     );
     _handleError(response);
   }

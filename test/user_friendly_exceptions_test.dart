@@ -51,6 +51,12 @@ void main() {
       final friendly = getUserFriendlyErrorMessage(jsonError);
       expect(friendly, equals('Invalid credentials provided.'));
     });
+
+    test('Raw JSON error string extracts user-facing message', () {
+      final jsonError = '{"error": "This OTP has already been used. Please request a new OTP."}';
+      final friendly = getUserFriendlyErrorMessage(jsonError);
+      expect(friendly, equals('This OTP has already been used. Please request a new OTP.'));
+    });
   });
 }
 

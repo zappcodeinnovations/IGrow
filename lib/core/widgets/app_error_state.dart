@@ -86,15 +86,20 @@ String _cleanTechnicalErrorString(String raw, {String fallback = 'Something went
   // Remove trailing uri=... if present
   s = s.replaceAll(RegExp(r',?\s*uri\s*=\s*https?://\S+', caseSensitive: false), '').trim();
 
-  // Clean raw json map brackets if it was a dumped map string like {"detail": "..."}
+  // Clean raw json map brackets if it was a dumped map string like {"detail": "..."} or {"error": "..."}
   if (s.startsWith('{') && s.endsWith('}')) {
     final detailMatch = RegExp(r'''['"]detail['"]\s*:\s*['"]([^'"]+)['"]''').firstMatch(s);
     if (detailMatch != null) {
       s = detailMatch.group(1) ?? s;
     } else {
-      final msgMatch = RegExp(r'''['"]message['"]\s*:\s*['"]([^'"]+)['"]''').firstMatch(s);
-      if (msgMatch != null) {
-        s = msgMatch.group(1) ?? s;
+      final errorMatch = RegExp(r'''['"]error['"]\s*:\s*['"]([^'"]+)['"]''').firstMatch(s);
+      if (errorMatch != null) {
+        s = errorMatch.group(1) ?? s;
+      } else {
+        final msgMatch = RegExp(r'''['"]message['"]\s*:\s*['"]([^'"]+)['"]''').firstMatch(s);
+        if (msgMatch != null) {
+          s = msgMatch.group(1) ?? s;
+        }
       }
     }
   }

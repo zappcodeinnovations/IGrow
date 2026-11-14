@@ -47,9 +47,13 @@ class ApiException implements Exception {
       }
     });
 
-    // If there's a 'detail' key, use it as the main message.
+    // If there's a 'detail' or 'error' key, use it as the main message.
     if (body.containsKey('detail')) {
       generalMessage = body['detail'].toString();
+    } else if (body.containsKey('error')) {
+      generalMessage = body['error'].toString();
+    } else if (body.containsKey('message')) {
+      generalMessage = body['message'].toString();
     } else if (body.containsKey('non_field_errors')) {
       final nfe = body['non_field_errors'];
       generalMessage = nfe is List ? nfe.first.toString() : nfe.toString();
