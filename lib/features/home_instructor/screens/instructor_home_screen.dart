@@ -472,15 +472,15 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
 
     if (confirm == true) {
       try {
-        await ref.read(instructorRepositoryProvider).updateCourse(course.id, {
-          'status': 'DRAFT',
-        });
+        debugPrint('📤 [DEACTIVATE] Deactivating course: ${course.id}');
+        await ref.read(instructorRepositoryProvider).archiveCourse(course.id);
+        debugPrint('✅ [DEACTIVATE] Successfully deactivated course: ${course.id}');
         if (!mounted) return;
         final messenger = ScaffoldMessenger.of(context);
         messenger.clearSnackBars();
         messenger.showSnackBar(
           SnackBar(
-            content: Text(tr(ref, 'Course deactivated and moved to Drafts')),
+            content: Text(tr(ref, 'Course deactivated and archived')),
             backgroundColor: AppColors.primaryGreen,
           ),
         );

@@ -327,6 +327,58 @@ class InstructorRepository {
     debugPrint('✅ [InstructorRepository] deleteCourse SUCCESS');
   }
 
+  /// Deactivate / Archive a course (hides from catalog, preserves enrolled student access).
+  Future<Map<String, dynamic>> archiveCourse(String courseId) async {
+    final token = await tokenStorage.getAccessToken();
+    final uri = Uri.parse(
+      'https://iagrow.zappcode.in/api/v1/instructor/courses/$courseId/archive/',
+    );
+    debugPrint('📤 [InstructorRepository] archiveCourse: POST $uri');
+    final rawResponse = await http.post(
+      uri,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
+    if (rawResponse.statusCode < 200 || rawResponse.statusCode >= 300) {
+      debugPrint('❌ [InstructorRepository] archiveCourse ERROR (${rawResponse.statusCode}): ${rawResponse.body}');
+      throw Exception(
+        'Failed to archive course (${rawResponse.statusCode}): ${rawResponse.body}',
+      );
+    }
+    final body = rawResponse.body;
+    debugPrint('✅ [InstructorRepository] archiveCourse SUCCESS: $body');
+    if (body.isEmpty) return {};
+    return jsonDecode(body) as Map<String, dynamic>;
+  }
+
+  /// Reactivate / Unarchive a course (makes it live on catalog again).
+  Future<Map<String, dynamic>> unarchiveCourse(String courseId) async {
+    final token = await tokenStorage.getAccessToken();
+    final uri = Uri.parse(
+      'https://iagrow.zappcode.in/api/v1/instructor/courses/$courseId/unarchive/',
+    );
+    debugPrint('📤 [InstructorRepository] unarchiveCourse: POST $uri');
+    final rawResponse = await http.post(
+      uri,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
+    if (rawResponse.statusCode < 200 || rawResponse.statusCode >= 300) {
+      debugPrint('❌ [InstructorRepository] unarchiveCourse ERROR (${rawResponse.statusCode}): ${rawResponse.body}');
+      throw Exception(
+        'Failed to reactivate course (${rawResponse.statusCode}): ${rawResponse.body}',
+      );
+    }
+    final body = rawResponse.body;
+    debugPrint('✅ [InstructorRepository] unarchiveCourse SUCCESS: $body');
+    if (body.isEmpty) return {};
+    return jsonDecode(body) as Map<String, dynamic>;
+  }
+
   /// Publish a course (triggers AI moderation).
   Future<Map<String, dynamic>> publishCourse(String courseId) async {
     // Use raw HTTP to avoid Chopper trying to deserialize CourseList from
