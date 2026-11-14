@@ -70,7 +70,7 @@ class _RichPostCardState extends ConsumerState<RichPostCard> {
   void _sharePost() {
     final title = widget.post.title.trim().isNotEmpty ? widget.post.title : 'Agricultural Update';
     final shareUrl = 'https://iagrow.zappcode.in/community/post/${widget.post.id}';
-    Share.share('Check out this update on AgriLearn: $title\n$shareUrl');
+    SharePlus.instance.share('Check out this update on AgriLearn: $title\n$shareUrl');
   }
 
   Future<void> _deletePost() async {

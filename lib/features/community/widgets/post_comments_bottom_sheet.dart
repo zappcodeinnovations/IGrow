@@ -467,7 +467,7 @@ class _PostCommentsBottomSheetState extends ConsumerState<PostCommentsBottomShee
     required bool isNested,
   }) {
     final currentUserIdStr = currentUser?.id?.toString().trim();
-    final authorIdStr = (comment.author.id.toString().trim().isNotEmpty ? comment.author.id.toString().trim() : comment.authorId?.toString().trim());
+    final authorIdStr = comment.author.id.toString().trim();
     final isMe = currentUserIdStr != null && currentUserIdStr.isNotEmpty && currentUserIdStr == authorIdStr;
     final canDelete = isMe || widget.isHostInstructor || (currentUser != null && (currentUser.isAdmin == true || currentUser.isInstructor == true));
 
