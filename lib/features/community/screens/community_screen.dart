@@ -1035,14 +1035,16 @@ class _StudentCommunityView extends ConsumerWidget {
     final profileDistrict = ref.watch(authProvider).user?.locationDistrict;
     final liveGpsCity = ref.watch(weatherProvider).valueOrNull?.locationName ?? WeatherService.lastResolvedCity;
 
-    // Use GPS detected location if profile district is not set and current is default Pune
-    final effectiveDistrict = (profileDistrict != null && profileDistrict.trim().isNotEmpty)
-        ? profileDistrict.trim()
-        : (currentDistrict != 'Pune'
-            ? currentDistrict
-            : (liveGpsCity != null && liveGpsCity.trim().isNotEmpty ? liveGpsCity.trim() : currentDistrict));
+    // User's manual selection in selectedDistrictProvider takes top priority over registered profile district
+    final effectiveDistrict = (currentDistrict.trim().isNotEmpty && currentDistrict != 'Pune')
+        ? currentDistrict
+        : (profileDistrict != null && profileDistrict.trim().isNotEmpty
+            ? profileDistrict.trim()
+            : (currentDistrict.isNotEmpty
+                ? currentDistrict
+                : (liveGpsCity != null && liveGpsCity.trim().isNotEmpty ? liveGpsCity.trim() : 'Pune')));
 
-    if (effectiveDistrict != currentDistrict && (profileDistrict == null || profileDistrict.trim().isEmpty)) {
+    if (effectiveDistrict != currentDistrict) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (ref.read(selectedDistrictProvider) != effectiveDistrict) {
           ref.read(selectedDistrictProvider.notifier).state = effectiveDistrict;

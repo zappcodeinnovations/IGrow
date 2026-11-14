@@ -113,8 +113,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
     if (needsDetails) {
       await CompleteSocialProfileDialog.show(context, user);
-      return;
+      if (!mounted) return;
     }
+
+    final updatedUser = ref.read(authProvider).user ?? user;
+    if (updatedUser == null) return;
 
     final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;

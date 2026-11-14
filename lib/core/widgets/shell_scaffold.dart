@@ -17,6 +17,9 @@ import '../utils/app_toast.dart';
 
 final GlobalKey<ScaffoldState> shellScaffoldKey = GlobalKey<ScaffoldState>();
 
+/// Callback that an active screen inside the shell can register to handle back press first
+bool Function()? shellCustomBackHandler;
+
 class ShellScaffold extends ConsumerStatefulWidget {
   const ShellScaffold({super.key, required this.child});
 
@@ -94,6 +97,12 @@ class _ShellScaffoldState extends ConsumerState<ShellScaffold> {
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
+
+        // If active child screen handles the back press (e.g. Explore category/tab/search reset), prioritize it!
+        if (shellCustomBackHandler != null) {
+          final handled = shellCustomBackHandler!();
+          if (handled) return;
+        }
 
         // If drawer is open, close drawer first
         if (shellScaffoldKey.currentState?.isDrawerOpen == true) {

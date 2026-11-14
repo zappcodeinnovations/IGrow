@@ -160,15 +160,6 @@ class _CompleteSocialProfileDialogState
     super.dispose();
   }
 
-  void _navigateToProfile() {
-    if (!mounted) return;
-    Navigator.of(context, rootNavigator: true).pop();
-    final destination = widget.user.isFarmer
-        ? RouteNames.farmerProfile
-        : RouteNames.instructorProfile;
-    context.push(destination);
-  }
-
   void _dismissDialog() {
     if (!mounted) return;
     Navigator.of(context, rootNavigator: true).pop();
@@ -196,7 +187,7 @@ class _CompleteSocialProfileDialogState
 
       if (mounted) {
         AppToast.show(context, tr(ref, 'Profile updated successfully!'));
-        _navigateToProfile();
+        _dismissDialog();
       }
     } catch (e) {
       if (mounted) {
@@ -670,8 +661,8 @@ class _LocationPickerBottomSheetState extends State<_LocationPickerBottomSheet> 
   @override
   Widget build(BuildContext context) {
     final filtered = widget.items.where((it) {
-      final translated = AppStrings.tr(it, languageCode: 'en'); // Check fallback or key
       return it.toLowerCase().contains(_query.toLowerCase().trim()) ||
+          AppStrings.tr(it, languageCode: 'en').toLowerCase().contains(_query.toLowerCase().trim()) ||
           AppStrings.tr(it, languageCode: 'hi').toLowerCase().contains(_query.toLowerCase().trim()) ||
           AppStrings.tr(it, languageCode: 'mr').toLowerCase().contains(_query.toLowerCase().trim());
     }).toList();

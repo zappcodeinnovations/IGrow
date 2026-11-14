@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
+import 'package:share_plus/share_plus.dart';
+
 import '../../../core/localization/app_strings.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/app_toast.dart';
@@ -63,6 +65,12 @@ class _RichPostCardState extends ConsumerState<RichPostCard> {
     } else {
       ref.read(communityPostsProvider.notifier).reactToPost(widget.post.id, reaction);
     }
+  }
+
+  void _sharePost() {
+    final title = widget.post.title.trim().isNotEmpty ? widget.post.title : 'Agricultural Update';
+    final shareUrl = 'https://iagrow.zappcode.in/community/post/${widget.post.id}';
+    Share.share('Check out this update on AgriLearn: $title\n$shareUrl');
   }
 
   Future<void> _deletePost() async {
@@ -449,8 +457,19 @@ class _RichPostCardState extends ConsumerState<RichPostCard> {
                         if (value == 'delete') _deletePost();
                         if (value == 'report') _reportPost();
                         if (value == 'block') _blockUser();
+                        if (value == 'share') _sharePost();
                       },
                       itemBuilder: (_) => [
+                        const PopupMenuItem(
+                          value: 'share',
+                          child: Row(
+                            children: [
+                              Icon(Icons.share_outlined, color: AppColors.primaryGreen, size: 18),
+                              SizedBox(width: 8),
+                              Text('Share Post'),
+                            ],
+                          ),
+                        ),
                         if (isAuthorOrInstructor)
                           const PopupMenuItem(
                             value: 'delete',

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:chopper/chopper.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'token_storage.dart';
 
@@ -12,14 +13,19 @@ class TokenInterceptor implements Interceptor {
   @override
   FutureOr<Response<BodyType>> intercept<BodyType>(Chain<BodyType> chain) async {
     final token = await tokenStorage.getAccessToken();
-    if (token != null && token.isNotEmpty) {
-      final request = chain.request.copyWith(headers: {
-        ...chain.request.headers,
-        'Authorization': 'Bearer $token',
-      });
-      return chain.proceed(request);
-    }
-    return chain.proceed(chain.request);
+    String lang = 'en';
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      lang = prefs.getString('app_user_language_code') ?? 'en';
+    } catch (_) {}
+
+    final headers = <String, String>{
+      ...chain.request.headers,
+      'Accept-Language': lang,
+      if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+    };
+    final request = chain.request.copyWith(headers: headers);
+    return chain.proceed(request);
   }
 }
 

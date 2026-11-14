@@ -466,7 +466,9 @@ class _PostCommentsBottomSheetState extends ConsumerState<PostCommentsBottomShee
     required bool isDark,
     required bool isNested,
   }) {
-    final isMe = currentUser != null && currentUser.id == comment.author.id;
+    final currentUserIdStr = currentUser?.id?.toString().trim();
+    final authorIdStr = (comment.author.id.toString().trim().isNotEmpty ? comment.author.id.toString().trim() : comment.authorId?.toString().trim());
+    final isMe = currentUserIdStr != null && currentUserIdStr.isNotEmpty && currentUserIdStr == authorIdStr;
     final canDelete = isMe || widget.isHostInstructor || (currentUser != null && (currentUser.isAdmin == true || currentUser.isInstructor == true));
 
     return Container(
@@ -574,16 +576,17 @@ class _PostCommentsBottomSheetState extends ConsumerState<PostCommentsBottomShee
                         ],
                       ),
                     ),
-                  const PopupMenuItem(
-                    value: 'report',
-                    child: Row(
-                      children: [
-                        Icon(Icons.flag_outlined, color: Colors.orange, size: 16),
-                        SizedBox(width: 8),
-                        Text('Report Comment'),
-                      ],
+                  if (!isMe)
+                    const PopupMenuItem(
+                      value: 'report',
+                      child: Row(
+                        children: [
+                          Icon(Icons.flag_outlined, color: Colors.orange, size: 16),
+                          SizedBox(width: 8),
+                          Text('Report Comment'),
+                        ],
+                      ),
                     ),
-                  ),
                   if (!isMe)
                     const PopupMenuItem(
                       value: 'block',

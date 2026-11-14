@@ -33,6 +33,24 @@ class NotificationTextHelper {
       }
     }
 
+    // 1b. Smart fallback by notificationType or title keywords if backend omitted titleKey
+    final nType = notif.notificationType.toUpperCase().trim();
+    if (nType == 'WELCOME' || notif.title.toLowerCase().contains('welcome')) {
+      final translated = AppStrings.tr('notif_welcome_title', languageCode: currentLang);
+      if (translated != 'notif_welcome_title') return translated;
+    } else if (nType == 'NEW_COURSE' || notif.title.toLowerCase().startsWith('new course') || notif.title.contains('New Course')) {
+      final translated = AppStrings.tr('notif_new_course_title', languageCode: currentLang);
+      if (translated != 'notif_new_course_title') return translated;
+    } else if (nType == 'NEW_EBOOK' || notif.title.toLowerCase().contains('new e-book')) {
+      final translated = AppStrings.tr('notif_new_ebook_title', languageCode: currentLang);
+      if (translated != 'notif_new_ebook_title') return translated;
+    } else if (nType == 'SUPPORT_TICKET') {
+      final translated = AppStrings.tr('notif_support_ticket_title', languageCode: currentLang);
+      if (translated != 'notif_support_ticket_title') {
+        return _interpolate(translated, notif.params, currentLang);
+      }
+    }
+
     // 2. Try Backend Provided Translations Object
     if (notif.translations != null && notif.translations![currentLang] is Map) {
       final langMap = notif.translations![currentLang] as Map;
@@ -54,6 +72,31 @@ class NotificationTextHelper {
       final key = notif.messageKey!;
       final translated = AppStrings.tr(key, languageCode: currentLang);
       if (translated != key) {
+        return _interpolate(translated, notif.params, currentLang);
+      }
+    }
+
+    // 1b. Smart fallback by notificationType if backend omitted messageKey
+    final nType = notif.notificationType.toUpperCase().trim();
+    if (nType == 'WELCOME') {
+      final key = notif.course != null ? 'notif_welcome_instructor_body' : 'notif_welcome_student_body';
+      final translated = AppStrings.tr(key, languageCode: currentLang);
+      if (translated != key) return translated;
+    } else if (nType == 'NEW_COURSE') {
+      final translated = AppStrings.tr('notif_new_course_body', languageCode: currentLang);
+      if (translated != 'notif_new_course_body') {
+        final courseTitle = notif.courseTitle ?? notif.params?['course_title'] ?? '';
+        return _interpolate(translated, {'course_title': courseTitle}, currentLang);
+      }
+    } else if (nType == 'NEW_EBOOK') {
+      final translated = AppStrings.tr('notif_new_ebook_body', languageCode: currentLang);
+      if (translated != 'notif_new_ebook_body') {
+        final ebookTitle = notif.ebookTitle ?? notif.params?['ebook_title'] ?? '';
+        return _interpolate(translated, {'ebook_title': ebookTitle}, currentLang);
+      }
+    } else if (nType == 'SUPPORT_TICKET') {
+      final translated = AppStrings.tr('notif_support_ticket_status_updated', languageCode: currentLang);
+      if (translated != 'notif_support_ticket_status_updated') {
         return _interpolate(translated, notif.params, currentLang);
       }
     }

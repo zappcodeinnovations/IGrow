@@ -182,15 +182,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
     if (needsDetails) {
       await CompleteSocialProfileDialog.show(context, user);
-      return;
+      if (!mounted) return;
     }
 
-    if (user == null) return;
+    final updatedUser = ref.read(authProvider).user ?? user;
+    if (updatedUser == null) return;
 
     final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
 
-    final backendRole = user.activeRole;
+    final backendRole = updatedUser.activeRole;
 
     if (backendRole == UserRole.instructor) {
       await prefs.setString('active_user_role', 'instructor');
