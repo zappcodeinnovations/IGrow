@@ -778,14 +778,23 @@ class ApiAuthRepository implements AuthRepository {
       body['areas_of_interest'] = request.areasOfInterest;
     }
 
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final currentLang = prefs.getString('app_user_language_code') ?? 'en';
+      body['preferred_language'] = currentLang;
+    } catch (_) {}
+
     final http.Response response;
     try {
+      final prefs = await SharedPreferences.getInstance();
+      final lang = prefs.getString('app_user_language_code') ?? 'en';
       response = await http.patch(
         uri,
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
           'Accept': 'application/json',
+          'Accept-Language': lang,
         },
         body: jsonEncode(body),
       );

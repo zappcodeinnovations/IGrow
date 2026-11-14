@@ -23,6 +23,13 @@ class NotificationRepository {
   }) async {
     debugPrint('🔔 [NotificationRepository] getNotifications: isStudent=$isStudent');
     final token = await tokenStorage.getAccessToken();
+    String lang = 'en';
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      lang = prefs.getString('app_user_language_code') ?? 'en';
+    } catch (_) {}
+
+    // Support both endpoints gracefully
     final endpoint = isStudent
         ? 'https://iagrow.zappcode.in/api/v1/notifications/student/'
         : 'https://iagrow.zappcode.in/api/v1/notifications/';
@@ -36,6 +43,7 @@ class NotificationRepository {
           if (token != null) 'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
           'Accept': 'application/json',
+          'Accept-Language': lang,
         },
       );
 

@@ -606,7 +606,7 @@ class NotificationService {
   }
 
   /// Synchronize user's preferred language with backend profile API
-  /// (PATCH /api/v1/accounts/profile/) so future push notifications and email alerts
+  /// (PATCH /api/v1/accounts/profile/ or /api/v1/auth/me/) so future push notifications and email alerts
   /// match the chosen language.
   static Future<void> syncPreferredLanguageWithBackend(String langCode) async {
     try {
@@ -614,26 +614,41 @@ class NotificationService {
       final accessToken = await tokenStorage.getAccessToken();
       if (accessToken == null || accessToken.isEmpty) return;
 
-      final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/accounts/profile/');
-      final response = await http
-          .patch(
-            uri,
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-              'Authorization': 'Bearer $accessToken',
-            },
-            body: jsonEncode({
-              'preferred_language': langCode,
-            }),
-          )
-          .timeout(const Duration(seconds: 8));
+      final endpoints = [
+        'https://iagrow.zappcode.in/api/v1/accounts/profile/',
+        'https://iagrow.zappcode.in/api/v1/auth/me/',
+      ];
 
-      if (kDebugMode) {
-        if (response.statusCode >= 200 && response.statusCode < 300) {
-          print('✅ [NotificationService] Synchronized preferred_language: $langCode with backend profile.');
-        } else {
-          print('⚠️ [NotificationService] Failed to sync preferred_language (${response.statusCode}): ${response.body}');
+      for (final endpoint in endpoints) {
+        try {
+          final uri = Uri.parse(endpoint);
+          final response = await http
+              .patch(
+                uri,
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Accept': 'application/json',
+                  'Authorization': 'Bearer $accessToken',
+                  'Accept-Language': langCode,
+                },
+                body: jsonEncode({
+                  'preferred_language': langCode,
+                }),
+              )
+              .timeout(const Duration(seconds: 8));
+
+          if (kDebugMode) {
+            if (response.statusCode >= 200 && response.statusCode < 300) {
+              print('✅ [NotificationService] Synchronized preferred_language: $langCode with backend profile via $endpoint.');
+              break;
+            } else {
+              print('⚠️ [NotificationService] Sync preferred_language (${response.statusCode}) on $endpoint: ${response.body}');
+            }
+          }
+        } catch (inner) {
+          if (kDebugMode) {
+            print('⚠️ [NotificationService] Exception on $endpoint: $inner');
+          }
         }
       }
     } catch (e) {
