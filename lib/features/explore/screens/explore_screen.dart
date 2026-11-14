@@ -82,6 +82,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
   @override
   void initState() {
     super.initState();
+    shellCustomBackHandler = _handleBackPress;
     _selectedTab = widget.initialTab.clamp(0, 1);
     if (widget.initialCategory != null && widget.initialCategory!.isNotEmpty) {
       _selectedCategory = widget.initialCategory!;
@@ -95,9 +96,18 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
     }
   }
 
+  bool _handleBackPress() {
+    if (!_isCategoriesView) {
+      _clearSearchAndFilters();
+      return true; // handled internally, do not navigate back to Home
+    }
+    return false; // already in categories view, let shell handle it
+  }
+
   @override
   void didUpdateWidget(covariant ExploreScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
+    shellCustomBackHandler = _handleBackPress;
     if (widget.initialTab != oldWidget.initialTab) {
       setState(() {
         _selectedTab = widget.initialTab.clamp(0, 1);
@@ -125,6 +135,9 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
 
   @override
   void dispose() {
+    if (shellCustomBackHandler == _handleBackPress) {
+      shellCustomBackHandler = null;
+    }
     _searchController.dispose();
     super.dispose();
   }
