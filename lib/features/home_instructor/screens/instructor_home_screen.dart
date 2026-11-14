@@ -504,6 +504,61 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
     }
   }
 
+  Future<void> _reactivateCourse(ApiCourseList course) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(tr(ref, 'Reactivate Course'), style: const TextStyle(fontWeight: FontWeight.bold)),
+        content: Text(
+          '${tr(ref, 'Are you sure you want to reactivate')} "${course.title}"?\n\n'
+          '${tr(ref, 'The course will be restored back to live status on the marketplace.')}',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: Text(tr(ref, 'Cancel'))),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.primaryGreen),
+            onPressed: () => Navigator.pop(c, true),
+            child: Text(tr(ref, 'Reactivate')),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        debugPrint('📤 [REACTIVATE] Reactivating course: ${course.id}');
+        await ref.read(instructorRepositoryProvider).unarchiveCourse(course.id);
+        debugPrint('✅ [REACTIVATE] Successfully reactivated course: ${course.id}');
+        if (!mounted) return;
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.clearSnackBars();
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(tr(ref, 'Course reactivated and is now live!')),
+            backgroundColor: AppColors.primaryGreen,
+          ),
+        );
+        ref.invalidate(instructorCoursesProvider);
+        ref.invalidate(instructorCourseDetailProvider(course.id));
+        unawaited(ref.refresh(instructorCoursesProvider((search: _searchQuery, ordering: _ordering)).future));
+        ref.invalidate(studentCatalogProvider);
+        ref.invalidate(featuredCoursesProvider);
+        ref.invalidate(exploreCoursesProvider);
+      } catch (e) {
+        if (!mounted) return;
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.clearSnackBars();
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text('${tr(ref, 'Failed to reactivate course:')} $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _deleteCourse(ApiCourseList course) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -1039,6 +1094,7 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                               }
                             },
                             onDeactivate: () => _deactivateCourse(course),
+                            onReactivate: () => _reactivateCourse(course),
                             onDelete: () => _deleteCourse(course),
                           ),
                         );
@@ -1375,6 +1431,7 @@ class AgriLearnCourseCard extends ConsumerWidget {
     required this.onManage,
     this.onViewLive,
     this.onDeactivate,
+    this.onReactivate,
     this.onDelete,
   });
 
@@ -1382,6 +1439,7 @@ class AgriLearnCourseCard extends ConsumerWidget {
   final VoidCallback onManage;
   final VoidCallback? onViewLive;
   final VoidCallback? onDeactivate;
+  final VoidCallback? onReactivate;
   final VoidCallback? onDelete;
 
   @override
@@ -1596,6 +1654,25 @@ class AgriLearnCourseCard extends ConsumerWidget {
                             fontSize: 11,
                             fontWeight: FontWeight.bold,
                             color: Color(0xFFD97706),
+                          ),
+                        ),
+                      ),
+                    if ((status == 'ARCHIVED' || status == 'INACTIVE') && onReactivate != null)
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          side: const BorderSide(color: AppColors.primaryGreen),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        onPressed: onReactivate,
+                        icon: const Icon(Icons.play_circle_outline, size: 14, color: AppColors.primaryGreen),
+                        label: Text(
+                          tr(ref, 'Reactivate'),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primaryGreen,
                           ),
                         ),
                       ),
