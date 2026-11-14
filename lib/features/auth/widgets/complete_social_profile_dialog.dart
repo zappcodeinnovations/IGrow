@@ -2,14 +2,12 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 
 import '../../../core/localization/app_strings.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_exception.dart';
-import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/app_toast.dart';
 import '../../../core/widgets/app_gradient_button.dart';
@@ -136,9 +134,11 @@ class _CompleteSocialProfileDialogState
     extends ConsumerState<CompleteSocialProfileDialog> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _phoneController;
+  final FocusNode _phoneFocusNode = FocusNode();
   String? _selectedState;
   String? _selectedDistrict;
   bool _isSaving = false;
+  bool _isSheetOpen = false;
 
   @override
   void initState() {
@@ -157,6 +157,7 @@ class _CompleteSocialProfileDialogState
   @override
   void dispose() {
     _phoneController.dispose();
+    _phoneFocusNode.dispose();
     super.dispose();
   }
 
@@ -218,81 +219,91 @@ class _CompleteSocialProfileDialogState
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final keyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
+    // Only treat keyboard as active for this dialog if phone field is focused AND no modal sheet is open
+    final keyboardOpen = !_isSheetOpen && _phoneFocusNode.hasFocus && MediaQuery.of(context).viewInsets.bottom > 0;
+    final keyboardInset = keyboardOpen ? MediaQuery.of(context).viewInsets.bottom : 0.0;
 
-    return GestureDetector(
-      onTap: () => FocusScope.of(context).unfocus(),
-      behavior: HitTestBehavior.translucent,
-      child: Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: EdgeInsets.symmetric(
-          horizontal: 20,
-          vertical: keyboardOpen ? 12 : 24,
+    // Isolate the dialog from external viewInsets (e.g. when bottom sheet opens keyboard)
+    // by overriding the MediaQuery viewInsets provided to the Dialog.
+    return MediaQuery(
+      data: MediaQuery.of(context).copyWith(
+        viewInsets: EdgeInsets.only(
+          bottom: keyboardInset,
         ),
-        child: GestureDetector(
-          onTap: () => FocusScope.of(context).unfocus(),
-          behavior: HitTestBehavior.opaque,
-          child: Container(
-            constraints: BoxConstraints(
-              maxWidth: 420,
-              maxHeight: MediaQuery.of(context).size.height -
-                  MediaQuery.of(context).viewInsets.bottom -
-                  (keyboardOpen ? 32 : 64),
-            ),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1E2822) : Colors.white,
-              borderRadius: BorderRadius.circular(28),
-              border: Border.all(
-                color: isDark ? AppColors.lineDark : AppColors.organicBorderLight,
-                width: 1.5,
+      ),
+      child: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        behavior: HitTestBehavior.translucent,
+        child: Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: keyboardOpen ? 12 : 24,
+          ),
+          child: GestureDetector(
+            onTap: () => FocusScope.of(context).unfocus(),
+            behavior: HitTestBehavior.opaque,
+            child: Container(
+              constraints: BoxConstraints(
+                maxWidth: 420,
+                maxHeight: MediaQuery.of(context).size.height -
+                    keyboardInset -
+                    (keyboardOpen ? 32 : 64),
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.18),
-                  blurRadius: 30,
-                  offset: const Offset(0, 12),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1E2822) : Colors.white,
+                borderRadius: BorderRadius.circular(28),
+                border: Border.all(
+                  color: isDark ? AppColors.lineDark : AppColors.organicBorderLight,
+                  width: 1.5,
                 ),
-              ],
-            ),
-            child: SingleChildScrollView(
-              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-              padding: const EdgeInsets.all(24),
-              child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Top organic icon badge
-                Center(
-                  child: Container(
-                    width: 60,
-                    height: 60,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: LinearGradient(
-                        colors: [
-                          AppColors.primaryGreen,
-                          AppColors.primaryGreen.withOpacity(0.75),
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.primaryGreen.withOpacity(0.3),
-                          blurRadius: 14,
-                          offset: const Offset(0, 6),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.18),
+                    blurRadius: 30,
+                    offset: const Offset(0, 12),
+                  ),
+                ],
+              ),
+              child: SingleChildScrollView(
+                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                padding: const EdgeInsets.all(24),
+                child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Top organic icon badge
+                  Center(
+                    child: Container(
+                      width: 60,
+                      height: 60,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          colors: [
+                            AppColors.primaryGreen,
+                            AppColors.primaryGreen.withOpacity(0.75),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
                         ),
-                      ],
-                    ),
-                    child: const Icon(
-                      Icons.person_pin_circle_rounded,
-                      color: Colors.white,
-                      size: 30,
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primaryGreen.withOpacity(0.3),
+                            blurRadius: 14,
+                            offset: const Offset(0, 6),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.person_pin_circle_rounded,
+                        color: Colors.white,
+                        size: 30,
+                      ),
                     ),
                   ),
-                ),
                 const SizedBox(height: 18),
 
                 // Title
@@ -328,6 +339,7 @@ class _CompleteSocialProfileDialogState
                 // Phone Field
                 AppPillTextField(
                   controller: _phoneController,
+                  focusNode: _phoneFocusNode,
                   hintText: tr(ref, 'Phone Number (10 digits)'),
                   prefixIcon: Icons.phone_android_rounded,
                   keyboardType: TextInputType.phone,
@@ -497,6 +509,7 @@ class _CompleteSocialProfileDialogState
       ),
     ),
   ),
+  ),
   );
   }
 
@@ -602,22 +615,38 @@ class _CompleteSocialProfileDialogState
     required List<String> items,
     required String? selectedValue,
     required ValueChanged<String> onSelected,
-  }) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (sheetContext) {
-        return _LocationPickerBottomSheet(
-          isDark: isDark,
-          title: title,
-          icon: icon,
-          items: items,
-          selectedValue: selectedValue,
-          onSelected: onSelected,
-        );
-      },
-    );
+  }) async {
+    // Unfocus phone input before opening sheet
+    _phoneFocusNode.unfocus();
+    FocusScope.of(context).unfocus();
+
+    setState(() {
+      _isSheetOpen = true;
+    });
+
+    try {
+      await showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (sheetContext) {
+          return _LocationPickerBottomSheet(
+            isDark: isDark,
+            title: title,
+            icon: icon,
+            items: items,
+            selectedValue: selectedValue,
+            onSelected: onSelected,
+          );
+        },
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSheetOpen = false;
+        });
+      }
+    }
   }
 }
 

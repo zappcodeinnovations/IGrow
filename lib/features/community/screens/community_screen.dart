@@ -116,12 +116,12 @@ class _InstructorCommunityView extends ConsumerWidget {
 }
 
 // ─── State A: Highlighted Hero Banner to Launch Community ───────────
-class _InstructorStateA extends StatelessWidget {
+class _InstructorStateA extends ConsumerWidget {
   const _InstructorStateA({required this.isDark});
   final bool isDark;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final titleColor = isDark ? Colors.white : AppColors.inkDark;
     final subtextColor = isDark ? Colors.white70 : AppColors.inkSoft;
 
@@ -178,7 +178,7 @@ class _InstructorStateA extends StatelessWidget {
                 ),
                 const SizedBox(height: 20),
                 Text(
-                  'Start Your Farming Community',
+                  tr(ref, 'Start Your Farming Community'),
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 22,
@@ -189,7 +189,7 @@ class _InstructorStateA extends StatelessWidget {
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  'Connect directly with local farmers and students in your district. Run updates, broadcast webinars, announce courses, and organize physical farmer meetups!',
+                  tr(ref, 'Connect directly with local farmers and students in your district. Run updates, broadcast webinars, announce courses, and organize physical farmer meetups!'),
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 13.5,
@@ -225,9 +225,9 @@ class _InstructorStateA extends StatelessWidget {
                       ),
                       onPressed: () => context.push(RouteNames.createHub),
                       icon: const Icon(Icons.add_circle_outline_rounded, size: 22),
-                      label: const Text(
-                        'Create Community & Launch',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15.5),
+                      label: Text(
+                        tr(ref, 'Create Community & Launch'),
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15.5),
                       ),
                     ),
                   ),
@@ -238,7 +238,7 @@ class _InstructorStateA extends StatelessWidget {
           const SizedBox(height: 22),
 
           Text(
-            'What you can do in your Community:',
+            tr(ref, 'What you can do in your Community:'),
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.bold,
@@ -251,32 +251,32 @@ class _InstructorStateA extends StatelessWidget {
           _FeaturePoint(
             icon: Icons.edit_note_rounded,
             color: const Color(0xFF16A34A),
-            title: '1. General Posts & Crop Tips',
-            desc: 'Publish text guidance and image updates directly into your district feed.',
+            title: tr(ref, '1. General Posts & Crop Tips'),
+            desc: tr(ref, 'Publish text guidance and image updates directly into your district feed.'),
             isDark: isDark,
           ),
           const SizedBox(height: 10),
           _FeaturePoint(
             icon: Icons.campaign_rounded,
             color: const Color(0xFF9333EA),
-            title: '2. Course Announcements',
-            desc: 'Promote live courses with deep links, thumbnail banners, and instant enrollment buttons.',
+            title: tr(ref, '2. Course Announcements'),
+            desc: tr(ref, 'Promote live courses with deep links, thumbnail banners, and instant enrollment buttons.'),
             isDark: isDark,
           ),
           const SizedBox(height: 10),
           _FeaturePoint(
             icon: Icons.videocam_rounded,
             color: const Color(0xFF2563EB),
-            title: '3. Online Webinars',
-            desc: 'Host Zoom/Google Meet sessions with direct countdown and 1-tap join buttons.',
+            title: tr(ref, '3. Online Webinars'),
+            desc: tr(ref, 'Host Zoom/Google Meet sessions with direct countdown and 1-tap join buttons.'),
             isDark: isDark,
           ),
           const SizedBox(height: 10),
           _FeaturePoint(
             icon: Icons.groups_rounded,
             color: const Color(0xFFD97706),
-            title: '4. Offline Melawas & Seminars',
-            desc: 'Share venue address with 1-tap Google Maps navigation for farmer meetups.',
+            title: tr(ref, '4. Offline Melawas & Seminars'),
+            desc: tr(ref, 'Share venue address with 1-tap Google Maps navigation for farmer meetups.'),
             isDark: isDark,
           ),
           const SizedBox(height: 24),

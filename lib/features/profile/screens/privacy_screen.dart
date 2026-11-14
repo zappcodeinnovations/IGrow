@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../core/localization/app_strings.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/delete_account_dialog.dart';
@@ -18,70 +19,76 @@ class PrivacyScreen extends ConsumerStatefulWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (ctx) {
-        return DraggableScrollableSheet(
-          initialChildSize: 0.7,
-          minChildSize: 0.4,
-          maxChildSize: 0.9,
-          expand: false,
-          builder: (_, scrollController) {
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              child: ListView(
-                controller: scrollController,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade300,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
+        return Consumer(
+          builder: (context, ref, _) {
+            return DraggableScrollableSheet(
+              initialChildSize: 0.7,
+              minChildSize: 0.4,
+              maxChildSize: 0.9,
+              expand: false,
+              builder: (_, scrollController) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                  child: ListView(
+                    controller: scrollController,
                     children: [
-                      const Icon(Icons.shield_outlined, color: AppColors.primaryGreen, size: 28),
-                      const SizedBox(width: 10),
-                      Text(
-                        'iAgrow Privacy Policy',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.bold,
+                      Center(
+                        child: Container(
+                          width: 40,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade300,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          const Icon(Icons.shield_outlined, color: AppColors.primaryGreen, size: 28),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              tr(ref, 'iAgrow Privacy Policy'),
+                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
                             ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        tr(ref, 'Last Updated: September 2026'),
+                        style: const TextStyle(color: AppColors.inkSoft, fontSize: 12),
+                      ),
+                      const SizedBox(height: 14),
+                      Text(
+                        '${tr(ref, '1. Information We Collect')}\n'
+                        '${tr(ref, 'We collect personal details such as your name, email, contact number, and regional farming preferences to provide tailored agricultural courses and advisory services.')}\n\n'
+                        '${tr(ref, '2. How We Use Your Data')}\n'
+                        '${tr(ref, 'Your data is utilized solely for course enrollment, certificate generation, peer community networking, and app performance improvements. We never sell your personal information to third parties.')}\n\n'
+                        '${tr(ref, '3. Payment Security')}\n'
+                        '${tr(ref, 'All transactions are processed through encrypted financial gateways conforming to PCI-DSS standards. We do not store credit card or bank account credentials on our servers.')}\n\n'
+                        '${tr(ref, '4. Your Choices & Controls')}\n'
+                        '${tr(ref, 'You retain complete control over your public profile visibility, activity status, and direct messaging privileges through this Privacy Settings tab.')}',
+                        style: const TextStyle(fontSize: 13.5, height: 1.5),
+                      ),
+                      const SizedBox(height: 24),
+                      ElevatedButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primaryGreen,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Text(tr(ref, 'Close'), style: const TextStyle(color: Colors.white)),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Last Updated: September 2026',
-                    style: TextStyle(color: AppColors.inkSoft, fontSize: 12),
-                  ),
-                  const SizedBox(height: 14),
-                  const Text(
-                    '1. Information We Collect\n'
-                    'We collect personal details such as your name, email, contact number, and regional farming preferences to provide tailored agricultural courses and advisory services.\n\n'
-                    '2. How We Use Your Data\n'
-                    'Your data is utilized solely for course enrollment, certificate generation, peer community networking, and app performance improvements. We never sell your personal information to third parties.\n\n'
-                    '3. Payment Security\n'
-                    'All transactions are processed through encrypted financial gateways conforming to PCI-DSS standards. We do not store credit card or bank account credentials on our servers.\n\n'
-                    '4. Your Choices & Controls\n'
-                    'You retain complete control over your public profile visibility, activity status, and direct messaging privileges through this Privacy Settings tab.',
-                    style: TextStyle(fontSize: 13.5, height: 1.5),
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton(
-                    onPressed: () => Navigator.pop(ctx),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryGreen,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: const Text('Close', style: TextStyle(color: Colors.white)),
-                  ),
-                ],
-              ),
+                );
+              },
             );
           },
         );
@@ -143,12 +150,12 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  title,
+                  tr(ref, title),
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  description,
+                  tr(ref, description),
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: AppColors.inkSoft,
                   ),
@@ -167,9 +174,9 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
               final messenger = ScaffoldMessenger.of(context);
               messenger.clearSnackBars();
               messenger.showSnackBar(
-                const SnackBar(
-                  content: Text('Privacy preference saved'),
-                  duration: Duration(milliseconds: 1400),
+                SnackBar(
+                  content: Text(tr(ref, 'Privacy preference saved')),
+                  duration: const Duration(milliseconds: 1400),
                 ),
               );
             },
@@ -239,7 +246,7 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
               ),
             ),
             title: Text(
-              'Privacy Settings',
+              tr(ref, 'Privacy Settings'),
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 18,
@@ -254,12 +261,12 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
             sliver: SliverList(
               delegate: SliverChildListDelegate([
             Text(
-              'Manage Your Privacy',
+              tr(ref, 'Manage Your Privacy'),
               style: Theme.of(context).textTheme.headlineSmall,
             ),
             const SizedBox(height: 8),
             Text(
-              'Control who sees your profile and how your data is used.',
+              tr(ref, 'Control who sees your profile and how your data is used.'),
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: AppColors.inkSoft,
               ),
@@ -272,7 +279,7 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Profile Visibility',
+                    tr(ref, 'Profile Visibility'),
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                   const Divider(height: 24),
@@ -301,7 +308,7 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Communications',
+                    tr(ref, 'Communications'),
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                   const Divider(height: 24),
@@ -323,7 +330,7 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Data & Analytics',
+                    tr(ref, 'Data & Analytics'),
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                   const Divider(height: 24),
@@ -352,17 +359,19 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
                         size: 22,
                       ),
                       const SizedBox(width: 8),
-                      Text(
-                        'Account & Data Deletion',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              color: AppColors.error,
-                            ),
+                      Expanded(
+                        child: Text(
+                          tr(ref, 'Account & Data Deletion'),
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                color: AppColors.error,
+                              ),
+                        ),
                       ),
                     ],
                   ),
                   const Divider(height: 24),
                   Text(
-                    'You have full control over your personal data. Deleting your account will immediately and permanently erase all your personal information, profile records, enrolled courses, certificates, and app progress from IGrow.',
+                    tr(ref, 'You have full control over your personal data. Deleting your account will immediately and permanently erase all your personal information, profile records, enrolled courses, certificates, and app progress from IGrow.'),
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: AppColors.inkSoft,
                           height: 1.45,
@@ -379,9 +388,9 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
                         color: AppColors.error,
                         size: 20,
                       ),
-                      label: const Text(
-                        'Delete My Account',
-                        style: TextStyle(
+                      label: Text(
+                        tr(ref, 'Delete My Account'),
+                        style: const TextStyle(
                           color: AppColors.error,
                           fontWeight: FontWeight.bold,
                         ),
@@ -409,7 +418,7 @@ class _PrivacyScreenState extends ConsumerState<PrivacyScreen> {
                   color: isDark ? AppColors.editorialSecondaryFixedDim : AppColors.editorialSecondary,
                 ),
                 label: Text(
-                  'Read our full Privacy Policy',
+                  tr(ref, 'Read our full Privacy Policy'),
                   style: TextStyle(
                     color: isDark ? AppColors.editorialSecondaryFixedDim : AppColors.editorialSecondary, 
                     fontWeight: FontWeight.w600,

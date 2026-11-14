@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../localization/app_strings.dart';
 import '../router/route_names.dart';
 import '../theme/app_colors.dart';
 import '../../features/auth/providers/auth_provider.dart';
@@ -79,7 +80,9 @@ class KycRestrictedView extends ConsumerWidget {
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    isPending ? 'VERIFICATION UNDER REVIEW' : 'KYC REQUIRED',
+                    isPending
+                        ? tr(ref, 'VERIFICATION UNDER REVIEW')
+                        : tr(ref, 'KYC REQUIRED'),
                     style: TextStyle(
                       color: statusColor,
                       fontSize: 12,
@@ -95,8 +98,8 @@ class KycRestrictedView extends ConsumerWidget {
             // Title
             Text(
               isPending
-                  ? 'KYC Approval Pending'
-                  : 'Complete KYC to Access $featureName',
+                  ? tr(ref, 'KYC Approval Pending')
+                  : '${tr(ref, 'Complete KYC to Access')} ${tr(ref, featureName)}',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.bold,
@@ -108,8 +111,8 @@ class KycRestrictedView extends ConsumerWidget {
             // Description Body
             Text(
               isPending
-                  ? 'Your KYC documents and bank details have been submitted and are currently under review by our team. Content upload features will unlock automatically once approved.'
-                  : 'As per AgriLearn instructor policies, Government ID verification and Bank Account details are required before creating courses or publishing e-books.',
+                  ? tr(ref, 'Your KYC documents and bank details have been submitted and are currently under review by our team. Content upload features will unlock automatically once approved.')
+                  : tr(ref, 'As per AgriLearn instructor policies, Government ID verification and Bank Account details are required before creating courses or publishing e-books.'),
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: isDark ? Colors.grey.shade400 : AppColors.inkSoft,
@@ -125,7 +128,7 @@ class KycRestrictedView extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Instructor Requirements:',
+                    tr(ref, 'Instructor Requirements:'),
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
@@ -133,6 +136,7 @@ class KycRestrictedView extends ConsumerWidget {
                   const SizedBox(height: 12),
                   _buildCheckItem(
                     context,
+                    ref: ref,
                     title: 'Government ID Verification',
                     subtitle: 'Aadhaar / PAN Card upload',
                     isDone: user?.kycDocumentNumber != null && user!.kycDocumentNumber!.isNotEmpty,
@@ -141,6 +145,7 @@ class KycRestrictedView extends ConsumerWidget {
                   const Divider(height: 20),
                   _buildCheckItem(
                     context,
+                    ref: ref,
                     title: 'Bank Account & Payout Details',
                     subtitle: 'For receiving course sales payouts',
                     isDone: user?.bankAccountNumber != null && user!.bankAccountNumber!.isNotEmpty,
@@ -149,6 +154,7 @@ class KycRestrictedView extends ConsumerWidget {
                   const Divider(height: 20),
                   _buildCheckItem(
                     context,
+                    ref: ref,
                     title: 'Admin Verification Approval',
                     subtitle: 'Review takes 24-48 business hours',
                     isDone: user?.isKycVerified == true,
@@ -177,7 +183,9 @@ class KycRestrictedView extends ConsumerWidget {
                 },
                 icon: Icon(isPending ? Icons.remove_red_eye_outlined : Icons.shield_outlined),
                 label: Text(
-                  isPending ? 'Check KYC Status' : 'Complete KYC Verification Now',
+                  isPending
+                      ? tr(ref, 'Check KYC Status')
+                      : tr(ref, 'Complete KYC Verification Now'),
                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                 ),
               ),
@@ -195,7 +203,7 @@ class KycRestrictedView extends ConsumerWidget {
                   }
                 },
                 icon: const Icon(Icons.arrow_back),
-                label: const Text('Return to Dashboard'),
+                label: Text(tr(ref, 'Return to Dashboard')),
                 style: TextButton.styleFrom(
                   foregroundColor: isDark ? Colors.grey.shade400 : AppColors.inkSoft,
                 ),
@@ -209,6 +217,7 @@ class KycRestrictedView extends ConsumerWidget {
 
   Widget _buildCheckItem(
     BuildContext context, {
+    required WidgetRef ref,
     required String title,
     required String subtitle,
     required bool isDone,
@@ -239,7 +248,7 @@ class KycRestrictedView extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                title,
+                tr(ref, title),
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
                   fontSize: 14,
@@ -247,7 +256,7 @@ class KycRestrictedView extends ConsumerWidget {
                 ),
               ),
               Text(
-                subtitle,
+                tr(ref, subtitle),
                 style: TextStyle(
                   fontSize: 12,
                   color: isDark ? Colors.grey.shade400 : AppColors.inkSoft,

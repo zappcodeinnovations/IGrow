@@ -14,6 +14,7 @@ import '../theme/app_colors.dart';
 /// - Embedded validation error text
 class AppPillTextField extends StatefulWidget {
   final TextEditingController controller;
+  final FocusNode? focusNode;
   final String hintText;
   final IconData prefixIcon;
   final Widget? suffixIcon;
@@ -29,6 +30,7 @@ class AppPillTextField extends StatefulWidget {
   const AppPillTextField({
     super.key,
     required this.controller,
+    this.focusNode,
     required this.hintText,
     required this.prefixIcon,
     this.suffixIcon,
@@ -47,22 +49,38 @@ class AppPillTextField extends StatefulWidget {
 }
 
 class _AppPillTextFieldState extends State<AppPillTextField> {
-  final FocusNode _focusNode = FocusNode();
+  late final FocusNode _internalFocusNode;
+  FocusNode get _effectiveFocusNode => widget.focusNode ?? _internalFocusNode;
   bool _isFocused = false;
 
   @override
   void initState() {
     super.initState();
-    _focusNode.addListener(() {
+    _internalFocusNode = FocusNode();
+    _effectiveFocusNode.addListener(_handleFocusChange);
+  }
+
+  void _handleFocusChange() {
+    if (mounted) {
       setState(() {
-        _isFocused = _focusNode.hasFocus;
+        _isFocused = _effectiveFocusNode.hasFocus;
       });
-    });
+    }
+  }
+
+  @override
+  void didUpdateWidget(AppPillTextField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.focusNode != widget.focusNode) {
+      (oldWidget.focusNode ?? _internalFocusNode).removeListener(_handleFocusChange);
+      _effectiveFocusNode.addListener(_handleFocusChange);
+    }
   }
 
   @override
   void dispose() {
-    _focusNode.dispose();
+    _effectiveFocusNode.removeListener(_handleFocusChange);
+    _internalFocusNode.dispose();
     super.dispose();
   }
 
@@ -131,7 +149,7 @@ class _AppPillTextFieldState extends State<AppPillTextField> {
                   Expanded(
                     child: TextField(
                       controller: widget.controller,
-                      focusNode: _focusNode,
+                      focusNode: _effectiveFocusNode,
                       obscureText: widget.obscureText,
                       keyboardType: widget.keyboardType,
                       textInputAction: widget.textInputAction,

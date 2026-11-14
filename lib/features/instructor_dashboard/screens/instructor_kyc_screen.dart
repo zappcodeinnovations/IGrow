@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 
+import '../../../core/localization/app_strings.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/responsive_layout.dart';
@@ -375,7 +376,7 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'Upload ID Document Photo',
+                  tr(ref, 'Upload ID Document Photo'),
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -406,7 +407,7 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              'Camera',
+                              tr(ref, 'Camera'),
                               style: Theme.of(context).textTheme.labelMedium,
                             ),
                           ],
@@ -435,7 +436,7 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              'Gallery',
+                              tr(ref, 'Gallery'),
                               style: Theme.of(context).textTheme.labelMedium,
                             ),
                           ],
@@ -498,7 +499,9 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            _ifscErrorText ?? 'Invalid IFSC code. Please enter a valid IFSC.',
+            _ifscErrorText != null
+                ? tr(ref, _ifscErrorText!)
+                : tr(ref, 'Invalid IFSC code. Please enter a valid IFSC.'),
           ),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
@@ -520,7 +523,9 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              _ifscErrorText ?? 'Invalid IFSC code. Branch does not exist.',
+              _ifscErrorText != null
+                  ? tr(ref, _ifscErrorText!)
+                  : tr(ref, 'Invalid IFSC code. Branch does not exist.'),
             ),
             backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
@@ -548,8 +553,8 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
         '⚠️ [INSTRUCTOR KYC SCREEN] Validation failed: ID document photo is missing.',
       );
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please upload a photo of your ID document.'),
+        SnackBar(
+          content: Text(tr(ref, 'Please upload a photo of your ID document.')),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
         ),
@@ -650,7 +655,7 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('KYC & Payout Verification'),
+        title: Text(tr(ref, 'KYC & Payout Verification')),
         elevation: 0,
         backgroundColor: Colors.transparent,
       ),
@@ -682,7 +687,7 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
                           setState(() => _isEditingExisting = true);
                         },
                         icon: const Icon(Icons.edit_rounded, size: 18),
-                        label: const Text('Update / Edit Submitted Details'),
+                        label: Text(tr(ref, 'Update / Edit Submitted Details')),
                       ),
                     ),
                 ] else ...[
@@ -695,7 +700,7 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
                       children: [
                         // Section 1: Government Identity
                         Text(
-                          '1. Identity Document',
+                          tr(ref, '1. Identity Document'),
                           style: Theme.of(context).textTheme.titleMedium
                               ?.copyWith(
                                 fontWeight: FontWeight.bold,
@@ -706,7 +711,7 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Choose a government ID for identity verification.',
+                          tr(ref, 'Choose a government ID for identity verification.'),
                           style: Theme.of(context).textTheme.bodySmall
                               ?.copyWith(color: AppColors.inkSoft),
                         ),
@@ -738,8 +743,8 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
                         AppTextField(
                           controller: _docNumberController,
                           label: _selectedDocType == 'AADHAAR'
-                              ? '12-digit Aadhaar Number *'
-                              : '10-character PAN Number *',
+                              ? tr(ref, '12-digit Aadhaar Number *')
+                              : tr(ref, '10-character PAN Number *'),
                           hint: _selectedDocType == 'AADHAAR'
                               ? 'e.g. 123456789012'
                               : 'e.g. ABCDE1234F',
@@ -754,19 +759,21 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
                           ),
                           validator: (val) {
                             if (val == null || val.trim().isEmpty) {
-                              return 'Please enter your ${_selectedDocType == 'AADHAAR' ? 'Aadhaar' : 'PAN'} number';
+                              return _selectedDocType == 'AADHAAR'
+                                  ? tr(ref, 'Please enter your Aadhaar number')
+                                  : tr(ref, 'Please enter your PAN number');
                             }
                             final clean = val.trim().replaceAll(' ', '');
                             if (_selectedDocType == 'AADHAAR') {
                               if (!RegExp(r'^\d{12}$').hasMatch(clean)) {
-                                return 'Aadhaar must be exactly 12 digits';
+                                return tr(ref, 'Aadhaar must be exactly 12 digits');
                               }
                             } else {
                               if (!RegExp(
                                 r'^[A-Z]{5}[0-9]{4}[A-Z]{1}$',
                                 caseSensitive: false,
                               ).hasMatch(clean)) {
-                                return 'Please enter a valid 10-character PAN (e.g. ABCDE1234F)';
+                                return tr(ref, 'Please enter a valid 10-character PAN (e.g. ABCDE1234F)');
                               }
                             }
                             return null;
@@ -780,7 +787,7 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
 
                         // Section 2: Bank Payout Details
                         Text(
-                          '2. Bank Account (For Payouts)',
+                          tr(ref, '2. Bank Account (For Payouts)'),
                           style: Theme.of(context).textTheme.titleMedium
                               ?.copyWith(
                                 fontWeight: FontWeight.bold,
@@ -791,7 +798,7 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Course & ebook earnings will be credited to this account on the 1st of every month.',
+                          tr(ref, 'Course & ebook earnings will be credited to this account on the 1st of every month.'),
                           style: Theme.of(context).textTheme.bodySmall
                               ?.copyWith(color: AppColors.inkSoft),
                         ),
@@ -800,15 +807,15 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
                         // Account Holder Name
                         AppTextField(
                           controller: _accountNameController,
-                          label: 'Account Holder Name *',
-                          hint: 'Name as per bank passbook / statement',
+                          label: tr(ref, 'Account Holder Name *'),
+                          hint: tr(ref, 'Name as per bank passbook / statement'),
                           prefixIcon: const Icon(
                             Icons.person_outline_rounded,
                             color: AppColors.primaryGreen,
                           ),
                           validator: (val) {
                             if (val == null || val.trim().isEmpty) {
-                              return 'Please enter the account holder name';
+                              return tr(ref, 'Please enter the account holder name');
                             }
                             return null;
                           },
@@ -818,8 +825,8 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
                         // Bank Name
                         AppTextField(
                           controller: _bankNameController,
-                          label: 'Bank Name *',
-                          hint: 'e.g. State Bank of India, HDFC, ICICI',
+                          label: tr(ref, 'Bank Name *'),
+                          hint: tr(ref, 'e.g. State Bank of India, HDFC, ICICI'),
                           prefixIcon: const Icon(
                             Icons.account_balance_rounded,
                             color: AppColors.primaryGreen,
@@ -829,7 +836,7 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
                           },
                           validator: (val) {
                             if (val == null || val.trim().isEmpty) {
-                              return 'Please enter bank name';
+                              return tr(ref, 'Please enter bank name');
                             }
                             return null;
                           },
@@ -839,8 +846,8 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
                         // Bank Account Number
                         AppTextField(
                           controller: _accountNumberController,
-                          label: 'Bank Account Number *',
-                          hint: 'Enter account number (9 to 18 digits)',
+                          label: tr(ref, 'Bank Account Number *'),
+                          hint: tr(ref, 'Enter account number (9 to 18 digits)'),
                           keyboardType: TextInputType.number,
                           inputFormatters: [
                             FilteringTextInputFormatter.digitsOnly,
@@ -852,14 +859,14 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
                           ),
                           validator: (val) {
                             if (val == null || val.trim().isEmpty) {
-                              return 'Please enter account number';
+                              return tr(ref, 'Please enter account number');
                             }
                             final digits = val.trim();
                             if (digits.length < 9) {
-                              return 'Account number must be at least 9 digits';
+                              return tr(ref, 'Account number must be at least 9 digits');
                             }
                             if (digits.length > 18) {
-                              return 'Account number cannot exceed 18 digits';
+                              return tr(ref, 'Account number cannot exceed 18 digits');
                             }
                             return null;
                           },
@@ -869,8 +876,8 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
                         // Confirm Account Number
                         AppTextField(
                           controller: _confirmAccountController,
-                          label: 'Confirm Account Number *',
-                          hint: 'Re-enter account number',
+                          label: tr(ref, 'Confirm Account Number *'),
+                          hint: tr(ref, 'Re-enter account number'),
                           keyboardType: TextInputType.number,
                           inputFormatters: [
                             FilteringTextInputFormatter.digitsOnly,
@@ -882,11 +889,11 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
                           ),
                           validator: (val) {
                             if (val == null || val.trim().isEmpty) {
-                              return 'Please re-enter account number';
+                              return tr(ref, 'Please re-enter account number');
                             }
                             if (val.trim() !=
                                 _accountNumberController.text.trim()) {
-                              return 'Account numbers do not match';
+                              return tr(ref, 'Account numbers do not match');
                             }
                             return null;
                           },
@@ -896,7 +903,7 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
                         // IFSC Code
                         AppTextField(
                           controller: _ifscController,
-                          label: 'IFSC Code *',
+                          label: tr(ref, 'IFSC Code *'),
                           hint: 'e.g. SBIN0001234',
                           keyboardType: TextInputType.text,
                           inputFormatters: [
@@ -938,17 +945,18 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
                           onChanged: _onIfscChanged,
                           validator: (val) {
                             if (val == null || val.trim().isEmpty) {
-                              return 'Please enter IFSC code';
+                              return tr(ref, 'Please enter IFSC code');
                             }
                             final clean = val.trim().toUpperCase();
                             if (!RegExp(
                               r'^[A-Z]{4}0[A-Z0-9]{6}$',
                             ).hasMatch(clean)) {
-                              return 'Enter a valid 11-character IFSC code (e.g. SBIN0001234)';
+                              return tr(ref, 'Enter a valid 11-character IFSC code (e.g. SBIN0001234)');
                             }
                             if (_isIfscValid == false) {
-                              return _ifscErrorText ??
-                                  'Invalid IFSC code. Branch does not exist.';
+                              return _ifscErrorText != null
+                                  ? tr(ref, _ifscErrorText!)
+                                  : tr(ref, 'Invalid IFSC code. Branch does not exist.');
                             }
                             return null;
                           },
@@ -980,7 +988,7 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Text(
-                                  'Your personal and banking information is 256-bit encrypted and exclusively used for instructor compliance and payout transfers.',
+                                  tr(ref, 'Your personal and banking information is 256-bit encrypted and exclusively used for instructor compliance and payout transfers.'),
                                   style: Theme.of(context).textTheme.bodySmall
                                       ?.copyWith(
                                         color: isDark
@@ -1028,8 +1036,8 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
                                   ),
                             label: Text(
                               _isLoading
-                                  ? 'Please wait...'
-                                  : 'Submit for Verification',
+                                  ? tr(ref, 'Please wait...')
+                                  : tr(ref, 'Submit for Verification'),
                               style: const TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.bold,
@@ -1045,7 +1053,7 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
                               onPressed: () {
                                 setState(() => _isEditingExisting = false);
                               },
-                              child: const Text('Cancel Edit'),
+                              child: Text(tr(ref, 'Cancel Edit')),
                             ),
                           ),
                         ],
@@ -1078,30 +1086,30 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
       bgGradientStart = AppColors.primaryGreen;
       bgGradientEnd = AppColors.greenDark;
       icon = Icons.verified_user_rounded;
-      title = 'KYC Verified Guide 🛡️';
+      title = tr(ref, 'KYC Verified Guide 🛡️');
       message =
-          'Your identity and bank account are fully verified. You can publish courses, ebooks, and receive monthly payouts.';
+          tr(ref, 'Your identity and bank account are fully verified. You can publish courses, ebooks, and receive monthly payouts.');
     } else if (isPending) {
       bgGradientStart = AppColors.accentOrange;
       bgGradientEnd = const Color(0xFFD97706);
       icon = Icons.hourglass_top_rounded;
-      title = 'Verification Under Review ⏳';
+      title = tr(ref, 'Verification Under Review ⏳');
       message =
-          'Your KYC documents have been submitted to the admin team for review. Approval usually takes 24 to 48 hours.';
+          tr(ref, 'Your KYC documents have been submitted to the admin team for review. Approval usually takes 24 to 48 hours.');
     } else if (isRejected) {
       bgGradientStart = AppColors.error;
       bgGradientEnd = const Color(0xFF991B1B);
       icon = Icons.warning_amber_rounded;
-      title = 'Verification Action Required ⚠️';
+      title = tr(ref, 'Verification Action Required ⚠️');
       message =
-          'Your previous submission could not be verified. Please review your details, attach a clear photo of your ID, and resubmit.';
+          tr(ref, 'Your previous submission could not be verified. Please review your details, attach a clear photo of your ID, and resubmit.');
     } else {
       bgGradientStart = AppColors.skyBlue;
       bgGradientEnd = const Color(0xFF1D4ED8);
       icon = Icons.assignment_outlined;
-      title = 'Complete KYC Profile 📋';
+      title = tr(ref, 'Complete KYC Profile 📋');
       message =
-          'Government ID & bank verification are required to activate course payouts and instructor badges.';
+          tr(ref, 'Government ID & bank verification are required to activate course payouts and instructor badges.');
     }
 
     return AppCard(
@@ -1199,7 +1207,7 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
             const SizedBox(width: 8),
             Flexible(
               child: Text(
-                label,
+                tr(ref, label),
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.labelMedium?.copyWith(
                   color: isSelected
@@ -1232,7 +1240,9 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
               ),
               const SizedBox(width: 8),
               Text(
-                'Upload ${_selectedDocType == 'AADHAAR' ? 'Aadhaar' : 'PAN'} Front Photo *',
+                _selectedDocType == 'AADHAAR'
+                    ? tr(ref, 'Upload Aadhaar Front Photo *')
+                    : tr(ref, 'Upload PAN Front Photo *'),
                 style: Theme.of(
                   context,
                 ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
@@ -1241,7 +1251,7 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Ensure your full name, photo, and number are clearly visible.',
+            tr(ref, 'Ensure your full name, photo, and number are clearly visible.'),
             style: Theme.of(
               context,
             ).textTheme.bodySmall?.copyWith(color: AppColors.inkSoft),
@@ -1286,7 +1296,7 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
                 OutlinedButton.icon(
                   onPressed: _cropAndRotateCurrentDoc,
                   icon: const Icon(Icons.crop_rotate_rounded, size: 16),
-                  label: const Text('Crop & Rotate'),
+                  label: Text(tr(ref, 'Crop & Rotate')),
                   style: OutlinedButton.styleFrom(
                     visualDensity: VisualDensity.compact,
                     foregroundColor: AppColors.primaryGreen,
@@ -1300,7 +1310,7 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
                 TextButton.icon(
                   onPressed: _showImagePickerSheet,
                   icon: const Icon(Icons.sync_rounded, size: 16),
-                  label: const Text('Change Photo'),
+                  label: Text(tr(ref, 'Change Photo')),
                   style: TextButton.styleFrom(
                     visualDensity: VisualDensity.compact,
                   ),
@@ -1322,7 +1332,7 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
                       height: 140,
                       color: AppColors.primaryGreen.withValues(alpha: 0.08),
                       alignment: Alignment.center,
-                      child: const Text('Attached ID on File'),
+                      child: Text(tr(ref, 'Attached ID on File')),
                     ),
                   ),
                 ),
@@ -1333,7 +1343,7 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
               child: TextButton.icon(
                 onPressed: _showImagePickerSheet,
                 icon: const Icon(Icons.photo_camera_rounded, size: 18),
-                label: const Text('Upload New Photo'),
+                label: Text(tr(ref, 'Upload New Photo')),
               ),
             ),
           ] else ...[
@@ -1367,7 +1377,7 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      'Tap to Take Photo or Browse',
+                      tr(ref, 'Tap to Take Photo or Browse'),
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w600,
                         color: AppColors.primaryGreen,
@@ -1375,7 +1385,7 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Supports JPG, PNG up to 5MB',
+                      tr(ref, 'Supports JPG, PNG up to 5MB'),
                       style: Theme.of(
                         context,
                       ).textTheme.bodySmall?.copyWith(color: AppColors.inkSoft),
@@ -1403,7 +1413,7 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
                 children: [
                   Expanded(
                     child: Text(
-                      'Identity Details',
+                      tr(ref, 'Identity Details'),
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
@@ -1424,7 +1434,9 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
-                      isVerified ? 'VERIFIED' : 'PENDING REVIEW',
+                      isVerified
+                          ? tr(ref, 'VERIFIED')
+                          : tr(ref, 'PENDING REVIEW'),
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
                         color: isVerified
                             ? AppColors.primaryGreen
@@ -1437,13 +1449,15 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
               ),
               const Divider(height: 24),
               _buildSummaryRow(
-                'Document Type',
-                user?.kycDocumentType == 'PAN' ? 'PAN Card' : 'Aadhaar Card',
+                tr(ref, 'Document Type'),
+                user?.kycDocumentType == 'PAN'
+                    ? tr(ref, 'PAN Card')
+                    : tr(ref, 'Aadhaar Card'),
               ),
               _buildSummaryRow(
-                'Document Number',
+                tr(ref, 'Document Number'),
                 _showSubmittedDocNumber
-                    ? (user?.kycDocumentNumber ?? 'Not provided')
+                    ? (user?.kycDocumentNumber ?? tr(ref, 'Not provided'))
                     : _maskNumber(user?.kycDocumentNumber),
                 onToggleVisibility:
                     (user?.kycDocumentNumber != null &&
@@ -1479,21 +1493,24 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Registered Bank Account',
+                tr(ref, 'Registered Bank Account'),
                 style: Theme.of(
                   context,
                 ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
               ),
               const Divider(height: 24),
-              _buildSummaryRow('Bank Name', user?.bankName ?? 'Not specified'),
               _buildSummaryRow(
-                'Account Holder',
+                tr(ref, 'Bank Name'),
+                user?.bankName ?? tr(ref, 'Not specified'),
+              ),
+              _buildSummaryRow(
+                tr(ref, 'Account Holder'),
                 user?.bankAccountName ?? user?.fullName ?? '',
               ),
               _buildSummaryRow(
-                'Account Number',
+                tr(ref, 'Account Number'),
                 _showSubmittedAccountNumber
-                    ? (user?.bankAccountNumber ?? 'Not provided')
+                    ? (user?.bankAccountNumber ?? tr(ref, 'Not provided'))
                     : _maskNumber(user?.bankAccountNumber),
                 onToggleVisibility:
                     (user?.bankAccountNumber != null &&
@@ -1505,7 +1522,7 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
                     : null,
                 isMasked: !_showSubmittedAccountNumber,
               ),
-              _buildSummaryRow('IFSC Code', user?.bankIfscCode ?? '••••'),
+              _buildSummaryRow(tr(ref, 'IFSC Code'), user?.bankIfscCode ?? '••••'),
             ],
           ),
         ),

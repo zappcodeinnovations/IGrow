@@ -133,31 +133,39 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: AppColors.signalYellow.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(10),
+                      Expanded(
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: AppColors.signalYellow.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Icon(Icons.star_rounded, color: AppColors.signalYellow, size: 24),
                             ),
-                            child: const Icon(Icons.star_rounded, color: AppColors.signalYellow, size: 24),
-                          ),
-                          const SizedBox(width: 12),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Student Reviews & Ratings',
-                                style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    tr(ref, 'Student Reviews & Ratings'),
+                                    style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  Text(
+                                    '⭐ ${formatNum(ref, avgRating.toStringAsFixed(1))} ${tr(ref, 'average rating')} • ${formatNum(ref, totalReviews)} ${tr(ref, 'student reviews')}',
+                                    style: const TextStyle(fontSize: 12, color: AppColors.inkSoft),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
                               ),
-                              Text(
-                                '⭐ ${avgRating.toStringAsFixed(1)} average rating • $totalReviews student reviews',
-                                style: const TextStyle(fontSize: 12, color: AppColors.inkSoft),
-                              ),
-                            ],
-                          ),
-                        ],
+                            ),
+                          ],
+                        ),
                       ),
                       IconButton(
                         icon: const Icon(Icons.close_rounded),
@@ -175,7 +183,7 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                     child: Row(
                       children: [
                         Text(
-                          avgRating.toStringAsFixed(1),
+                          formatNum(ref, avgRating.toStringAsFixed(1)),
                           style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: AppColors.primaryGreen),
                         ),
                         const SizedBox(width: 16),
@@ -195,7 +203,7 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                'Based on $totalReviews verified enrolled student ratings',
+                                '${tr(ref, 'Based on')} ${formatNum(ref, totalReviews)} ${tr(ref, 'verified enrolled student ratings')}',
                                 style: const TextStyle(fontSize: 12, color: AppColors.inkSoft),
                               ),
                             ],
@@ -215,8 +223,8 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                       ),
                       child: const Icon(Icons.rate_review_outlined, color: AppColors.signalYellow, size: 20),
                     ),
-                    title: const Text('Manage Reviews & Replies', style: TextStyle(fontWeight: FontWeight.bold)),
-                    subtitle: Text('See all $totalReviews ratings and reply to students', style: const TextStyle(fontSize: 12)),
+                    title: Text(tr(ref, 'Manage Reviews & Replies'), style: const TextStyle(fontWeight: FontWeight.bold)),
+                    subtitle: Text('${tr(ref, 'See all')} ${formatNum(ref, totalReviews)} ${tr(ref, 'ratings and reply to students')}', style: const TextStyle(fontSize: 12)),
                     trailing: const Icon(Icons.chevron_right_rounded),
                     onTap: () {
                       Navigator.pop(sheetContext);
@@ -234,8 +242,8 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                       ),
                       child: const Icon(Icons.question_answer_outlined, color: AppColors.primaryGreen, size: 20),
                     ),
-                    title: const Text('Student Q&A & Inquiries', style: TextStyle(fontWeight: FontWeight.bold)),
-                    subtitle: const Text('Manage student discussions and doubts', style: TextStyle(fontSize: 12)),
+                    title: Text(tr(ref, 'Student Q&A & Inquiries'), style: const TextStyle(fontWeight: FontWeight.bold)),
+                    subtitle: Text(tr(ref, 'Manage student discussions and doubts'), style: const TextStyle(fontSize: 12)),
                     trailing: const Icon(Icons.chevron_right_rounded),
                     onTap: () {
                       Navigator.pop(sheetContext);
@@ -1977,7 +1985,7 @@ class _ActivityItem extends StatelessWidget {
   }
 }
 
-class _KycPromptBanner extends StatelessWidget {
+class _KycPromptBanner extends ConsumerWidget {
   const _KycPromptBanner({
     required this.isPending,
     required this.onTap,
@@ -1987,7 +1995,7 @@ class _KycPromptBanner extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return AppCard(
       onTap: onTap,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -2012,7 +2020,9 @@ class _KycPromptBanner extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  isPending ? 'KYC Verification Under Review' : 'Complete KYC & Payout Profile',
+                  isPending
+                      ? tr(ref, 'KYC Verification Under Review')
+                      : tr(ref, 'Complete KYC & Payout Profile'),
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
@@ -2020,8 +2030,8 @@ class _KycPromptBanner extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   isPending
-                      ? 'Admin is reviewing your documents (24-48 hrs)'
-                      : 'Required to receive earnings & publish courses',
+                      ? tr(ref, 'Admin is reviewing your documents (24-48 hrs)')
+                      : tr(ref, 'Required to receive earnings & publish courses'),
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: AppColors.inkSoft,
                       ),
@@ -2041,7 +2051,7 @@ class _KycPromptBanner extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
-                isPending ? 'Status' : 'Verify',
+                isPending ? tr(ref, 'Status') : tr(ref, 'Verify'),
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       color: isPending ? AppColors.accentOrange : AppColors.primaryGreen,
                       fontWeight: FontWeight.bold,

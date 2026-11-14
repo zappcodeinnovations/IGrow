@@ -254,7 +254,7 @@ class _MyStudentsSheetState extends ConsumerState<MyStudentsSheet> {
           TextField(
             controller: _searchController,
             decoration: InputDecoration(
-              hintText: 'Search students by name...',
+              hintText: tr(ref, 'Search students by name...'),
               hintStyle: TextStyle(
                 color: isDark ? Colors.white38 : Colors.grey.shade400,
                 fontSize: 13,
@@ -300,7 +300,7 @@ class _MyStudentsSheetState extends ConsumerState<MyStudentsSheet> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Text(
-                'Enrolled Students (${filteredStudents.length})',
+                '${tr(ref, 'Enrolled Students')} (${formatNum(ref, filteredStudents.length)})',
                 style: Theme.of(context)
                     .textTheme
                     .titleSmall
@@ -316,21 +316,21 @@ class _MyStudentsSheetState extends ConsumerState<MyStudentsSheet> {
                     context.push(RouteNames.instructorStudents);
                   }
                 },
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        'View All',
-                        style: TextStyle(
+                        tr(ref, 'View All'),
+                        style: const TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.bold,
                           color: AppColors.primaryGreen,
                         ),
                       ),
-                      SizedBox(width: 3),
-                      Icon(
+                      const SizedBox(width: 3),
+                      const Icon(
                         Icons.arrow_forward_ios_rounded,
                         size: 11,
                         color: AppColors.primaryGreen,
@@ -359,15 +359,16 @@ class _MyStudentsSheetState extends ConsumerState<MyStudentsSheet> {
                     const SizedBox(height: 12),
                     Text(
                       _searchQuery.isNotEmpty
-                          ? 'No student found matching "$_searchQuery"'
-                          : 'No students enrolled yet',
+                          ? '${tr(ref, 'No student found matching')} "$_searchQuery"'
+                          : tr(ref, 'No students enrolled yet'),
                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                      textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 6),
                     Text(
                       _searchQuery.isNotEmpty
-                          ? 'Check the name spelling or clear the search.'
-                          : 'When students purchase your courses or e-books, they will appear here.',
+                          ? tr(ref, 'Check the name spelling or clear the search.')
+                          : tr(ref, 'When students purchase your courses or e-books, they will appear here.'),
                       textAlign: TextAlign.center,
                       style: const TextStyle(fontSize: 12.5, color: AppColors.inkSoft),
                     ),
@@ -453,7 +454,7 @@ class _MyStudentsSheetState extends ConsumerState<MyStudentsSheet> {
                                           borderRadius: BorderRadius.circular(4),
                                         ),
                                         child: Text(
-                                          coursesCount == 1 ? '1 Course' : '$coursesCount Courses',
+                                          coursesCount == 1 ? '1 ${tr(ref, 'Course')}' : '${formatNum(ref, coursesCount)} ${tr(ref, 'Courses')}',
                                           style: const TextStyle(
                                             fontSize: 11,
                                             fontWeight: FontWeight.bold,
@@ -463,7 +464,7 @@ class _MyStudentsSheetState extends ConsumerState<MyStudentsSheet> {
                                       ),
                                       const SizedBox(width: 6),
                                       Text(
-                                        '• Active ${student.latestEnrollmentDate}',
+                                        '• ${tr(ref, 'Active')} ${student.latestEnrollmentDate}',
                                         style: TextStyle(
                                           fontSize: 11.5,
                                           color: isDark ? Colors.white54 : AppColors.inkSoft,
@@ -500,13 +501,13 @@ class _MyStudentsSheetState extends ConsumerState<MyStudentsSheet> {
 }
 
 /// The dedicated Student Details bottom sheet opened when tapping any student.
-class StudentDetailsSheet extends StatelessWidget {
+class StudentDetailsSheet extends ConsumerWidget {
   final InstructorStudentProfile student;
 
   const StudentDetailsSheet({super.key, required this.student});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final initial = student.name.isNotEmpty ? student.name[0].toUpperCase() : 'S';
 
@@ -568,9 +569,9 @@ class StudentDetailsSheet extends StatelessWidget {
                             color: AppColors.primaryGreen.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(6),
                           ),
-                          child: const Text(
-                            'Active Enrolled Student',
-                            style: TextStyle(
+                          child: Text(
+                            tr(ref, 'Active Enrolled Student'),
+                            style: const TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.bold,
                               color: AppColors.primaryGreen,
@@ -613,21 +614,21 @@ class StudentDetailsSheet extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
                     _buildMetricItem(
-                      label: 'Enrolled Courses',
-                      value: '${student.coursesCount}',
+                      label: tr(ref, 'Enrolled Courses'),
+                      value: formatNum(ref, student.coursesCount),
                       icon: Icons.school_rounded,
                       color: AppColors.skyBlue,
                     ),
                     Container(width: 1, height: 32, color: Colors.grey.withValues(alpha: 0.2)),
                     _buildMetricItem(
-                      label: 'Total Paid',
-                      value: '₹${student.totalSpent.toStringAsFixed(0)}',
+                      label: tr(ref, 'Total Paid'),
+                      value: '₹${formatNum(ref, student.totalSpent.toStringAsFixed(0))}',
                       icon: Icons.payments_rounded,
                       color: AppColors.primaryGreen,
                     ),
                     Container(width: 1, height: 32, color: Colors.grey.withValues(alpha: 0.2)),
                     _buildMetricItem(
-                      label: 'First Active',
+                      label: tr(ref, 'First Active'),
                       value: student.earliestEnrollmentDate.split(' ').first,
                       icon: Icons.event_rounded,
                       color: AppColors.signalYellow,
@@ -640,7 +641,7 @@ class StudentDetailsSheet extends StatelessWidget {
 
               // Enrolled Courses List
               Text(
-                'Enrolled Courses (${student.coursesCount})',
+                '${tr(ref, 'Enrolled Courses')} (${formatNum(ref, student.coursesCount)})',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 10),

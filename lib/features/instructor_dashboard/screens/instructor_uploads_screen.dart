@@ -520,17 +520,17 @@ class _EBooksTab extends ConsumerWidget {
                 DropdownButtonFormField<String>(
                   initialValue: selectedTier,
                   decoration: InputDecoration(
-                    labelText: 'E-Book Price Tier *',
-                    helperText: 'Select one of the standard price tiers.',
+                    labelText: tr(ref, 'E-Book Price Tier *'),
+                    helperText: tr(ref, 'Select one of the standard price tiers.'),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                   ),
-                  items: const [
-                    DropdownMenuItem(value: '0', child: Text('Free (₹0)')),
-                    DropdownMenuItem(value: '249', child: Text('₹249 — Tier 1')),
-                    DropdownMenuItem(value: '499', child: Text('₹499 — Tier 1.5')),
-                    DropdownMenuItem(value: '999', child: Text('₹999 — Tier 2')),
-                    DropdownMenuItem(value: '1499', child: Text('₹1,499 — Tier 3')),
+                  items: [
+                    DropdownMenuItem(value: '0', child: Text(tr(ref, 'Free (₹0)'))),
+                    DropdownMenuItem(value: '249', child: Text('₹249 — ${tr(ref, 'Tier 1')}')),
+                    DropdownMenuItem(value: '499', child: Text('₹499 — ${tr(ref, 'Tier 1.5')}')),
+                    DropdownMenuItem(value: '999', child: Text('₹999 — ${tr(ref, 'Tier 2')}')),
+                    DropdownMenuItem(value: '1499', child: Text('₹1,499 — ${tr(ref, 'Tier 3')}')),
                   ],
                   onChanged: (val) {
                     if (val != null) {
