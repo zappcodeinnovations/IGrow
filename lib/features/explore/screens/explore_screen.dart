@@ -232,70 +232,66 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                               ),
                             ),
                           ),
+                          // ── Header Row ──
                           Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF1B4D2E).withValues(alpha: 0.14),
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: Icon(
-                                      isEbooksTab ? Icons.auto_stories_rounded : Icons.tune_rounded,
-                                      color: const Color(0xFF1B4D2E),
-                                      size: 20,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Text(
-                                    isEbooksTab
-                                        ? tr(ref, 'Filter & Sort E-Books')
-                                        : tr(ref, 'Filter & Sort Courses'),
-                                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 18,
-                                        ),
-                                  ),
-                                ],
+                              Container(
+                                padding: const EdgeInsets.all(9),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF1B4D2E).withValues(alpha: 0.14),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Icon(
+                                  isEbooksTab ? Icons.auto_stories_rounded : Icons.tune_rounded,
+                                  color: const Color(0xFF1B4D2E),
+                                  size: 22,
+                                ),
                               ),
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  if (tempCount > 0) ...[
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFF1B4D2E),
-                                        borderRadius: BorderRadius.circular(12),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  isEbooksTab
+                                      ? tr(ref, 'Filter & Sort E-Books')
+                                      : tr(ref, 'Filter & Sort Courses'),
+                                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 17,
+                                        letterSpacing: -0.3,
                                       ),
-                                      child: Text(
-                                        '$tempCount ${tr(ref, 'active')}',
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 6),
-                                  ],
-                                  IconButton(
-                                    visualDensity: VisualDensity.compact,
-                                    padding: EdgeInsets.zero,
-                                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                                    icon: const Icon(Icons.close_rounded, size: 22),
-                                    color: isDark ? Colors.white70 : Colors.grey.shade700,
-                                    tooltip: tr(ref, 'Close'),
-                                    onPressed: () => Navigator.pop(sheetContext),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              if (tempCount > 0) ...[
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF1B4D2E),
+                                    borderRadius: BorderRadius.circular(12),
                                   ),
-                                ],
+                                  child: Text(
+                                    '$tempCount ${tr(ref, 'active')}',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                              ],
+                              IconButton(
+                                visualDensity: VisualDensity.compact,
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                                icon: const Icon(Icons.close_rounded, size: 24),
+                                color: isDark ? Colors.white70 : Colors.grey.shade700,
+                                tooltip: tr(ref, 'Close'),
+                                onPressed: () => Navigator.pop(sheetContext),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 20),
+                          const SizedBox(height: 22),
 
                       // ═════════════════════════════════════════════════════════════
                       // E-BOOKS TAB SPECIFIC FILTERS

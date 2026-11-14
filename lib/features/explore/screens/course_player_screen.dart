@@ -11,6 +11,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import '../../../core/services/offline_download_service.dart';
 import '../../../core/services/course_progress_service.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/app_error_state.dart';
 import '../../../data/models/api_models/course_models.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../certificates/providers/certificates_provider.dart';
@@ -1459,23 +1460,9 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
           child: CircularProgressIndicator(color: AppColors.primaryGreen),
         ),
         error: (err, _) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.error_outline,
-                    color: AppColors.error, size: 48),
-                const SizedBox(height: 16),
-                Text('Error loading course: $err',
-                    textAlign: TextAlign.center),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: () => ref.invalidate(courseDetailProvider(widget.courseId)),
-                  child: const Text('Retry'),
-                ),
-              ],
-            ),
+          child: AppErrorState(
+            error: err,
+            onRetry: () => ref.invalidate(courseDetailProvider(widget.courseId)),
           ),
         ),
       ),

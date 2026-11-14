@@ -224,19 +224,23 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
               title: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    'Notifications',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                      color: isDark ? Colors.white : AppColors.editorialOnSurface,
-                      letterSpacing: -0.4,
+                  Flexible(
+                    child: Text(
+                      tr(ref, 'Notifications'),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 17,
+                        color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                        letterSpacing: -0.4,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   if (unreadCount > 0) ...[
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 6),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
                         color: isDark
                             ? AppColors.editorialSecondaryFixedDim.withValues(alpha: 0.3)
@@ -244,7 +248,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                         borderRadius: BorderRadius.circular(9999),
                       ),
                       child: Text(
-                        '$unreadCount new',
+                        '$unreadCount',
                         style: TextStyle(
                           color: isDark
                               ? AppColors.editorialSecondaryFixedDim
@@ -257,7 +261,8 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                   ],
                 ],
               ),
-              centerTitle: true,
+              centerTitle: false,
+              titleSpacing: 0,
               actions: [
                 Padding(
                   padding: const EdgeInsets.only(right: 12),
