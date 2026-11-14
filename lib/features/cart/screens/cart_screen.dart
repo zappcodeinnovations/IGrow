@@ -7,6 +7,7 @@ import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_error_state.dart';
+import '../../../data/models/api_models/order_models.dart';
 import '../../wishlist/providers/wishlist_provider.dart';
 import '../providers/cart_provider.dart';
 
@@ -20,6 +21,15 @@ class CartScreen extends ConsumerStatefulWidget {
 class _CartScreenState extends ConsumerState<CartScreen> {
   // 0: Bag, 1: Wishlist
   int _activeTab = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.invalidate(cartProvider);
+      ref.read(wishlistProvider.notifier).loadWishlist();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -273,15 +283,23 @@ class _CartScreenState extends ConsumerState<CartScreen> {
   }
 
   Widget _buildCartView(BuildContext context, AsyncValue<dynamic> cartState, bool isDark) {
-    return cartState.when(
+    return RefreshIndicator(
+      color: isDark ? AppColors.editorialSecondaryFixedDim : AppColors.editorialSecondary,
+      onRefresh: () async {
+        ref.invalidate(cartProvider);
+        await ref.read(cartProvider.future).catchError((_) => const ApiCart(id: ''));
+      },
+      child: cartState.when(
       data: (cart) {
         if (cart.items.isEmpty) {
-          return SingleChildScrollView(
+          return ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(20),
-            child: Center(
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 36),
+            children: [
+              Center(
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 36),
                 decoration: BoxDecoration(
                   color: isDark ? AppColors.cardDark : AppColors.editorialSurfaceContainerLowest,
                   borderRadius: BorderRadius.circular(24),
@@ -377,8 +395,9 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                 ),
               ),
             ),
-          );
-        }
+          ],
+        );
+      }
 
         final itemCount = cart.items.length;
 
@@ -627,32 +646,46 @@ class _CartScreenState extends ConsumerState<CartScreen> {
       ),
       error: (error, _) {
         final displayError = getUserFriendlyErrorMessage(error);
-        return Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  displayError,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.titleMedium,
+        return ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            SizedBox(
+              height: MediaQuery.of(context).size.height * 0.5,
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        displayError,
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 16),
+                      AppButton(
+                        label: 'Retry',
+                        onPressed: () => ref.refresh(cartProvider),
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 16),
-                AppButton(
-                  label: 'Retry',
-                  onPressed: () => ref.refresh(cartProvider),
-                ),
-              ],
+              ),
             ),
-          ),
+          ],
         );
       },
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildWishlistView(BuildContext context, AsyncValue<dynamic> wishlistAsync, bool isDark) {
-    return wishlistAsync.when(
+    return RefreshIndicator(
+      color: isDark ? AppColors.editorialSecondaryFixedDim : AppColors.editorialSecondary,
+      onRefresh: () async {
+        await ref.read(wishlistProvider.notifier).loadWishlist();
+      },
+      child: wishlistAsync.when(
       data: (items) {
         final list = items as List;
         if (list.isEmpty) {
@@ -832,6 +865,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
           style: TextStyle(color: isDark ? Colors.white70 : AppColors.editorialOnSurfaceVariant),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

@@ -10,6 +10,7 @@ import 'core/router/app_router.dart';
 import 'core/services/notification_service.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_provider.dart';
+import 'features/cart/providers/cart_provider.dart';
 import 'features/explore/providers/explore_provider.dart';
 import 'features/home_farmer/providers/farmer_home_provider.dart';
 import 'features/home_farmer/providers/student_provider.dart';
@@ -137,6 +138,8 @@ class _IGrowAppState extends ConsumerState<IGrowApp> {
     ref.invalidate(studentCatalogProvider);
     ref.invalidate(featuredCoursesProvider);
     ref.invalidate(exploreCoursesProvider);
+    ref.invalidate(ordersProvider);
+    ref.invalidate(cartProvider);
   }
 
   @override

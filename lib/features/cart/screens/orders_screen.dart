@@ -27,6 +27,15 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
   String _searchQuery = '';
 
   @override
+  void initState() {
+    super.initState();
+    // Auto-refresh orders whenever the screen opens so newly completed purchases appear immediately
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.invalidate(ordersProvider);
+    });
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
@@ -152,123 +161,146 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
             ),
           ];
         },
-        body: ordersAsync.when(
-        data: (orders) {
-          if (orders.isEmpty) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(32),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      width: 90,
-                      height: 90,
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? AppColors.editorialSecondary.withValues(alpha: 0.2)
-                            : AppColors.editorialSecondaryFixed,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.receipt_long_outlined,
-                        size: 44,
-                        color: isDark ? AppColors.editorialSecondaryFixedDim : AppColors.editorialSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Text(
-                      tr(ref, 'No Orders Found'),
-                      style: TextStyle(
-                        fontSize: 20, 
-                        fontWeight: FontWeight.bold,
-                        color: isDark ? Colors.white : AppColors.editorialOnSurface,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      tr(ref, 'You haven\'t purchased any courses yet. Once you enroll, your purchase history and invoices will appear here.'),
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: isDark ? Colors.white70 : AppColors.inkSoft,
-                        height: 1.4,
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    TextButton(
-                      onPressed: () => context.go(RouteNames.explore),
-                      child: Text(
-                        tr(ref, 'Browse Courses'),
-                        style: TextStyle(
-                          color: isDark ? AppColors.editorialSecondaryFixedDim : AppColors.editorialSecondary,
-                          fontWeight: FontWeight.bold,
+        body: RefreshIndicator(
+          color: isDark ? AppColors.editorialSecondaryFixedDim : AppColors.editorialSecondary,
+          onRefresh: () async {
+            ref.invalidate(ordersProvider);
+            await ref.read(ordersProvider.future).catchError((_) => <ApiOrder>[]);
+          },
+          child: ordersAsync.when(
+          data: (orders) {
+            if (orders.isEmpty) {
+              return ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [
+                  SizedBox(
+                    height: MediaQuery.of(context).size.height * 0.6,
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(32),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 90,
+                              height: 90,
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? AppColors.editorialSecondary.withValues(alpha: 0.2)
+                                    : AppColors.editorialSecondaryFixed,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.receipt_long_outlined,
+                                size: 44,
+                                color: isDark ? AppColors.editorialSecondaryFixedDim : AppColors.editorialSecondary,
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            Text(
+                              tr(ref, 'No Orders Found'),
+                              style: TextStyle(
+                                fontSize: 20, 
+                                fontWeight: FontWeight.bold,
+                                color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              tr(ref, 'You haven\'t purchased any courses yet. Once you enroll, your purchase history and invoices will appear here.'),
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: isDark ? Colors.white70 : AppColors.inkSoft,
+                                height: 1.4,
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            TextButton(
+                              onPressed: () => context.go(RouteNames.explore),
+                              child: Text(
+                                tr(ref, 'Browse Courses'),
+                                style: TextStyle(
+                                  color: isDark ? AppColors.editorialSecondaryFixedDim : AppColors.editorialSecondary,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
-                  ],
-                ),
-              ),
-            );
-          }
+                  ),
+                ],
+              );
+            }
 
-          final filteredOrders = _searchQuery.isEmpty
-              ? orders
-              : orders.where((order) {
-                  final refId = (order.gatewayReference ?? order.id).toLowerCase();
-                  final status = (order.status ?? '').toLowerCase();
-                  final dateFormatted = order.createdAt != null
-                      ? DateFormat('MMMM dd, yyyy • hh:mm a').format(order.createdAt!.toLocal()).toLowerCase()
-                      : '';
-                  final itemsMatch = order.items.any((it) {
-                    final title = (it.courseTitle ?? '').toLowerCase();
-                    final slug = (it.courseSlug ?? '').toLowerCase();
-                    return title.contains(_searchQuery) || slug.contains(_searchQuery);
-                  });
-                  return refId.contains(_searchQuery) ||
-                      status.contains(_searchQuery) ||
-                      dateFormatted.contains(_searchQuery) ||
-                      itemsMatch;
-                }).toList();
+            final filteredOrders = _searchQuery.isEmpty
+                ? orders
+                : orders.where((order) {
+                    final refId = (order.gatewayReference ?? order.id).toLowerCase();
+                    final status = (order.status ?? '').toLowerCase();
+                    final dateFormatted = order.createdAt != null
+                        ? DateFormat('MMMM dd, yyyy • hh:mm a').format(order.createdAt!.toLocal()).toLowerCase()
+                        : '';
+                    final itemsMatch = order.items.any((it) {
+                      final title = (it.courseTitle ?? '').toLowerCase();
+                      final slug = (it.courseSlug ?? '').toLowerCase();
+                      return title.contains(_searchQuery) || slug.contains(_searchQuery);
+                    });
+                    return refId.contains(_searchQuery) ||
+                        status.contains(_searchQuery) ||
+                        dateFormatted.contains(_searchQuery) ||
+                        itemsMatch;
+                  }).toList();
 
-          if (filteredOrders.isEmpty) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(32),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.search_off_rounded,
-                      size: 56,
-                      color: isDark ? Colors.white38 : AppColors.inkSoft,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      tr(ref, 'No matching orders found'),
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: isDark ? Colors.white : AppColors.editorialOnSurface,
+            if (filteredOrders.isEmpty) {
+              return ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [
+                  SizedBox(
+                    height: MediaQuery.of(context).size.height * 0.6,
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(32),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.search_off_rounded,
+                              size: 56,
+                              color: isDark ? Colors.white38 : AppColors.inkSoft,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              tr(ref, 'No matching orders found'),
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              '${tr(ref, 'No results for')} "$_searchQuery"',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: isDark ? Colors.white70 : AppColors.inkSoft,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '${tr(ref, 'No results for')} "$_searchQuery"',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: isDark ? Colors.white70 : AppColors.inkSoft,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }
+                  ),
+                ],
+              );
+            }
 
-          return ListView.builder(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+            return ListView.builder(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
             itemCount: filteredOrders.length,
             itemBuilder: (context, index) {
               final order = filteredOrders[index];
@@ -515,46 +547,55 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
               ? 'No internet connection.\nPlease check your network and try again.'
               : 'Unable to load orders right now.\nPlease try again in a few moments.';
 
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    isOffline ? Icons.wifi_off_rounded : Icons.receipt_long_outlined,
-                    size: 54,
-                    color: isDark ? Colors.white38 : AppColors.inkSoft,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    displayMsg,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                      color: isDark ? Colors.white70 : AppColors.inkDark,
-                      height: 1.4,
+          return ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            children: [
+              SizedBox(
+                height: MediaQuery.of(context).size.height * 0.6,
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          isOffline ? Icons.wifi_off_rounded : Icons.receipt_long_outlined,
+                          size: 54,
+                          color: isDark ? Colors.white38 : AppColors.inkSoft,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          displayMsg,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                            color: isDark ? Colors.white70 : AppColors.inkDark,
+                            height: 1.4,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.editorialSecondary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                          icon: const Icon(Icons.refresh_rounded, size: 18),
+                          onPressed: () => ref.refresh(ordersProvider),
+                          label: const Text('Retry', style: TextStyle(fontWeight: FontWeight.w600)),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 20),
-                  ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.editorialSecondary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    ),
-                    icon: const Icon(Icons.refresh_rounded, size: 18),
-                    onPressed: () => ref.refresh(ordersProvider),
-                    label: const Text('Retry', style: TextStyle(fontWeight: FontWeight.w600)),
-                  ),
-                ],
+                ),
               ),
-            ),
+            ],
           );
         },
       ),
+    ),
     ),
   );
   }
