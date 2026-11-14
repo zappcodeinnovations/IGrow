@@ -64,6 +64,7 @@ class _QuizPlayerScreenState extends ConsumerState<QuizPlayerScreen> {
       if (isPassed) {
         await QuizService.setSectionQuizPassed(widget.sectionId, true);
         ref.invalidate(sectionQuizPassedProvider(widget.sectionId));
+        ref.invalidate(studentEnrollmentsProvider);
       }
 
       // Record in Quiz History for the farmer/student panel

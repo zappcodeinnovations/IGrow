@@ -215,6 +215,9 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
   String? _activeVideoUrl;
   bool _isPlayingVideo = false;
   bool _isLoadingVideo = false;
+  bool _mainPreviewLimitReached = false;
+  bool _isMainReplaying = false;
+  Duration? _activePreviewLimit;
   bool _isAddingToCart = false;
   bool _isTogglingWishlist = false;
 
@@ -223,6 +226,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
 
   @override
   void dispose() {
+    _videoPlayerController?.removeListener(_onMainVideoPlayerTick);
     _chewieController?.dispose();
     _videoPlayerController?.dispose();
     super.dispose();
@@ -295,11 +299,62 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
     return '$hours hr $remainingMinutes mins';
   }
 
+
+  void _onMainVideoPlayerTick() {
+    if (_videoPlayerController == null || !_videoPlayerController!.value.isInitialized) return;
+    if (_isMainReplaying) return;
+    final limit = _activePreviewLimit;
+    if (limit == null) return;
+    final currentPos = _videoPlayerController!.value.position;
+    final totalDuration = _videoPlayerController!.value.duration;
+
+    if (totalDuration > limit && currentPos >= limit) {
+      if (_videoPlayerController!.value.isPlaying) {
+        _videoPlayerController!.pause();
+      }
+      if (!_mainPreviewLimitReached) {
+        _videoPlayerController!.seekTo(limit);
+        if (_chewieController != null && _chewieController!.isFullScreen) {
+          _chewieController!.exitFullScreen();
+        }
+        if (mounted) {
+          setState(() {
+            _mainPreviewLimitReached = true;
+          });
+        }
+      }
+    } else if (_mainPreviewLimitReached && currentPos < limit) {
+      if (mounted) {
+        setState(() {
+          _mainPreviewLimitReached = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _replayMainSample() async {
+    if (_videoPlayerController == null) return;
+    _isMainReplaying = true;
+    setState(() => _mainPreviewLimitReached = false);
+    try {
+      await _videoPlayerController!.pause();
+      await _videoPlayerController!.seekTo(Duration.zero);
+      await _videoPlayerController!.play();
+    } catch (e) {
+      debugPrint('⚠️ [MainPreview] Replay failed: ');
+    } finally {
+      _isMainReplaying = false;
+    }
+  }
+
   Future<void> _initializePlayer(
     String videoUrl, {
     bool autoPlay = false,
     String? bunnyId,
+    Duration? previewLimit,
   }) async {
+    _activePreviewLimit = previewLimit;
+    _mainPreviewLimitReached = false;
     if (_activeVideoUrl == videoUrl && _videoPlayerController != null) {
       if (autoPlay && !_videoPlayerController!.value.isPlaying) {
         _videoPlayerController!.play();
@@ -316,6 +371,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
 
     final oldChewie = _chewieController;
     final oldPlayer = _videoPlayerController;
+    oldPlayer?.removeListener(_onMainVideoPlayerTick);
     _chewieController = null;
     _videoPlayerController = null;
     oldChewie?.dispose();
@@ -392,6 +448,8 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
       }
 
       if (!mounted) return;
+
+      _videoPlayerController!.addListener(_onMainVideoPlayerTick);
 
       _chewieController = ChewieController(
         videoPlayerController: _videoPlayerController!,
@@ -948,6 +1006,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                             isEnrolled,
                             previewVideoUrl: videoUrl,
                             previewBunnyId: previewLecture?.bunnyVideoId,
+                            previewLecture: previewLecture,
                             isInstructor: isInstructor,
                           ),
                         ),
@@ -978,6 +1037,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                         totalLectures,
                         previewVideoUrl: videoUrl,
                         previewBunnyId: previewLecture?.bunnyVideoId,
+                        previewLecture: previewLecture,
                         isInstructor: isInstructor,
                       ),
                       Padding(
@@ -1397,6 +1457,8 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
     ApiCourseDetail course, {
     String? previewVideoUrl,
     String? previewBunnyId,
+    ApiLecture? previewLecture,
+    bool isEnrolled = false,
     BorderRadius? borderRadius,
   }) {
     final categoryText = course.categoryDisplay ??
@@ -1410,7 +1472,95 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
         child: _isPlayingVideo &&
                 _chewieController != null &&
                 _chewieController!.videoPlayerController.value.isInitialized
-            ? Chewie(controller: _chewieController!)
+            ? Stack(
+                fit: StackFit.expand,
+                children: [
+                  Chewie(controller: _chewieController!),
+                  if (_mainPreviewLimitReached)
+                    Positioned.fill(
+                      child: Container(
+                        color: Colors.black.withValues(alpha: 0.88),
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: AppColors.primaryGreen.withValues(alpha: 0.2),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.lock_outline_rounded,
+                                color: AppColors.primaryGreen,
+                                size: 26,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            const Text(
+                              'Preview Time Limit Reached',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'Enroll now to unlock full course and complete video access.',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 11,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 10),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 6,
+                              alignment: WrapAlignment.center,
+                              children: [
+                                OutlinedButton.icon(
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: Colors.white70,
+                                    side: const BorderSide(color: Colors.white38),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 4,
+                                    ),
+                                  ),
+                                  onPressed: _replayMainSample,
+                                  icon: const Icon(Icons.replay_rounded, size: 14),
+                                  label: const Text(
+                                    'Replay Sample',
+                                    style: TextStyle(fontSize: 11),
+                                  ),
+                                ),
+                                ElevatedButton.icon(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.primaryGreen,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 4,
+                                    ),
+                                  ),
+                                  onPressed: () => _handleBuyNow(context, course),
+                                  icon: const Icon(Icons.shopping_bag_outlined, size: 14),
+                                  label: const Text(
+                                    'Enroll Now',
+                                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              )
             : Stack(
                 fit: StackFit.expand,
                 children: [
@@ -1525,10 +1675,12 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                           onTap: () {
                             if (previewVideoUrl != null &&
                                 previewVideoUrl.isNotEmpty) {
+                              final limitSec = previewLecture?.previewDuration ?? course.previewDuration ?? 30;
                               _initializePlayer(
                                 previewVideoUrl,
                                 autoPlay: true,
                                 bunnyId: previewBunnyId,
+                                previewLimit: isEnrolled ? null : Duration(seconds: limitSec),
                               );
                             } else {
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -1603,6 +1755,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
     int totalLectures, {
     String? previewVideoUrl,
     String? previewBunnyId,
+    ApiLecture? previewLecture,
     bool isInstructor = false,
   }) {
     final inCart = (course.id.isNotEmpty && ref.watch(isCourseInCartProvider(course.id))) ||
@@ -1635,6 +1788,8 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
           course,
           previewVideoUrl: previewVideoUrl,
           previewBunnyId: previewBunnyId,
+          previewLecture: previewLecture,
+          isEnrolled: isEnrolled,
         ),
 
         // 2. Course Details Body Matching Mockup
@@ -1932,10 +2087,12 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                     ),
                     onPressed: () {
                       if (previewVideoUrl != null && previewVideoUrl.isNotEmpty) {
+                        final limitSec = previewLecture?.previewDuration ?? course.previewDuration ?? 30;
                         _initializePlayer(
                           previewVideoUrl,
                           autoPlay: true,
                           bunnyId: previewBunnyId,
+                          previewLimit: isEnrolled ? null : Duration(seconds: limitSec),
                         );
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -1971,6 +2128,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
     bool isEnrolled, {
     String? previewVideoUrl,
     String? previewBunnyId,
+    ApiLecture? previewLecture,
     bool isInstructor = false,
   }) {
     final priceText =
@@ -2015,6 +2173,8 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
             course,
             previewVideoUrl: previewVideoUrl,
             previewBunnyId: previewBunnyId,
+            previewLecture: previewLecture,
+            isEnrolled: isEnrolled,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
           ),
 

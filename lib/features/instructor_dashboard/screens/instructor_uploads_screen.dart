@@ -610,6 +610,66 @@ class _EBooksTab extends ConsumerWidget {
     }
   }
 
+  Future<void> _deleteDraftEBook(
+    BuildContext context,
+    WidgetRef ref,
+    String? ebookId,
+    String? title,
+  ) async {
+    if (ebookId == null || ebookId.isEmpty) return;
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('Delete Draft E-Book'),
+        content: Text(
+          'Are you sure you want to permanently delete "${title ?? 'this draft e-book'}"? This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(c, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.error,
+            ),
+            onPressed: () => Navigator.pop(c, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      await ref.read(instructorRepositoryProvider).deleteEBook(ebookId);
+      ref.invalidate(instructorEbooksProvider);
+      ref.invalidate(studentEbooksProvider);
+      if (context.mounted) {
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.clearSnackBars();
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('Draft e-book deleted successfully'),
+            backgroundColor: AppColors.primaryGreen,
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.clearSnackBars();
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text('Failed to delete draft e-book: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _submitEBookForReview(
     BuildContext context,
     WidgetRef ref,
@@ -905,6 +965,37 @@ class _EBooksTab extends ConsumerWidget {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
+                          OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.error,
+                              side: const BorderSide(
+                                color: AppColors.error,
+                                width: 1.2,
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            icon: const Icon(Icons.delete_outline_rounded, size: 16),
+                            label: Text(
+                              tr(ref, 'Delete'),
+                              style: const TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            onPressed: () => _deleteDraftEBook(
+                              context,
+                              ref,
+                              ebook.id,
+                              ebook.title,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
                           OutlinedButton.icon(
                             style: OutlinedButton.styleFrom(
                               foregroundColor: AppColors.primaryGreen,

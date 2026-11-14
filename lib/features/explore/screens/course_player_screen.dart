@@ -1325,43 +1325,6 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
                               _checkCourseCompletionAndShowCelebration(course, _currentLecture!.id);
                             },
                           ),
-                          const SizedBox(width: 2),
-                          IconButton(
-                            visualDensity: VisualDensity.compact,
-                            constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
-                            padding: const EdgeInsets.all(4),
-                            tooltip: 'Quick Bookmark',
-                            icon: const Icon(Icons.bookmark_add_outlined, color: AppColors.accentOrange, size: 20),
-                            onPressed: () async {
-                              final currentSec = _videoPlayerController?.value.position.inSeconds ?? 0;
-                              final m = currentSec ~/ 60;
-                              final s = currentSec % 60;
-                              final timeFormatted = '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
-                              final text = '🔖 Bookmark at $timeFormatted in ${_currentLecture!.title}';
-                              try {
-                                await ref.read(studentRepositoryProvider).postCourseNote(
-                                      _activeSlug!,
-                                      text,
-                                      currentSec,
-                                    );
-                                ref.invalidate(courseNotesProvider(_activeSlug!));
-                                if (!mounted || !context.mounted) return;
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Row(
-                                        children: [
-                                          const Icon(Icons.bookmark_added_rounded, color: Colors.white, size: 20),
-                                          const SizedBox(width: 8),
-                                          Text('Bookmarked at $timeFormatted!'),
-                                        ],
-                                      ),
-                                      backgroundColor: AppColors.accentOrange,
-                                      duration: const Duration(seconds: 2),
-                                    ),
-                                  );
-                              } catch (_) {}
-                            },
-                          ),
                           if (_hasNextLecture(course)) ...[
                             IconButton(
                               visualDensity: VisualDensity.compact,
@@ -2470,11 +2433,21 @@ class _CourseNotesTabState extends ConsumerState<_CourseNotesTab> {
 
   Future<void> _submit() async {
     final text = _controller.text.trim();
-    if (text.isEmpty) return;
+    if (text.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please enter a note before adding.'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+      return;
+    }
 
     final sec = _getCurrentSeconds();
+    final formatted = _formatTime(sec);
     setState(() => _isSubmitting = true);
-    // Dismiss keyboard before submitting so screen returns to normal
     if (mounted) FocusScope.of(context).unfocus();
     try {
       await ref.read(studentRepositoryProvider).postCourseNote(
@@ -2484,14 +2457,31 @@ class _CourseNotesTabState extends ConsumerState<_CourseNotesTab> {
           );
       _controller.clear();
       ref.invalidate(courseNotesProvider(widget.courseSlug));
+      if (mounted) {
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.clearSnackBars();
+        messenger.showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+                const SizedBox(width: 8),
+                Text('Note added at ' + formatted + '!'),
+              ],
+            ),
+            backgroundColor: AppColors.primaryGreen,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
     } catch (e) {
       if (mounted) {
         final messenger = ScaffoldMessenger.of(context);
         messenger.clearSnackBars();
         messenger.showSnackBar(
           SnackBar(
-            content: Text('Failed to save note: $e'),
-            duration: const Duration(milliseconds: 2000),
+            content: Text('Failed to save note: ' + e.toString()),
+            duration: const Duration(seconds: 3),
           ),
         );
       }
@@ -2566,35 +2556,6 @@ class _CourseNotesTabState extends ConsumerState<_CourseNotesTab> {
                   onSelected: (val) {
                     if (val) setState(() => _activeFilter = 'bookmarks');
                   },
-                ),
-                const SizedBox(width: 10),
-                // Quick Bookmark Button
-                InkWell(
-                  onTap: _isSubmitting ? null : _quickBookmark,
-                  borderRadius: BorderRadius.circular(8),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: AppColors.accentOrange.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.accentOrange.withValues(alpha: 0.3)),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.bookmark_add_rounded, size: 14, color: AppColors.accentOrange),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Bookmark ${_formatTime(widget.currentPositionSeconds)}',
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.accentOrange,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
                 ),
               ],
             ),
@@ -2728,79 +2689,146 @@ class _CourseNotesTabState extends ConsumerState<_CourseNotesTab> {
           ),
         ),
 
-        // ── Input Strip at Bottom ─────────────────────────────────
-        // viewInsets.bottom is needed because resizeToAvoidBottomInset
-        // is false on the parent Scaffold.
-        Container(
-          padding: EdgeInsets.only(
-            left: 16,
-            right: 16,
-            top: 10,
-            bottom: 10 +
-                MediaQuery.of(context).padding.bottom +
-                MediaQuery.of(context).viewInsets.bottom,
-          ),
-          decoration: BoxDecoration(
-            color: isDark ? AppColors.cardDark : Colors.white,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 10,
-                offset: const Offset(0, -3),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _controller,
-                  decoration: InputDecoration(
-                    hintText:
-                        'Add note at ${_formatTime(_getCurrentSeconds())}...',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(
-                        color: isDark ? Colors.white12 : AppColors.lineLight,
-                      ),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(
-                        color: isDark ? Colors.white12 : AppColors.lineLight,
-                      ),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(
-                        color: AppColors.accentOrange,
-                        width: 1.5,
-                      ),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 10),
-                  ),
-                  onSubmitted: (_) => _submit(),
+        // ── Input Strip at Bottom (Conditional by active tab) ─────
+        if (_activeFilter == 'all')
+          const SizedBox.shrink()
+        else if (_activeFilter == 'notes')
+          Container(
+            padding: EdgeInsets.only(
+              left: 16,
+              right: 16,
+              top: 10,
+              bottom: 10 +
+                  MediaQuery.of(context).padding.bottom +
+                  MediaQuery.of(context).viewInsets.bottom,
+            ),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.cardDark : Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, -3),
                 ),
-              ),
-              const SizedBox(width: 10),
-              _isSubmitting
-                  ? const SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: AppColors.accentOrange,
+              ],
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _controller,
+                    decoration: InputDecoration(
+                      hintText: 'Add note at ${_formatTime(_getCurrentSeconds())}...',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: isDark ? Colors.white12 : AppColors.lineLight,
+                        ),
                       ),
-                    )
-                  : IconButton(
-                      icon: const Icon(Icons.add_circle,
-                          color: AppColors.accentOrange),
-                      onPressed: _submit,
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: isDark ? Colors.white12 : AppColors.lineLight,
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(
+                          color: AppColors.accentOrange,
+                          width: 1.5,
+                        ),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10),
                     ),
-            ],
+                    onSubmitted: (_) => _submit(),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                _isSubmitting
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.accentOrange,
+                        ),
+                      )
+                    : IconButton(
+                        icon: const Icon(Icons.add_circle,
+                            color: AppColors.accentOrange, size: 28),
+                        onPressed: _submit,
+                      ),
+              ],
+            ),
+          )
+        else if (_activeFilter == 'bookmarks')
+          Container(
+            padding: EdgeInsets.only(
+              left: 16,
+              right: 16,
+              top: 10,
+              bottom: 10 +
+                  MediaQuery.of(context).padding.bottom +
+                  MediaQuery.of(context).viewInsets.bottom,
+            ),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.cardDark : Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, -3),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isDark ? Colors.white12 : AppColors.lineLight,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.bookmark_add_rounded, size: 18, color: AppColors.accentOrange),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Add bookmark at ${_formatTime(_getCurrentSeconds())}',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: isDark ? Colors.white70 : AppColors.inkDark,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                _isSubmitting
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.accentOrange,
+                        ),
+                      )
+                    : IconButton(
+                        icon: const Icon(Icons.add_circle,
+                            color: AppColors.accentOrange, size: 28),
+                        tooltip: 'Add Bookmark',
+                        onPressed: _quickBookmark,
+                      ),
+              ],
+            ),
           ),
-        ),
       ],
     );
   }

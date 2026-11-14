@@ -85,6 +85,7 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
         _WizardLecture(
           id: 101,
           title: 'Course Overview',
+          isPreview: true,
         ),
       ],
     ),
@@ -809,12 +810,14 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
         if (sectionId.isNotEmpty && mod.lectures.isNotEmpty) {
           for (int lIdx = 0; lIdx < mod.lectures.length; lIdx++) {
             final lec = mod.lectures[lIdx];
+            final previewSec = int.tryParse(lec.previewDurationController.text.trim()) ?? 30;
             final lecRes = await repo.createLecture(courseId, sectionId, {
               'title': lec.titleController.text.trim(),
               'description': lec.descController.text.trim(),
               'duration': 10,
               'sort_order': lIdx + 1,
-              'is_preview': lIdx == 0,
+              'is_preview': lec.isPreview,
+              if (lec.isPreview) 'preview_duration': previewSec,
             });
             final lectureId = lecRes['id']?.toString() ?? '';
 
@@ -1796,6 +1799,22 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                                 ),
                               ),
                               const SizedBox(height: 10),
+
+                              // Free Preview Toggle
+                              Row(
+                                children: [
+                                  Switch(
+                                    value: lecture.isPreview,
+                                    activeThumbColor: AppColors.primaryGreen,
+                                    onChanged: (val) => setState(() => lecture.isPreview = val),
+                                  ),
+                                  Text(
+                                    tr(ref, 'Free Preview Video'),
+                                    style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
 
                               // Video & Study Material Attachments (Responsive Wrap)
                               Wrap(
@@ -2886,12 +2905,17 @@ class _WizardLecture {
     required this.id,
     required String title,
     String description = '',
+    this.isPreview = false,
+    int previewDuration = 30,
   })  : titleController = TextEditingController(text: title),
-        descController = TextEditingController(text: description);
+        descController = TextEditingController(text: description),
+        previewDurationController = TextEditingController(text: previewDuration.toString());
 
   final int id;
   final TextEditingController titleController;
   final TextEditingController descController;
+  final TextEditingController previewDurationController;
+  bool isPreview;
   File? videoFile;
   String? videoName;
   File? resourceFile;
@@ -2900,5 +2924,6 @@ class _WizardLecture {
   void dispose() {
     titleController.dispose();
     descController.dispose();
+    previewDurationController.dispose();
   }
 }

@@ -6,12 +6,14 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:pdf/pdf.dart';
 import 'package:printing/printing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../localization/app_strings.dart';
 import '../network/token_storage.dart';
+import '../router/app_router.dart';
 
 /// Top-level background message handler for FCM.
 /// Must be a top-level function annotated with @pragma('vm:entry-point').
@@ -91,7 +93,7 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
             visibility: NotificationVisibility.public,
           ),
         ),
-        payload: message.data.toString(),
+        payload: jsonEncode(message.data),
       );
     } catch (e) {
       developer.log('Failed to show background notification: $e', name: 'NotificationService');
@@ -125,6 +127,37 @@ class NotificationService {
   );
 
   bool _isInitialized = false;
+
+  /// Centralized notification tap redirection
+  static void handleNotificationTap(Map<String, dynamic> data) {
+    if (data.isEmpty) return;
+    if (kDebugMode) {
+      print('🚀 [NotificationService] Routing notification tap with data: $data');
+    }
+
+    // Direct route payload
+    final route = data['route']?.toString() ?? data['screen']?.toString() ?? data['path']?.toString();
+    if (route != null && route.isNotEmpty) {
+      final navContext = rootNavigatorKey.currentContext;
+      if (navContext != null) {
+        navContext.push(route);
+        return;
+      }
+    }
+
+    final type = (data['type'] ?? data['entity_type'] ?? data['model'] ?? '').toString().toLowerCase();
+    final courseId = data['course_id'] ?? data['courseId'] ?? (type == 'course' ? (data['id'] ?? data['entity_id']) : null);
+    final ebookId = data['ebook_id'] ?? data['ebookId'] ?? (type.contains('ebook') ? (data['id'] ?? data['entity_id']) : null);
+
+    final navContext = rootNavigatorKey.currentContext;
+    if (navContext == null) return;
+
+    if (courseId != null && courseId.toString().isNotEmpty) {
+      navContext.push('/farmer/course/${courseId.toString()}');
+    } else if (ebookId != null && ebookId.toString().isNotEmpty) {
+      navContext.push('/farmer/ebook/${ebookId.toString()}');
+    }
+  }
 
   /// When true, course draft creation notifications are deferred until all media uploads reach 100%.
   static bool isCourseDraftUploading = false;
@@ -247,30 +280,44 @@ class NotificationService {
           print('🔔 Local notification clicked with payload: ${response.payload}');
         }
         final payload = response.payload;
-        if (payload != null && payload.isNotEmpty && payload.endsWith('.pdf')) {
-          try {
-            final file = File(payload);
-            if (await file.exists()) {
-              final bytes = await file.readAsBytes();
-              final pageFormat = (!kIsWeb && Platform.isIOS)
-                  ? const PdfPageFormat(
-                      595.28,
-                      420.94, // 70.7% scaling to match portrait viewport
-                      marginAll: 0,
-                    )
-                  : PdfPageFormat.a4.landscape;
+        if (payload != null && payload.isNotEmpty) {
+          if (payload.endsWith('.pdf')) {
+            try {
+              final file = File(payload);
+              if (await file.exists()) {
+                final bytes = await file.readAsBytes();
+                final pageFormat = (!kIsWeb && Platform.isIOS)
+                    ? const PdfPageFormat(
+                        595.28,
+                        420.94, // 70.7% scaling to match portrait viewport
+                        marginAll: 0,
+                      )
+                    : PdfPageFormat.a4.landscape;
 
-              await Printing.layoutPdf(
-                format: pageFormat,
-                dynamicLayout: false,
-                forceCustomPrintPaper: true,
-                onLayout: (_) async => bytes,
-                name: file.uri.pathSegments.last,
-              );
+                await Printing.layoutPdf(
+                  format: pageFormat,
+                  dynamicLayout: false,
+                  forceCustomPrintPaper: true,
+                  onLayout: (_) async => bytes,
+                  name: file.uri.pathSegments.last,
+                );
+              }
+            } catch (e) {
+              if (kDebugMode) {
+                print('⚠️ Could not open downloaded PDF from notification: $e');
+              }
             }
-          } catch (e) {
-            if (kDebugMode) {
-              print('⚠️ Could not open downloaded PDF from notification: $e');
+          } else {
+            try {
+              Map<String, dynamic> data = {};
+              if (payload.startsWith('{') && payload.endsWith('}')) {
+                data = jsonDecode(payload);
+              }
+              NotificationService.handleNotificationTap(data);
+            } catch (e) {
+              if (kDebugMode) {
+                print('⚠️ Failed to parse local notification payload: $e');
+              }
             }
           }
         }
@@ -396,7 +443,7 @@ class NotificationService {
             presentSound: true,
           ),
         ),
-        payload: message.data.toString(),
+        payload: jsonEncode(message.data),
       );
       if (kDebugMode) {
         print('✅ [_showForegroundNotification] Successfully displayed notification #$notificationId: $title');
