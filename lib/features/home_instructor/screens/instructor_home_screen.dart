@@ -16,7 +16,6 @@ import '../../explore/providers/explore_provider.dart';
 import '../../home_farmer/providers/farmer_home_provider.dart';
 import '../../home_farmer/providers/student_provider.dart';
 import '../../notifications/providers/notification_provider.dart';
-import '../../../core/widgets/logout_dialog.dart';
 import '../../../core/widgets/shimmer_placeholders.dart';
 import '../../instructor_dashboard/widgets/my_students_sheet.dart';
 
@@ -45,73 +44,6 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
-  }
-
-  void _showFilterBottomSheet() {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Sort By', style: Theme.of(context).textTheme.titleLarge),
-                const SizedBox(height: 16),
-                ListTile(
-                  title: const Text('Newest'),
-                  trailing: _ordering == '-created_at' ? const Icon(Icons.check, color: AppColors.primaryGreen) : null,
-                  onTap: () {
-                    setState(() => _ordering = '-created_at');
-                    Navigator.pop(context);
-                  },
-                ),
-                ListTile(
-                  title: const Text('Oldest'),
-                  trailing: _ordering == 'created_at' ? const Icon(Icons.check, color: AppColors.primaryGreen) : null,
-                  onTap: () {
-                    setState(() => _ordering = 'created_at');
-                    Navigator.pop(context);
-                  },
-                ),
-                ListTile(
-                  title: const Text('Title (A-Z)'),
-                  trailing: _ordering == 'title' ? const Icon(Icons.check, color: AppColors.primaryGreen) : null,
-                  onTap: () {
-                    setState(() => _ordering = 'title');
-                    Navigator.pop(context);
-                  },
-                ),
-                ListTile(
-                  title: const Text('Title (Z-A)'),
-                  trailing: _ordering == '-title' ? const Icon(Icons.check, color: AppColors.primaryGreen) : null,
-                  onTap: () {
-                    setState(() => _ordering = '-title');
-                    Navigator.pop(context);
-                  },
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      setState(() => _ordering = '');
-                      Navigator.pop(context);
-                    },
-                    child: const Text('Clear Filter'),
-                  ),
-                )
-              ],
-            ),
-          ),
-        );
-      },
-    );
   }
 
   void _showStudentsBottomSheet(BuildContext context, Map<String, dynamic> stats) {
@@ -646,7 +578,7 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    '${tr(ref, 'Welcome Back')} 👨‍🏫',
+                    '${tr(ref, 'Welcome')} 👨‍🏫',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: AppColors.inkSoft,
                         ),
