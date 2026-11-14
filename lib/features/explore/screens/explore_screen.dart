@@ -170,6 +170,8 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      enableDrag: true,
+      showDragHandle: false,
       backgroundColor: Colors.transparent,
       builder: (context) {
         final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -192,86 +194,108 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
 
             final tempCount = getTempCount();
 
-            return Container(
-              constraints: BoxConstraints(
-                maxHeight: MediaQuery.of(context).size.height * 0.85,
-              ),
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF141E16) : Colors.white,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                border: Border(
-                  top: BorderSide(
-                    color: isDark ? const Color(0xFF263B2B) : const Color(0xFFE2E8F0),
-                    width: 1,
-                  ),
-                ),
-              ),
-              child: SafeArea(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Center(
-                        child: Container(
-                          width: 44,
-                          height: 4,
-                          margin: const EdgeInsets.only(bottom: 18),
-                          decoration: BoxDecoration(
-                            color: isDark ? Colors.white24 : Colors.grey.shade300,
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        ),
+            return DraggableScrollableSheet(
+              initialChildSize: 0.85,
+              minChildSize: 0.35,
+              maxChildSize: 0.95,
+              expand: false,
+              builder: (sheetContext, scrollController) {
+                return Container(
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF141E16) : Colors.white,
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                    border: Border(
+                      top: BorderSide(
+                        color: isDark ? const Color(0xFF263B2B) : const Color(0xFFE2E8F0),
+                        width: 1,
                       ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    ),
+                  ),
+                  child: SafeArea(
+                    top: false,
+                    child: SingleChildScrollView(
+                      controller: scrollController,
+                      physics: const ClampingScrollPhysics(),
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF1B4D2E).withValues(alpha: 0.14),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Icon(
-                                  isEbooksTab ? Icons.auto_stories_rounded : Icons.tune_rounded,
-                                  color: const Color(0xFF1B4D2E),
-                                  size: 20,
-                                ),
+                          Center(
+                            child: Container(
+                              width: 44,
+                              height: 5,
+                              margin: const EdgeInsets.only(top: 4, bottom: 16),
+                              decoration: BoxDecoration(
+                                color: isDark ? Colors.white30 : Colors.grey.shade400,
+                                borderRadius: BorderRadius.circular(3),
                               ),
-                              const SizedBox(width: 10),
-                              Text(
-                                isEbooksTab
-                                    ? tr(ref, 'Filter & Sort E-Books')
-                                    : tr(ref, 'Filter & Sort Courses'),
-                                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 18,
+                            ),
+                          ),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF1B4D2E).withValues(alpha: 0.14),
+                                      borderRadius: BorderRadius.circular(10),
                                     ),
+                                    child: Icon(
+                                      isEbooksTab ? Icons.auto_stories_rounded : Icons.tune_rounded,
+                                      color: const Color(0xFF1B4D2E),
+                                      size: 20,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Text(
+                                    isEbooksTab
+                                        ? tr(ref, 'Filter & Sort E-Books')
+                                        : tr(ref, 'Filter & Sort Courses'),
+                                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 18,
+                                        ),
+                                  ),
+                                ],
+                              ),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (tempCount > 0) ...[
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF1B4D2E),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Text(
+                                        '$tempCount ${tr(ref, 'active')}',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                  ],
+                                  IconButton(
+                                    visualDensity: VisualDensity.compact,
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                                    icon: const Icon(Icons.close_rounded, size: 22),
+                                    color: isDark ? Colors.white70 : Colors.grey.shade700,
+                                    tooltip: tr(ref, 'Close'),
+                                    onPressed: () => Navigator.pop(sheetContext),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
-                          if (tempCount > 0)
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF1B4D2E),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                '$tempCount ${tr(ref, 'active')}',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
+                          const SizedBox(height: 20),
 
                       // ═════════════════════════════════════════════════════════════
                       // E-BOOKS TAB SPECIFIC FILTERS
@@ -847,7 +871,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.more_vert_rounded),
+            icon: const Icon(Icons.tune_rounded),
             color: isDark ? Colors.white70 : const Color(0xFF1B4D2E),
             tooltip: tr(ref, 'Filter Courses'),
             onPressed: _showFilterBottomSheet,
