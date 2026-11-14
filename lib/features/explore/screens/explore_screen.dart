@@ -902,13 +902,22 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Scaffold(
-      backgroundColor: isDark ? AppColors.bgDark : const Color(0xFFFBFBFA),
-      appBar: _buildAppBar(context, isDark),
-      body: SafeArea(
-        child: _isCategoriesView
-            ? _buildExploreCategoriesScreen(context, isDark)
-            : _buildSearchResultsScreen(context, isDark),
+    return PopScope(
+      canPop: _isCategoriesView,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        // If not in the base categories view, handle the phone back gesture
+        // by resetting to the main Explore categories view first.
+        _clearSearchAndFilters();
+      },
+      child: Scaffold(
+        backgroundColor: isDark ? AppColors.bgDark : const Color(0xFFFBFBFA),
+        appBar: _buildAppBar(context, isDark),
+        body: SafeArea(
+          child: _isCategoriesView
+              ? _buildExploreCategoriesScreen(context, isDark)
+              : _buildSearchResultsScreen(context, isDark),
+        ),
       ),
     );
   }
