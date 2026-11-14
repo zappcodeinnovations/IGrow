@@ -169,6 +169,26 @@ class CommunityHubsNotifier extends StateNotifier<AsyncValue<List<CommunityHub>>
     }
   }
 
+  Future<CommunityHub> toggleHubActive(
+    String hubId, {
+    required bool isActive,
+    String reason = '',
+  }) async {
+    final updatedHub = await _repo.toggleHubActive(
+      hubId,
+      isActive: isActive,
+      reason: reason,
+    );
+    if (state.value != null) {
+      final updatedList = state.value!.map((h) => h.id == hubId ? updatedHub : h).toList();
+      state = AsyncValue.data(updatedList);
+    }
+    ref?.invalidate(myInstructorHubProvider);
+    ref?.invalidate(suggestedHubsProvider);
+    ref?.invalidate(hubDetailsProvider(hubId));
+    return updatedHub;
+  }
+
   Future<void> deleteHub(String hubId) async {
     await _repo.deleteHub(hubId);
     if (state.value != null) {

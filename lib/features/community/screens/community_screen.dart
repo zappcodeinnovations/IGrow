@@ -362,16 +362,16 @@ class _FeaturePoint extends StatelessWidget {
 }
 
 // ─── State B: Active Instructor Community Hub Feed ───────────────────
-// Flag to control hub deletion availability (kept false until backend completes development)
-const bool _kEnableDeleteHub = false;
-
 class _InstructorStateB extends ConsumerWidget {
   const _InstructorStateB({required this.hub, required this.isDark});
   final CommunityHub hub;
   final bool isDark;
 
-  void _confirmDeleteHub(BuildContext context, WidgetRef ref, CommunityHub hub) {
+  void _confirmToggleHubActive(BuildContext context, WidgetRef ref, CommunityHub hub) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isDeactivating = hub.isActive;
+    final reasonController = TextEditingController();
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -382,27 +382,53 @@ class _InstructorStateB extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.red.withValues(alpha: 0.12),
+                color: (isDeactivating ? Colors.orange : AppColors.primaryGreen).withValues(alpha: 0.12),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.delete_forever_rounded, color: Colors.red, size: 22),
+              child: Icon(
+                isDeactivating ? Icons.pause_circle_outline_rounded : Icons.play_circle_outline_rounded,
+                color: isDeactivating ? Colors.orange : AppColors.primaryGreen,
+                size: 22,
+              ),
             ),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                tr(ref, 'Delete Community Hub?'),
+                isDeactivating ? tr(ref, 'Deactivate Community Hub?') : tr(ref, 'Reactivate Community Hub?'),
                 style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
               ),
             ),
           ],
         ),
-        content: Text(
-          tr(ref, 'Are you sure you want to permanently delete "${hub.name}"? This action cannot be undone and will remove all broadcast updates and member connections.'),
-          style: TextStyle(
-            fontSize: 13.5,
-            color: isDark ? Colors.white70 : AppColors.inkSoft,
-            height: 1.4,
-          ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              isDeactivating
+                  ? tr(ref, 'Are you sure you want to deactivate "${hub.name}"? Broadcasters and student interactions will be temporarily paused until you reactivate it.')
+                  : tr(ref, 'Are you sure you want to reactivate "${hub.name}"? The hub will become visible and active for all members again.'),
+              style: TextStyle(
+                fontSize: 13.5,
+                color: isDark ? Colors.white70 : AppColors.inkSoft,
+                height: 1.4,
+              ),
+            ),
+            if (isDeactivating) ...[
+              const SizedBox(height: 14),
+              TextField(
+                controller: reasonController,
+                style: TextStyle(fontSize: 13, color: isDark ? Colors.white : Colors.black87),
+                decoration: InputDecoration(
+                  labelText: tr(ref, 'Reason for deactivation (Optional)'),
+                  hintText: tr(ref, 'e.g. Updating community guidelines or seasonal pause'),
+                  hintStyle: TextStyle(fontSize: 12, color: isDark ? Colors.white38 : Colors.black38),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                ),
+              ),
+            ],
+          ],
         ),
         actions: [
           TextButton(
@@ -414,24 +440,37 @@ class _InstructorStateB extends ConsumerWidget {
           ),
           FilledButton(
             style: FilledButton.styleFrom(
-              backgroundColor: Colors.red,
+              backgroundColor: isDeactivating ? Colors.orange : AppColors.primaryGreen,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
             onPressed: () async {
               Navigator.pop(ctx);
               try {
-                await ref.read(communityHubsProvider.notifier).deleteHub(hub.id);
+                await ref.read(communityHubsProvider.notifier).toggleHubActive(
+                      hub.id,
+                      isActive: !isDeactivating,
+                      reason: reasonController.text.trim(),
+                    );
                 if (context.mounted) {
-                  AppToast.showSuccess(context, 'Community Hub deleted successfully.');
+                  AppToast.showSuccess(
+                    context,
+                    isDeactivating
+                        ? tr(ref, 'Community Hub deactivated successfully.')
+                        : tr(ref, 'Community Hub reactivated successfully!'),
+                  );
                 }
               } catch (e) {
                 if (context.mounted) {
-                  AppToast.showFriendlyError(context, e, prefix: 'Failed to delete hub');
+                  AppToast.showFriendlyError(
+                    context,
+                    e,
+                    prefix: isDeactivating ? tr(ref, 'Failed to deactivate hub') : tr(ref, 'Failed to reactivate hub'),
+                  );
                 }
               }
             },
             child: Text(
-              tr(ref, 'Delete'),
+              isDeactivating ? tr(ref, 'Deactivate') : tr(ref, 'Reactivate'),
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
           ),
@@ -652,40 +691,68 @@ class _InstructorStateB extends ConsumerWidget {
                                 ],
                               ),
                             ),
-                            if (_kEnableDeleteHub) ...[
+                            // Deactivate / Reactivate Action for Host Instructor
+                            if (!hub.isActive && hub.disabledBy == 'ADMIN') ...[
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                                decoration: BoxDecoration(
+                                  color: Colors.amber.withValues(alpha: isDark ? 0.2 : 0.1),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: Colors.amber.withValues(alpha: 0.4)),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.lock_outline_rounded, size: 14, color: Colors.amber),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      tr(ref, 'Locked by Admin'),
+                                      style: const TextStyle(
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.amber,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ] else ...[
                               const SizedBox(width: 8),
                               Tooltip(
-                                message: tr(ref, 'Delete Community Hub'),
+                                message: hub.isActive ? tr(ref, 'Deactivate Community Hub') : tr(ref, 'Reactivate Community Hub'),
                                 child: Material(
                                   color: Colors.transparent,
                                   child: InkWell(
                                     borderRadius: BorderRadius.circular(10),
-                                    onTap: () => _confirmDeleteHub(context, ref, hub),
+                                    onTap: () => _confirmToggleHubActive(context, ref, hub),
                                     child: Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFFEF4444).withValues(alpha: isDark ? 0.2 : 0.08),
+                                        color: (hub.isActive ? Colors.orange : AppColors.primaryGreen)
+                                            .withValues(alpha: isDark ? 0.2 : 0.08),
                                         borderRadius: BorderRadius.circular(10),
                                         border: Border.all(
-                                          color: const Color(0xFFEF4444).withValues(alpha: 0.35),
+                                          color: (hub.isActive ? Colors.orange : AppColors.primaryGreen)
+                                              .withValues(alpha: 0.35),
                                           width: 1,
                                         ),
                                       ),
                                       child: Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          const Icon(
-                                            Icons.delete_outline_rounded,
+                                          Icon(
+                                            hub.isActive ? Icons.pause_circle_outline_rounded : Icons.play_circle_outline_rounded,
                                             size: 16,
-                                            color: Color(0xFFEF4444),
+                                            color: hub.isActive ? Colors.orange : AppColors.primaryGreen,
                                           ),
                                           const SizedBox(width: 4),
                                           Text(
-                                            tr(ref, 'Delete'),
-                                            style: const TextStyle(
+                                            hub.isActive ? tr(ref, 'Deactivate') : tr(ref, 'Reactivate'),
+                                            style: TextStyle(
                                               fontSize: 12,
                                               fontWeight: FontWeight.w700,
-                                              color: Color(0xFFEF4444),
+                                              color: hub.isActive ? Colors.orange : AppColors.primaryGreen,
                                             ),
                                           ),
                                         ],

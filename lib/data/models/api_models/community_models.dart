@@ -105,6 +105,7 @@ class CommunityHub {
   final bool isOwner;
   final bool isActive;
   final String disabledReason;
+  final String disabledBy;
   final DateTime createdAt;
 
   CommunityHub({
@@ -125,6 +126,7 @@ class CommunityHub {
     this.isOwner = false,
     this.isActive = true,
     this.disabledReason = '',
+    this.disabledBy = '',
     required this.createdAt,
   });
 
@@ -153,6 +155,7 @@ class CommunityHub {
     final activeVal = json['is_active'];
     final bool active = activeVal == null ? true : (activeVal == true || activeVal == 1 || activeVal == 'true');
     final String reason = (json['disabled_reason'] ?? json['deactivated_reason'] ?? '').toString();
+    final String disabledBy = (json['disabled_by'] ?? '').toString();
 
     return CommunityHub(
       id: (json['id'] ?? '').toString(),
@@ -176,6 +179,7 @@ class CommunityHub {
       isOwner: json['is_owner'] == true || json['is_host'] == true,
       isActive: active,
       disabledReason: reason,
+      disabledBy: disabledBy,
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'].toString()) ?? DateTime.now()
           : DateTime.now(),
@@ -200,6 +204,7 @@ class CommunityHub {
     bool? isOwner,
     bool? isActive,
     String? disabledReason,
+    String? disabledBy,
     DateTime? createdAt,
   }) {
     return CommunityHub(
@@ -220,6 +225,7 @@ class CommunityHub {
       isOwner: isOwner ?? this.isOwner,
       isActive: isActive ?? this.isActive,
       disabledReason: disabledReason ?? this.disabledReason,
+      disabledBy: disabledBy ?? this.disabledBy,
       createdAt: createdAt ?? this.createdAt,
     );
   }

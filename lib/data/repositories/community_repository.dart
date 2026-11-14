@@ -232,6 +232,29 @@ class CommunityRepository {
     });
   }
 
+  Future<CommunityHub> toggleHubActive(
+    String hubId, {
+    required bool isActive,
+    String reason = '',
+  }) async {
+    return _safe(() async {
+      final uri = Uri.parse('$baseUrl/hubs/$hubId/toggle-active/');
+      final response = await http
+          .post(
+            uri,
+            headers: await _getHeaders(),
+            body: jsonEncode({
+              'is_active': isActive,
+              'disabled_reason': reason,
+            }),
+          )
+          .timeout(const Duration(seconds: 15));
+      _handleError(response);
+      final data = jsonDecode(response.body);
+      return CommunityHub.fromJson(data as Map<String, dynamic>);
+    });
+  }
+
   Future<void> deleteHub(String hubId) async {
     return _safe(() async {
       final uri = Uri.parse('$baseUrl/hubs/$hubId/');
