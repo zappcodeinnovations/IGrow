@@ -125,6 +125,20 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
       return;
     }
 
+    // 1b. Support Ticket notification -> Route to Support > My Tickets tab
+    final isSupportTicket = type == 'SUPPORT_TICKET' ||
+        type == 'TICKET' ||
+        type == 'SUPPORT' ||
+        (item.titleKey != null && item.titleKey!.contains('ticket')) ||
+        (item.messageKey != null && item.messageKey!.contains('ticket')) ||
+        item.title.toLowerCase().contains('ticket') ||
+        item.message.toLowerCase().contains('ticket');
+
+    if (isSupportTicket) {
+      context.push('/support?tab=my-tickets');
+      return;
+    }
+
     // 2. E-Book notification -> Route to Explore > E-Books tab filtered by this book
     final hasEbookHint = type == 'NEW_EBOOK' ||
         item.title.toLowerCase().contains('e-book') ||
