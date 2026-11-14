@@ -66,7 +66,12 @@ class CourseDetailsScreen extends ConsumerStatefulWidget {
           : '/$normalizedUrl';
       normalizedUrl = 'https://iagrow.zappcode.in$clean';
     }
-    normalizedUrl = Uri.encodeFull(normalizedUrl);
+    // Safely encode URL without double-encoding already percent-encoded UTF-8 components (e.g. Marathi chars)
+    try {
+      normalizedUrl = Uri.encodeFull(Uri.decodeFull(normalizedUrl));
+    } catch (_) {
+      normalizedUrl = Uri.encodeFull(normalizedUrl);
+    }
 
     // 1. Direct media files (e.g. uploaded .mp4 or Django media) that are not embed pages
     final isEmbed =
