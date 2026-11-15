@@ -14,6 +14,9 @@ final communityRepositoryProvider = Provider<CommunityRepository>((ref) {
 // ─── Student Discovery Tabs Provider ──────────────────────────────
 final studentCommunityTabProvider = StateProvider<int>((ref) => 0); // 0: Recommended, 1: All, 2: My Communities
 
+// ─── Pending Comment Modal Post Target ─────────────────────────────
+final pendingCommunityCommentPostIdProvider = StateProvider<String?>((ref) => null);
+
 // ─── Suggested Hubs Provider (Location-Aware) ──────────────────────
 final suggestedHubsProvider = FutureProvider<List<CommunityHub>>((ref) async {
   final repo = ref.watch(communityRepositoryProvider);

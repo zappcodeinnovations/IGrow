@@ -156,6 +156,37 @@ class NotificationService {
       }
     }
 
+    // Check for Community Post / Comment notification
+    final postId = data['post_id'] ?? data['postId'] ?? (type.contains('post') || type.contains('comment') ? (data['id'] ?? data['entity_id']) : null);
+    final isCommunity = type.contains('comment') ||
+        type.contains('post') ||
+        type.contains('community') ||
+        data.containsKey('post_id') ||
+        data.containsKey('postId') ||
+        (data['title']?.toString().toLowerCase().contains('comment') ?? false) ||
+        (data['body']?.toString().toLowerCase().contains('commented') ?? false);
+
+    if (isCommunity) {
+      final navContext = rootNavigatorKey.currentContext;
+      if (navContext != null) {
+        final targetRoute = postId != null && postId.toString().isNotEmpty
+            ? '/farmer/community?postId=${postId.toString()}'
+            : '/farmer/community';
+        navContext.push(targetRoute);
+        return;
+      }
+    }
+
+    // Check for Support Ticket notification
+    final isSupport = type.contains('ticket') || type.contains('support') || data.containsKey('ticket_id');
+    if (isSupport) {
+      final navContext = rootNavigatorKey.currentContext;
+      if (navContext != null) {
+        navContext.push('/support?tab=my-tickets');
+        return;
+      }
+    }
+
     final courseId = data['course_id'] ?? data['courseId'] ?? (type == 'course' ? (data['id'] ?? data['entity_id']) : null);
     final ebookId = data['ebook_id'] ?? data['ebookId'] ?? (type.contains('ebook') ? (data['id'] ?? data['entity_id']) : null);
 

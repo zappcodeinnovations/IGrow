@@ -483,11 +483,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: RouteNames.farmerCommunity,
-            pageBuilder: (context, state) => _buildSlideRightPage(
-              context: context,
-              state: state,
-              child: const CommunityScreen(),
-            ),
+            pageBuilder: (context, state) {
+              final postId = state.uri.queryParameters['postId'] ?? state.uri.queryParameters['post_id'];
+              return _buildSlideRightPage(
+                context: context,
+                state: state,
+                child: CommunityScreen(initialPostId: postId),
+              );
+            },
           ),
           GoRoute(
             path: RouteNames.farmerProfile,
@@ -509,11 +512,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: RouteNames.instructorCommunity,
-            pageBuilder: (context, state) => _buildSlideRightPage(
-              context: context,
-              state: state,
-              child: const CommunityScreen(),
-            ),
+            pageBuilder: (context, state) {
+              final postId = state.uri.queryParameters['postId'] ?? state.uri.queryParameters['post_id'];
+              return _buildSlideRightPage(
+                context: context,
+                state: state,
+                child: CommunityScreen(initialPostId: postId),
+              );
+            },
           ),
           GoRoute(
             path: RouteNames.instructorProfile,

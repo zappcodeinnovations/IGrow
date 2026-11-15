@@ -16,10 +16,13 @@ import '../../auth/providers/auth_provider.dart';
 import '../../home_farmer/providers/weather_provider.dart';
 import '../providers/community_provider.dart';
 import '../widgets/create_post_sheets.dart';
+import '../widgets/post_comments_bottom_sheet.dart';
 import '../widgets/rich_post_card.dart';
 
 class CommunityScreen extends ConsumerStatefulWidget {
-  const CommunityScreen({super.key});
+  const CommunityScreen({super.key, this.initialPostId});
+
+  final String? initialPostId;
 
   @override
   ConsumerState<CommunityScreen> createState() => _CommunityScreenState();
@@ -35,8 +38,36 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
     );
   }
 
+  void _checkPendingCommentModal() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final targetPostId = widget.initialPostId ?? ref.read(pendingCommunityCommentPostIdProvider);
+      if (targetPostId != null && targetPostId.isNotEmpty) {
+        ref.read(pendingCommunityCommentPostIdProvider.notifier).state = null;
+        PostCommentsBottomSheet.show(
+          context,
+          postId: targetPostId,
+          postAuthorName: 'Community Post',
+          isHubActive: true,
+        );
+      }
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _checkPendingCommentModal();
+  }
+
   @override
   Widget build(BuildContext context) {
+    ref.listen<String?>(pendingCommunityCommentPostIdProvider, (prev, next) {
+      if (next != null && next.isNotEmpty) {
+        _checkPendingCommentModal();
+      }
+    });
+
     final currentUser = ref.watch(authProvider).user;
     final isInstructor = currentUser?.isInstructor == true || currentUser?.isAdmin == true;
     final isDark = Theme.of(context).brightness == Brightness.dark;

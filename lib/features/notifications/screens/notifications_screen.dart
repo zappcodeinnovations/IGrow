@@ -8,6 +8,7 @@ import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../data/models/api_models/notification_models.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../helpers/notification_text_helper.dart';
 import '../providers/notification_provider.dart';
 
@@ -148,6 +149,29 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
 
     if (isSupportTicket) {
       context.push('/support?tab=my-tickets');
+      return;
+    }
+
+    // 1c. Community Post / Comment notification -> Route to Community with comments open
+    final isCommunityPost = type.contains('COMMENT') ||
+        type.contains('POST') ||
+        type.contains('COMMUNITY') ||
+        item.title.toLowerCase().contains('comment') ||
+        item.message.toLowerCase().contains('commented') ||
+        item.message.toLowerCase().contains('reply');
+
+    if (isCommunityPost) {
+      final postId = item.params?['post_id'] ??
+          item.params?['postId'] ??
+          item.params?['id'];
+      final user = ref.read(authProvider).user;
+      final isInstructor = user?.isInstructor == true || user?.isAdmin == true;
+      final communityRoute = isInstructor ? RouteNames.instructorCommunity : RouteNames.farmerCommunity;
+      if (postId != null && postId.toString().isNotEmpty) {
+        context.push('$communityRoute?postId=${postId.toString()}');
+      } else {
+        context.push(communityRoute);
+      }
       return;
     }
 
