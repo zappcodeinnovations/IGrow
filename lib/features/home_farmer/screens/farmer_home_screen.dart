@@ -773,7 +773,7 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                         final courseTitle =
                             activeEnrollment?.courseTitle ?? 'zhc';
                         final progressPct =
-                            (activeEnrollment?.completionPercentage ?? 100)
+                            (activeEnrollment?.completionPercentage ?? 0.0)
                                 .round();
                         final isComplete = progressPct >= 100;
                         final courseTarget =

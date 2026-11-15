@@ -151,8 +151,10 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
 
       final progressRatio = (position.inMilliseconds / duration.inMilliseconds).clamp(0.0, 1.0);
 
-      // 1. Auto-complete current lecture when 90% or more is watched
+      // 1. Auto-complete current lecture when 90% or more is watched (requires real playback of at least 5s)
       if (progressRatio >= 0.90 &&
+          duration.inSeconds >= 5 &&
+          position.inSeconds >= 5 &&
           !_hasAutoCompletedCurrentLecture &&
           _currentLecture != null &&
           _activeSlug != null) {

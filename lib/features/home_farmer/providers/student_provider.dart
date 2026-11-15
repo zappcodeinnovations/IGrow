@@ -448,7 +448,7 @@ Set<String> parseCompletedLectureIds(dynamic progressData) {
       });
     }
 
-    final cList = progressData['completed_lectures'] ?? progressData['lectures'];
+    final cList = progressData['completed_lectures'];
     if (cList is List) {
       for (final item in cList) {
         if (item is Map) {
@@ -457,8 +457,21 @@ Set<String> parseCompletedLectureIds(dynamic progressData) {
           if (id != null && isDone) {
             completed.add(id.toString());
           }
-        } else if (item != null) {
+        } else if (item != null && item.toString().isNotEmpty) {
           completed.add(item.toString());
+        }
+      }
+    }
+
+    final lecturesList = progressData['lectures'];
+    if (lecturesList is List) {
+      for (final item in lecturesList) {
+        if (item is Map) {
+          final id = item['lecture_id'] ?? item['lecture'] ?? item['id'];
+          final isDone = item['is_completed'] == true || item['completed'] == true;
+          if (id != null && isDone) {
+            completed.add(id.toString());
+          }
         }
       }
     }
@@ -470,8 +483,6 @@ Set<String> parseCompletedLectureIds(dynamic progressData) {
         if (id != null && isDone) {
           completed.add(id.toString());
         }
-      } else if (item != null) {
-        completed.add(item.toString());
       }
     }
   }
