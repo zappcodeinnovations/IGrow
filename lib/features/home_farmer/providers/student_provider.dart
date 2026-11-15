@@ -342,10 +342,10 @@ final studentEnrollmentsProvider = FutureProvider.autoDispose<List<Enrollment>>(
     if (localPercent != null && localPercent > 0.0) {
       effectivePercentage = localPercent > effectivePercentage ? localPercent : effectivePercentage;
     } else if (localCompleted.isNotEmpty && effectivePercentage == 0.0) {
-      effectivePercentage = 100.0;
+      effectivePercentage = 50.0; // Videos completed, quiz still pending
     }
 
-    final isCompleted = effectivePercentage >= 100.0 || (enr.completed == true);
+    final isCompleted = effectivePercentage >= 100.0;
 
     enriched.add(enr.copyWith(
       completionPercentage: effectivePercentage,
@@ -541,7 +541,7 @@ class CourseProgressNotifier extends StateNotifier<AsyncValue<Set<String>>> {
         currentCompletedLectures: updatedSet,
       );
     } else {
-      final percent = updatedSet.isNotEmpty ? 100.0 : 0.0;
+      final percent = updatedSet.isNotEmpty ? 50.0 : 0.0;
       await CourseProgressService.instance.saveCoursePercentage(slug, percent);
     }
 

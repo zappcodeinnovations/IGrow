@@ -179,6 +179,19 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
     final slug = _activeSlug ?? course?.slug ?? widget.courseId;
     final courseId = course?.id ?? widget.courseId;
 
+    bool allQuizzesPassed = false;
+    if (course != null && course.sections.isNotEmpty) {
+      bool allPassed = true;
+      for (final sec in course.sections) {
+        final passed = await QuizService.isSectionQuizPassed(sec.id);
+        if (!passed) {
+          allPassed = false;
+          break;
+        }
+      }
+      allQuizzesPassed = allPassed;
+    }
+
     await CourseProgressService.instance.updateLectureWatchAndRecalculate(
       courseSlugOrId: slug,
       secondaryKey: courseId,
@@ -186,6 +199,7 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
       watchRatio: ratio,
       positionSeconds: positionSeconds,
       allLectureIds: allLectureIds.isNotEmpty ? allLectureIds : [_currentLecture!.id],
+      quizPassed: allQuizzesPassed,
     );
 
     // Refresh enrollment & percentage providers so dashboard & player reflect progress immediately
@@ -210,14 +224,16 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
     } catch (_) {}
   }
 
-  void _triggerAutoCompletion(ApiLecture lecture) {
+  void _triggerAutoCompletion(ApiLecture lecture) async {
     if (_activeSlug == null) return;
+    final allLectures = _currentCourse?.sections.expand((s) => s.lectures).toList() ?? [];
     ref
         .read(courseProgressStateProvider(_activeSlug!).notifier)
         .markLectureCompletion(
           lecture.id,
           completed: true,
           watchedTime: _videoPlayerController?.value.position.inSeconds,
+          totalLectures: allLectures.length,
         );
 
     if (mounted) {
@@ -1107,12 +1123,30 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
           final totalLecturesCount = allLectures.length;
           final completedCount =
               allLectures.where((l) => completedIds.contains(l.id)).length;
-          final discretePercent = totalLecturesCount > 0
-              ? ((completedCount / totalLecturesCount) * 100).round()
-              : 0;
-          final granularPercentAsync = ref.watch(coursePercentageProvider(_activeSlug!));
-          final granularPercent = granularPercentAsync.value?.round() ?? 0;
-          final completionPercent = granularPercent > discretePercent ? granularPercent : discretePercent;
+
+          // Check passing status of section quizzes
+          final totalSections = course.sections.length;
+          int passedQuizzesCount = 0;
+          for (final section in course.sections) {
+            final isPassed = ref.watch(sectionQuizPassedProvider(section.id)).value ?? false;
+            if (isPassed) {
+              passedQuizzesCount++;
+            }
+          }
+          final bool allQuizzesPassed = totalSections > 0 && passedQuizzesCount == totalSections;
+
+          // Video completion accounts for 50%, quiz passing accounts for 50%
+          final double videoRatio = totalLecturesCount > 0
+              ? (completedCount / totalLecturesCount).clamp(0.0, 1.0)
+              : 0.0;
+          final double quizRatio = totalSections > 0
+              ? (passedQuizzesCount / totalSections).clamp(0.0, 1.0)
+              : 0.0;
+
+          final double videoPercent = videoRatio * 50.0;
+          final double quizPercent = quizRatio * 50.0;
+          final int completionPercent = (videoPercent + quizPercent).round();
+          final double progressValue = (videoPercent + quizPercent) / 100.0;
           return Column(
             children: [
               // ── 1. Video Player / Reading Banner Area ─────────────
@@ -1322,6 +1356,8 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
                               currentLecture: _currentLecture,
                               completedIds: completedIds,
                               completionPercent: completionPercent,
+                              progressValue: progressValue,
+                              allQuizzesPassed: allQuizzesPassed,
                               completedCount: completedCount,
                               totalLectures: totalLecturesCount,
                               videoPlayerController: _videoPlayerController,
@@ -1389,6 +1425,8 @@ class _CurriculumTab extends ConsumerWidget {
     required this.currentLecture,
     required this.completedIds,
     required this.completionPercent,
+    required this.progressValue,
+    required this.allQuizzesPassed,
     required this.completedCount,
     required this.totalLectures,
     required this.onSelectLecture,
@@ -1400,6 +1438,8 @@ class _CurriculumTab extends ConsumerWidget {
   final ApiLecture? currentLecture;
   final Set<String> completedIds;
   final int completionPercent;
+  final double progressValue;
+  final bool allQuizzesPassed;
   final int completedCount;
   final int totalLectures;
   final Function(ApiLecture, ApiCourseSection) onSelectLecture;
@@ -1410,6 +1450,7 @@ class _CurriculumTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bookmarkedLectures = ref.watch(lectureBookmarksProvider(course.slug ?? course.id));
+    final isCertificateUnlocked = completionPercent >= 100 && allQuizzesPassed;
 
     return RefreshIndicator(
       color: AppColors.primaryGreen,
@@ -1459,9 +1500,7 @@ class _CurriculumTab extends ConsumerWidget {
               ClipRRect(
                 borderRadius: BorderRadius.circular(6),
                 child: LinearProgressIndicator(
-                  value: totalLectures > 0
-                      ? (completedCount / totalLectures)
-                      : 0.0,
+                  value: progressValue.clamp(0.0, 1.0),
                   minHeight: 8,
                   backgroundColor: isDark
                       ? AppColors.lineDark
@@ -1471,38 +1510,57 @@ class _CurriculumTab extends ConsumerWidget {
                   ),
                 ),
               ),
-              if (completionPercent >= 100) ...[
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFD4AF37),
-                      foregroundColor: Colors.black87,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                    ),
-                    icon: const Icon(Icons.workspace_premium_rounded, size: 20),
-                    label: const Text('View Official Certificate', style: TextStyle(fontWeight: FontWeight.bold)),
-                    onPressed: () async {
-                      try {
-                        final repo = ref.read(certificateRepositoryProvider);
-                        final status = await repo.getCourseCertificate(course.id);
-                        if (!context.mounted) return;
-                        if (status.certificate != null) {
-                          CertificateViewerDialog.show(context, certificate: status.certificate);
-                        } else {
-                          context.push(RouteNames.certificates);
-                        }
-                      } catch (_) {
-                        if (context.mounted) {
-                          context.push(RouteNames.certificates);
-                        }
-                      }
-                    },
+              const SizedBox(height: 12),
+              // View Official Certificate button:
+              // Greyed out until quiz is passed with passing marks & lectures completed.
+              // Enabled and clickable only after passing quiz and completing lectures (100%).
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isCertificateUnlocked
+                        ? const Color(0xFFD4AF37)
+                        : (isDark ? Colors.white12 : Colors.grey.shade300),
+                    foregroundColor: isCertificateUnlocked
+                        ? Colors.black87
+                        : (isDark ? Colors.white38 : Colors.grey.shade600),
+                    disabledBackgroundColor: isDark ? Colors.white12 : Colors.grey.shade300,
+                    disabledForegroundColor: isDark ? Colors.white38 : Colors.grey.shade600,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
                   ),
+                  icon: Icon(
+                    isCertificateUnlocked
+                        ? Icons.workspace_premium_rounded
+                        : Icons.lock_outline_rounded,
+                    size: 20,
+                  ),
+                  label: Text(
+                    isCertificateUnlocked
+                        ? 'View Official Certificate'
+                        : 'View Official Certificate (Pass Quiz to Unlock)',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  onPressed: isCertificateUnlocked
+                      ? () async {
+                          try {
+                            final repo = ref.read(certificateRepositoryProvider);
+                            final status = await repo.getCourseCertificate(course.id);
+                            if (!context.mounted) return;
+                            if (status.certificate != null) {
+                              CertificateViewerDialog.show(context, certificate: status.certificate);
+                            } else {
+                              context.push(RouteNames.certificates);
+                            }
+                          } catch (_) {
+                            if (context.mounted) {
+                              context.push(RouteNames.certificates);
+                            }
+                          }
+                        }
+                      : null,
                 ),
-              ],
+              ),
             ],
           ),
         ),
@@ -1749,7 +1807,15 @@ class _CurriculumTab extends ConsumerWidget {
                             fontWeight: isPassed ? FontWeight.bold : FontWeight.w600,
                           ),
                         ),
-                        onPressed: () => context.push('/quiz/${section.id}'),
+                        onPressed: () async {
+                          await context.push('/quiz/${section.id}');
+                          ref.invalidate(sectionQuizPassedProvider(section.id));
+                          ref.invalidate(studentEnrollmentsProvider);
+                          ref.invalidate(myCertificatesProvider);
+                          ref.invalidate(certificateEnrollmentsProvider);
+                          final slug = course.slug ?? course.id;
+                          ref.invalidate(coursePercentageProvider(slug));
+                        },
                       ),
                     );
                   },

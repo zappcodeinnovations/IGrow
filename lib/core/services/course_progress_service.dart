@@ -138,6 +138,7 @@ class CourseProgressService {
   }
 
   /// Updates watched progress for a lecture and computes overall granular course progress percentage.
+  /// Video lectures account for 50% and section quiz accounts for the remaining 50%.
   Future<double> updateLectureWatchAndRecalculate({
     required String courseSlugOrId,
     String? secondaryKey,
@@ -145,6 +146,7 @@ class CourseProgressService {
     required double watchRatio,
     int? positionSeconds,
     required List<String> allLectureIds,
+    bool quizPassed = false,
   }) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -192,7 +194,9 @@ class CourseProgressService {
         }
       }
 
-      final percent = ((totalUnits / effectiveLectures.length) * 100.0).clamp(0.0, 100.0);
+      final videoPercent = ((totalUnits / effectiveLectures.length) * 50.0).clamp(0.0, 50.0);
+      final quizPercent = quizPassed ? 50.0 : 0.0;
+      final percent = (videoPercent + quizPercent).clamp(0.0, 100.0);
       await saveCoursePercentage(courseSlugOrId, percent, secondaryKey: secondaryKey);
       return percent;
     } catch (_) {
@@ -200,16 +204,17 @@ class CourseProgressService {
     }
   }
 
-  /// Compute course progress percentage based on completed lectures and partial watch progress.
+  /// Compute course progress percentage based on completed lectures (50%) and passed quiz (50%).
   Future<double> calculateAndSaveProgress(
     String courseSlugOrId, {
     required int totalLectures,
     Set<String>? currentCompletedLectures,
     List<String>? allLectureIds,
+    bool quizPassed = false,
   }) async {
     final completed = currentCompletedLectures ?? await getCompletedLectures(courseSlugOrId);
 
-    double percent = 0.0;
+    double videoPercent = 0.0;
     if (allLectureIds != null && allLectureIds.isNotEmpty) {
       double totalUnits = 0.0;
       for (final id in allLectureIds) {
@@ -220,14 +225,17 @@ class CourseProgressService {
           totalUnits += r.clamp(0.0, 1.0);
         }
       }
-      percent = ((totalUnits / allLectureIds.length) * 100.0).clamp(0.0, 100.0);
+      videoPercent = ((totalUnits / allLectureIds.length) * 50.0).clamp(0.0, 50.0);
     } else {
       if (totalLectures <= 1) {
-        percent = completed.isNotEmpty ? 100.0 : 0.0;
+        videoPercent = completed.isNotEmpty ? 50.0 : 0.0;
       } else {
-        percent = ((completed.length / totalLectures) * 100.0).clamp(0.0, 100.0);
+        videoPercent = ((completed.length / totalLectures) * 50.0).clamp(0.0, 50.0);
       }
     }
+
+    final quizPercent = quizPassed ? 50.0 : 0.0;
+    final percent = (videoPercent + quizPercent).clamp(0.0, 100.0);
 
     await saveCoursePercentage(courseSlugOrId, percent);
     return percent;

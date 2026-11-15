@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/services/quiz_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../certificates/providers/certificates_provider.dart';
 import '../../home_farmer/providers/student_provider.dart';
 
 class QuizPlayerScreen extends ConsumerStatefulWidget {
@@ -65,6 +66,8 @@ class _QuizPlayerScreenState extends ConsumerState<QuizPlayerScreen> {
         await QuizService.setSectionQuizPassed(widget.sectionId, true);
         ref.invalidate(sectionQuizPassedProvider(widget.sectionId));
         ref.invalidate(studentEnrollmentsProvider);
+        ref.invalidate(myCertificatesProvider);
+        ref.invalidate(certificateEnrollmentsProvider);
       }
 
       // Record in Quiz History for the farmer/student panel
