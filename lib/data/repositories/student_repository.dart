@@ -191,6 +191,29 @@ class StudentRepository {
       }
     }
 
+    // 4. Fallback to instructor endpoint if the user is an instructor previewing their draft/review e-book
+    try {
+      final token = await tokenStorage.getAccessToken();
+      if (token != null) {
+        final instructorUri = Uri.parse('https://iagrow.zappcode.in/api/v1/instructor/ebooks/$slugOrId/');
+        final instructorRes = await http.get(
+          instructorUri,
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+        );
+        if (instructorRes.statusCode >= 200 && instructorRes.statusCode < 300) {
+          final data = jsonDecode(instructorRes.body) as Map<String, dynamic>;
+          debugPrint('✅ [StudentRepository] getEbookDetail instructor endpoint SUCCESS: ${data['title']} (status: ${data['status']})');
+          return EBook.fromJson(data);
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ [StudentRepository] getEbookDetail instructor fallback error: $e');
+    }
+
     throw ApiException.network();
   }
 

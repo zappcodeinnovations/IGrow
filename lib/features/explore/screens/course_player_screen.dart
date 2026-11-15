@@ -3312,11 +3312,12 @@ class _CourseReviewsTabState extends ConsumerState<_CourseReviewsTab> {
                                       }
                                     } catch (e) {
                                       if (context.mounted) {
+                                        final cleanMsg = e.toString().replaceAll('Exception: ', '').trim();
                                         ScaffoldMessenger.of(context).showSnackBar(
                                           SnackBar(
-                                            content: Text('Could not delete review: $e'),
+                                            content: Text(cleanMsg.isNotEmpty ? cleanMsg : 'Could not delete review. Please try again.'),
                                             backgroundColor: AppColors.error,
-                                            duration: const Duration(seconds: 2),
+                                            duration: const Duration(seconds: 3),
                                           ),
                                         );
                                       }

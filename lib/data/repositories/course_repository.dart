@@ -340,8 +340,15 @@ class CourseRepository {
     }
 
     if (!succeeded) {
-      debugPrint('⚠️ [CourseRepository] All candidate endpoints returned error/404: $lastError');
-      // Still succeed locally if backend already purged it or permissions were accepted
+      debugPrint('❌ [CourseRepository] All candidate endpoints returned error/404: $lastError');
+      if (lastError.contains('403') || lastError.toLowerCase().contains('permission')) {
+        throw Exception('You do not have permission to delete this review.');
+      } else if (lastError.contains('404')) {
+        throw Exception('Review could not be found or has already been removed.');
+      } else if (lastError.toLowerCase().contains('socket') || lastError.toLowerCase().contains('network')) {
+        throw Exception('Network error. Please check your internet connection.');
+      }
+      throw Exception('Unable to delete review at this time. Please try again later.');
     }
   }
 }
