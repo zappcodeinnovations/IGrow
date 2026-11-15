@@ -576,28 +576,6 @@ class _PostCommentsBottomSheetState extends ConsumerState<PostCommentsBottomShee
                         ],
                       ),
                     ),
-                  if (!isMe)
-                    const PopupMenuItem(
-                      value: 'report',
-                      child: Row(
-                        children: [
-                          Icon(Icons.flag_outlined, color: Colors.orange, size: 16),
-                          SizedBox(width: 8),
-                          Text('Report Comment'),
-                        ],
-                      ),
-                    ),
-                  if (!isMe)
-                    const PopupMenuItem(
-                      value: 'block',
-                      child: Row(
-                        children: [
-                          Icon(Icons.block_rounded, color: Colors.redAccent, size: 16),
-                          SizedBox(width: 8),
-                          Text('Block User', style: TextStyle(color: Colors.redAccent)),
-                        ],
-                      ),
-                    ),
                 ],
               ),
             ],

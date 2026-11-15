@@ -481,26 +481,6 @@ class _RichPostCardState extends ConsumerState<RichPostCard> {
                               ],
                             ),
                           ),
-                        const PopupMenuItem(
-                          value: 'report',
-                          child: Row(
-                            children: [
-                              Icon(Icons.flag_outlined, color: Colors.orange, size: 18),
-                              SizedBox(width: 8),
-                              Text('Report Post'),
-                            ],
-                          ),
-                        ),
-                        const PopupMenuItem(
-                          value: 'block',
-                          child: Row(
-                            children: [
-                              Icon(Icons.block_rounded, color: Colors.redAccent, size: 18),
-                              SizedBox(width: 8),
-                              Text('Block User', style: TextStyle(color: Colors.redAccent)),
-                            ],
-                          ),
-                        ),
                       ],
                     ),
                   ),
