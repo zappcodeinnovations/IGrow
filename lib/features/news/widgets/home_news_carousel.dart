@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
+import '../../../core/localization/app_strings.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/models/agri_news_model.dart';
@@ -81,7 +82,7 @@ class HomeNewsCarousel extends ConsumerWidget {
                         children: [
                           Flexible(
                             child: Text(
-                              'Agri Market News',
+                              tr(ref, 'Agri Market News'),
                               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                                     fontWeight: FontWeight.bold,
                                     color: isDark ? Colors.white : AppColors.inkDark,
@@ -117,20 +118,20 @@ class HomeNewsCarousel extends ConsumerWidget {
               InkWell(
                 onTap: () => context.push(RouteNames.news),
                 borderRadius: BorderRadius.circular(8),
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                   child: Row(
                     children: [
                       Text(
-                        'View All',
-                        style: TextStyle(
+                        tr(ref, 'View All'),
+                        style: const TextStyle(
                           fontSize: 12.5,
                           fontWeight: FontWeight.bold,
                           color: AppColors.primaryGreen,
                         ),
                       ),
-                      SizedBox(width: 3),
-                      Icon(Icons.arrow_forward_ios_rounded, size: 12, color: AppColors.primaryGreen),
+                      const SizedBox(width: 3),
+                      const Icon(Icons.arrow_forward_ios_rounded, size: 12, color: AppColors.primaryGreen),
                     ],
                   ),
                 ),
