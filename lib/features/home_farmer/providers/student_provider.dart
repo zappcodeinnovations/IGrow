@@ -300,6 +300,8 @@ final studentEnrollmentsProvider = FutureProvider.autoDispose<List<Enrollment>>(
       // Only include successful or pending/confirmed orders
       if (status == 'SUCCESS' || status == 'COMPLETED' || status == 'PAID' || status == null) {
         for (final item in order.items) {
+          if (item.isEbook) continue; // E-books belong exclusively to E-Books section
+
           final courseId = item.course;
           final courseSlug = item.courseSlug;
           if (courseId == null && courseSlug == null) continue;

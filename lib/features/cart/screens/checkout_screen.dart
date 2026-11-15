@@ -118,9 +118,11 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
             signature: signature,
           );
 
-      // Invalidate enrollments, orders, and clear cart if checking out cart
+      // Invalidate enrollments, orders, ebooks, and clear cart if checking out cart
       ref.invalidate(studentEnrollmentsProvider);
       ref.invalidate(ordersProvider);
+      ref.invalidate(studentPurchasedEbooksProvider);
+      ref.invalidate(studentEbooksProvider);
       if (widget.directCourseId != null) {
         ref.invalidate(courseDetailProvider(widget.directCourseId!));
       } else {
@@ -220,6 +222,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       if (status == 'FREE_ENROLLED') {
         ref.invalidate(studentEnrollmentsProvider);
         ref.invalidate(ordersProvider);
+        ref.invalidate(studentPurchasedEbooksProvider);
+        ref.invalidate(studentEbooksProvider);
         if (widget.directCourseId == null) {
           await ref.read(cartProvider.notifier).clearCart();
         }

@@ -169,6 +169,11 @@ class ApiOrderItem {
   final String? itemType;
   final String priceAtPurchase;
 
+  bool get isEbook =>
+      itemType?.toLowerCase() == 'ebook' ||
+      (ebook != null && ebook!.isNotEmpty) ||
+      (ebookId != null && ebookId!.isNotEmpty);
+
   factory ApiOrderItem.fromJson(Map<String, dynamic> json) => ApiOrderItem(
         id: json['id'] as String,
         course: json['course'] as String?,

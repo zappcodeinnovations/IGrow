@@ -226,15 +226,32 @@ class _MyLearningScreenState extends ConsumerState<MyLearningScreen> {
                     builder: (context, constraints) {
                       final double width = constraints.maxWidth;
                       final double aspectRatio = width < 360 ? 2.05 : (width < 420 ? 2.22 : 2.45);
-                      final enrollmentsCount = enrollmentsAsync.maybeWhen(data: (list) => list.length, orElse: () => 0);
-                      final ebooksCount = ebooksAsync.maybeWhen(data: (list) => list.length, orElse: () => 0);
-                      final completedCount = enrollmentsAsync.maybeWhen(
+                      final purchasedEbooks = ebooksAsync.maybeWhen(data: (list) => list, orElse: () => <EBook>[]);
+                      final ebookKeys = <String>{
+                        for (final eb in purchasedEbooks) ...[
+                          if (eb.id != null && eb.id!.isNotEmpty) eb.id!.toLowerCase(),
+                          if (eb.slug != null && eb.slug!.isNotEmpty) eb.slug!.toLowerCase(),
+                          if (eb.title.isNotEmpty) eb.title.trim().toLowerCase(),
+                        ]
+                      };
+                      final courseEnrollments = enrollmentsAsync.maybeWhen(
                         data: (list) => list.where((e) {
-                          final pct = (e.completionPercentage ?? 0).toDouble();
-                          return pct >= 100.0;
-                        }).length,
-                        orElse: () => 0,
+                          final cId = e.course.toLowerCase();
+                          final cSlug = e.courseSlug?.toLowerCase();
+                          final cTitle = e.courseTitle?.trim().toLowerCase();
+                          final isEbook = ebookKeys.contains(cId) ||
+                              (cSlug != null && ebookKeys.contains(cSlug)) ||
+                              (cTitle != null && ebookKeys.contains(cTitle));
+                          return !isEbook;
+                        }).toList(),
+                        orElse: () => <Enrollment>[],
                       );
+                      final enrollmentsCount = courseEnrollments.length;
+                      final ebooksCount = purchasedEbooks.length;
+                      final completedCount = courseEnrollments.where((e) {
+                        final pct = (e.completionPercentage ?? 0).toDouble();
+                        return pct >= 100.0;
+                      }).length;
 
                       return GridView.count(
                         crossAxisCount: 2,
@@ -376,8 +393,27 @@ class _MyLearningScreenState extends ConsumerState<MyLearningScreen> {
   ) {
     return enrollmentsAsync.when(
       data: (enrollments) {
+        // E-books must only be shown in their own section, remove from courses (All / In Progress / Completed)
+        final purchasedEbooks = ref.watch(studentPurchasedEbooksProvider).valueOrNull ?? [];
+        final ebookKeys = <String>{
+          for (final eb in purchasedEbooks) ...[
+            if (eb.id != null && eb.id!.isNotEmpty) eb.id!.toLowerCase(),
+            if (eb.slug != null && eb.slug!.isNotEmpty) eb.slug!.toLowerCase(),
+            if (eb.title.isNotEmpty) eb.title.trim().toLowerCase(),
+          ]
+        };
+
+        var items = enrollments.where((e) {
+          final cId = e.course.toLowerCase();
+          final cSlug = e.courseSlug?.toLowerCase();
+          final cTitle = e.courseTitle?.trim().toLowerCase();
+          final isEbook = ebookKeys.contains(cId) ||
+              (cSlug != null && ebookKeys.contains(cSlug)) ||
+              (cTitle != null && ebookKeys.contains(cTitle));
+          return !isEbook;
+        }).toList();
+
         // Filter by In Progress / Completed
-        var items = enrollments;
         if (_selectedFilterIndex == 1) {
           // Pending / In-progress courses (completion < 100%)
           items = items.where((e) => (e.completionPercentage ?? 0) < 100).toList();
