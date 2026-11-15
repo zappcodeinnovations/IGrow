@@ -10,6 +10,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../../core/services/offline_download_service.dart';
 import '../../../core/services/course_progress_service.dart';
+import '../../../core/services/quiz_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_error_state.dart';
 import '../../../data/models/api_models/course_models.dart';
@@ -253,7 +254,19 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
     final currentCompleted = ref.read(courseProgressStateProvider(_activeSlug!)).value ?? <String>{};
     final updatedCompleted = {...currentCompleted, justCompletedLectureId};
 
-    final isAllDone = allLectures.every((l) => updatedCompleted.contains(l.id));
+    final isAllLecturesDone = allLectures.every((l) => updatedCompleted.contains(l.id));
+
+    // Require both: all lectures completed AND all section quizzes passed before awarding certificate
+    bool allQuizzesPassed = true;
+    for (final sec in course.sections) {
+      final passed = await QuizService.isSectionQuizPassed(sec.id);
+      if (!passed) {
+        allQuizzesPassed = false;
+        break;
+      }
+    }
+
+    final isAllDone = isAllLecturesDone && allQuizzesPassed;
 
     if (isAllDone) {
       try {
@@ -1257,74 +1270,6 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          // Mark as Complete Toggle
-                          OutlinedButton.icon(
-                            style: OutlinedButton.styleFrom(
-                              visualDensity: VisualDensity.compact,
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 4),
-                              side: BorderSide(
-                                color: completedIds.contains(_currentLecture!.id)
-                                    ? AppColors.primaryGreen
-                                    : AppColors.inkSoft.withValues(alpha: 0.5),
-                              ),
-                              backgroundColor:
-                                  completedIds.contains(_currentLecture!.id)
-                                      ? AppColors.primaryGreen.withValues(alpha: 0.1)
-                                      : Colors.transparent,
-                            ),
-                            icon: Icon(
-                              completedIds.contains(_currentLecture!.id)
-                                  ? Icons.check_circle
-                                  : Icons.check_circle_outline,
-                              size: 15,
-                              color: completedIds.contains(_currentLecture!.id)
-                                  ? AppColors.primaryGreen
-                                  : AppColors.inkSoft,
-                            ),
-                            label: Text(
-                              completedIds.contains(_currentLecture!.id)
-                                  ? 'Completed'
-                                  : 'Mark Done',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: completedIds.contains(_currentLecture!.id)
-                                    ? AppColors.primaryGreen
-                                    : (isDark ? Colors.white : AppColors.inkDark),
-                              ),
-                            ),
-                            onPressed: () {
-                              final isCurrentlyDone =
-                                  completedIds.contains(_currentLecture!.id);
-                              if (isCurrentlyDone) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Lecture already marked as completed! ✓'),
-                                    duration: Duration(seconds: 2),
-                                  ),
-                                );
-                                return;
-                              }
-                              ref
-                                  .read(
-                                      courseProgressStateProvider(_activeSlug!)
-                                          .notifier)
-                                  .markLectureCompletion(
-                                    _currentLecture!.id,
-                                    completed: true,
-                                    watchedTime: _videoPlayerController
-                                        ?.value.position.inSeconds,
-                                  );
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Marked as completed! ✓'),
-                                  duration: Duration(seconds: 2),
-                                ),
-                              );
-                              _checkCourseCompletionAndShowCelebration(course, _currentLecture!.id);
-                            },
-                          ),
                           if (_hasNextLecture(course)) ...[
                             IconButton(
                               visualDensity: VisualDensity.compact,
@@ -1526,7 +1471,7 @@ class _CurriculumTab extends ConsumerWidget {
                   ),
                 ),
               ),
-              if (completionPercent >= 100 || (totalLectures > 0 && completedCount >= totalLectures)) ...[
+              if (completionPercent >= 100) ...[
                 const SizedBox(height: 12),
                 SizedBox(
                   width: double.infinity,
