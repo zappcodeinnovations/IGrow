@@ -18,6 +18,7 @@ import '../../news/widgets/home_news_carousel.dart';
 import '../../wishlist/providers/wishlist_provider.dart';
 import '../../../core/widgets/shell_scaffold.dart';
 import '../../../core/localization/app_strings.dart';
+import '../widgets/floating_offer_badge.dart';
 
 /// Upgraded Student / Farmer Dashboard Screen matching the Agrilearn Web UI & UX.
 class FarmerHomeScreen extends ConsumerStatefulWidget {
@@ -100,20 +101,22 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
     final weatherAsync = ref.watch(weatherProvider);
     final weatherData = weatherAsync.valueOrNull;
 
-    return RefreshIndicator(
-      onRefresh: _refreshDashboard,
-      color: AppColors.primaryGreen,
-      backgroundColor: isDark ? AppColors.cardDark : AppColors.white,
-      displacement: 60,
-      child: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(
-          parent: AlwaysScrollableScrollPhysics(),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── 1. Curved Deep Forest Green Header (Strictly matching prototype) ─────
-            Container(
+    return Stack(
+      children: [
+        RefreshIndicator(
+          onRefresh: _refreshDashboard,
+          color: AppColors.primaryGreen,
+          backgroundColor: isDark ? AppColors.cardDark : AppColors.white,
+          displacement: 60,
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(
+              parent: AlwaysScrollableScrollPhysics(),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ── 1. Curved Deep Forest Green Header (Strictly matching prototype) ─────
+                Container(
               width: double.infinity,
               decoration: BoxDecoration(
                 color: isDark
@@ -1214,8 +1217,10 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+          // ── Floating Special Offer Badge (Bottom-Right) ──
+          const FloatingOfferBadge(),
+        ],
       ),
     );
   }
