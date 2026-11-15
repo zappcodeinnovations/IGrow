@@ -36,11 +36,18 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   // ─── IMPORTANT: Show local notification for data-only messages ───────────
   // When a FCM "data-only" message arrives (no notification payload),
   // Android will NOT auto-display anything — we must show it manually.
-  // For "notification" messages, FCM handles display automatically via the
-  // default_notification_channel_id set in AndroidManifest.xml.
-  // We show here as a safety net so screen-off / background always shows.
-  final rawTitle = message.notification?.title ?? message.data['title'];
-  final rawBody  = message.notification?.body  ?? message.data['body'];
+  // For "notification" messages (where message.notification != null),
+  // Android OS automatically displays the notification using the default channel.
+  // If we also call plugin.show(), Android creates a DUPLICATE notification banner!
+  if (message.notification != null) {
+    if (kDebugMode) {
+      print('ℹ️ [BackgroundHandler] Notification payload already handled by Android OS. Skipping local duplicate.');
+    }
+    return;
+  }
+
+  final rawTitle = message.data['title'];
+  final rawBody  = message.data['body'];
 
   // Check for localized keys in notification or data payload
   final titleLocKey = message.notification?.titleLocKey ?? message.data['title_loc_key'] ?? message.data['title_key'];
@@ -127,6 +134,10 @@ class NotificationService {
   );
 
   bool _isInitialized = false;
+
+  /// Cache of recently displayed notification deduplication keys with timestamps
+  /// to guard against duplicate push deliveries within a 10-second window.
+  final Map<String, int> _recentNotificationTimestamps = {};
 
   /// Centralized notification tap redirection
   static void handleNotificationTap(Map<String, dynamic> data) {
@@ -446,6 +457,27 @@ class NotificationService {
     // Defer premature course creation push notification while video/media upload is active
     final lowerTitle = title.toLowerCase();
     final lowerBody = body.toLowerCase();
+
+    // ─── Deduplication Guard ──────────────────────────────────────────────
+    // Guard against identical notifications received within 8 seconds
+    // (e.g. when backend fires multiple signals or user has multiple device tokens).
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final dedupeKey = '${message.messageId ?? ""}_${title.trim()}_${body.trim()}';
+    if (_recentNotificationTimestamps.containsKey(dedupeKey)) {
+      final prevTime = _recentNotificationTimestamps[dedupeKey] ?? 0;
+      if (now - prevTime < 8000) {
+        if (kDebugMode) {
+          print('🛡️ [NotificationService] Deduplication Guard: Suppressed duplicate notification banner for "$title"');
+        }
+        return;
+      }
+    }
+    _recentNotificationTimestamps[dedupeKey] = now;
+    // Clean old keys if map exceeds 50 entries
+    if (_recentNotificationTimestamps.length > 50) {
+      _recentNotificationTimestamps.removeWhere((_, time) => now - time > 30000);
+    }
+
     final isCourseCreationNotification = lowerTitle.contains('course created') ||
         lowerBody.contains('saved as a draft');
     if (isCourseCreationNotification && isCourseDraftUploading) {
