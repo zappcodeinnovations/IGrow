@@ -284,7 +284,25 @@ class _WishlistScreenState extends ConsumerState<WishlistScreen>
         separatorBuilder: (_, __) => const SizedBox(height: 14),
         itemBuilder: (context, index) {
           final item = items[index];
-          return _WishlistCard(item: item);
+          return Dismissible(
+            key: Key(item.id.isNotEmpty ? item.id : 'wishlist_${item.targetId}_$index'),
+            direction: DismissDirection.endToStart,
+            background: Container(
+              alignment: Alignment.centerRight,
+              padding: const EdgeInsets.only(right: 20),
+              decoration: BoxDecoration(
+                color: Colors.redAccent,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Icon(Icons.delete_outline, color: Colors.white, size: 24),
+            ),
+            onDismissed: (_) {
+              ref.read(wishlistProvider.notifier).removeItem(
+                item.id.isNotEmpty ? item.id : item.targetId,
+              );
+            },
+            child: _WishlistCard(item: item),
+          );
         },
       ),
     );
