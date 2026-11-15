@@ -391,6 +391,33 @@ class CommunityPostsNotifier extends StateNotifier<AsyncValue<List<CommunityPost
     state = AsyncValue.data(updatedList);
   }
 
+  void decrementCommentsCount(String postId) {
+    if (state.value == null) return;
+    final oldPosts = state.value!;
+    final index = oldPosts.indexWhere((p) => p.id == postId);
+    if (index == -1) return;
+    final post = oldPosts[index];
+    final newCount = (post.commentsCount - 1).clamp(0, double.infinity).toInt();
+    final updatedPost = post.copyWith(commentsCount: newCount);
+    final updatedList = List<CommunityPost>.from(oldPosts);
+    updatedList[index] = updatedPost;
+    state = AsyncValue.data(updatedList);
+  }
+
+  void syncCommentsCount(String postId, int actualCount) {
+    if (state.value == null) return;
+    final oldPosts = state.value!;
+    final index = oldPosts.indexWhere((p) => p.id == postId);
+    if (index == -1) return;
+    final post = oldPosts[index];
+    if (post.commentsCount != actualCount) {
+      final updatedPost = post.copyWith(commentsCount: actualCount);
+      final updatedList = List<CommunityPost>.from(oldPosts);
+      updatedList[index] = updatedPost;
+      state = AsyncValue.data(updatedList);
+    }
+  }
+
   final Set<String> _viewedPosts = {};
 
   Future<void> recordView(String postId) async {
@@ -557,22 +584,24 @@ class CommunityPostsNotifier extends StateNotifier<AsyncValue<List<CommunityPost
 
 final postCommentsProvider = StateNotifierProvider.family<PostCommentsNotifier, AsyncValue<List<CommunityComment>>, String>((ref, postId) {
   final repo = ref.watch(communityRepositoryProvider);
-  return PostCommentsNotifier(repo, postId);
+  return PostCommentsNotifier(repo, postId, ref);
 });
 
 class PostCommentsNotifier extends StateNotifier<AsyncValue<List<CommunityComment>>> {
-  PostCommentsNotifier(this._repo, this.postId) : super(const AsyncValue.loading()) {
+  PostCommentsNotifier(this._repo, this.postId, this._ref) : super(const AsyncValue.loading()) {
     fetchComments();
   }
 
   final CommunityRepository _repo;
   final String postId;
+  final Ref _ref;
 
   Future<void> fetchComments() async {
     state = const AsyncValue.loading();
     try {
       final comments = await _repo.getComments(postId);
       state = AsyncValue.data(comments);
+      _ref.read(communityPostsProvider.notifier).syncCommentsCount(postId, comments.length);
     } catch (_) {
       state = AsyncValue.data(<CommunityComment>[]);
     }
@@ -620,6 +649,7 @@ class PostCommentsNotifier extends StateNotifier<AsyncValue<List<CommunityCommen
 
   Future<void> deleteComment(String commentId) async {
     removeCommentLocally(commentId);
+    _ref.read(communityPostsProvider.notifier).decrementCommentsCount(postId);
     try {
       await _repo.deleteComment(commentId);
     } catch (_) {}
