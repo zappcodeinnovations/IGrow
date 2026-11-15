@@ -1633,6 +1633,8 @@ class AppStrings {
       'No curriculum sections published yet.': 'No curriculum sections published yet.',
       'No lectures in this module.': 'No lectures in this module.',
       'No description provided.': 'No description provided.',
+      'Cart': 'Cart',
+      'My Cart': 'My Cart',
       'active': 'active',
     },
 
@@ -3238,6 +3240,8 @@ class AppStrings {
       'No curriculum sections published yet.': 'अभी तक कोई पाठ्यक्रम अनुभाग प्रकाशित नहीं हुआ है।',
       'No lectures in this module.': 'इस मॉड्यूल में कोई व्याख्यान नहीं है।',
       'No description provided.': 'कोई विवरण उपलब्ध नहीं है।',
+      'Cart': 'कार्ट',
+      'My Cart': 'मेरी कार्ट',
       'active': 'सक्रिय',
     },
 
@@ -4843,6 +4847,8 @@ class AppStrings {
       'No curriculum sections published yet.': 'अद्याप कोणतेही अभ्यासक्रम विभाग प्रकाशित केलेले नाहीत.',
       'No lectures in this module.': 'या मॉड्युलमध्ये कोणतेही लेक्चर्स नाहीत.',
       'No description provided.': 'कोणतेही वर्णन दिलेले नाही.',
+      'Cart': 'कार्ट',
+      'My Cart': 'माझी कार्ट',
       'active': 'सक्रिय',
     },
   };
