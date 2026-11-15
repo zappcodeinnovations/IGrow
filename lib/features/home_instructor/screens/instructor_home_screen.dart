@@ -15,6 +15,7 @@ import '../../auth/providers/auth_provider.dart';
 import '../../explore/providers/explore_provider.dart';
 import '../../home_farmer/providers/farmer_home_provider.dart';
 import '../../home_farmer/providers/student_provider.dart';
+import '../../certificates/providers/certificates_provider.dart';
 import '../../notifications/providers/notification_provider.dart';
 import '../../../core/widgets/shimmer_placeholders.dart';
 import '../../instructor_dashboard/widgets/my_students_sheet.dart';
@@ -499,6 +500,9 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
         ref.invalidate(studentCatalogProvider);
         ref.invalidate(featuredCoursesProvider);
         ref.invalidate(exploreCoursesProvider);
+        ref.invalidate(studentEnrollmentsProvider);
+        ref.invalidate(myCertificatesProvider);
+        ref.invalidate(certificateEnrollmentsProvider);
       } catch (e) {
         if (!mounted) return;
         final messenger = ScaffoldMessenger.of(context);
@@ -555,6 +559,9 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
         ref.invalidate(studentCatalogProvider);
         ref.invalidate(featuredCoursesProvider);
         ref.invalidate(exploreCoursesProvider);
+        ref.invalidate(studentEnrollmentsProvider);
+        ref.invalidate(myCertificatesProvider);
+        ref.invalidate(certificateEnrollmentsProvider);
       } catch (e) {
         if (!mounted) return;
         final messenger = ScaffoldMessenger.of(context);
@@ -607,6 +614,9 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
         ref.invalidate(studentCatalogProvider);
         ref.invalidate(featuredCoursesProvider);
         ref.invalidate(exploreCoursesProvider);
+        ref.invalidate(studentEnrollmentsProvider);
+        ref.invalidate(myCertificatesProvider);
+        ref.invalidate(certificateEnrollmentsProvider);
       } catch (e) {
         if (!mounted) return;
         final messenger = ScaffoldMessenger.of(context);

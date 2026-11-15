@@ -9,6 +9,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../data/models/api_models/notification_models.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../community/providers/community_provider.dart';
 import '../helpers/notification_text_helper.dart';
 import '../providers/notification_provider.dart';
 
@@ -168,9 +169,10 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
       final isInstructor = user?.isInstructor == true || user?.isAdmin == true;
       final communityRoute = isInstructor ? RouteNames.instructorCommunity : RouteNames.farmerCommunity;
       if (postId != null && postId.toString().isNotEmpty) {
-        context.push('$communityRoute?postId=${postId.toString()}');
+        ref.read(pendingCommunityCommentPostIdProvider.notifier).state = postId.toString();
+        context.go('$communityRoute?postId=${postId.toString()}');
       } else {
-        context.push(communityRoute);
+        context.go(communityRoute);
       }
       return;
     }

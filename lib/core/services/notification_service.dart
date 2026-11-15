@@ -172,7 +172,7 @@ class NotificationService {
         final targetRoute = postId != null && postId.toString().isNotEmpty
             ? '/farmer/community?postId=${postId.toString()}'
             : '/farmer/community';
-        navContext.push(targetRoute);
+        navContext.go(targetRoute);
         return;
       }
     }

@@ -12,6 +12,19 @@ class CourseProgressService {
   static const String _watchedRatioPrefix = 'lecture_watch_ratio_';
   static const String _watchedSecondsPrefix = 'lecture_watch_sec_';
 
+  /// Reset all stored progress for a freshly purchased or enrolled course.
+  Future<void> resetCourseProgress(String courseSlugOrId, {String? secondaryKey}) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('$_lecturesPrefix$courseSlugOrId');
+      await prefs.remove('$_percentPrefix$courseSlugOrId');
+      if (secondaryKey != null && secondaryKey.isNotEmpty && secondaryKey != courseSlugOrId) {
+        await prefs.remove('$_lecturesPrefix$secondaryKey');
+        await prefs.remove('$_percentPrefix$secondaryKey');
+      }
+    } catch (_) {}
+  }
+
   /// Save the set of completed lecture IDs for a course.
   Future<void> saveCompletedLectures(String courseSlugOrId, Set<String> lectureIds) async {
     try {

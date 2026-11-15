@@ -7,6 +7,7 @@ import '../../../core/services/course_progress_service.dart';
 import '../../../core/services/quiz_service.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../cart/providers/cart_provider.dart';
+import '../../home_instructor/providers/instructor_home_provider.dart';
 
 final studentRepositoryProvider = Provider<StudentRepository>((ref) {
   return StudentRepository(
@@ -291,6 +292,7 @@ final studentEnrollmentsProvider = FutureProvider.autoDispose<List<Enrollment>>(
   final repo = ref.watch(studentRepositoryProvider);
   final response = await repo.getEnrollments();
   final list = List<Enrollment>.from(response.results);
+  final deactivatedIds = ref.watch(deactivatedCoursesProvider);
 
   // Cross-reference completed orders so freshly bought courses appear immediately even before backend batch enrollment sync
   try {
@@ -328,6 +330,14 @@ final studentEnrollmentsProvider = FutureProvider.autoDispose<List<Enrollment>>(
   } catch (e) {
     // Orders fetch is non-fatal fallback
   }
+
+  // Filter out deactivated/archived courses so they never show in the student's panel
+  list.removeWhere((enr) {
+    final cId = enr.course;
+    final cSlug = enr.courseSlug;
+    return (cId.isNotEmpty && deactivatedIds.contains(cId)) ||
+        (cSlug != null && cSlug.isNotEmpty && deactivatedIds.contains(cSlug));
+  });
 
   final enriched = <Enrollment>[];
   for (final enr in list) {

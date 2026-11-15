@@ -303,28 +303,39 @@ class _QuizPlayerScreenState extends ConsumerState<QuizPlayerScreen> {
                       String correctAnswerText = '';
 
                       if (backendItem.isNotEmpty) {
-                        isCorrect = backendItem['correct'] == true;
-                        final correctIdx = backendItem['correct_answer'] as int?;
+                        isCorrect = backendItem['correct'] == true ||
+                            backendItem['is_correct'] == true;
+                        final correctIdx = (backendItem['correct_answer'] ??
+                                backendItem['correct_option_index']) as int?;
                         if (correctIdx != null && correctIdx >= 0 && correctIdx < options.length) {
                           correctAnswerText = options[correctIdx];
+                        } else if (backendItem['correct_answer'] != null) {
+                          correctAnswerText = backendItem['correct_answer'].toString();
                         }
-                      } else {
-                        final correctIdx = q['correct_option_index'] as int? ?? 0;
-                        final correctAnsText = q['correct_answer']?.toString();
-                        
-                        // Check equality by index or by option text
-                        isCorrect = userIndex == correctIdx;
-                        if (!isCorrect && userIndex != null && userIndex >= 0 && userIndex < options.length) {
-                          if (correctAnsText != null && options[userIndex].trim().toLowerCase() == correctAnsText.trim().toLowerCase()) {
-                            isCorrect = true;
-                          }
-                        }
+                      }
 
-                        // Determine the correct answer display text
-                        if (correctAnsText != null && correctAnsText.trim().isNotEmpty) {
-                          correctAnswerText = correctAnsText;
-                        } else if (correctIdx >= 0 && correctIdx < options.length) {
-                          correctAnswerText = options[correctIdx];
+                      // Fallback verification if backend result is missing or reported incorrect:
+                      // If the user's selected text exactly matches the correct answer text or option, it IS correct!
+                      final correctIdx = q['correct_option_index'] as int? ??
+                          (q['correct_answer'] is int ? q['correct_answer'] as int : null);
+                      final correctAnsText = q['correct_answer']?.toString();
+
+                      if (correctAnsText != null && correctAnsText.trim().isNotEmpty) {
+                        if (correctAnswerText.isEmpty) correctAnswerText = correctAnsText;
+                      } else if (correctIdx != null && correctIdx >= 0 && correctIdx < options.length) {
+                        if (correctAnswerText.isEmpty) correctAnswerText = options[correctIdx];
+                      }
+
+                      if (!isCorrect && userIndex != null && userIndex >= 0 && userIndex < options.length) {
+                        final chosen = options[userIndex].trim().toLowerCase();
+                        if (correctIdx != null && userIndex == correctIdx) {
+                          isCorrect = true;
+                        } else if (correctAnswerText.isNotEmpty &&
+                            chosen == correctAnswerText.trim().toLowerCase()) {
+                          isCorrect = true;
+                        } else if (correctAnsText != null &&
+                            chosen == correctAnsText.trim().toLowerCase()) {
+                          isCorrect = true;
                         }
                       }
 

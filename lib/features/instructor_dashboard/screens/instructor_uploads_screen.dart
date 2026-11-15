@@ -13,6 +13,7 @@ import '../../explore/providers/explore_provider.dart';
 import '../../home_farmer/providers/farmer_home_provider.dart';
 import '../../home_farmer/providers/student_provider.dart';
 import '../../home_instructor/providers/instructor_home_provider.dart';
+import '../../certificates/providers/certificates_provider.dart';
 import '../../../core/services/app_config_service.dart';
 
 class InstructorUploadsScreen extends ConsumerStatefulWidget {
@@ -134,6 +135,9 @@ class _CoursesTab extends ConsumerWidget {
           ref.invalidate(studentCatalogProvider);
           ref.invalidate(featuredCoursesProvider);
           ref.invalidate(exploreCoursesProvider);
+          ref.invalidate(studentEnrollmentsProvider);
+          ref.invalidate(myCertificatesProvider);
+          ref.invalidate(certificateEnrollmentsProvider);
         }
       } catch (e) {
         if (context.mounted) {
@@ -196,6 +200,9 @@ class _CoursesTab extends ConsumerWidget {
           ref.invalidate(studentCatalogProvider);
           ref.invalidate(featuredCoursesProvider);
           ref.invalidate(exploreCoursesProvider);
+          ref.invalidate(studentEnrollmentsProvider);
+          ref.invalidate(myCertificatesProvider);
+          ref.invalidate(certificateEnrollmentsProvider);
         }
       } catch (e) {
         if (context.mounted) {
@@ -254,6 +261,9 @@ class _CoursesTab extends ConsumerWidget {
           ref.invalidate(studentCatalogProvider);
           ref.invalidate(featuredCoursesProvider);
           ref.invalidate(exploreCoursesProvider);
+          ref.invalidate(studentEnrollmentsProvider);
+          ref.invalidate(myCertificatesProvider);
+          ref.invalidate(certificateEnrollmentsProvider);
         }
       } catch (e) {
         if (context.mounted) {

@@ -7,6 +7,7 @@ import '../../../data/repositories/certificate_repository.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../explore/providers/explore_provider.dart';
 import '../../home_farmer/providers/student_provider.dart';
+import '../../home_instructor/providers/instructor_home_provider.dart';
 
 // ── Repository Provider ─────────────────────────────────────────────
 
@@ -21,6 +22,7 @@ final certificateRepositoryProvider = Provider<CertificateRepository>((ref) {
 /// Calls GET /api/v1/certificates/my/, with automatic self-healing sync from completed student enrollments.
 final myCertificatesProvider = FutureProvider.autoDispose<List<CertificateModel>>((ref) async {
   final repo = ref.watch(certificateRepositoryProvider);
+  final deactivatedIds = ref.watch(deactivatedCoursesProvider);
   List<CertificateModel> certs = [];
   try {
     debugPrint('🎓 [CertificatesProvider] Fetching my certificates from backend');
@@ -29,6 +31,14 @@ final myCertificatesProvider = FutureProvider.autoDispose<List<CertificateModel>
   } catch (e) {
     debugPrint('❌ [CertificatesProvider] Error fetching certificates: $e');
   }
+
+  // Filter out certificates belonging to deactivated courses
+  certs.removeWhere((c) {
+    final cId = c.courseId;
+    final cSlug = c.courseSlug;
+    return (cId != null && deactivatedIds.contains(cId)) ||
+        (cSlug != null && deactivatedIds.contains(cSlug));
+  });
 
   // Cross-reference completed enrollments: if a student has completed a course (100%),
   // auto-request/claim its certificate via GET /api/v1/certificates/course/{id}/ if missing from `my/`

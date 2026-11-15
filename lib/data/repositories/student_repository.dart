@@ -365,7 +365,7 @@ class StudentRepository {
         },
       );
       if (response.statusCode >= 200 && response.statusCode < 300) {
-        debugPrint('✅ [StudentRepository] getCourseProgress SUCCESS (${response.statusCode})');
+        debugPrint('✅ [StudentRepository] getCourseProgress SUCCESS (${response.statusCode}): ${response.body}');
         final decoded = jsonDecode(response.body);
         if (decoded is Map<String, dynamic>) return decoded;
         if (decoded is List) return {'lectures': decoded};
