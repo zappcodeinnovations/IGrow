@@ -482,6 +482,7 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
       try {
         debugPrint('📤 [DEACTIVATE] Deactivating course: ${course.id}');
         await ref.read(instructorRepositoryProvider).archiveCourse(course.id);
+        await ref.read(deactivatedCoursesProvider.notifier).markDeactivated(course.id);
         debugPrint('✅ [DEACTIVATE] Successfully deactivated course: ${course.id}');
         if (!mounted) return;
         final messenger = ScaffoldMessenger.of(context);
@@ -537,6 +538,7 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
       try {
         debugPrint('📤 [REACTIVATE] Reactivating course: ${course.id}');
         await ref.read(instructorRepositoryProvider).unarchiveCourse(course.id);
+        await ref.read(deactivatedCoursesProvider.notifier).markReactivated(course.id);
         debugPrint('✅ [REACTIVATE] Successfully reactivated course: ${course.id}');
         if (!mounted) return;
         final messenger = ScaffoldMessenger.of(context);
@@ -1510,17 +1512,29 @@ class AgriLearnCourseCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final status = (course.status ?? 'DRAFT').toUpperCase();
+    final isDeactivated = ref.watch(deactivatedCoursesProvider).contains(course.id) ||
+        status == 'ARCHIVED' ||
+        status == 'INACTIVE';
 
     Color badgeBg;
     Color badgeText;
     String badgeLabel;
 
-    final isLive = status == 'APPROVED' ||
-        status == 'LIVE' ||
-        status == 'PUBLISHED' ||
-        status == 'ACTIVE';
+    final isLive = (status == 'APPROVED' ||
+            status == 'LIVE' ||
+            status == 'PUBLISHED' ||
+            status == 'ACTIVE') &&
+        !isDeactivated;
 
-    if (isLive) {
+    // Only new made courses still in draft / review period can be deleted.
+    // Approved and subsequently deactivated courses must NOT show a delete button.
+    final canDelete = !isLive && !isDeactivated && (status == 'DRAFT' || status == 'PROCESSING' || status == 'REVIEW' || status == 'REJECTED');
+
+    if (isDeactivated) {
+      badgeBg = isDark ? Colors.amber.withValues(alpha: 0.2) : Colors.amber.shade50;
+      badgeText = isDark ? Colors.amberAccent : Colors.amber.shade900;
+      badgeLabel = tr(ref, '• Deactivated');
+    } else if (isLive) {
       badgeBg = Colors.green.shade50;
       badgeText = Colors.green.shade700;
       badgeLabel = tr(ref, '• Live');
@@ -1721,7 +1735,7 @@ class AgriLearnCourseCard extends ConsumerWidget {
                           ),
                         ),
                       ),
-                    if ((status == 'ARCHIVED' || status == 'INACTIVE') && onReactivate != null)
+                    if (isDeactivated && onReactivate != null)
                       OutlinedButton.icon(
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -1740,7 +1754,7 @@ class AgriLearnCourseCard extends ConsumerWidget {
                           ),
                         ),
                       ),
-                    if (!isLive && onDelete != null)
+                    if (canDelete && onDelete != null)
                       OutlinedButton.icon(
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),

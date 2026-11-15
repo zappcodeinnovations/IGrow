@@ -117,6 +117,7 @@ class _CoursesTab extends ConsumerWidget {
       try {
         debugPrint('📤 [DEACTIVATE] Deactivating course: ${course.id}');
         await ref.read(instructorRepositoryProvider).archiveCourse(course.id);
+        await ref.read(deactivatedCoursesProvider.notifier).markDeactivated(course.id);
         debugPrint('✅ [DEACTIVATE] Successfully deactivated course: ${course.id}');
         if (context.mounted) {
           final messenger = ScaffoldMessenger.of(context);
@@ -141,6 +142,68 @@ class _CoursesTab extends ConsumerWidget {
           messenger.showSnackBar(
             SnackBar(
               content: Text('${tr(ref, 'Failed to deactivate course:')} $e'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _reactivateCourse(
+    BuildContext context,
+    WidgetRef ref,
+    ApiCourseList course,
+  ) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(tr(ref, 'Reactivate Course'), style: const TextStyle(fontWeight: FontWeight.bold)),
+        content: Text(
+          '${tr(ref, 'Are you sure you want to reactivate')} "${course.title}"?\n\n'
+          '${tr(ref, 'The course will be restored back to live status on the marketplace.')}',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: Text(tr(ref, 'Cancel'))),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.primaryGreen),
+            onPressed: () => Navigator.pop(c, true),
+            child: Text(tr(ref, 'Reactivate')),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        debugPrint('📤 [REACTIVATE] Reactivating course: ${course.id}');
+        await ref.read(instructorRepositoryProvider).unarchiveCourse(course.id);
+        await ref.read(deactivatedCoursesProvider.notifier).markReactivated(course.id);
+        debugPrint('✅ [REACTIVATE] Successfully reactivated course: ${course.id}');
+        if (context.mounted) {
+          final messenger = ScaffoldMessenger.of(context);
+          messenger.clearSnackBars();
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text(tr(ref, 'Course reactivated and is now live!')),
+              backgroundColor: AppColors.primaryGreen,
+            ),
+          );
+          ref.invalidate(instructorCoursesProvider);
+          ref.invalidate(instructorCourseDetailProvider(course.id));
+          unawaited(ref.refresh(instructorCoursesProvider((search: '', ordering: '')).future));
+          ref.invalidate(studentCatalogProvider);
+          ref.invalidate(featuredCoursesProvider);
+          ref.invalidate(exploreCoursesProvider);
+        }
+      } catch (e) {
+        if (context.mounted) {
+          final messenger = ScaffoldMessenger.of(context);
+          messenger.clearSnackBars();
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text('${tr(ref, 'Failed to reactivate course:')} $e'),
               backgroundColor: AppColors.error,
             ),
           );
@@ -243,32 +306,45 @@ class _CoursesTab extends ConsumerWidget {
                 cStatus == 'PUBLISHED' ||
                 cStatus == 'ACTIVE';
 
+            final isDeactivated = ref.watch(deactivatedCoursesProvider).contains(course.id);
+            final effectiveLive = isLive && !isDeactivated;
+
+            // Only new made courses still in draft / review period can be deleted.
+            // Approved and subsequently deactivated courses must NOT show a delete button.
+            final canDelete = !effectiveLive && !isDeactivated && (cStatus == 'DRAFT' || cStatus == 'PROCESSING' || cStatus == 'REVIEW' || cStatus == 'REJECTED');
+
             Color cBadgeBg;
             Color cBadgeText;
             String cBadgeLabel;
 
-            if (isLive) {
+            if (isDeactivated) {
+              cBadgeBg = isDark
+                  ? Colors.amber.withValues(alpha: 0.2)
+                  : Colors.amber.shade50;
+              cBadgeText = isDark ? Colors.amberAccent : Colors.amber.shade900;
+              cBadgeLabel = tr(ref, 'Deactivated');
+            } else if (effectiveLive) {
               cBadgeBg = isDark
                   ? Colors.green.withValues(alpha: 0.2)
                   : Colors.green.shade50;
               cBadgeText = isDark ? Colors.greenAccent : Colors.green.shade700;
-              cBadgeLabel = 'Live';
+              cBadgeLabel = tr(ref, 'Live');
             } else if (cStatus == 'PROCESSING' || cStatus == 'REVIEW') {
               cBadgeBg = isDark
                   ? Colors.amber.withValues(alpha: 0.2)
                   : Colors.amber.shade50;
               cBadgeText = isDark ? Colors.amberAccent : Colors.amber.shade900;
-              cBadgeLabel = 'Under Review';
+              cBadgeLabel = tr(ref, 'Under Review');
             } else if (cStatus == 'REJECTED') {
               cBadgeBg = isDark
                   ? Colors.red.withValues(alpha: 0.2)
                   : Colors.red.shade50;
               cBadgeText = isDark ? Colors.redAccent : Colors.red.shade800;
-              cBadgeLabel = 'Rejected';
+              cBadgeLabel = tr(ref, 'Rejected');
             } else {
               cBadgeBg = isDark ? Colors.white12 : Colors.grey.shade100;
               cBadgeText = isDark ? Colors.grey.shade300 : Colors.grey.shade800;
-              cBadgeLabel = 'Draft';
+              cBadgeLabel = tr(ref, 'Draft');
             }
 
             final hasThumbnail = course.thumbnail != null &&
@@ -383,13 +459,19 @@ class _CoursesTab extends ConsumerWidget {
                           tooltip: 'Manage Content',
                           onPressed: () => context.push('/instructor/manage-course/${course.id}'),
                         ),
-                        if (isLive)
+                        if (effectiveLive)
                           IconButton(
                             icon: const Icon(Icons.pause_circle_outline, color: Color(0xFFD97706)),
                             tooltip: 'Deactivate Course',
                             onPressed: () => _deactivateCourse(context, ref, course),
                           ),
-                        if (!isLive)
+                        if (isDeactivated)
+                          IconButton(
+                            icon: const Icon(Icons.play_circle_outline, color: AppColors.primaryGreen),
+                            tooltip: 'Reactivate Course',
+                            onPressed: () => _reactivateCourse(context, ref, course),
+                          ),
+                        if (canDelete)
                           IconButton(
                             icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFFEF4444)),
                             tooltip: 'Delete Course',
