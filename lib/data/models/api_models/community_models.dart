@@ -45,6 +45,43 @@ class CommunityAuthor {
   }
 }
 
+class HubMember {
+  final String id;
+  final String name;
+  final String? avatar;
+  final String? location;
+  final String role;
+  final bool isHost;
+  final String? joinedAt;
+
+  HubMember({
+    required this.id,
+    required this.name,
+    this.avatar,
+    this.location,
+    this.role = 'Farmer',
+    this.isHost = false,
+    this.joinedAt,
+  });
+
+  factory HubMember.fromJson(Map<String, dynamic> json) {
+    final rawName = (json['full_name'] ?? json['name'] ?? json['user_name'] ?? json['username'] ?? 'Farmer').toString();
+    final rawRole = (json['role'] ?? json['user_role'] ?? 'Farmer').toString();
+    final rawLoc = (json['district'] ?? json['location'] ?? json['state'])?.toString();
+    final isHost = json['is_host'] == true || json['is_owner'] == true || rawRole.toUpperCase() == 'INSTRUCTOR';
+
+    return HubMember(
+      id: (json['id'] ?? json['user_id'] ?? '').toString(),
+      name: rawName.isNotEmpty ? rawName : 'Farmer',
+      avatar: (json['avatar'] ?? json['avatar_url'] ?? json['profile_image'])?.toString(),
+      location: rawLoc,
+      role: isHost ? 'Instructor' : (rawRole.isNotEmpty ? rawRole : 'Farmer'),
+      isHost: isHost,
+      joinedAt: (json['joined_at'] ?? json['created_at'])?.toString(),
+    );
+  }
+}
+
 class CommunityTopic {
   final String id;
   final String name;

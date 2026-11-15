@@ -10,6 +10,7 @@ import '../../../data/models/api_models/community_models.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../providers/community_provider.dart';
 import '../widgets/create_post_sheets.dart';
+import '../widgets/hub_members_sheet.dart';
 import '../widgets/rich_post_card.dart';
 
 class HubDetailScreen extends ConsumerStatefulWidget {
@@ -487,12 +488,30 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                                 ],
                               ),
                               const SizedBox(height: 2),
-                              Text(
-                                '👥 ${hub.memberCount} Members',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.primaryGreen,
+                              InkWell(
+                                borderRadius: BorderRadius.circular(8),
+                                onTap: () => HubMembersSheet.show(context, hub),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 2),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        '👥 ${hub.memberCount} Members',
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.primaryGreen,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      const Icon(
+                                        Icons.arrow_forward_ios_rounded,
+                                        size: 9,
+                                        color: AppColors.primaryGreen,
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ],

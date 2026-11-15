@@ -16,6 +16,7 @@ import '../../auth/providers/auth_provider.dart';
 import '../../home_farmer/providers/weather_provider.dart';
 import '../providers/community_provider.dart';
 import '../widgets/create_post_sheets.dart';
+import '../widgets/hub_members_sheet.dart';
 import '../widgets/post_comments_bottom_sheet.dart';
 import '../widgets/rich_post_card.dart';
 
@@ -529,34 +530,29 @@ class _InstructorStateB extends ConsumerWidget {
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: isDark
+                        ? [const Color(0xFF1B2E21), const Color(0xFF14241A)]
+                        : [Colors.white, const Color(0xFFF9FCF8)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
                   borderRadius: BorderRadius.circular(22),
-                  onTap: () => context.push('/community/hub/${hub.id}'),
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: isDark
-                            ? [const Color(0xFF1B2E21), const Color(0xFF14241A)]
-                            : [Colors.white, const Color(0xFFF9FCF8)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(22),
-                      border: Border.all(color: borderColor, width: 1.2),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.primaryGreen.withValues(alpha: isDark ? 0.25 : 0.08),
-                          blurRadius: 18,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
+                  border: Border.all(color: borderColor, width: 1.2),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primaryGreen.withValues(alpha: isDark ? 0.25 : 0.08),
+                      blurRadius: 18,
+                      offset: const Offset(0, 4),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                         // Official Badge Row
                         Row(
                           children: [
@@ -687,18 +683,36 @@ class _InstructorStateB extends ConsumerWidget {
                                     spacing: 6,
                                     runSpacing: 4,
                                     children: [
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                        decoration: BoxDecoration(
-                                          color: AppColors.primaryGreen.withValues(alpha: isDark ? 0.25 : 0.12),
+                                      Material(
+                                        color: Colors.transparent,
+                                        child: InkWell(
                                           borderRadius: BorderRadius.circular(10),
-                                        ),
-                                        child: Text(
-                                          '👥 ${hub.memberCount} Members',
-                                          style: const TextStyle(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.bold,
-                                            color: AppColors.primaryGreen,
+                                          onTap: () => HubMembersSheet.show(context, hub),
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                            decoration: BoxDecoration(
+                                              color: AppColors.primaryGreen.withValues(alpha: isDark ? 0.25 : 0.12),
+                                              borderRadius: BorderRadius.circular(10),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Text(
+                                                  '👥 ${hub.memberCount} Members',
+                                                  style: const TextStyle(
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: AppColors.primaryGreen,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 4),
+                                                const Icon(
+                                                  Icons.arrow_forward_ios_rounded,
+                                                  size: 9,
+                                                  color: AppColors.primaryGreen,
+                                                ),
+                                              ],
+                                            ),
                                           ),
                                         ),
                                       ),
@@ -798,8 +812,6 @@ class _InstructorStateB extends ConsumerWidget {
                       ],
                     ),
                   ),
-                ),
-              ),
             ),
           ),
 

@@ -224,6 +224,37 @@ final hubDetailsProvider = FutureProvider.family<CommunityHub, String>((ref, hub
   return repo.getHubDetails(hubId);
 });
 
+final hubMembersProvider = FutureProvider.family<List<HubMember>, String>((ref, hubId) async {
+  final repo = ref.watch(communityRepositoryProvider);
+  final apiMembers = await repo.getHubMembers(hubId);
+  if (apiMembers.isNotEmpty) {
+    return apiMembers;
+  }
+
+  // Graceful fallback from active post authors in this hub while backend implements /members/
+  try {
+    final postsAsync = ref.watch(communityHubPostsProvider(hubId));
+    final posts = postsAsync.value ?? [];
+    final Map<String, HubMember> memberMap = {};
+
+    for (final p in posts) {
+      final a = p.author;
+      if (a.id.isNotEmpty && !memberMap.containsKey(a.id)) {
+        memberMap[a.id] = HubMember(
+          id: a.id,
+          name: a.fullName,
+          avatar: a.avatarUrl,
+          role: a.isExpert ? 'Instructor' : (a.role.isNotEmpty ? a.role : 'Farmer'),
+          isHost: a.isExpert,
+        );
+      }
+    }
+    return memberMap.values.toList();
+  } catch (_) {
+    return <HubMember>[];
+  }
+});
+
 // ─── Topics ────────────────────────────────────────────────────────
 
 final communityTopicsProvider = FutureProvider<List<CommunityTopic>>((ref) async {
