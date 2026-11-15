@@ -1594,16 +1594,16 @@ class _CommunityCard extends ConsumerWidget {
               child: const Icon(Icons.exit_to_app_rounded, color: Colors.red, size: 20),
             ),
             const SizedBox(width: 10),
-            const Expanded(
+            Expanded(
               child: Text(
-                'Leave Community?',
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                tr(ref, 'Leave Community?'),
+                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
               ),
             ),
           ],
         ),
         content: Text(
-          'Are you sure you want to leave "${hub.name}"? You will no longer receive announcements and updates from this instructor.',
+          '${tr(ref, "Are you sure you want to leave")} "${hub.name}"? ${tr(ref, "You will no longer receive announcements and updates from this instructor.")}',
           style: TextStyle(
             fontSize: 13.5,
             color: isDark ? Colors.white70 : AppColors.inkSoft,
@@ -1614,7 +1614,7 @@ class _CommunityCard extends ConsumerWidget {
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: Text(
-              'Cancel',
+              tr(ref, 'Cancel'),
               style: TextStyle(color: isDark ? Colors.white60 : Colors.grey, fontWeight: FontWeight.w600),
             ),
           ),
@@ -1636,9 +1636,9 @@ class _CommunityCard extends ConsumerWidget {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Left "${hub.name}"'),
+                      content: Text('${tr(ref, "Left")} "${hub.name}"'),
                       action: SnackBarAction(
-                        label: 'Undo',
+                        label: tr(ref, 'Undo'),
                         textColor: const Color(0xFF4ADE80),
                         onPressed: () async {
                           try {
@@ -1651,7 +1651,7 @@ class _CommunityCard extends ConsumerWidget {
                             ref.invalidate(hubDetailsProvider(hub.id));
                           } catch (e) {
                             if (context.mounted) {
-                              AppToast.showFriendlyError(context, e, prefix: 'Failed to join');
+                              AppToast.showFriendlyError(context, e, prefix: tr(ref, 'Failed to join'));
                             }
                           }
                         },
@@ -1661,11 +1661,11 @@ class _CommunityCard extends ConsumerWidget {
                 }
               } catch (e) {
                 if (context.mounted) {
-                  AppToast.showFriendlyError(context, e, prefix: 'Failed to leave community');
+                  AppToast.showFriendlyError(context, e, prefix: tr(ref, 'Failed to leave community'));
                 }
               }
             },
-            child: const Text('Leave', style: TextStyle(fontWeight: FontWeight.bold)),
+            child: Text(tr(ref, 'Leave'), style: const TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),

@@ -685,8 +685,8 @@ class ProfileScreen extends ConsumerWidget {
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
               ),
               child: SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1416,7 +1416,7 @@ void _showLanguageBottomSheet(BuildContext context, WidgetRef ref) {
                             messenger.clearSnackBars();
                             messenger.showSnackBar(
                               SnackBar(
-                                content: Text('Language set to ${lang['name']} (${lang['native']})'),
+                                content: Text('${tr(sheetRef, "Language set to")} ${lang['name']} (${lang['native']})'),
                                 backgroundColor: AppColors.primaryGreen,
                                 duration: const Duration(seconds: 2),
                               ),

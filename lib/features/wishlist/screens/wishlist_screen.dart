@@ -92,7 +92,7 @@ class _WishlistScreenState extends ConsumerState<WishlistScreen>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'Wishlist',
+                    tr(ref, 'Wishlist'),
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 18,
@@ -161,10 +161,10 @@ class _WishlistScreenState extends ConsumerState<WishlistScreen>
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
                     ),
-                    tabs: const [
-                      Tab(text: 'All'),
-                      Tab(text: 'Courses'),
-                      Tab(text: 'E-Books'),
+                    tabs: [
+                      Tab(text: tr(ref, 'All')),
+                      Tab(text: tr(ref, 'Courses')),
+                      Tab(text: tr(ref, 'E-Books')),
                     ],
                   ),
                 ),
@@ -261,10 +261,10 @@ class _WishlistScreenState extends ConsumerState<WishlistScreen>
             const SizedBox(height: 60),
             EmptyState(
               icon: Icons.favorite_border_rounded,
-              title: 'Your wishlist is empty',
+              title: tr(ref, 'Your wishlist is empty'),
               subtitle:
-                  "Save courses and e-books you're interested in for later.",
-              actionLabel: 'Explore Courses',
+                  tr(ref, "Save courses and e-books you're interested in for later."),
+              actionLabel: tr(ref, 'Explore Courses'),
               onAction: () => context.go('/farmer/explore'),
             ),
           ],
