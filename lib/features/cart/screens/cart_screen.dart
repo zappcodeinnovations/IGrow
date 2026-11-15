@@ -21,6 +21,7 @@ class CartScreen extends ConsumerStatefulWidget {
 class _CartScreenState extends ConsumerState<CartScreen> {
   // 0: Bag, 1: Wishlist
   int _activeTab = 0;
+  final Set<String> _removingItemIds = {};
 
   @override
   void initState() {
@@ -290,7 +291,9 @@ class _CartScreenState extends ConsumerState<CartScreen> {
         await ref.read(cartProvider.future).catchError((_) => const ApiCart(id: ''));
       },
       child: cartState.when(
-      data: (cart) {
+        skipLoadingOnReload: true,
+        skipLoadingOnRefresh: true,
+        data: (cart) {
         if (cart.items.isEmpty) {
           return ListView(
             physics: const AlwaysScrollableScrollPhysics(),
@@ -441,9 +444,21 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                   final instructor = item.instructorOrAuthor;
                   final thumbnail = item.thumbnail;
                   final isEbook = item.isEbook;
+                  final itemKey = item.effectiveId.isNotEmpty ? item.effectiveId : (item.id.isNotEmpty ? item.id : 'item_$index');
+                  final isRemoving = _removingItemIds.contains(itemKey);
 
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 12),
+                  return AnimatedSize(
+                    key: ValueKey(itemKey),
+                    duration: const Duration(milliseconds: 260),
+                    curve: Curves.easeInOutCubic,
+                    child: AnimatedOpacity(
+                      duration: const Duration(milliseconds: 180),
+                      curve: Curves.easeOut,
+                      opacity: isRemoving ? 0.0 : 1.0,
+                      child: isRemoving
+                          ? const SizedBox(width: double.infinity, height: 0)
+                          : Container(
+                              margin: const EdgeInsets.only(bottom: 12),
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: isDark ? AppColors.cardDark : AppColors.editorialSurfaceContainerLowest,
@@ -555,14 +570,34 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                         IconButton(
                           icon: const Icon(Icons.close, size: 18, color: Colors.redAccent),
                           tooltip: 'Remove',
-                          onPressed: () {
-                            ref.read(cartProvider.notifier).removeFromCart(item.effectiveId, ebookId: item.ebook);
-                          },
+                          onPressed: isRemoving
+                              ? null
+                              : () async {
+                                  setState(() => _removingItemIds.add(itemKey));
+                                  await Future.delayed(const Duration(milliseconds: 160));
+                                  if (!mounted) return;
+                                  try {
+                                    await ref.read(cartProvider.notifier).removeFromCart(item.effectiveId, ebookId: item.ebook);
+                                  } catch (_) {
+                                    if (!mounted) return;
+                                    setState(() => _removingItemIds.remove(itemKey));
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Failed to remove item from bag.'),
+                                          backgroundColor: AppColors.error,
+                                        ),
+                                      );
+                                    }
+                                  }
+                                },
                         ),
                       ],
                     ),
-                  );
-                },
+                  ),
+                ),
+              );
+            },
               ),
             ),
 
