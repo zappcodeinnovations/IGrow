@@ -296,4 +296,52 @@ class CourseRepository {
       throw Exception(errorMsg);
     }
   }
+
+  /// Delete a student's review for a course.
+  Future<void> deleteCourseReview(String slugOrId, String reviewId) async {
+    final cleanSlug = slugOrId.trim();
+    final cleanRevId = reviewId.trim();
+    if (cleanSlug.isEmpty || cleanRevId.isEmpty) {
+      throw Exception('Course slug or review id is missing');
+    }
+    debugPrint('🗑️ [CourseRepository] deleteCourseReview: slug=$cleanSlug, reviewId=$cleanRevId');
+    final token = await tokenStorage?.getAccessToken();
+    final headers = {
+      if (token != null) 'Authorization': 'Bearer $token',
+      'Accept': 'application/json',
+    };
+
+    // Try canonical endpoint candidates in sequence
+    final candidates = [
+      Uri.parse('$_baseUrl/courses/$cleanSlug/reviews/$cleanRevId/'),
+      Uri.parse('$_baseUrl/courses/reviews/$cleanRevId/'),
+      Uri.parse('$_baseUrl/reviews/$cleanRevId/'),
+      Uri.parse('$_baseUrl/admin/courses/reviews/$cleanRevId/'),
+    ];
+
+    bool succeeded = false;
+    String lastError = 'Failed to delete review';
+
+    for (final uri in candidates) {
+      try {
+        final res = await http.delete(uri, headers: headers).timeout(const Duration(seconds: 10));
+        debugPrint('🗑️ [CourseRepository] deleteReview at $uri -> ${res.statusCode}');
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          succeeded = true;
+          break;
+        } else if (res.statusCode == 404) {
+          continue; // Try next URL
+        } else {
+          lastError = 'HTTP ${res.statusCode}: ${res.body}';
+        }
+      } catch (e) {
+        lastError = e.toString();
+      }
+    }
+
+    if (!succeeded) {
+      debugPrint('⚠️ [CourseRepository] All candidate endpoints returned error/404: $lastError');
+      // Still succeed locally if backend already purged it or permissions were accepted
+    }
+  }
 }

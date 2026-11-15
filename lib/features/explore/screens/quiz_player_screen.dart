@@ -307,11 +307,21 @@ class _QuizPlayerScreenState extends ConsumerState<QuizPlayerScreen> {
                         }
                       } else {
                         final correctIdx = q['correct_option_index'] as int? ?? 0;
+                        final correctAnsText = q['correct_answer']?.toString();
+                        
+                        // Check equality by index or by option text
                         isCorrect = userIndex == correctIdx;
-                        if (correctIdx >= 0 && correctIdx < options.length) {
+                        if (!isCorrect && userIndex != null && userIndex >= 0 && userIndex < options.length) {
+                          if (correctAnsText != null && options[userIndex].trim().toLowerCase() == correctAnsText.trim().toLowerCase()) {
+                            isCorrect = true;
+                          }
+                        }
+
+                        // Determine the correct answer display text
+                        if (correctAnsText != null && correctAnsText.trim().isNotEmpty) {
+                          correctAnswerText = correctAnsText;
+                        } else if (correctIdx >= 0 && correctIdx < options.length) {
                           correctAnswerText = options[correctIdx];
-                        } else if (q['correct_answer'] != null) {
-                          correctAnswerText = q['correct_answer'].toString();
                         }
                       }
 

@@ -727,6 +727,15 @@ class StudentRepository {
           isCorrect = selectedAnswer.trim().toLowerCase() == correctAnswer;
         }
 
+        // Fallback: If user index equals correctOptionIndex or string matches
+        if (!isCorrect && selectedAnswer is int && options.isNotEmpty && selectedAnswer < options.length) {
+          final chosenText = options[selectedAnswer].trim().toLowerCase();
+          final ansText = q['correct_answer']?.toString().trim().toLowerCase();
+          if (ansText != null && ansText.isNotEmpty && (chosenText == ansText || chosenText.contains(ansText) || ansText.contains(chosenText))) {
+            isCorrect = true;
+          }
+        }
+
         if (isCorrect) {
           correctCount++;
         }

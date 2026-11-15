@@ -3187,6 +3187,77 @@ class _CourseReviewsTabState extends ConsumerState<_CourseReviewsTab> {
                               ],
                             ),
                           ),
+                          // Delete Review button (visible for author or if currentUser matches)
+                          Builder(
+                            builder: (context) {
+                              final currentUser = ref.read(authProvider).user;
+                              final currentUserId = currentUser?.id.toString();
+                              final currentName = currentUser?.fullName.trim().toLowerCase();
+                              final reviewName = review.studentName.trim().toLowerCase();
+                              final isAuthor = review.isMyReview ||
+                                  (currentUserId != null && review.studentId == currentUserId) ||
+                                  (currentName != null && currentName.isNotEmpty && (currentName == reviewName || reviewName.contains(currentName) || currentName.contains(reviewName)));
+
+                              if (!isAuthor) return const SizedBox.shrink();
+
+                              return IconButton(
+                                icon: const Icon(Icons.delete_outline_rounded, size: 18, color: AppColors.error),
+                                tooltip: 'Delete Review',
+                                visualDensity: VisualDensity.compact,
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                                onPressed: () async {
+                                  final confirmed = await showDialog<bool>(
+                                    context: context,
+                                    builder: (dialogCtx) => AlertDialog(
+                                      title: const Text('Delete Review'),
+                                      content: const Text('Are you sure you want to delete your review?'),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () => Navigator.pop(dialogCtx, false),
+                                          child: const Text('Cancel'),
+                                        ),
+                                        ElevatedButton(
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: AppColors.error,
+                                            foregroundColor: Colors.white,
+                                          ),
+                                          onPressed: () => Navigator.pop(dialogCtx, true),
+                                          child: const Text('Delete'),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+
+                                  if (confirmed == true) {
+                                    try {
+                                      await ref.read(courseRepositoryProvider).deleteCourseReview(widget.courseSlug, review.id);
+                                      ref.invalidate(courseReviewsProvider(widget.courseSlug));
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(
+                                            content: Text('Review deleted successfully.'),
+                                            backgroundColor: AppColors.primaryGreen,
+                                            duration: Duration(seconds: 2),
+                                          ),
+                                        );
+                                      }
+                                    } catch (e) {
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text('Could not delete review: $e'),
+                                            backgroundColor: AppColors.error,
+                                            duration: const Duration(seconds: 2),
+                                          ),
+                                        );
+                                      }
+                                    }
+                                  }
+                                },
+                              );
+                            },
+                          ),
                         ],
                       ),
                       if (review.comment.isNotEmpty) ...[
