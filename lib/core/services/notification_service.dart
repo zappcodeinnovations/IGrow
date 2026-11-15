@@ -14,6 +14,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../localization/app_strings.dart';
 import '../network/token_storage.dart';
 import '../router/app_router.dart';
+import '../router/route_names.dart';
 
 /// Top-level background message handler for FCM.
 /// Must be a top-level function annotated with @pragma('vm:entry-point').
@@ -139,6 +140,10 @@ class NotificationService {
   /// to guard against duplicate push deliveries within a 10-second window.
   final Map<String, int> _recentNotificationTimestamps = {};
 
+  /// Pending route from a push notification tap received while the app
+  /// was cold-starting or during splash animation. Consumed once home loads.
+  static String? pendingLaunchRoute;
+
   /// Centralized notification tap redirection
   static void handleNotificationTap(Map<String, dynamic> data) {
     if (data.isEmpty) return;
@@ -146,25 +151,19 @@ class NotificationService {
       print('🚀 [NotificationService] Routing notification tap with data: $data');
     }
 
+    String? targetRoute;
+
     // Direct route payload
     final route = data['route']?.toString() ?? data['screen']?.toString() ?? data['path']?.toString();
     if (route != null && route.isNotEmpty) {
-      final navContext = rootNavigatorKey.currentContext;
-      if (navContext != null) {
-        navContext.push(route);
-        return;
-      }
+      targetRoute = route;
     }
 
     final type = (data['type'] ?? data['entity_type'] ?? data['model'] ?? '').toString().toLowerCase();
 
     // Check for Q&A notification
-    if (type.contains('qa') || type.contains('question') || data.containsKey('question_id')) {
-      final navContext = rootNavigatorKey.currentContext;
-      if (navContext != null) {
-        navContext.push('/instructor/qa');
-        return;
-      }
+    if (targetRoute == null && (type.contains('qa') || type.contains('question') || data.containsKey('question_id'))) {
+      targetRoute = '/instructor/qa';
     }
 
     // Check for Community Post / Comment notification
@@ -177,37 +176,60 @@ class NotificationService {
         (data['title']?.toString().toLowerCase().contains('comment') ?? false) ||
         (data['body']?.toString().toLowerCase().contains('commented') ?? false);
 
-    if (isCommunity) {
-      final navContext = rootNavigatorKey.currentContext;
-      if (navContext != null) {
-        final targetRoute = postId != null && postId.toString().isNotEmpty
-            ? '/farmer/community?postId=${postId.toString()}'
-            : '/farmer/community';
-        navContext.go(targetRoute);
-        return;
-      }
+    if (targetRoute == null && isCommunity) {
+      targetRoute = postId != null && postId.toString().isNotEmpty
+          ? '/farmer/community?postId=${postId.toString()}'
+          : '/farmer/community';
     }
 
     // Check for Support Ticket notification
     final isSupport = type.contains('ticket') || type.contains('support') || data.containsKey('ticket_id');
-    if (isSupport) {
-      final navContext = rootNavigatorKey.currentContext;
-      if (navContext != null) {
-        navContext.push('/support?tab=my-tickets');
-        return;
+    if (targetRoute == null && isSupport) {
+      targetRoute = '/support?tab=my-tickets';
+    }
+
+    // Check for Course notification
+    final courseId = data['course_id'] ?? data['courseId'] ?? data['course'] ?? data['course_slug'] ?? (type.contains('course') ? (data['id'] ?? data['entity_id']) : null);
+    if (targetRoute == null && courseId != null && courseId.toString().trim().isNotEmpty) {
+      targetRoute = '/farmer/course/${courseId.toString().trim()}';
+    }
+
+    // Check for E-Book notification
+    final ebookId = data['ebook_id'] ?? data['ebookId'] ?? data['ebook'] ?? data['ebook_slug'] ?? (type.contains('ebook') ? (data['id'] ?? data['entity_id']) : null);
+    if (targetRoute == null && ebookId != null && ebookId.toString().trim().isNotEmpty) {
+      targetRoute = '/farmer/ebook/${ebookId.toString().trim()}';
+    } else if (targetRoute == null && (type.contains('ebook') || (data['title']?.toString().toLowerCase().contains('ebook') ?? false))) {
+      final ebookTitle = data['ebook_title'] ?? data['title'];
+      if (ebookTitle != null && ebookTitle.toString().trim().isNotEmpty) {
+        var cleanTitle = ebookTitle.toString().replaceAll(RegExp(r'^(?:New\s+E-Book:\s*|New\s+Ebook:\s*)', caseSensitive: false), '').trim();
+        cleanTitle = cleanTitle.replaceAll(RegExp(r'\.{2,}$'), '').trim();
+        targetRoute = '/explore?tab=ebooks&search=${Uri.encodeComponent(cleanTitle)}';
+      } else {
+        targetRoute = '/explore?tab=ebooks';
       }
     }
 
-    final courseId = data['course_id'] ?? data['courseId'] ?? (type == 'course' ? (data['id'] ?? data['entity_id']) : null);
-    final ebookId = data['ebook_id'] ?? data['ebookId'] ?? (type.contains('ebook') ? (data['id'] ?? data['entity_id']) : null);
+    if (targetRoute == null) return;
 
     final navContext = rootNavigatorKey.currentContext;
-    if (navContext == null) return;
-
-    if (courseId != null && courseId.toString().isNotEmpty) {
-      navContext.push('/farmer/course/${courseId.toString()}');
-    } else if (ebookId != null && ebookId.toString().isNotEmpty) {
-      navContext.push('/farmer/ebook/${ebookId.toString()}');
+    if (navContext != null) {
+      final currentRoute = GoRouterState.of(navContext).matchedLocation;
+      if (currentRoute == RouteNames.splash || currentRoute == '/') {
+        if (kDebugMode) {
+          print('⏳ [NotificationService] App is currently on splash ($currentRoute). Stashing pendingLaunchRoute = $targetRoute');
+        }
+        pendingLaunchRoute = targetRoute;
+      } else {
+        if (kDebugMode) {
+          print('🚀 [NotificationService] Navigating directly to $targetRoute');
+        }
+        navContext.push(targetRoute);
+      }
+    } else {
+      if (kDebugMode) {
+        print('⏳ [NotificationService] No Navigator context yet. Stashing pendingLaunchRoute = $targetRoute');
+      }
+      pendingLaunchRoute = targetRoute;
     }
   }
 

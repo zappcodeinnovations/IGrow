@@ -7,6 +7,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/canopy_gradient.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/services/app_config_service.dart';
+import '../../../core/services/notification_service.dart';
 import '../../../core/services/version_service.dart';
 import '../../../core/widgets/app_update_dialog.dart';
 import '../providers/auth_provider.dart';
@@ -118,6 +119,13 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     }
 
     if (authState.isAuthenticated) {
+      final pendingRoute = NotificationService.pendingLaunchRoute;
+      if (pendingRoute != null && pendingRoute.isNotEmpty) {
+        NotificationService.pendingLaunchRoute = null;
+        debugPrint('🚀 [SplashScreen] Fulfilling pending notification launch route: $pendingRoute');
+        context.go(pendingRoute);
+        return;
+      }
       // Go to the correct home based on role (router handles this via redirect).
       context.go('/');
     } else {
