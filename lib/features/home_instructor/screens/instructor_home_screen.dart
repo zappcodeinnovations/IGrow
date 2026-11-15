@@ -619,6 +619,61 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
     }
   }
 
+  Future<void> _deleteEBook(dynamic ebook) async {
+    final ebookId = ebook.id?.toString();
+    final ebookTitle = ebook.title?.toString() ?? 'this draft e-book';
+    if (ebookId == null || ebookId.isEmpty) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: Text(tr(ref, 'Delete Draft E-Book')),
+        content: Text(
+          '${tr(ref, 'Are you sure you want to permanently delete')} "$ebookTitle"? ${tr(ref, 'This action cannot be undone.')}',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(c, false),
+            child: Text(tr(ref, 'Cancel')),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+            onPressed: () => Navigator.pop(c, true),
+            child: Text(tr(ref, 'Delete')),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await ref.read(instructorRepositoryProvider).deleteEBook(ebookId);
+        if (!mounted) return;
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.clearSnackBars();
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(tr(ref, 'Draft e-book deleted successfully')),
+            backgroundColor: AppColors.primaryGreen,
+          ),
+        );
+        ref.invalidate(instructorEbooksProvider);
+        ref.invalidate(studentEbooksProvider);
+        ref.invalidate(instructorStatsProvider);
+      } catch (e) {
+        if (!mounted) return;
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.clearSnackBars();
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -1223,6 +1278,7 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                                 context.push('/farmer/ebook/${ebook.id}');
                               }
                             },
+                            onDelete: () => _deleteEBook(ebook),
                           ),
                         );
                       }).toList(),
@@ -1719,11 +1775,13 @@ class _AgriLearnEbookCard extends ConsumerWidget {
     required this.ebook,
     this.onTap,
     this.onViewLive,
+    this.onDelete,
   });
 
   final dynamic ebook;
   final VoidCallback? onTap;
   final VoidCallback? onViewLive;
+  final VoidCallback? onDelete;
 
   String _resolveStatus(dynamic statusObj) {
     if (statusObj == null) return 'DRAFT';
@@ -1898,26 +1956,50 @@ class _AgriLearnEbookCard extends ConsumerWidget {
             ],
           ),
 
-          // Action Button: [View in Library]
-          if (isLive && onViewLive != null) ...[
+          // Action Buttons: [View in Library] or [Delete] for Drafts
+          if ((isLive && onViewLive != null) || (!isLive && onDelete != null)) ...[
             const SizedBox(height: 12),
-            OutlinedButton.icon(
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                side: BorderSide(color: Colors.teal.shade400),
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-              onPressed: onViewLive,
-              icon: Icon(Icons.visibility_outlined, size: 14, color: Colors.teal.shade700),
-              label: Text(
-                tr(ref, 'View in Library'),
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.teal.shade700,
-                ),
-              ),
+            Row(
+              children: [
+                if (isLive && onViewLive != null)
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      side: BorderSide(color: Colors.teal.shade400),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    onPressed: onViewLive,
+                    icon: Icon(Icons.visibility_outlined, size: 14, color: Colors.teal.shade700),
+                    label: Text(
+                      tr(ref, 'View in Library'),
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.teal.shade700,
+                      ),
+                    ),
+                  ),
+                if (!isLive && onDelete != null)
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      side: const BorderSide(color: Color(0xFFEF4444)),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    onPressed: onDelete,
+                    icon: const Icon(Icons.delete_outline_rounded, size: 14, color: Color(0xFFEF4444)),
+                    label: Text(
+                      tr(ref, 'Delete'),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFFEF4444),
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ],
         ],

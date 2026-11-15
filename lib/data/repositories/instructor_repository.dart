@@ -805,6 +805,54 @@ class InstructorRepository {
 
   /// Delete E-Book.
   Future<void> deleteEBook(String ebookId) async {
+    debugPrint('🗑️ [InstructorRepository] deleteEBook: ebookId=$ebookId');
+    try {
+      final token = await tokenStorage.getAccessToken();
+      final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/instructor/ebooks/$ebookId/');
+      final rawResponse = await http.delete(
+        uri,
+        headers: {
+          if (token != null) 'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      );
+      debugPrint('🗑️ [InstructorRepository] deleteEBook HTTP ${rawResponse.statusCode}: ${rawResponse.body}');
+      if (rawResponse.statusCode >= 200 && rawResponse.statusCode < 300) {
+        debugPrint('✅ [InstructorRepository] deleteEBook direct HTTP SUCCESS');
+        return;
+      }
+      TokenStorage.checkResponse(rawResponse.statusCode, rawResponse.body);
+      if (rawResponse.statusCode == 403) {
+        String detailMsg = 'You do not have permission to delete e-books. Please contact an administrator.';
+        try {
+          final decoded = jsonDecode(rawResponse.body);
+          if (decoded is Map && decoded['detail'] != null) {
+            detailMsg = decoded['detail'].toString();
+          }
+        } catch (_) {}
+        throw Exception(detailMsg);
+      }
+      if (rawResponse.statusCode >= 500) {
+        throw Exception('Server Error: Failed to delete e-book. Please try again later.');
+      }
+      String errorMsg = 'Failed to delete e-book';
+      try {
+        final decoded = jsonDecode(rawResponse.body);
+        if (decoded is Map && decoded['detail'] != null) {
+          errorMsg = decoded['detail'].toString();
+        }
+      } catch (_) {
+        errorMsg = 'Failed to delete e-book (HTTP ${rawResponse.statusCode})';
+      }
+      throw Exception(errorMsg);
+    } catch (e) {
+      if (e is Exception && !e.toString().contains('ClientException')) {
+        rethrow;
+      }
+      debugPrint('⚠️ [InstructorRepository] deleteEBook direct HTTP error: $e. Falling back to swagger client.');
+    }
+
     final response = await appApi.apiV1InstructorEbooksIdDelete(id: ebookId);
     if (!response.isSuccessful) {
       if (response.statusCode == 403) {
