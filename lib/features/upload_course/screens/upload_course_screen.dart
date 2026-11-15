@@ -2105,7 +2105,7 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
           );
         }),
 
-        // Add New Module Dashed Button
+        // Add New Module Button
         InkWell(
           onTap: _addModule,
           borderRadius: BorderRadius.circular(14),
@@ -2138,66 +2138,75 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
             ),
           ),
         ),
-        const SizedBox(height: 30),
+        const SizedBox(height: 12),
 
-        // Actions
-        Row(
-          children: [
-            SizedBox(
-              height: 52,
-              child: OutlinedButton.icon(
-                onPressed: () => setState(() => _currentStep = 1),
-                icon: const Icon(Icons.arrow_back_rounded, size: 18),
-                label: Text(
-                  tr(ref, 'Back'),
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                    color: isDark ? Colors.white70 : AppColors.inkDark,
-                  ),
-                ),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: isDark ? Colors.white70 : AppColors.inkDark,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  side: BorderSide(
-                    color: isDark ? AppColors.lineDark : Colors.grey.shade300,
-                    width: 1.2,
-                  ),
-                ),
+        // Preview Course Button (Full-width matching Add New Module)
+        InkWell(
+          onTap: () => _showCourseCurriculumPreview(isDark),
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: AppColors.primaryGreen,
+                style: BorderStyle.solid,
+                width: 1.3,
               ),
+              color: isDark ? Colors.transparent : Colors.white,
             ),
-            const SizedBox(width: 8),
-            // Preview Course Button (Matches Web Instructor Portal Curriculum Step)
-            SizedBox(
-              height: 52,
-              child: OutlinedButton.icon(
-                onPressed: () => _showCourseCurriculumPreview(isDark),
-                icon: const Icon(Icons.remove_red_eye_outlined, size: 18, color: AppColors.primaryGreen),
-                label: Text(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.remove_red_eye_outlined, color: AppColors.primaryGreen, size: 19),
+                const SizedBox(width: 8),
+                Text(
                   tr(ref, 'Preview Course'),
                   style: const TextStyle(
+                    color: AppColors.primaryGreen,
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
-                    color: AppColors.primaryGreen,
                   ),
                 ),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.primaryGreen,
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+
+        // Bottom Actions: Back and Save buttons equally sized
+        Row(
+          children: [
+            Expanded(
+              child: SizedBox(
+                height: 52,
+                child: OutlinedButton.icon(
+                  onPressed: () => setState(() => _currentStep = 1),
+                  icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                  label: Text(
+                    tr(ref, 'Back'),
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      color: isDark ? Colors.white70 : AppColors.inkDark,
+                    ),
                   ),
-                  side: const BorderSide(
-                    color: AppColors.primaryGreen,
-                    width: 1.3,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: isDark ? Colors.white70 : AppColors.inkDark,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    side: BorderSide(
+                      color: isDark ? AppColors.lineDark : Colors.grey.shade300,
+                      width: 1.2,
+                    ),
                   ),
                 ),
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 12),
             Expanded(
               child: SizedBox(
                 height: 52,
@@ -2205,7 +2214,7 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.primaryGreen,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
@@ -2218,7 +2227,7 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                   },
                   icon: const Icon(Icons.arrow_forward_rounded, size: 18),
                   label: Text(
-                    tr(ref, 'Save & Continue'),
+                    tr(ref, 'Save'),
                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                   ),
                 ),
