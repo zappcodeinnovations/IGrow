@@ -113,10 +113,10 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
               parent: AlwaysScrollableScrollPhysics(),
             ),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // ── 1. Curved Deep Forest Green Header (Strictly matching prototype) ─────
-                Container(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── 1. Curved Deep Forest Green Header (Strictly matching prototype) ─────
+            Container(
               width: double.infinity,
               decoration: BoxDecoration(
                 color: isDark
@@ -1217,12 +1217,13 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                 ),
               ),
             ),
-          ),
-          // ── Floating Special Offer Badge (Bottom-Right) ──
-          const FloatingOfferBadge(),
-        ],
+          ],
+        ),
       ),
-    );
+    ),
+    const FloatingOfferBadge(),
+  ],
+);
   }
 }
 

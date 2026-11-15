@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../core/router/route_names.dart';
-import '../../data/models/discount_banner_model.dart';
+import '../../../core/router/route_names.dart';
+import '../../../data/models/discount_banner_model.dart';
 import '../providers/discount_banner_provider.dart';
 
 class OfferDialog extends ConsumerWidget {
