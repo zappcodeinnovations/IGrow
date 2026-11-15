@@ -294,6 +294,17 @@ final studentEnrollmentsProvider = FutureProvider.autoDispose<List<Enrollment>>(
   final list = List<Enrollment>.from(response.results);
   final deactivatedIds = ref.watch(deactivatedCoursesProvider);
 
+  // Fetch live active catalog courses to cross-reference deactivated/archived courses.
+  // When an instructor deactivates/archives a course, the backend removes it from /courses/catalog/.
+  // A course missing from the active catalog is treated as deactivated.
+  final activeCatalog = await ref.watch(studentCatalogProvider(const CatalogQuery()).future).catchError((_) => <CourseList>[]);
+  final activeCourseIds = <String>{};
+  final activeCourseSlugs = <String>{};
+  for (final c in activeCatalog) {
+    if (c.id != null && c.id!.isNotEmpty) activeCourseIds.add(c.id!.toLowerCase());
+    if (c.slug != null && c.slug!.isNotEmpty) activeCourseSlugs.add(c.slug!.toLowerCase());
+  }
+
   // Cross-reference completed orders so freshly bought courses appear immediately even before backend batch enrollment sync
   try {
     final orders = await ref.watch(ordersProvider.future);
@@ -333,10 +344,22 @@ final studentEnrollmentsProvider = FutureProvider.autoDispose<List<Enrollment>>(
 
   // Filter out deactivated/archived courses so they never show in the student's panel
   list.removeWhere((enr) {
-    final cId = enr.course;
-    final cSlug = enr.courseSlug;
-    return (cId.isNotEmpty && deactivatedIds.contains(cId)) ||
-        (cSlug != null && cSlug.isNotEmpty && deactivatedIds.contains(cSlug));
+    final cId = enr.course.trim().toLowerCase();
+    final cSlug = (enr.courseSlug ?? '').trim().toLowerCase();
+    
+    // 1. Locally marked deactivated by instructor action on this device
+    final isExplicitlyDeactivated = (cId.isNotEmpty && deactivatedIds.any((d) => d.toLowerCase() == cId)) ||
+        (cSlug.isNotEmpty && deactivatedIds.any((d) => d.toLowerCase() == cSlug));
+    if (isExplicitlyDeactivated) return true;
+
+    // 2. Global backend deactivation: If active catalog loaded successfully and does not contain this course
+    if (activeCourseIds.isNotEmpty || activeCourseSlugs.isNotEmpty) {
+      final isInActiveCatalog = (cId.isNotEmpty && activeCourseIds.contains(cId)) ||
+          (cSlug.isNotEmpty && activeCourseSlugs.contains(cSlug));
+      if (!isInActiveCatalog) return true;
+    }
+
+    return false;
   });
 
   final enriched = <Enrollment>[];
