@@ -20,8 +20,22 @@ final pendingCommunityCommentPostIdProvider = StateProvider<String?>((ref) => nu
 // ─── Suggested Hubs Provider (Location-Aware) ──────────────────────
 final suggestedHubsProvider = FutureProvider<List<CommunityHub>>((ref) async {
   final repo = ref.watch(communityRepositoryProvider);
-  final district = ref.watch(selectedDistrictProvider);
-  return repo.getSuggestedHubs(district: district);
+  final district = ref.watch(selectedDistrictProvider).trim();
+  final hubs = await repo.getSuggestedHubs(district: district);
+
+  if (district.isEmpty) return hubs;
+
+  final target = district.toLowerCase();
+  // Strictly filter communities to match the selected location/district
+  return hubs.where((hub) {
+    final matchesDistrictList = hub.districts.any((d) {
+      final clean = d.trim().toLowerCase();
+      return clean == target || clean.contains(target) || target.contains(clean);
+    });
+    final matchesName = hub.name.trim().toLowerCase().contains(target);
+    final matchesDesc = hub.description.trim().toLowerCase().contains(target);
+    return matchesDistrictList || matchesName || matchesDesc;
+  }).toList();
 });
 
 // ─── Instructor Owned Hub Provider (State A vs State B) ────────────
