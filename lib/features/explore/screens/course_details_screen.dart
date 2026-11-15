@@ -2460,37 +2460,13 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              tr(ref, "What you will learn"),
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: isDark ? Colors.white : const Color(0xFF132A13),
-              ),
-            ),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  tr(ref, 'See all'),
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1B4D2E),
-                  ),
-                ),
-                const SizedBox(width: 2),
-                const Icon(
-                  Icons.arrow_forward_rounded,
-                  size: 14,
-                  color: Color(0xFF1B4D2E),
-                ),
-              ],
-            ),
-          ],
+        Text(
+          tr(ref, "What you will learn"),
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: isDark ? Colors.white : const Color(0xFF132A13),
+          ),
         ),
         const SizedBox(height: 12),
         ...outcomes.map(
@@ -2507,7 +2483,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    item,
+                    tr(ref, item),
                     style: TextStyle(
                       fontSize: 13,
                       color: isDark ? Colors.white70 : const Color(0xFF4A5568),
@@ -2533,37 +2509,13 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              tr(ref, 'Course curriculum'),
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: isDark ? Colors.white : const Color(0xFF132A13),
-              ),
-            ),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  tr(ref, 'See all'),
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1B4D2E),
-                  ),
-                ),
-                const SizedBox(width: 2),
-                const Icon(
-                  Icons.arrow_forward_rounded,
-                  size: 14,
-                  color: Color(0xFF1B4D2E),
-                ),
-              ],
-            ),
-          ],
+        Text(
+          tr(ref, 'Course curriculum'),
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: isDark ? Colors.white : const Color(0xFF132A13),
+          ),
         ),
         const SizedBox(height: 12),
 
@@ -2571,7 +2523,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 12),
             child: Text(
-              'No curriculum sections published yet.',
+              tr(ref, 'No curriculum sections published yet.'),
               style: TextStyle(
                 color: isDark ? Colors.white60 : Colors.grey.shade600,
                 fontSize: 13,
@@ -2642,7 +2594,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  '${section.lectures.length} lessons · ${durationMins > 0 ? durationMins : 24} min',
+                                  '${formatNum(ref, section.lectures.length)} ${tr(ref, "lessons")} · ${formatNum(ref, durationMins > 0 ? durationMins : 24)} ${tr(ref, "min")}',
                                   style: TextStyle(
                                     fontSize: 11,
                                     color: isDark ? Colors.white60 : const Color(0xFF718096),
@@ -2843,9 +2795,9 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                     color: AppColors.signalYellow.withValues(alpha: 0.4),
                   ),
                 ),
-                child: const Text(
-                  'Free Preview',
-                  style: TextStyle(
+                child: Text(
+                  tr(ref, 'Free Preview'),
+                  style: const TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
                     color: Color(0xFFB28700),
@@ -2882,13 +2834,13 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
     final desc =
         course.description ??
         course.shortDescription ??
-        'No description provided.';
+        tr(ref, 'No description provided.');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Description',
+          tr(ref, 'Description'),
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
