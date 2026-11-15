@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
+import '../../../core/localization/app_strings.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/app_toast.dart';
 import '../../../core/widgets/app_error_state.dart';
@@ -516,9 +517,9 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                                     ),
                                     onPressed: () => _confirmLeave(context, hub),
                                     icon: const Icon(Icons.check_circle_rounded, size: 14, color: AppColors.editorialSecondaryFixedDim),
-                                    label: const Text(
-                                      'Joined ✓',
-                                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+                                    label: Text(
+                                      tr(ref, 'Joined ✓'),
+                                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
                                     ),
                                   )
                                 : OutlinedButton(
@@ -553,9 +554,9 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                                         }
                                       }
                                     },
-                                    child: const Text(
-                                      '+ Join',
-                                      style: TextStyle(
+                                    child: Text(
+                                      tr(ref, '+ Join'),
+                                      style: const TextStyle(
                                         fontWeight: FontWeight.bold,
                                         fontSize: 12.5,
                                         letterSpacing: 0.2,

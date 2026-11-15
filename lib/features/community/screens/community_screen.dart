@@ -1516,9 +1516,9 @@ class _MyHubsList extends ConsumerWidget {
         if (joinedHubs.isEmpty) {
           return SliverToBoxAdapter(
             child: _EmptyHubsCard(
-              title: "You haven't joined any community yet.",
-              desc: "Join your regional hub to get daily expert farming tips, webinar invites, and seminar updates!",
-              buttonLabel: 'Explore Recommendations',
+              title: tr(ref, "You haven't joined any community yet."),
+              desc: tr(ref, "Join your regional hub to get daily expert farming tips, webinar invites, and seminar updates!"),
+              buttonLabel: tr(ref, 'Explore Recommendations'),
               isDark: isDark,
               onButtonTap: () => ref.read(studentCommunityTabProvider.notifier).state = 0,
             ),
@@ -1863,7 +1863,7 @@ class _CommunityCard extends ConsumerWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  '👥 ${hub.memberCount} farmers',
+                  '👥 ${formatNum(ref, hub.memberCount)} ${tr(ref, 'farmers')}',
                   style: TextStyle(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w600,
@@ -1885,9 +1885,9 @@ class _CommunityCard extends ConsumerWidget {
                           ),
                           onPressed: () => _confirmLeave(context, ref),
                           icon: const Icon(Icons.check_circle_rounded, size: 16, color: AppColors.editorialSecondary),
-                          label: const Text(
-                            'Joined ✓',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                          label: Text(
+                            tr(ref, 'Joined ✓'),
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
                           ),
                         )
                       : ElevatedButton(
@@ -1908,9 +1908,9 @@ class _CommunityCard extends ConsumerWidget {
                                 if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                      content: Text('Joined "${hub.name}"!'),
+                                      content: Text('${tr(ref, "Joined")} "${hub.name}"!'),
                                       action: SnackBarAction(
-                                        label: 'View',
+                                        label: tr(ref, 'View'),
                                         textColor: const Color(0xFF4ADE80),
                                         onPressed: () {
                                           context.push('/community/hub/${hub.id}');
@@ -1921,11 +1921,14 @@ class _CommunityCard extends ConsumerWidget {
                                 }
                               } catch (e) {
                                 if (context.mounted) {
-                                  AppToast.showFriendlyError(context, e, prefix: 'Failed to join');
+                                  AppToast.showFriendlyError(context, e, prefix: tr(ref, 'Failed to join'));
                                 }
                               }
                             },
-                            child: const Text('+ Join Community', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5)),
+                            child: Text(
+                              tr(ref, '+ Join Community'),
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5),
+                            ),
                           ),
                 ),
               ],
