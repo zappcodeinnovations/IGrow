@@ -575,17 +575,17 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                               children: [
                                 Text(
                                   tr(ref, 'See all'),
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.bold,
-                                    color: Color(0xFF1B4D2E),
+                                    color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF1B4D2E),
                                   ),
                                 ),
                                 const SizedBox(width: 2),
-                                const Icon(
+                                Icon(
                                   Icons.arrow_forward_rounded,
                                   size: 14,
-                                  color: Color(0xFF1B4D2E),
+                                  color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF1B4D2E),
                                 ),
                               ],
                             ),
@@ -813,16 +813,16 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                                       children: [
                                         Text(
                                           tr(ref, 'My Learning'),
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontSize: 12,
                                             fontWeight: FontWeight.w600,
-                                            color: AppColors.editorialSecondary,
+                                            color: isDark ? const Color(0xFF4ADE80) : AppColors.editorialSecondary,
                                           ),
                                         ),
-                                        const Icon(
+                                        Icon(
                                           Icons.chevron_right,
                                           size: 16,
-                                          color: AppColors.editorialSecondary,
+                                          color: isDark ? const Color(0xFF4ADE80) : AppColors.editorialSecondary,
                                         ),
                                       ],
                                     ),

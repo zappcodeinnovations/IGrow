@@ -124,14 +124,18 @@ class HomeNewsCarousel extends ConsumerWidget {
                     children: [
                       Text(
                         tr(ref, 'View All'),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12.5,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.primaryGreen,
+                          color: isDark ? const Color(0xFF4ADE80) : AppColors.primaryGreen,
                         ),
                       ),
                       const SizedBox(width: 3),
-                      const Icon(Icons.arrow_forward_ios_rounded, size: 12, color: AppColors.primaryGreen),
+                      Icon(
+                        Icons.arrow_forward_ios_rounded,
+                        size: 12,
+                        color: isDark ? const Color(0xFF4ADE80) : AppColors.primaryGreen,
+                      ),
                     ],
                   ),
                 ),

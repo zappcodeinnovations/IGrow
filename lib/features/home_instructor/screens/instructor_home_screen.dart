@@ -1087,7 +1087,13 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                       final tabParam = _selectedDashboardTab == 1 ? '?tab=1' : '';
                       context.push('${RouteNames.instructorUploads}$tabParam');
                     },
-                    child: Text(tr(ref, 'See All')),
+                    style: TextButton.styleFrom(
+                      foregroundColor: isDark ? const Color(0xFF4ADE80) : AppColors.primaryGreen,
+                    ),
+                    child: Text(
+                      tr(ref, 'See All'),
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
                   ),
                 ],
               ),
@@ -1331,13 +1337,20 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                   Text(tr(ref, 'Recent Transactions'), style: Theme.of(context).textTheme.headlineSmall),
                   TextButton.icon(
                     onPressed: () => context.push(RouteNames.instructorTransactions),
-                    icon: const Icon(Icons.arrow_forward_rounded, size: 16),
+                    icon: Icon(
+                      Icons.arrow_forward_rounded,
+                      size: 16,
+                      color: isDark ? const Color(0xFF4ADE80) : AppColors.primaryGreen,
+                    ),
                     label: Text(
                       tr(ref, 'View All'),
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? const Color(0xFF4ADE80) : AppColors.primaryGreen,
+                      ),
                     ),
                     style: TextButton.styleFrom(
-                      foregroundColor: AppColors.primaryGreen,
+                      foregroundColor: isDark ? const Color(0xFF4ADE80) : AppColors.primaryGreen,
                       visualDensity: VisualDensity.compact,
                     ),
                   ),
@@ -1375,11 +1388,22 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                         Center(
                           child: OutlinedButton.icon(
                             onPressed: () => context.push(RouteNames.instructorTransactions),
-                            icon: const Icon(Icons.receipt_long_rounded, size: 16),
-                            label: Text('View All ${transactions.length} Transactions'),
+                            icon: Icon(
+                              Icons.receipt_long_rounded,
+                              size: 16,
+                              color: isDark ? const Color(0xFF4ADE80) : AppColors.primaryGreen,
+                            ),
+                            label: Text(
+                              'View All ${transactions.length} Transactions',
+                              style: TextStyle(
+                                color: isDark ? const Color(0xFF4ADE80) : AppColors.primaryGreen,
+                              ),
+                            ),
                             style: OutlinedButton.styleFrom(
-                              foregroundColor: AppColors.primaryGreen,
-                              side: const BorderSide(color: AppColors.primaryGreen),
+                              foregroundColor: isDark ? const Color(0xFF4ADE80) : AppColors.primaryGreen,
+                              side: BorderSide(
+                                color: isDark ? const Color(0xFF4ADE80) : AppColors.primaryGreen,
+                              ),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                               visualDensity: VisualDensity.compact,
                             ),
