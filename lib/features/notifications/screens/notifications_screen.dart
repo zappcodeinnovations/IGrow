@@ -119,7 +119,19 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
 
     final type = item.notificationType.toUpperCase();
 
-    // 1. Course notification
+    // 1a. Q&A Notification -> Route directly to Instructor Q&A screen
+    final isQaNotification = type.contains('QA') ||
+        item.title.toLowerCase().contains('q&a') ||
+        item.title.toLowerCase().contains('question') ||
+        item.message.toLowerCase().contains('question') ||
+        item.message.toLowerCase().contains('asked');
+
+    if (isQaNotification) {
+      context.push('/instructor/qa');
+      return;
+    }
+
+    // 1b. Course notification
     if (item.course != null && item.course!.trim().isNotEmpty) {
       context.push('/farmer/course/${item.course!.trim()}');
       return;

@@ -146,6 +146,16 @@ class NotificationService {
     }
 
     final type = (data['type'] ?? data['entity_type'] ?? data['model'] ?? '').toString().toLowerCase();
+
+    // Check for Q&A notification
+    if (type.contains('qa') || type.contains('question') || data.containsKey('question_id')) {
+      final navContext = rootNavigatorKey.currentContext;
+      if (navContext != null) {
+        navContext.push('/instructor/qa');
+        return;
+      }
+    }
+
     final courseId = data['course_id'] ?? data['courseId'] ?? (type == 'course' ? (data['id'] ?? data['entity_id']) : null);
     final ebookId = data['ebook_id'] ?? data['ebookId'] ?? (type.contains('ebook') ? (data['id'] ?? data['entity_id']) : null);
 

@@ -2158,7 +2158,7 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                 ),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: isDark ? Colors.white70 : AppColors.inkDark,
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                   ),
@@ -2169,7 +2169,35 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                 ),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 8),
+            // Preview Course Button (Matches Web Instructor Portal Curriculum Step)
+            SizedBox(
+              height: 52,
+              child: OutlinedButton.icon(
+                onPressed: () => _showCourseCurriculumPreview(isDark),
+                icon: const Icon(Icons.remove_red_eye_outlined, size: 18, color: AppColors.primaryGreen),
+                label: Text(
+                  tr(ref, 'Preview Course'),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: AppColors.primaryGreen,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.primaryGreen,
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  side: const BorderSide(
+                    color: AppColors.primaryGreen,
+                    width: 1.3,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
             Expanded(
               child: SizedBox(
                 height: 52,
@@ -2177,7 +2205,7 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.primaryGreen,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
@@ -2199,6 +2227,286 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
           ],
         ),
       ],
+    );
+  }
+
+  void _showCourseCurriculumPreview(bool isDark) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.88,
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.editorialSurfaceDark : AppColors.editorialSurface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            children: [
+              // Modal Header
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                decoration: BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(
+                      color: isDark ? AppColors.lineDark : AppColors.lineLight,
+                    ),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryGreen.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.remove_red_eye_rounded, color: AppColors.primaryGreen, size: 22),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            tr(ref, 'Course Preview'),
+                            style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold,
+                              color: isDark ? Colors.white : AppColors.inkDark,
+                            ),
+                          ),
+                          Text(
+                            _titleController.text.trim().isNotEmpty
+                                ? _titleController.text.trim()
+                                : tr(ref, 'Untitled Course Draft'),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isDark ? Colors.grey.shade400 : AppColors.inkSoft,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Preview Body
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.all(20),
+                  children: [
+                    // Course Overview Card
+                    AppCard(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primaryGreen.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  _selectedCategory,
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.primaryGreen,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  _selectedLevel,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.blue.shade700,
+                                  ),
+                                ),
+                              ),
+                              const Spacer(),
+                              Text(
+                                _priceController.text.trim().isEmpty || _priceController.text.trim() == '0'
+                                    ? 'FREE'
+                                    : '₹${_priceController.text.trim()}',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.primaryGreen,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            _titleController.text.trim().isNotEmpty
+                                ? _titleController.text.trim()
+                                : 'Course Title',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          if (_shortDescController.text.trim().isNotEmpty) ...[
+                            const SizedBox(height: 6),
+                            Text(
+                              _shortDescController.text.trim(),
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: isDark ? Colors.grey.shade400 : AppColors.inkSoft,
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Icon(Icons.video_library_outlined, size: 16, color: isDark ? Colors.grey.shade400 : AppColors.inkSoft),
+                              const SizedBox(width: 6),
+                              Text(
+                                '${_curriculum.length} Modules • ${_curriculum.fold<int>(0, (sum, m) => sum + m.lectures.length)} Lectures',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: isDark ? Colors.grey.shade400 : AppColors.inkSoft,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    Text(
+                      tr(ref, 'Curriculum Outline'),
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Modules & Lectures List
+                    ..._curriculum.asMap().entries.map((modEntry) {
+                      final modIdx = modEntry.key;
+                      final mod = modEntry.value;
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 14),
+                        decoration: BoxDecoration(
+                          color: isDark ? AppColors.cardDark : Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: isDark ? AppColors.lineDark : Colors.grey.shade200,
+                          ),
+                        ),
+                        child: Theme(
+                          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                          child: ExpansionTile(
+                            initiallyExpanded: true,
+                            leading: CircleAvatar(
+                              radius: 14,
+                              backgroundColor: AppColors.primaryGreen.withValues(alpha: 0.15),
+                              child: Text(
+                                '${modIdx + 1}',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.primaryGreen,
+                                ),
+                              ),
+                            ),
+                            title: Text(
+                              mod.title.trim().isNotEmpty ? mod.title.trim() : 'Module ${modIdx + 1}',
+                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                            ),
+                            subtitle: Text(
+                              '${mod.lectures.length} ${mod.lectures.length == 1 ? 'lecture' : 'lectures'}${mod.hasQuiz ? ' • 1 Quiz' : ''}',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: isDark ? Colors.grey.shade400 : AppColors.inkSoft,
+                              ),
+                            ),
+                            children: [
+                              const Divider(height: 1),
+                              ...mod.lectures.asMap().entries.map((lecEntry) {
+                                final lecIdx = lecEntry.key;
+                                final lec = lecEntry.value;
+                                final lecTitle = lec.titleController.text.trim().isNotEmpty
+                                    ? lec.titleController.text.trim()
+                                    : 'Lecture ${lecIdx + 1}';
+
+                                return ListTile(
+                                  dense: true,
+                                  leading: Icon(
+                                    lec.isPreview ? Icons.play_circle_fill_rounded : Icons.play_circle_outline_rounded,
+                                    size: 20,
+                                    color: lec.isPreview ? AppColors.primaryGreen : (isDark ? Colors.grey.shade400 : AppColors.inkSoft),
+                                  ),
+                                  title: Text(
+                                    lecTitle,
+                                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                                  ),
+                                  trailing: lec.isPreview
+                                      ? Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.primaryGreen.withValues(alpha: 0.12),
+                                            borderRadius: BorderRadius.circular(6),
+                                          ),
+                                          child: Text(
+                                            tr(ref, 'Free Preview'),
+                                            style: const TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                              color: AppColors.primaryGreen,
+                                            ),
+                                          ),
+                                        )
+                                      : null,
+                                );
+                              }),
+                              if (mod.hasQuiz) ...[
+                                ListTile(
+                                  dense: true,
+                                  leading: const Icon(Icons.quiz_outlined, size: 20, color: Color(0xFFD97706)),
+                                  title: Text(
+                                    mod.quizTitle.trim().isNotEmpty ? mod.quizTitle.trim() : 'Module Quiz',
+                                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFFD97706)),
+                                  ),
+                                  trailing: Text(
+                                    '${mod.quizQuestions.length} Questions',
+                                    style: TextStyle(fontSize: 11, color: isDark ? Colors.grey.shade400 : AppColors.inkSoft),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      );
+                    }),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
