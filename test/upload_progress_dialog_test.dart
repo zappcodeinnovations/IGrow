@@ -4,7 +4,7 @@ import 'package:krushi_siksha/core/theme/app_colors.dart';
 
 void main() {
   group('Upload Progress Modal Action Distinction Tests', () {
-    testWidgets('Modal renders OutlinedButton for Cancel / Finish Later with defined border and high contrast',
+    testWidgets('Modal renders FilledButton for Cancel with red background and white text',
         (tester) async {
       bool cancelCalled = false;
 
@@ -20,7 +20,6 @@ void main() {
                       context: context,
                       barrierDismissible: false,
                       builder: (dialogCtx) {
-                        final isDark = Theme.of(dialogCtx).brightness == Brightness.dark;
                         return AlertDialog(
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
@@ -34,34 +33,29 @@ void main() {
                               const SizedBox(height: 10),
                               Align(
                                 alignment: Alignment.centerRight,
-                                child: OutlinedButton.icon(
+                                child: FilledButton.icon(
                                   onPressed: () {
                                     Navigator.of(dialogCtx).pop();
                                     cancelCalled = true;
                                   },
-                                  icon: const Icon(Icons.close_rounded, size: 15, color: AppColors.error),
-                                  label: Text(
-                                    'Cancel / Finish Later',
+                                  icon: const Icon(Icons.close_rounded, size: 15, color: Colors.white),
+                                  label: const Text(
+                                    'Cancel',
                                     style: TextStyle(
-                                      color: isDark ? Colors.white : AppColors.inkDark,
+                                      color: Colors.white,
                                       fontSize: 12,
-                                      fontWeight: FontWeight.w600,
+                                      fontWeight: FontWeight.bold,
                                     ),
                                   ),
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: isDark ? Colors.white : AppColors.inkDark,
-                                    backgroundColor: isDark
-                                        ? AppColors.cardDark
-                                        : const Color(0xFFF9FAFB),
-                                    side: BorderSide(
-                                      color: isDark ? AppColors.lineDark : const Color(0xFFD1D5DB),
-                                      width: 1.2,
-                                    ),
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: AppColors.error,
+                                    foregroundColor: Colors.white,
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(8),
                                     ),
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                                     visualDensity: VisualDensity.compact,
+                                    elevation: 0,
                                   ),
                                 ),
                               ),
@@ -86,27 +80,25 @@ void main() {
       // Check that the dialog content is visible
       expect(find.text('Uploading study material (7 Practical OOP.pdf)...'), findsOneWidget);
 
-      // Verify that Cancel / Finish Later is rendered inside an OutlinedButton (not a muted plain TextButton)
-      final outlinedButtonFinder = find.byType(OutlinedButton);
-      expect(outlinedButtonFinder, findsOneWidget);
+      // Verify that Cancel is rendered inside a FilledButton
+      final filledButtonFinder = find.byType(FilledButton);
+      expect(filledButtonFinder, findsOneWidget);
 
-      final outlinedButton = tester.widget<OutlinedButton>(outlinedButtonFinder);
-      expect(outlinedButton.enabled, isTrue);
+      final filledButton = tester.widget<FilledButton>(filledButtonFinder);
+      expect(filledButton.enabled, isTrue);
 
       // Verify the button text and icon
-      expect(find.text('Cancel / Finish Later'), findsOneWidget);
+      expect(find.text('Cancel'), findsOneWidget);
       expect(find.byIcon(Icons.close_rounded), findsOneWidget);
 
-      // Verify border and background styling
-      final buttonStyle = outlinedButton.style;
+      // Verify red styling
+      final buttonStyle = filledButton.style;
       expect(buttonStyle, isNotNull);
-      final side = buttonStyle!.side?.resolve({});
-      expect(side, isNotNull);
-      expect(side!.width, 1.2);
-      expect(side.color, const Color(0xFFD1D5DB));
+      final bg = buttonStyle!.backgroundColor?.resolve({});
+      expect(bg, AppColors.error);
 
-      // Tap Cancel / Finish Later
-      await tester.tap(find.text('Cancel / Finish Later'));
+      // Tap Cancel
+      await tester.tap(find.text('Cancel'));
       await tester.pumpAndSettle();
 
       // Dialog dismissed and callback triggered

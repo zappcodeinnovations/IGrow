@@ -700,6 +700,8 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
         ? currentPrice
         : '0';
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     final newPrice = await showDialog<String>(
       context: context,
       builder: (dialogCtx) => StatefulBuilder(
@@ -754,10 +756,22 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                     return ChoiceChip(
                       label: Text(tier == '0' ? 'FREE' : '₹$tier'),
                       selected: isSel,
-                      selectedColor: AppColors.primaryGreen,
+                      selectedColor: isDark ? const Color(0xFFD4FF80) : AppColors.primaryGreen,
+                      backgroundColor: isDark ? const Color(0xFF2A2D32) : Colors.grey.shade100,
+                      side: BorderSide(
+                        color: isSel
+                            ? (isDark ? const Color(0xFFD4FF80) : AppColors.primaryGreen)
+                            : (isDark ? Colors.white24 : AppColors.lineLight),
+                      ),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      showCheckmark: false,
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                       labelStyle: TextStyle(
-                        color: isSel ? Colors.white : AppColors.inkDark,
+                        color: isSel
+                            ? (isDark ? Colors.black : Colors.white)
+                            : (isDark ? Colors.white : AppColors.inkDark),
                         fontWeight: FontWeight.bold,
+                        fontSize: 13,
                       ),
                       onSelected: (_) => setDialogState(() => selectedTier = tier),
                     );

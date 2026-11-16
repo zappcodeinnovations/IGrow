@@ -262,34 +262,29 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                     const SizedBox(height: 10),
                     Align(
                       alignment: Alignment.centerRight,
-                      child: OutlinedButton.icon(
+                      child: FilledButton.icon(
                         onPressed: () {
                           _dismissLoadingDialog();
                           onCancel();
                         },
-                        icon: const Icon(Icons.close_rounded, size: 15, color: AppColors.error),
+                        icon: const Icon(Icons.close_rounded, size: 15, color: Colors.white),
                         label: Text(
-                          'Cancel / Finish Later',
-                          style: TextStyle(
-                            color: isDark ? Colors.white : AppColors.inkDark,
+                          tr(ref, 'Cancel'),
+                          style: const TextStyle(
+                            color: Colors.white,
                             fontSize: 12,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: isDark ? Colors.white : AppColors.inkDark,
-                          backgroundColor: isDark
-                              ? AppColors.cardDark
-                              : const Color(0xFFF9FAFB),
-                          side: BorderSide(
-                            color: isDark ? AppColors.lineDark : const Color(0xFFD1D5DB),
-                            width: 1.2,
-                          ),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.error,
+                          foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                           visualDensity: VisualDensity.compact,
+                          elevation: 0,
                         ),
                       ),
                     ),

@@ -1641,7 +1641,7 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                     },
                     icon: const Icon(Icons.arrow_forward_rounded, size: 18),
                     label: Text(
-                      tr(ref, 'Next: Curriculum'),
+                      tr(ref, 'Next'),
                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                     ),
                   ),
@@ -2140,29 +2140,59 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
         ),
         const SizedBox(height: 12),
 
-        // Bottom Actions matching web: [← Back] [👁 Preview Course] [Save & Continue →]
+        // Preview Course in its own full-width row
+        SizedBox(
+          height: 48,
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () => _showCourseCurriculumPreview(isDark),
+            icon: const Icon(Icons.remove_red_eye_outlined, size: 18, color: AppColors.primaryGreen),
+            label: Text(
+              tr(ref, 'Preview Course'),
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+                color: AppColors.primaryGreen,
+              ),
+            ),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.primaryGreen,
+              backgroundColor: isDark ? Colors.white.withValues(alpha: 0.05) : AppColors.primaryGreen.withValues(alpha: 0.06),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+              side: BorderSide(
+                color: AppColors.primaryGreen.withValues(alpha: 0.5),
+                width: 1.2,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // Bottom Actions: [← Back] and [Save & Continue →] equal size
         Row(
           children: [
             Expanded(
-              flex: 2,
               child: SizedBox(
                 height: 48,
                 child: OutlinedButton.icon(
                   onPressed: () => setState(() => _currentStep = 1),
-                  icon: const Icon(Icons.arrow_back_rounded, size: 16),
+                  icon: const Icon(Icons.arrow_back_rounded, size: 18),
                   label: Text(
                     tr(ref, 'Back'),
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
-                      fontSize: 13,
+                      fontSize: 14,
                       color: isDark ? Colors.white70 : AppColors.inkDark,
                     ),
                   ),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: isDark ? Colors.white70 : AppColors.inkDark,
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(14),
                     ),
                     side: BorderSide(
                       color: isDark ? AppColors.lineDark : Colors.grey.shade300,
@@ -2172,49 +2202,17 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                 ),
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 12),
             Expanded(
-              flex: 3,
-              child: SizedBox(
-                height: 48,
-                child: OutlinedButton.icon(
-                  onPressed: () => _showCourseCurriculumPreview(isDark),
-                  icon: const Icon(Icons.remove_red_eye_outlined, size: 16, color: AppColors.primaryGreen),
-                  label: Text(
-                    tr(ref, 'Preview Course'),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                      color: AppColors.primaryGreen,
-                    ),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.primaryGreen,
-                    backgroundColor: isDark ? Colors.white.withValues(alpha: 0.05) : AppColors.primaryGreen.withValues(alpha: 0.06),
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    side: BorderSide(
-                      color: AppColors.primaryGreen.withValues(alpha: 0.5),
-                      width: 1.2,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              flex: 3,
               child: SizedBox(
                 height: 48,
                 child: FilledButton.icon(
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.primaryGreen,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(14),
                     ),
                     elevation: 0,
                   ),
@@ -2223,10 +2221,10 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                       setState(() => _currentStep = 3);
                     }
                   },
-                  icon: const Icon(Icons.arrow_forward_rounded, size: 16),
+                  icon: const Icon(Icons.arrow_forward_rounded, size: 18),
                   label: Text(
                     tr(ref, 'Save & Continue'),
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                   ),
                 ),
               ),

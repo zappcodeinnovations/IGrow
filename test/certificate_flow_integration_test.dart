@@ -228,7 +228,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
 
       // Tap Next to Step 2
-      final nextBtnFinder1 = find.widgetWithText(FilledButton, 'Next: Curriculum');
+      final nextBtnFinder1 = find.widgetWithText(FilledButton, 'Next');
       if (nextBtnFinder1.evaluate().isNotEmpty) {
         await tester.ensureVisible(nextBtnFinder1.first);
         await tester.tap(nextBtnFinder1.first);
