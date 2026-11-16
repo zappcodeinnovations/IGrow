@@ -176,9 +176,9 @@ class _InstructorReviewsScreenState extends ConsumerState<InstructorReviewsScree
     return Scaffold(
       backgroundColor: isDark ? AppColors.bgDark : const Color(0xFFF9FBF8),
       appBar: AppBar(
-        title: Text(
-          tr(ref, 'Student Reviews & Ratings'),
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+        title: const Text(
+          'Reviews & Ratings',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
         elevation: 0,
         backgroundColor: isDark ? AppColors.bgDark : Colors.white,
@@ -190,7 +190,7 @@ class _InstructorReviewsScreenState extends ConsumerState<InstructorReviewsScree
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
-            tooltip: tr(ref, 'Refresh'),
+            tooltip: 'Refresh Reviews',
             onPressed: () => ref.invalidate(instructorReviewsProvider),
           ),
         ],
@@ -211,7 +211,7 @@ class _InstructorReviewsScreenState extends ConsumerState<InstructorReviewsScree
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      tr(ref, 'Monitor Student Feedback'),
+                      'Monitor Student Feedback',
                       style: TextStyle(
                         fontSize: 13,
                         color: isDark ? Colors.white60 : AppColors.inkSoft,
@@ -222,9 +222,9 @@ class _InstructorReviewsScreenState extends ConsumerState<InstructorReviewsScree
                       children: [
                         Expanded(
                           child: _buildMetricTile(
-                            title: tr(ref, 'Average Rating'),
-                            value: '${formatNum(ref, avgRating.toStringAsFixed(1))} ★',
-                            subtitle: tr(ref, 'Across all courses'),
+                            title: 'Average Rating',
+                            value: '${avgRating.toStringAsFixed(1)} ★',
+                            subtitle: 'Across all courses',
                             icon: Icons.star_rounded,
                             iconColor: AppColors.signalYellow,
                             isDark: isDark,
@@ -233,9 +233,9 @@ class _InstructorReviewsScreenState extends ConsumerState<InstructorReviewsScree
                         const SizedBox(width: 12),
                         Expanded(
                           child: _buildMetricTile(
-                            title: tr(ref, 'Total Reviews'),
-                            value: formatNum(ref, '$totalReviews'),
-                            subtitle: tr(ref, 'Verified learners'),
+                            title: 'Total Reviews',
+                            value: '$totalReviews',
+                            subtitle: 'Verified learners',
                             icon: Icons.reviews_outlined,
                             iconColor: AppColors.primaryGreen,
                             isDark: isDark,
@@ -263,7 +263,7 @@ class _InstructorReviewsScreenState extends ConsumerState<InstructorReviewsScree
                         color: isDark ? Colors.white : AppColors.inkDark,
                       ),
                       decoration: InputDecoration(
-                        hintText: tr(ref, 'Search reviews by student or course...'),
+                        hintText: 'Search reviews by student or course...',
                         hintStyle: TextStyle(
                           fontSize: 13,
                           color: isDark ? Colors.white38 : AppColors.inkSoft,
@@ -308,15 +308,15 @@ class _InstructorReviewsScreenState extends ConsumerState<InstructorReviewsScree
                       scrollDirection: Axis.horizontal,
                       child: Row(
                         children: [
-                          _buildFilterChip('ALL', tr(ref, 'All Ratings'), isDark),
+                          _buildFilterChip('ALL', 'All Ratings', isDark),
                           const SizedBox(width: 8),
-                          _buildFilterChip('5', tr(ref, '5 Stars ⭐'), isDark),
+                          _buildFilterChip('5', '5 Stars ⭐', isDark),
                           const SizedBox(width: 8),
-                          _buildFilterChip('4', tr(ref, '4 Stars ⭐'), isDark),
+                          _buildFilterChip('4', '4 Stars ⭐', isDark),
                           const SizedBox(width: 8),
-                          _buildFilterChip('3', tr(ref, '3 Stars ⭐'), isDark),
+                          _buildFilterChip('3', '3 Stars ⭐', isDark),
                           const SizedBox(width: 8),
-                          _buildFilterChip('UNREPLIED', tr(ref, 'Unreplied Only'), isDark),
+                          _buildFilterChip('UNREPLIED', 'Unreplied Only', isDark),
                         ],
                       ),
                     ),
@@ -526,13 +526,13 @@ class _InstructorReviewsScreenState extends ConsumerState<InstructorReviewsScree
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Row(
+                                    const Row(
                                       children: [
-                                        const Icon(Icons.reply_rounded, size: 14, color: AppColors.primaryGreen),
-                                        const SizedBox(width: 6),
+                                        Icon(Icons.reply_rounded, size: 14, color: AppColors.primaryGreen),
+                                        SizedBox(width: 6),
                                         Text(
-                                          tr(ref, 'Your Reply'),
-                                          style: const TextStyle(
+                                          'Your Reply',
+                                          style: TextStyle(
                                             fontSize: 11,
                                             fontWeight: FontWeight.bold,
                                             color: AppColors.primaryGreen,
@@ -569,9 +569,9 @@ class _InstructorReviewsScreenState extends ConsumerState<InstructorReviewsScree
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(
-                                      tr(ref, 'Write a Reply:'),
-                                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                    const Text(
+                                      'Write a Reply:',
+                                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                                     ),
                                     const SizedBox(height: 8),
                                     TextField(
@@ -582,7 +582,7 @@ class _InstructorReviewsScreenState extends ConsumerState<InstructorReviewsScree
                                         color: isDark ? Colors.white : AppColors.inkDark,
                                       ),
                                       decoration: InputDecoration(
-                                        hintText: tr(ref, 'Thank the student or address their feedback...'),
+                                        hintText: 'Thank the student or address their feedback...',
                                         hintStyle: TextStyle(
                                           fontSize: 12.5,
                                           color: isDark ? Colors.white38 : AppColors.inkSoft,
@@ -615,7 +615,7 @@ class _InstructorReviewsScreenState extends ConsumerState<InstructorReviewsScree
                                                     _replyController.clear();
                                                   });
                                                 },
-                                          child: Text(tr(ref, 'Cancel'), style: const TextStyle(fontSize: 12)),
+                                          child: const Text('Cancel', style: TextStyle(fontSize: 12)),
                                         ),
                                         const SizedBox(width: 8),
                                         FilledButton(
@@ -635,7 +635,7 @@ class _InstructorReviewsScreenState extends ConsumerState<InstructorReviewsScree
                                                   height: 14,
                                                   child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                                                 )
-                                              : Text(tr(ref, 'Send Reply'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                                              : const Text('Send Reply', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                                         ),
                                       ],
                                     ),
@@ -652,7 +652,7 @@ class _InstructorReviewsScreenState extends ConsumerState<InstructorReviewsScree
                                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                   ),
                                   icon: const Icon(Icons.reply_rounded, size: 16),
-                                  label: Text(tr(ref, 'Reply to Review'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                                  label: const Text('Reply to Review', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                                   onPressed: () {
                                     setState(() {
                                       _replyingToId = review.id;

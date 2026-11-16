@@ -1885,7 +1885,7 @@ class _PrototypeCourseCard extends StatelessWidget {
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              '\ (\)',
+                              '4.8 (248)',
                               style: TextStyle(
                                 fontSize: 12.5,
                                 fontWeight: FontWeight.bold,

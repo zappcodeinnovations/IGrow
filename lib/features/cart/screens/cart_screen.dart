@@ -78,7 +78,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
           ),
         ),
         title: Text(
-          _activeTab == 0 ? tr(ref, 'Curriculum Bag') : tr(ref, 'Saved Wishlist'),
+          _activeTab == 0 ? 'Curriculum Bag' : 'Saved Wishlist',
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
@@ -97,19 +97,19 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                       builder: (context) => AlertDialog(
                         backgroundColor: isDark ? AppColors.cardDark : Colors.white,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                        title: Text(tr(ref, 'Clear Bag?')),
-                        content: Text(tr(ref, 'Are you sure you want to remove all modules from your bag?')),
+                        title: const Text('Clear Bag?'),
+                        content: const Text('Are you sure you want to remove all modules from your bag?'),
                         actions: [
                           TextButton(
                             onPressed: () => Navigator.pop(context),
-                            child: Text(tr(ref, 'Cancel')),
+                            child: const Text('Cancel'),
                           ),
                           TextButton(
                             onPressed: () {
                               Navigator.pop(context);
                               ref.read(cartProvider.notifier).clearCart();
                             },
-                            child: Text(tr(ref, 'Clear All'), style: const TextStyle(color: Colors.red)),
+                            child: const Text('Clear All', style: TextStyle(color: Colors.red)),
                           ),
                         ],
                       ),
@@ -172,7 +172,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text(
-                              tr(ref, 'Bag'),
+                              'Bag',
                               style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.bold,
@@ -233,7 +233,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text(
-                              tr(ref, 'Wishlist'),
+                              'Wishlist',
                               style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.bold,
@@ -335,7 +335,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                     ),
                     const SizedBox(height: 20),
                     Text(
-                      tr(ref, 'Your bag is empty'),
+                      'Your bag is empty',
                       style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
@@ -347,7 +347,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                     ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 290),
                       child: Text(
-                        tr(ref, "Looks like you haven't added any agricultural courses yet. Explore our curated syllabus to accelerate your agro-research."),
+                        'Looks like you haven\'t added any agricultural courses yet. Explore our curated syllabus to accelerate your agro-research.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 13,
@@ -370,8 +370,8 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                           elevation: 0,
                         ),
                         icon: const Icon(Icons.arrow_forward, size: 18),
-                        label: Text(
-                          tr(ref, 'Explore Marketplace'),
+                        label: const Text(
+                          'Explore Marketplace',
                           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                         ),
                         onPressed: () => context.go(RouteNames.explore),
@@ -384,7 +384,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                         Icon(Icons.verified, size: 15, color: AppColors.editorialSecondary),
                         const SizedBox(width: 5),
                         Text(
-                          tr(ref, 'ACCREDITED FIELD MODULES'),
+                          'ACCREDITED FIELD MODULES',
                           style: TextStyle(
                             fontSize: 10.5,
                             fontWeight: FontWeight.bold,
@@ -413,7 +413,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    '${tr(ref, 'Selected Modules')} (${formatNum(ref, itemCount)})',
+                    'Selected Modules ($itemCount)',
                     style: TextStyle(
                       fontSize: 13.5,
                       fontWeight: FontWeight.bold,
@@ -421,7 +421,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                     ),
                   ),
                   Text(
-                    '${formatNum(ref, itemCount)} ${itemCount == 1 ? tr(ref, 'item') : tr(ref, 'items')}',
+                    '$itemCount ${itemCount == 1 ? "item" : "items"}',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -545,7 +545,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                               ),
                               const SizedBox(height: 3),
                               Text(
-                                '${tr(ref, 'By')} $instructor',
+                                'By $instructor',
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
@@ -627,7 +627,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              tr(ref, 'Subtotal'),
+                              'Subtotal',
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
@@ -658,8 +658,8 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                               elevation: 0,
                             ),
                             icon: const Icon(Icons.lock_outline, size: 18),
-                            label: Text(
-                              tr(ref, 'Proceed to Checkout'),
+                            label: const Text(
+                              'Proceed to Checkout',
                               style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                             ),
                             onPressed: () {
@@ -761,7 +761,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                     ),
                     const SizedBox(height: 20),
                     Text(
-                      tr(ref, 'No saved research'),
+                      'No saved research',
                       style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
@@ -773,7 +773,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                     ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 290),
                       child: Text(
-                        tr(ref, "Save courses and peer-reviewed e-books you're interested in for continuous cultivation later."),
+                        'Save courses and peer-reviewed e-books you\'re interested in for continuous cultivation later.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 13,
@@ -796,7 +796,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                           ),
                         ),
                         onPressed: () => context.go(RouteNames.explore),
-                        child: Text(tr(ref, 'View Recommendations')),
+                        child: const Text('View Recommendations'),
                       ),
                     ),
                   ],
@@ -880,7 +880,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                           ),
                           const SizedBox(height: 3),
                           Text(
-                            '${tr(ref, 'By')} $instructor',
+                            'By $instructor',
                             style: TextStyle(
                               fontSize: 11.5,
                               color: isDark ? Colors.white70 : AppColors.editorialOnSurfaceVariant,

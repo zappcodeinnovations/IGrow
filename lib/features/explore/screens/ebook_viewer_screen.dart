@@ -177,7 +177,7 @@ class _EbookViewerScreenState extends ConsumerState<EbookViewerScreen> {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
-          orElse: () => Text(tr(ref, 'Reading E-Book')),
+          orElse: () => const Text('Reading E-Book'),
         ),
         backgroundColor: isDark ? AppColors.cardDark : Colors.white,
         elevation: 0.5,
@@ -237,7 +237,7 @@ class _EbookViewerScreenState extends ConsumerState<EbookViewerScreen> {
                   ),
                 IconButton(
                   icon: const Icon(Icons.info_outline_rounded, color: AppColors.primaryGreen),
-                  tooltip: tr(ref, 'E-Book Details'),
+                  tooltip: 'E-Book Details',
                   onPressed: () => _showEbookInfoDialog(ebook),
                 ),
               ],
@@ -255,7 +255,7 @@ class _EbookViewerScreenState extends ConsumerState<EbookViewerScreen> {
               const CircularProgressIndicator(color: AppColors.primaryGreen),
               const SizedBox(height: 16),
               Text(
-                tr(ref, 'Opening your e-book...'),
+                'Opening your e-book...',
                 style: TextStyle(
                   color: isDark ? Colors.white70 : AppColors.inkSoft,
                   fontSize: 14,
