@@ -655,6 +655,74 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     final appliedCoupon = ref.watch(appliedCouponProvider);
     final isDirectBuy = widget.directCourseId != null && widget.directCourseId!.isNotEmpty;
 
+    return PopScope(
+      canPop: !_isProcessing,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop && _isProcessing) {
+          AppToast.show(
+            context,
+            'Please wait, verifying your payment and securing your enrollment...',
+            isError: false,
+          );
+        }
+      },
+      child: Stack(
+        children: [
+          _buildScaffold(context, isDark, appliedCoupon, isDirectBuy),
+          if (_isProcessing)
+            Container(
+              color: Colors.black54,
+              child: Center(
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 32),
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF1E2E23) : Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: const [
+                      BoxShadow(color: Colors.black26, blurRadius: 16, offset: Offset(0, 4)),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const CircularProgressIndicator(color: AppColors.primaryGreen),
+                      const SizedBox(height: 20),
+                      Text(
+                        'Securing Your Enrollment...',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? Colors.white : AppColors.inkDark,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Please do not exit or close the app while we finalize your course access.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: isDark ? Colors.white70 : AppColors.inkSoft,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildScaffold(
+    BuildContext context,
+    bool isDark,
+    dynamic appliedCoupon,
+    bool isDirectBuy,
+  ) {
+
     // Direct single course buy
     if (isDirectBuy) {
       final courseAsync = ref.watch(courseDetailProvider(widget.directCourseId!));

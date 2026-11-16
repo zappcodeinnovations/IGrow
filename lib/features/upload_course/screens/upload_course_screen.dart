@@ -22,6 +22,7 @@ import '../../../data/models/user_model.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../certificates/widgets/certificate_viewer_dialog.dart';
 import '../../home_instructor/providers/instructor_home_provider.dart';
+import '../../home_farmer/providers/student_provider.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/services/app_config_service.dart';
 
@@ -51,6 +52,7 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
   File? _coverImage;
 
   String _selectedCategory = 'Organic Farming';
+  String? _selectedCategoryId;
   final List<String> _categories = [
     'Organic Farming',
     'Dairy Farming',
@@ -766,6 +768,8 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
           'title': _titleController.text.trim(),
           'short_description': _shortDescController.text.trim(),
           'description': _descController.text.trim(),
+          if (_selectedCategoryId != null && _selectedCategoryId!.isNotEmpty)
+            'category_id': _selectedCategoryId!,
           'category': _selectedCategory.toLowerCase().replaceAll(' ', '_'),
           'level': _selectedLevel.toLowerCase(),
           'price': priceNum.toStringAsFixed(2),
@@ -1456,18 +1460,61 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
 
           // Category
           _buildFieldLabel(tr(ref, 'Category')),
-          DropdownButtonFormField<String>(
-            isExpanded: true,
-            initialValue: _selectedCategory,
-            decoration: InputDecoration(
-              border: const OutlineInputBorder(),
-              hintText: tr(ref, 'Select a category'),
-            ),
-            items: _categories.map((c) {
-              return DropdownMenuItem(value: c, child: Text(tr(ref, c), overflow: TextOverflow.ellipsis));
-            }).toList(),
-            onChanged: (val) {
-              if (val != null) setState(() => _selectedCategory = val);
+          Consumer(
+            builder: (context, ref, _) {
+              final backendCategoriesAsync = ref.watch(studentCategoriesProvider);
+              final backendCategories = backendCategoriesAsync.value ?? [];
+
+              // Map category names or fallback to defaults
+              final List<(String id, String name)> catItems = [];
+              if (backendCategories.isNotEmpty) {
+                for (final cat in backendCategories) {
+                  catItems.add((cat.id ?? '', cat.name));
+                }
+              } else {
+                for (final c in _categories) {
+                  catItems.add(('', c));
+                }
+              }
+
+              // Ensure initial selected value matches one of the items
+              final hasMatch = catItems.any((item) => item.$2.toLowerCase() == _selectedCategory.toLowerCase());
+              if (!hasMatch && catItems.isNotEmpty) {
+                _selectedCategory = catItems.first.$2;
+                _selectedCategoryId = catItems.first.$1.isNotEmpty ? catItems.first.$1 : null;
+              } else if (hasMatch && (_selectedCategoryId == null || _selectedCategoryId!.isEmpty)) {
+                final matched = catItems.firstWhere((item) => item.$2.toLowerCase() == _selectedCategory.toLowerCase());
+                if (matched.$1.isNotEmpty) {
+                  _selectedCategoryId = matched.$1;
+                }
+              }
+
+              return DropdownButtonFormField<String>(
+                isExpanded: true,
+                initialValue: _selectedCategory,
+                decoration: InputDecoration(
+                  border: const OutlineInputBorder(),
+                  hintText: tr(ref, 'Select a category'),
+                ),
+                items: catItems.map((c) {
+                  return DropdownMenuItem<String>(
+                    value: c.$2,
+                    child: Text(tr(ref, c.$2), overflow: TextOverflow.ellipsis),
+                  );
+                }).toList(),
+                onChanged: (val) {
+                  if (val != null) {
+                    setState(() {
+                      _selectedCategory = val;
+                      final found = catItems.firstWhere(
+                        (item) => item.$2.toLowerCase() == val.toLowerCase(),
+                        orElse: () => ('', val),
+                      );
+                      _selectedCategoryId = found.$1.isNotEmpty ? found.$1 : null;
+                    });
+                  }
+                },
+              );
             },
           ),
           const SizedBox(height: 18),
