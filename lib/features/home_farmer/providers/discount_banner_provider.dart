@@ -1,7 +1,10 @@
 import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
+import '../../../core/services/app_config_service.dart';
 import '../../../data/models/discount_banner_model.dart';
 
 final discountBannerProvider = StateNotifierProvider<DiscountBannerNotifier, AsyncValue<DiscountBannerModel?>>((ref) {
@@ -17,6 +20,15 @@ class DiscountBannerNotifier extends StateNotifier<AsyncValue<DiscountBannerMode
 
   Future<void> fetchActiveBanner() async {
     try {
+      // Suppress promotional coupon banners on iOS when under App Store review
+      if (!kIsWeb && Platform.isIOS) {
+        final config = await AppConfigService.fetchConfig();
+        if (!config.canShowCoupons) {
+          state = const AsyncValue.data(null);
+          return;
+        }
+      }
+
       final response = await http.get(
         Uri.parse('https://iagrow.zappcode.in/api/v1/auth/system-settings/'),
         headers: {'Accept': 'application/json'},

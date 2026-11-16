@@ -1,9 +1,12 @@
 import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/router/route_names.dart';
+import '../../../core/services/app_config_service.dart';
 import '../../../data/models/discount_banner_model.dart';
 import '../providers/discount_banner_provider.dart';
 
@@ -13,6 +16,16 @@ class OfferDialog extends ConsumerWidget {
   const OfferDialog({super.key, required this.banner});
 
   static void show(BuildContext context, DiscountBannerModel banner) {
+    // Safety check: Suppress promotional popup on iOS when in App Store review
+    if (!kIsWeb && Platform.isIOS) {
+      try {
+        final container = ProviderScope.containerOf(context, listen: false);
+        if (!container.read(appConfigProvider).canShowCoupons) {
+          return;
+        }
+      } catch (_) {}
+    }
+
     showDialog(
       context: context,
       barrierColor: Colors.black.withOpacity(0.7),

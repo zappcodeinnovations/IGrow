@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/services/app_config_service.dart';
 import '../providers/discount_banner_provider.dart';
 import 'offer_dialog.dart';
 
@@ -8,6 +9,12 @@ class FloatingOfferBadge extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Hide promotional badge during iOS App Store review when coupons/external discounts are disabled
+    final canShowCoupons = ref.watch(appConfigProvider).canShowCoupons;
+    if (!canShowCoupons) {
+      return const SizedBox.shrink();
+    }
+
     final bannerAsync = ref.watch(discountBannerProvider);
 
     return bannerAsync.when(
