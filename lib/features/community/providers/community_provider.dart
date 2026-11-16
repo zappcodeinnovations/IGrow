@@ -596,12 +596,16 @@ class PostCommentsNotifier extends StateNotifier<AsyncValue<List<CommunityCommen
   final String postId;
   final Ref _ref;
 
-  Future<void> fetchComments() async {
+  Future<void> fetchComments({String? hubId}) async {
     state = const AsyncValue.loading();
     try {
       final comments = await _repo.getComments(postId);
       state = AsyncValue.data(comments);
       _ref.read(communityPostsProvider.notifier).syncCommentsCount(postId, comments.length);
+      final activeHub = hubId ?? _ref.read(selectedHubProvider)?.id;
+      if (activeHub != null && activeHub.isNotEmpty) {
+        _ref.read(communityHubPostsProvider(activeHub).notifier).syncCommentsCount(postId, comments.length);
+      }
     } catch (_) {
       state = AsyncValue.data(<CommunityComment>[]);
     }
@@ -611,6 +615,7 @@ class PostCommentsNotifier extends StateNotifier<AsyncValue<List<CommunityCommen
     required String text,
     required CommunityAuthor author,
     String? parentId,
+    String? hubId,
   }) async {
     final localComment = CommunityComment(
       id: 'local_${DateTime.now().millisecondsSinceEpoch}',
@@ -630,7 +635,13 @@ class PostCommentsNotifier extends StateNotifier<AsyncValue<List<CommunityCommen
       final serverComment = await _repo.addComment(postId, text, parentId: parentId);
       if (serverComment.id != localComment.id) {
         final updatedList = (state.value ?? []).map((c) {
-          return c.id == localComment.id ? serverComment : c;
+          if (c.id == localComment.id) {
+            // Keep parentId if server returned null or parentless model
+            return (serverComment.parentId == null || serverComment.parentId!.isEmpty) && parentId != null
+                ? serverComment.copyWith(parentId: parentId)
+                : serverComment;
+          }
+          return c;
         }).toList();
         state = AsyncValue.data(updatedList);
       }

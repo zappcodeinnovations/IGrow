@@ -15,12 +15,14 @@ class PostCommentsBottomSheet extends ConsumerStatefulWidget {
     super.key,
     required this.postId,
     required this.postAuthorName,
+    this.hubId,
     this.isHubActive = true,
     this.isHostInstructor = false,
   });
 
   final String postId;
   final String postAuthorName;
+  final String? hubId;
   final bool isHubActive;
   final bool isHostInstructor;
 
@@ -28,6 +30,7 @@ class PostCommentsBottomSheet extends ConsumerStatefulWidget {
     BuildContext context, {
     required String postId,
     required String postAuthorName,
+    String? hubId,
     bool isHubActive = true,
     bool isHostInstructor = false,
   }) {
@@ -38,6 +41,7 @@ class PostCommentsBottomSheet extends ConsumerStatefulWidget {
       builder: (_) => PostCommentsBottomSheet(
         postId: postId,
         postAuthorName: postAuthorName,
+        hubId: hubId,
         isHubActive: isHubActive,
         isHostInstructor: isHostInstructor,
       ),
@@ -116,9 +120,13 @@ class _PostCommentsBottomSheetState extends ConsumerState<PostCommentsBottomShee
           text: text,
           author: author,
           parentId: replyParent?.id,
+          hubId: widget.hubId,
         );
 
     ref.read(communityPostsProvider.notifier).incrementCommentsCount(widget.postId);
+    if (widget.hubId != null && widget.hubId!.isNotEmpty) {
+      ref.read(communityHubPostsProvider(widget.hubId!).notifier).incrementCommentsCount(widget.postId);
+    }
 
     if (mounted) {
       setState(() => _isSending = false);

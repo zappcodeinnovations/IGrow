@@ -620,6 +620,24 @@ class CommunityComment {
     required this.createdAt,
   });
 
+  CommunityComment copyWith({
+    String? id,
+    CommunityAuthor? author,
+    String? parentId,
+    String? authorRole,
+    String? content,
+    DateTime? createdAt,
+  }) {
+    return CommunityComment(
+      id: id ?? this.id,
+      author: author ?? this.author,
+      parentId: parentId ?? this.parentId,
+      authorRole: authorRole ?? this.authorRole,
+      content: content ?? this.content,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
   factory CommunityComment.fromJson(Map<String, dynamic> json) {
     Map<String, dynamic> authorMap;
     if (json['author'] is Map<String, dynamic>) {
@@ -637,11 +655,18 @@ class CommunityComment {
 
     final rawContent = json['content'] ?? json['comment'] ?? json['text'] ?? json['body'] ?? '';
     final role = (json['author_role'] ?? authorMap['author_role'] ?? 'STUDENT').toString();
+    final rawParent = json['parent'] ?? json['parent_id'] ?? json['parentId'] ?? json['reply_to'] ?? json['parent_comment_id'];
+    String? resolvedParentId;
+    if (rawParent is Map) {
+      resolvedParentId = rawParent['id']?.toString();
+    } else if (rawParent != null) {
+      resolvedParentId = rawParent.toString();
+    }
 
     return CommunityComment(
       id: json['id']?.toString() ?? '',
       author: CommunityAuthor.fromJson(authorMap),
-      parentId: json['parent']?.toString() ?? json['parent_id']?.toString(),
+      parentId: resolvedParentId,
       authorRole: role,
       content: rawContent.toString(),
       createdAt: json['created_at'] != null

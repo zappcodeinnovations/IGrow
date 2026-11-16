@@ -540,6 +540,7 @@ class CommunityRepository {
       'text': content,
       if (parentId != null && parentId.isNotEmpty) 'parent_id': parentId,
       if (parentId != null && parentId.isNotEmpty) 'parent': parentId,
+      if (parentId != null && parentId.isNotEmpty) 'reply_to': parentId,
     };
 
     final endpoints = [

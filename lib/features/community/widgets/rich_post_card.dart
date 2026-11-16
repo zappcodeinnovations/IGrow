@@ -1035,6 +1035,7 @@ class _RichPostCardState extends ConsumerState<RichPostCard> {
                         context,
                         postId: widget.post.id,
                         postAuthorName: widget.post.author.fullName,
+                        hubId: widget.hubId ?? widget.post.hubId,
                         isHubActive: widget.isHubActive,
                         isHostInstructor: widget.isInstructorView,
                       ),
