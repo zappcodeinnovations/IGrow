@@ -19,6 +19,7 @@ import '../../certificates/providers/certificates_provider.dart';
 import '../../certificates/widgets/certificate_viewer_dialog.dart';
 import '../../home_farmer/providers/student_provider.dart';
 import '../providers/explore_provider.dart';
+import '../../../core/router/app_router.dart';
 import '../../../core/router/route_names.dart';
 
 /// Resolves the effective stream URL for the selected quality (Auto, 240p, 360p, 480p, 720p).
@@ -70,7 +71,7 @@ class CoursePlayerScreen extends ConsumerStatefulWidget {
 }
 
 class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
-    with WidgetsBindingObserver {
+    with WidgetsBindingObserver, RouteAware {
   VideoPlayerController? _videoPlayerController;
   ChewieController? _chewieController;
 
@@ -104,6 +105,30 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final modalRoute = ModalRoute.of(context);
+    if (modalRoute != null) {
+      appRouteObserver.subscribe(this, modalRoute);
+    }
+  }
+
+  @override
+  void didPushNext() {
+    // When another route is pushed on top (e.g. Cart, Wishlist, Quiz, etc.), stop playback immediately
+    _videoPlayerController?.pause();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.detached) {
+      _videoPlayerController?.pause();
+    }
+  }
+
+  @override
   void didChangeMetrics() {
     // Called by Flutter whenever the window metrics change (e.g. keyboard
     // slides in/out).  We read the bottom view-inset from the first view.
@@ -117,9 +142,11 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
 
   @override
   void dispose() {
+    appRouteObserver.unsubscribe(this);
     WidgetsBinding.instance.removeObserver(this);
     _flushCurrentProgress();
     _videoPlayerController?.removeListener(_onVideoPlayerTick);
+    _videoPlayerController?.pause();
     _videoPlayerController?.dispose();
     _chewieController?.dispose();
     WakelockPlus.disable();

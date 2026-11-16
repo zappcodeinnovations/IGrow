@@ -60,10 +60,12 @@ import 'route_names.dart';
 
 final rootNavigatorKey = GlobalKey<NavigatorState>();
 final shellNavigatorKey = GlobalKey<NavigatorState>();
+final RouteObserver<ModalRoute<void>> appRouteObserver = RouteObserver<ModalRoute<void>>();
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     navigatorKey: rootNavigatorKey,
+    observers: [appRouteObserver],
     initialLocation: RouteNames.splash,
     refreshListenable: GoRouterRefreshStream(ref.read(authProvider.notifier).stream),
     errorBuilder: (context, state) => NotFoundScreen(
@@ -438,6 +440,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       // ─── Shell Router (Bottom Navigation) ────────────────────────────
       ShellRoute(
         navigatorKey: shellNavigatorKey,
+        observers: [appRouteObserver],
         builder: (context, state, child) {
           return ShellScaffold(child: child);
         },

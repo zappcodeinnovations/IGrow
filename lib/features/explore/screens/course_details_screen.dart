@@ -10,6 +10,7 @@ import 'package:video_player/video_player.dart';
 
 import '../../../core/localization/app_strings.dart';
 import '../../../core/network/api_exception.dart';
+import '../../../core/router/app_router.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/app_toast.dart';
@@ -209,7 +210,8 @@ class CourseDetailsScreen extends ConsumerStatefulWidget {
       _CourseDetailsScreenState();
 }
 
-class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
+class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen>
+    with WidgetsBindingObserver, RouteAware {
   VideoPlayerController? _videoPlayerController;
   ChewieController? _chewieController;
   String? _activeVideoUrl;
@@ -225,8 +227,50 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
   final Map<String, bool> _sectionExpanded = {};
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final modalRoute = ModalRoute.of(context);
+    if (modalRoute != null) {
+      appRouteObserver.subscribe(this, modalRoute);
+    }
+  }
+
+  @override
+  void didPushNext() {
+    // When navigating to Cart, Wishlist, Player or other screens, pause preview playback
+    _pauseVideoPlayback();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.detached) {
+      _pauseVideoPlayback();
+    }
+  }
+
+  void _pauseVideoPlayback() {
+    if (_videoPlayerController != null && _videoPlayerController!.value.isPlaying) {
+      _videoPlayerController!.pause();
+      if (mounted) {
+        setState(() => _isPlayingVideo = false);
+      }
+    }
+  }
+
+  @override
   void dispose() {
+    appRouteObserver.unsubscribe(this);
+    WidgetsBinding.instance.removeObserver(this);
     _videoPlayerController?.removeListener(_onMainVideoPlayerTick);
+    _videoPlayerController?.pause();
     _chewieController?.dispose();
     _videoPlayerController?.dispose();
     super.dispose();
