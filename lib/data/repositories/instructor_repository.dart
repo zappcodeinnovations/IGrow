@@ -755,9 +755,9 @@ class InstructorRepository {
 
   /// Update E-Book.
   Future<Map<String, dynamic>> updateEBook(String ebookId, Map<String, dynamic> updates) async {
+    final token = await tokenStorage.getAccessToken();
+    final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/instructor/ebooks/$ebookId/');
     try {
-      final token = await tokenStorage.getAccessToken();
-      final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/instructor/ebooks/$ebookId/');
       final rawResponse = await http.patch(
         uri,
         headers: {
@@ -770,12 +770,23 @@ class InstructorRepository {
 
       if (rawResponse.statusCode >= 200 && rawResponse.statusCode < 300) {
         debugPrint('✅ [InstructorRepository] updateEBook direct HTTP SUCCESS: ${rawResponse.body}');
-        return jsonDecode(rawResponse.body) as Map<String, dynamic>;
+        return jsonDecode(utf8.decode(rawResponse.bodyBytes)) as Map<String, dynamic>;
       }
       TokenStorage.checkResponse(rawResponse.statusCode, rawResponse.body);
       debugPrint('⚠️ [InstructorRepository] updateEBook direct HTTP failed (${rawResponse.statusCode}): ${rawResponse.body}');
+      
+      // If server returned structured error details, propagate the exact server message
+      final decodedErr = jsonDecode(utf8.decode(rawResponse.bodyBytes));
+      if (decodedErr is Map) {
+        final msg = decodedErr['detail'] ?? decodedErr['error'] ?? decodedErr['price'] ?? decodedErr['message'];
+        if (msg != null) throw Exception(msg is List ? msg.join(', ') : msg.toString());
+      }
+      throw Exception('Failed to update ebook (${rawResponse.statusCode}): ${rawResponse.body}');
     } catch (e) {
-      debugPrint('⚠️ [InstructorRepository] updateEBook direct HTTP error: $e');
+      if (e is Exception && e.toString().contains('Failed to update ebook')) {
+        rethrow;
+      }
+      debugPrint('⚠️ [InstructorRepository] updateEBook fallback to Chopper after: $e');
     }
 
     final response = await appApi.apiV1InstructorEbooksIdPatch(
