@@ -81,9 +81,11 @@ void main() {
       );
 
       await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(
-            body: CertificateViewerDialog(certificate: cert),
+        const ProviderScope(
+          child: MaterialApp(
+            home: Scaffold(
+              body: CertificateViewerDialog(certificate: cert),
+            ),
           ),
         ),
       );
@@ -130,9 +132,11 @@ void main() {
       };
 
       await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(
-            body: CertificateViewerDialog(certificate: cert),
+        const ProviderScope(
+          child: MaterialApp(
+            home: Scaffold(
+              body: CertificateViewerDialog(certificate: cert),
+            ),
           ),
         ),
       );

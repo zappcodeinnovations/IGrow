@@ -208,10 +208,12 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
     final slug = _activeSlug ?? course?.slug ?? widget.courseId;
     final courseId = course?.id ?? widget.courseId;
 
-    bool allQuizzesPassed = false;
-    if (course != null && course.sections.isNotEmpty) {
+    bool allQuizzesPassed = true;
+    final sectionsWithQuiz = course?.sections.where((s) => s.hasQuiz).toList() ?? [];
+    final bool hasQuizzes = sectionsWithQuiz.isNotEmpty;
+    if (hasQuizzes) {
       bool allPassed = true;
-      for (final sec in course.sections) {
+      for (final sec in sectionsWithQuiz) {
         final passed = await QuizService.isSectionQuizPassed(sec.id);
         if (!passed) {
           allPassed = false;
@@ -229,6 +231,7 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
       positionSeconds: positionSeconds,
       allLectureIds: allLectureIds.isNotEmpty ? allLectureIds : [_currentLecture!.id],
       quizPassed: allQuizzesPassed,
+      hasQuiz: hasQuizzes,
     );
 
     // Refresh enrollment & percentage providers so dashboard & player reflect progress immediately
@@ -301,13 +304,19 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
 
     final isAllLecturesDone = allLectures.every((l) => updatedCompleted.contains(l.id));
 
-    // Require both: all lectures completed AND all section quizzes passed before awarding certificate
+    // Check quiz requirements: Only sections that actually have quizzes attached must be passed.
+    final sectionsWithQuiz = course.sections.where((s) => s.hasQuiz).toList();
+    final bool hasQuizzes = sectionsWithQuiz.isNotEmpty;
     bool allQuizzesPassed = true;
-    for (final sec in course.sections) {
-      final passed = await QuizService.isSectionQuizPassed(sec.id);
-      if (!passed) {
-        allQuizzesPassed = false;
-        break;
+    ApiCourseSection? firstPendingQuizSection;
+
+    if (hasQuizzes) {
+      for (final sec in sectionsWithQuiz) {
+        final passed = await QuizService.isSectionQuizPassed(sec.id);
+        if (!passed) {
+          allQuizzesPassed = false;
+          firstPendingQuizSection ??= sec;
+        }
       }
     }
 
@@ -402,6 +411,89 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
       } catch (e) {
         debugPrint('⚠️ [CoursePlayer] Completion celebration check failed: $e');
       }
+    } else if (isAllLecturesDone && hasQuizzes && !allQuizzesPassed && firstPendingQuizSection != null) {
+      // All video lectures finished, but section quiz is required to unlock certificate!
+      if (!mounted) return;
+      final targetSection = firstPendingQuizSection;
+      showDialog(
+        context: context,
+        barrierDismissible: true,
+        builder: (dialogCtx) {
+          return Dialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryGreen.withValues(alpha: 0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.quiz_rounded,
+                      color: AppColors.primaryGreen,
+                      size: 44,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Lectures Completed! 🎓',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'You have watched all video lectures for "${course.title}". Complete and pass the section quiz to unlock your official course certificate!',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 13, color: AppColors.inkSoft, height: 1.4),
+                  ),
+                  const SizedBox(height: 22),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                          onPressed: () => Navigator.pop(dialogCtx),
+                          child: const Text('Later'),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primaryGreen,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                          onPressed: () async {
+                            Navigator.pop(dialogCtx);
+                            await context.push('/quiz/${targetSection.id}');
+                            if (!mounted) return;
+                            ref.invalidate(sectionQuizPassedProvider(targetSection.id));
+                            ref.invalidate(studentEnrollmentsProvider);
+                            ref.invalidate(myCertificatesProvider);
+                            ref.invalidate(certificateEnrollmentsProvider);
+                            final slug = course.slug ?? course.id;
+                            ref.invalidate(coursePercentageProvider(slug));
+                          },
+                          child: const Text('Take Quiz Now', style: TextStyle(fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
     }
   }
 
@@ -1153,27 +1245,30 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
           final completedCount =
               allLectures.where((l) => completedIds.contains(l.id)).length;
 
-          // Check passing status of section quizzes
-          final totalSections = course.sections.length;
+          // Check passing status of section quizzes only for sections that have quizzes attached
+          final sectionsWithQuiz = course.sections.where((s) => s.hasQuiz).toList();
+          final totalQuizzesCount = sectionsWithQuiz.length;
+          final bool hasQuizzes = totalQuizzesCount > 0;
           int passedQuizzesCount = 0;
-          for (final section in course.sections) {
+          for (final section in sectionsWithQuiz) {
             final isPassed = ref.watch(sectionQuizPassedProvider(section.id)).value ?? false;
             if (isPassed) {
               passedQuizzesCount++;
             }
           }
-          final bool allQuizzesPassed = totalSections > 0 && passedQuizzesCount == totalSections;
+          final bool allQuizzesPassed = !hasQuizzes || passedQuizzesCount == totalQuizzesCount;
 
-          // Video completion accounts for 50%, quiz passing accounts for 50%
+          // If course has quizzes, progress combines lectures (50%) and quizzes (50%).
+          // If course has NO quizzes, video completion accounts for 100% of course progress.
           final double videoRatio = totalLecturesCount > 0
               ? (completedCount / totalLecturesCount).clamp(0.0, 1.0)
               : 0.0;
-          final double quizRatio = totalSections > 0
-              ? (passedQuizzesCount / totalSections).clamp(0.0, 1.0)
+          final double quizRatio = hasQuizzes
+              ? (passedQuizzesCount / totalQuizzesCount).clamp(0.0, 1.0)
               : 0.0;
 
-          final double videoPercent = videoRatio * 50.0;
-          final double quizPercent = quizRatio * 50.0;
+          final double videoPercent = hasQuizzes ? videoRatio * 50.0 : videoRatio * 100.0;
+          final double quizPercent = hasQuizzes ? quizRatio * 50.0 : 0.0;
           final int completionPercent = (videoPercent + quizPercent).round();
           final double progressValue = (videoPercent + quizPercent) / 100.0;
           return Column(
@@ -1387,6 +1482,7 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
                               completionPercent: completionPercent,
                               progressValue: progressValue,
                               allQuizzesPassed: allQuizzesPassed,
+                              hasQuizzes: hasQuizzes,
                               completedCount: completedCount,
                               totalLectures: totalLecturesCount,
                               videoPlayerController: _videoPlayerController,
@@ -1456,6 +1552,7 @@ class _CurriculumTab extends ConsumerWidget {
     required this.completionPercent,
     required this.progressValue,
     required this.allQuizzesPassed,
+    this.hasQuizzes = true,
     required this.completedCount,
     required this.totalLectures,
     required this.onSelectLecture,
@@ -1469,6 +1566,7 @@ class _CurriculumTab extends ConsumerWidget {
   final int completionPercent;
   final double progressValue;
   final bool allQuizzesPassed;
+  final bool hasQuizzes;
   final int completedCount;
   final int totalLectures;
   final Function(ApiLecture, ApiCourseSection) onSelectLecture;
@@ -1567,7 +1665,9 @@ class _CurriculumTab extends ConsumerWidget {
                   label: Text(
                     isCertificateUnlocked
                         ? 'View Official Certificate'
-                        : 'View Official Certificate (Pass Quiz to Unlock)',
+                        : (hasQuizzes
+                            ? 'View Official Certificate (Pass Quiz to Unlock)'
+                            : 'View Official Certificate (Complete Lectures to Unlock)'),
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   onPressed: isCertificateUnlocked
@@ -1804,51 +1904,52 @@ class _CurriculumTab extends ConsumerWidget {
                     onTap: () => onSelectLecture(lecture, section),
                   );
                 }),
-                // Section Quiz link
-                Consumer(
-                  builder: (context, ref, _) {
-                    final isPassedAsync = ref.watch(sectionQuizPassedProvider(section.id));
-                    final isPassed = isPassedAsync.value ?? false;
+                // Section Quiz link (only displayed if section has a quiz attached)
+                if (section.hasQuiz)
+                  Consumer(
+                    builder: (context, ref, _) {
+                      final isPassedAsync = ref.watch(sectionQuizPassedProvider(section.id));
+                      final isPassed = isPassedAsync.value ?? false;
 
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      child: OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: isPassed ? AppColors.primaryGreen : AppColors.accentOrange,
-                          side: BorderSide(
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        child: OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: isPassed ? AppColors.primaryGreen : AppColors.accentOrange,
+                            side: BorderSide(
+                              color: isPassed ? AppColors.primaryGreen : AppColors.accentOrange,
+                            ),
+                            backgroundColor: isPassed
+                                ? AppColors.primaryGreen.withValues(alpha: 0.08)
+                                : Colors.transparent,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          icon: Icon(
+                            isPassed ? Icons.check_circle_rounded : Icons.quiz_rounded,
+                            size: 16,
                             color: isPassed ? AppColors.primaryGreen : AppColors.accentOrange,
                           ),
-                          backgroundColor: isPassed
-                              ? AppColors.primaryGreen.withValues(alpha: 0.08)
-                              : Colors.transparent,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                          label: Text(
+                            isPassed ? 'Quiz Passed ✅ • Review / Retake' : 'Take Section Quiz',
+                            style: TextStyle(
+                              fontWeight: isPassed ? FontWeight.bold : FontWeight.w600,
+                            ),
                           ),
+                          onPressed: () async {
+                            await context.push('/quiz/${section.id}');
+                            ref.invalidate(sectionQuizPassedProvider(section.id));
+                            ref.invalidate(studentEnrollmentsProvider);
+                            ref.invalidate(myCertificatesProvider);
+                            ref.invalidate(certificateEnrollmentsProvider);
+                            final slug = course.slug ?? course.id;
+                            ref.invalidate(coursePercentageProvider(slug));
+                          },
                         ),
-                        icon: Icon(
-                          isPassed ? Icons.check_circle_rounded : Icons.quiz_rounded,
-                          size: 16,
-                          color: isPassed ? AppColors.primaryGreen : AppColors.accentOrange,
-                        ),
-                        label: Text(
-                          isPassed ? 'Quiz Passed ✅ • Review / Retake' : 'Take Section Quiz',
-                          style: TextStyle(
-                            fontWeight: isPassed ? FontWeight.bold : FontWeight.w600,
-                          ),
-                        ),
-                        onPressed: () async {
-                          await context.push('/quiz/${section.id}');
-                          ref.invalidate(sectionQuizPassedProvider(section.id));
-                          ref.invalidate(studentEnrollmentsProvider);
-                          ref.invalidate(myCertificatesProvider);
-                          ref.invalidate(certificateEnrollmentsProvider);
-                          final slug = course.slug ?? course.id;
-                          ref.invalidate(coursePercentageProvider(slug));
-                        },
-                      ),
-                    );
-                  },
-                ),
+                      );
+                    },
+                  ),
               ],
             ),
           );
@@ -2556,7 +2657,7 @@ class _CourseNotesTabState extends ConsumerState<_CourseNotesTab> {
               children: [
                 const Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
                 const SizedBox(width: 8),
-                Text('Note added at ' + formatted + '!'),
+                Text('Note added at $formatted!'),
               ],
             ),
             backgroundColor: AppColors.primaryGreen,
@@ -2570,7 +2671,7 @@ class _CourseNotesTabState extends ConsumerState<_CourseNotesTab> {
         messenger.clearSnackBars();
         messenger.showSnackBar(
           SnackBar(
-            content: Text('Failed to save note: ' + e.toString()),
+            content: Text('Failed to save note: $e'),
             duration: const Duration(seconds: 3),
           ),
         );

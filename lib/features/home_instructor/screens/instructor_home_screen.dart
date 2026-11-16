@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 
@@ -625,6 +626,75 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
         messenger.showSnackBar(
           SnackBar(
             content: Text(e.toString().replaceAll('Exception: ', '')),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _submitCourseForReview(ApiCourseList course) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.rocket_launch, color: AppColors.primaryGreen),
+            const SizedBox(width: 10),
+            Text(tr(ref, 'Submit for Review'), style: const TextStyle(fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Text(
+          '${tr(ref, 'Are you sure you want to submit')} "${course.title}" ${tr(ref, 'for automated AI safety review and administrator verification? Editing will be temporarily locked until the review completes.')}',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: Text(tr(ref, 'Cancel'))),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.primaryGreen),
+            onPressed: () => Navigator.pop(c, true),
+            child: Text(tr(ref, 'Submit for Review')),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        final res = await ref.read(instructorRepositoryProvider).publishCourse(course.id);
+        if (!mounted) return;
+        final message = res['message']?.toString() ?? tr(ref, 'Course submitted for review successfully');
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.clearSnackBars();
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(message),
+            backgroundColor: AppColors.primaryGreen,
+          ),
+        );
+        ref.invalidate(instructorCoursesProvider);
+        ref.invalidate(instructorCourseDetailProvider(course.id));
+        unawaited(ref.refresh(instructorCoursesProvider((search: _searchQuery, ordering: _ordering)).future));
+        ref.invalidate(instructorStatsProvider);
+      } catch (e) {
+        if (!mounted) return;
+        String errorMsg = e.toString().replaceAll('Exception: ', '').trim();
+        if (errorMsg.contains('{') && errorMsg.contains('}')) {
+          try {
+            final jsonPart = errorMsg.substring(errorMsg.indexOf('{'), errorMsg.lastIndexOf('}') + 1);
+            final decoded = jsonDecode(jsonPart);
+            if (decoded is Map) {
+              errorMsg = decoded['error']?.toString() ??
+                  decoded['detail']?.toString() ??
+                  decoded.values.map((v) => v is List ? v.join(' ') : v.toString()).join(' ');
+            }
+          } catch (_) {}
+        }
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.clearSnackBars();
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(errorMsg),
             backgroundColor: AppColors.error,
           ),
         );
@@ -1379,6 +1449,7 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                           child: _AgriLearnCourseCard(
                             course: course,
                             onManage: () => context.push('/instructor/manage-course/${course.id}'),
+                            onSubmitForReview: () => _submitCourseForReview(course),
                             onViewLive: () {
                               final target = (course.slug != null && course.slug!.isNotEmpty) ? course.slug! : course.id;
                               if (target.isNotEmpty) {
@@ -1742,6 +1813,7 @@ class AgriLearnCourseCard extends ConsumerWidget {
     super.key,
     required this.course,
     required this.onManage,
+    this.onSubmitForReview,
     this.onViewLive,
     this.onDeactivate,
     this.onReactivate,
@@ -1750,6 +1822,7 @@ class AgriLearnCourseCard extends ConsumerWidget {
 
   final ApiCourseList course;
   final VoidCallback onManage;
+  final VoidCallback? onSubmitForReview;
   final VoidCallback? onViewLive;
   final VoidCallback? onDeactivate;
   final VoidCallback? onReactivate;
@@ -1944,6 +2017,27 @@ class AgriLearnCourseCard extends ConsumerWidget {
                         ),
                       ),
                     ),
+                    if ((status == 'DRAFT' || status == 'REJECTED') && onSubmitForReview != null)
+                      FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFF009688),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          elevation: 0,
+                        ),
+                        onPressed: onSubmitForReview,
+                        icon: const Icon(Icons.send_rounded, size: 13, color: Colors.white),
+                        label: Text(
+                          tr(ref, 'Submit for Review'),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
                     if (isLive && onViewLive != null)
                       OutlinedButton.icon(
                         style: OutlinedButton.styleFrom(
