@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../data/models/user_role.dart';
+import '../services/notification_service.dart';
 import '../../data/models/api_models/instructor_model.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/auth/screens/auth_success_screen.dart';
@@ -100,6 +101,26 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         final role = authState.user?.activeRole;
         
         if (isAuthRoute || isSplash) {
+          final pendingRoute = NotificationService.pendingLaunchRoute;
+          if (pendingRoute != null && pendingRoute.isNotEmpty) {
+            NotificationService.pendingLaunchRoute = null;
+            String resolvedRoute = pendingRoute;
+            if (role == UserRole.instructor || role == UserRole.admin) {
+              if (resolvedRoute.startsWith('/farmer/community')) {
+                resolvedRoute = resolvedRoute.replaceFirst('/farmer/community', RouteNames.instructorCommunity);
+              } else if (resolvedRoute == '/community' || resolvedRoute.startsWith('/community?')) {
+                resolvedRoute = resolvedRoute.replaceFirst('/community', RouteNames.instructorCommunity);
+              } else if (resolvedRoute.startsWith('/farmer/course')) {
+                resolvedRoute = RouteNames.instructorUploads;
+              }
+            } else {
+              if (resolvedRoute.startsWith('/instructor/community')) {
+                resolvedRoute = resolvedRoute.replaceFirst('/instructor/community', RouteNames.farmerCommunity);
+              }
+            }
+            return resolvedRoute;
+          }
+
           if (role == UserRole.instructor) {
             return RouteNames.instructorHome;
           } else {

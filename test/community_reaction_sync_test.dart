@@ -42,7 +42,7 @@ class TestCommunityPostsNotifier extends CommunityPostsNotifier {
   }
 
   @override
-  Future<void> fetchPosts({String? search, String? ordering}) async {}
+  Future<void> fetchPosts({String? search, String? ordering, bool silent = false}) async {}
 }
 
 void main() {

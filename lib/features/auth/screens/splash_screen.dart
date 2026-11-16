@@ -133,6 +133,12 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
             resolvedRoute = resolvedRoute.replaceFirst('/farmer/community', RouteNames.instructorCommunity);
           } else if (resolvedRoute == '/community' || resolvedRoute.startsWith('/community?')) {
             resolvedRoute = resolvedRoute.replaceFirst('/community', RouteNames.instructorCommunity);
+          } else if (resolvedRoute.startsWith('/farmer/course')) {
+            resolvedRoute = RouteNames.instructorUploads;
+          }
+        } else {
+          if (resolvedRoute.startsWith('/instructor/community')) {
+            resolvedRoute = resolvedRoute.replaceFirst('/instructor/community', RouteNames.farmerCommunity);
           }
         }
         context.go(resolvedRoute);

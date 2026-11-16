@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -57,9 +58,22 @@ class _PostCommentsBottomSheetState extends ConsumerState<PostCommentsBottomShee
   final _focusNode = FocusNode();
   bool _isSending = false;
   CommunityComment? _replyingToComment;
+  Timer? _pollingTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    // Poll comments every 5 seconds so live replies from other phones/users show automatically
+    _pollingTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (mounted) {
+        ref.read(postCommentsProvider(widget.postId).notifier).fetchComments(hubId: widget.hubId);
+      }
+    });
+  }
 
   @override
   void dispose() {
+    _pollingTimer?.cancel();
     _commentController.dispose();
     _focusNode.dispose();
     super.dispose();

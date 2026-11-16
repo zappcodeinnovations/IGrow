@@ -154,26 +154,22 @@ class NotificationService {
 
     String? targetRoute;
 
-    // Direct route payload
-    final route = data['route']?.toString() ?? data['screen']?.toString() ?? data['path']?.toString();
-    if (route != null && route.isNotEmpty) {
-      targetRoute = route;
-    }
+    final type = (data['type'] ?? data['entity_type'] ?? data['model'] ?? data['notification_type'] ?? '').toString().toUpperCase();
+    final rawScreen = (data['screen'] ?? data['route'] ?? data['path'] ?? '').toString().trim();
 
-    final type = (data['type'] ?? data['entity_type'] ?? data['model'] ?? '').toString().toLowerCase();
-
-    // Check for Q&A notification
-    if (targetRoute == null && (type.contains('qa') || type.contains('question') || data.containsKey('question_id'))) {
+    // 1. Check for Q&A notification (Student asked question or reply)
+    if (type.contains('QA') || type.contains('QUESTION') || data.containsKey('question_id') || rawScreen == 'qa') {
       targetRoute = '/instructor/qa';
     }
 
-    // Check for Community Post / Comment notification
-    final postId = data['post_id'] ?? data['postId'] ?? (type.contains('post') || type.contains('comment') ? (data['id'] ?? data['entity_id']) : null);
-    final isCommunity = type.contains('comment') ||
-        type.contains('post') ||
-        type.contains('community') ||
+    // 2. Check for Community Post / Comment notification
+    final postId = data['post_id'] ?? data['postId'] ?? (type.contains('POST') || type.contains('COMMENT') ? (data['id'] ?? data['entity_id']) : null);
+    final isCommunity = type.contains('COMMENT') ||
+        type.contains('POST') ||
+        type.contains('COMMUNITY') ||
         data.containsKey('post_id') ||
         data.containsKey('postId') ||
+        rawScreen == 'community' ||
         (data['title']?.toString().toLowerCase().contains('comment') ?? false) ||
         (data['body']?.toString().toLowerCase().contains('commented') ?? false);
 
@@ -183,23 +179,29 @@ class NotificationService {
           : '/community';
     }
 
-    // Check for Support Ticket notification
-    final isSupport = type.contains('ticket') || type.contains('support') || data.containsKey('ticket_id');
+    // 3. Check for Support Ticket notification
+    final isSupport = type.contains('TICKET') || type.contains('SUPPORT') || data.containsKey('ticket_id') || rawScreen == 'support_tickets';
     if (targetRoute == null && isSupport) {
       targetRoute = '/support?tab=my-tickets';
     }
 
-    // Check for Course notification
-    final courseId = data['course_id'] ?? data['courseId'] ?? data['course'] ?? data['course_slug'] ?? (type.contains('course') ? (data['id'] ?? data['entity_id']) : null);
-    if (targetRoute == null && courseId != null && courseId.toString().trim().isNotEmpty) {
-      targetRoute = '/farmer/course/${courseId.toString().trim()}';
+    // 4. Check for Course notification (Approval, Rejection, New Course, Announcement)
+    final courseId = data['course_id'] ?? data['courseId'] ?? data['course'] ?? data['course_slug'] ?? (type.contains('COURSE') ? (data['id'] ?? data['entity_id']) : null);
+    if (targetRoute == null && (type == 'COURSE_APPROVED' || type == 'APPROVED' || type == 'COURSE_REJECTED' || type == 'REJECTED' || type == 'PROCESSING' || rawScreen == 'instructor_courses')) {
+      targetRoute = RouteNames.instructorUploads;
+    } else if (targetRoute == null && courseId != null && courseId.toString().trim().isNotEmpty) {
+      if (rawScreen == 'course_player') {
+        targetRoute = '/farmer/course/${courseId.toString().trim()}';
+      } else {
+        targetRoute = '/farmer/course/${courseId.toString().trim()}';
+      }
     }
 
-    // Check for E-Book notification
-    final ebookId = data['ebook_id'] ?? data['ebookId'] ?? data['ebook'] ?? data['ebook_slug'] ?? (type.contains('ebook') ? (data['id'] ?? data['entity_id']) : null);
+    // 5. Check for E-Book notification
+    final ebookId = data['ebook_id'] ?? data['ebookId'] ?? data['ebook'] ?? data['ebook_slug'] ?? (type.contains('EBOOK') ? (data['id'] ?? data['entity_id']) : null);
     if (targetRoute == null && ebookId != null && ebookId.toString().trim().isNotEmpty) {
       targetRoute = '/farmer/ebook/${ebookId.toString().trim()}';
-    } else if (targetRoute == null && (type.contains('ebook') || (data['title']?.toString().toLowerCase().contains('ebook') ?? false))) {
+    } else if (targetRoute == null && (type.contains('EBOOK') || (data['title']?.toString().toLowerCase().contains('ebook') ?? false))) {
       final ebookTitle = data['ebook_title'] ?? data['title'];
       if (ebookTitle != null && ebookTitle.toString().trim().isNotEmpty) {
         var cleanTitle = ebookTitle.toString().replaceAll(RegExp(r'^(?:New\s+E-Book:\s*|New\s+Ebook:\s*)', caseSensitive: false), '').trim();
@@ -207,6 +209,22 @@ class NotificationService {
         targetRoute = '/explore?tab=ebooks&search=${Uri.encodeComponent(cleanTitle)}';
       } else {
         targetRoute = '/explore?tab=ebooks';
+      }
+    }
+
+    // 6. Check for Enrollment notifications
+    if (targetRoute == null && (type == 'NEW_ENROLLMENT' || type == 'NEW_EBOOK_SALE' || rawScreen == 'instructor_dashboard')) {
+      targetRoute = RouteNames.instructorHome;
+    } else if (targetRoute == null && (type == 'ENROLLMENT_SUCCESS' || rawScreen == 'my_learning')) {
+      targetRoute = RouteNames.farmerLearning;
+    }
+
+    // 7. Fallback to direct route if specifically provided and not just the generic 'notifications' string
+    if (targetRoute == null && rawScreen.isNotEmpty) {
+      if (rawScreen == 'notifications') {
+        targetRoute = RouteNames.notifications;
+      } else {
+        targetRoute = rawScreen.startsWith('/') ? rawScreen : '/$rawScreen';
       }
     }
 

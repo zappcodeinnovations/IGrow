@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:developer' as developer;
 import 'package:http/http.dart' as http;
 import '../../core/network/api_exception.dart';
 import '../../core/network/token_storage.dart';
@@ -517,7 +518,9 @@ class CommunityRepository {
   Future<List<CommunityComment>> getComments(String postId) async {
     try {
       final uri = Uri.parse('$baseUrl/posts/$postId/comments/');
-      final response = await http.get(uri, headers: await _getHeaders());
+      developer.log('Fetching comments: GET $uri', name: 'Community');
+      final response = await http.get(uri, headers: await _getHeaders()).timeout(const Duration(seconds: 15));
+      developer.log('Fetch comments response (${response.statusCode}): ${response.body}', name: 'Community');
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final data = jsonDecode(response.body);
         final results = data is List
@@ -532,7 +535,9 @@ class CommunityRepository {
             .map((json) => CommunityComment.fromJson(json))
             .toList();
       }
-    } catch (_) {}
+    } catch (e) {
+      developer.log('Error fetching comments: $e', name: 'Community');
+    }
     return [];
   }
 
@@ -553,18 +558,23 @@ class CommunityRepository {
 
     for (final url in endpoints) {
       try {
+        final uri = Uri.parse(url);
+        developer.log('Posting comment: POST $uri payload: ${jsonEncode(bodyData)}', name: 'Community');
         final response = await http.post(
-          Uri.parse(url),
+          uri,
           headers: await _getHeaders(),
           body: jsonEncode(bodyData),
-        );
+        ).timeout(const Duration(seconds: 15));
+        developer.log('Add comment response (${response.statusCode}): ${response.body}', name: 'Community');
         if (response.statusCode >= 200 && response.statusCode < 300) {
           final data = jsonDecode(response.body);
           if (data is Map<String, dynamic>) {
             return CommunityComment.fromJson(data);
           }
         }
-      } catch (_) {}
+      } catch (e) {
+        developer.log('Error posting comment to $url: $e', name: 'Community');
+      }
     }
 
     // Fallback synthesized response so UI never drops user input
