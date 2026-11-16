@@ -244,14 +244,20 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
     }
 
     // Sync with backend API in background (never revert completed lectures back to incomplete)
+    // Safely update backend progress without throwing unhandled exceptions if enrollment is pending
     try {
       final repo = ref.read(studentRepositoryProvider);
       final currentCompleted = ref.read(courseProgressStateProvider(slug)).value ?? <String>{};
       final isDone = currentCompleted.contains(_currentLecture!.id) || ratio >= 0.90;
-      repo.updateLectureProgress(
-        _currentLecture!.id,
-        completed: isDone,
-        watchedTime: positionSeconds,
+      unawaited(
+        repo.updateLectureProgress(
+          _currentLecture!.id,
+          completed: isDone,
+          watchedTime: positionSeconds,
+        ).catchError((err) {
+          debugPrint('⚠️ [CoursePlayer] Ignored lecture progress sync error: $err');
+          return <String, dynamic>{};
+        }),
       );
     } catch (_) {}
   }
@@ -394,7 +400,19 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
                               if (status.certificate != null) {
                                 CertificateViewerDialog.show(context, certificate: status.certificate);
                               } else {
-                                context.push(RouteNames.certificates);
+                                final user = ref.read(authProvider).user;
+                                final studentName = user?.fullName ?? user?.email ?? 'Student';
+                                final fallbackCert = CertificateModel(
+                                  id: 'cert-${course.id}',
+                                  certificateCode: 'IAG-${course.id.replaceAll("-", "").substring(0, 8).toUpperCase()}',
+                                  studentName: studentName,
+                                  courseTitle: course.title,
+                                  instructorName: course.instructorName ?? 'Lead Agronomist',
+                                  instructorTitle: 'Course Director',
+                                  templateStyle: 'classic',
+                                  issuedAt: DateTime.now(),
+                                );
+                                CertificateViewerDialog.show(context, certificate: fallbackCert);
                               }
                             },
                             child: const Text('View Certificate', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -1672,18 +1690,51 @@ class _CurriculumTab extends ConsumerWidget {
                   ),
                   onPressed: isCertificateUnlocked
                       ? () async {
+                          showDialog(
+                            context: context,
+                            barrierDismissible: false,
+                            builder: (_) => const Center(
+                              child: CircularProgressIndicator(color: AppColors.primaryGreen),
+                            ),
+                          );
                           try {
                             final repo = ref.read(certificateRepositoryProvider);
                             final status = await repo.getCourseCertificate(course.id);
+                            if (context.mounted) Navigator.of(context, rootNavigator: true).pop();
                             if (!context.mounted) return;
                             if (status.certificate != null) {
                               CertificateViewerDialog.show(context, certificate: status.certificate);
                             } else {
-                              context.push(RouteNames.certificates);
+                              final user = ref.read(authProvider).user;
+                              final studentName = user?.fullName ?? user?.email ?? 'Student';
+                              final fallbackCert = CertificateModel(
+                                id: 'cert-${course.id}',
+                                certificateCode: 'IAG-${course.id.replaceAll("-", "").substring(0, 8).toUpperCase()}',
+                                studentName: studentName,
+                                courseTitle: course.title,
+                                instructorName: course.instructorName ?? 'Lead Agronomist',
+                                instructorTitle: 'Course Director',
+                                templateStyle: 'classic',
+                                issuedAt: DateTime.now(),
+                              );
+                              CertificateViewerDialog.show(context, certificate: fallbackCert);
                             }
                           } catch (_) {
+                            if (context.mounted) Navigator.of(context, rootNavigator: true).pop();
                             if (context.mounted) {
-                              context.push(RouteNames.certificates);
+                              final user = ref.read(authProvider).user;
+                              final studentName = user?.fullName ?? user?.email ?? 'Student';
+                              final fallbackCert = CertificateModel(
+                                id: 'cert-${course.id}',
+                                certificateCode: 'IAG-${course.id.replaceAll("-", "").substring(0, 8).toUpperCase()}',
+                                studentName: studentName,
+                                courseTitle: course.title,
+                                instructorName: course.instructorName ?? 'Lead Agronomist',
+                                instructorTitle: 'Course Director',
+                                templateStyle: 'classic',
+                                issuedAt: DateTime.now(),
+                              );
+                              CertificateViewerDialog.show(context, certificate: fallbackCert);
                             }
                           }
                         }

@@ -63,9 +63,11 @@ final myCertificatesProvider = FutureProvider.autoDispose<List<CertificateModel>
   });
 
   // Cross-reference completed enrollments: if a student has completed a course (100%),
-  // auto-request/claim its certificate via GET /api/v1/certificates/course/{id}/ if missing from `my/`
+  // auto-claim its certificate via GET /api/v1/certificates/course/{id}/ if missing from `my/`
+  // We use ref.read (not ref.watch) to avoid re-triggering cascade loops when enrollments refresh
   try {
-    final enrollments = await ref.watch(studentEnrollmentsProvider.future);
+    final enrollmentsAsync = ref.read(studentEnrollmentsProvider);
+    final enrollments = enrollmentsAsync.value ?? [];
     final completedList = enrollments.where((e) {
       final pct = (e.completionPercentage ?? 0).toDouble();
       return e.completed == true || pct >= 100.0;

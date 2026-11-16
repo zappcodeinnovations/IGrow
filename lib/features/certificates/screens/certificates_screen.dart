@@ -318,9 +318,13 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                       children: [
                         const Icon(Icons.school_outlined, size: 14, color: AppColors.inkSoft),
                         const SizedBox(width: 4),
-                        Text(
-                          '${tr(ref, 'Instructor:')} ${cert.instructorName}',
-                          style: TextStyle(color: isDark ? Colors.white70 : AppColors.inkSoft, fontSize: 12),
+                        Expanded(
+                          child: Text(
+                            '${tr(ref, 'Instructor:')} ${cert.instructorName}',
+                            style: TextStyle(color: isDark ? Colors.white70 : AppColors.inkSoft, fontSize: 12),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       ],
                     ),
