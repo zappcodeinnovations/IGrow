@@ -605,6 +605,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final translatedLabel = tr(ref, label);
+    final searchInputController = TextEditingController();
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -612,7 +614,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       builder: (bottomSheetContext) {
         String searchQuery = '';
         return StatefulBuilder(
-          builder: (context, setModalState) {
+          builder: (modalContext, setModalState) {
             final filteredSuggestions = suggestions.where((item) {
               final query = searchQuery.toLowerCase().trim();
               if (query.isEmpty) return true;
@@ -624,16 +626,24 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             final hasCustomQuery = searchQuery.trim().isNotEmpty &&
                 !suggestions.any((s) => s.toLowerCase() == searchQuery.trim().toLowerCase());
 
+            void selectAndClose(String selectedValue) {
+              FocusScope.of(modalContext).unfocus();
+              setState(() {
+                controller.text = selectedValue;
+              });
+              Navigator.of(bottomSheetContext).pop();
+            }
+
             return Container(
               constraints: BoxConstraints(
-                maxHeight: MediaQuery.of(context).size.height * 0.75,
+                maxHeight: MediaQuery.of(modalContext).size.height * 0.75,
               ),
               decoration: BoxDecoration(
                 color: isDark ? const Color(0xFF1E2620) : Colors.white,
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
               ),
               padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+                bottom: MediaQuery.of(modalContext).viewInsets.bottom + 16,
               ),
               child: SafeArea(
                 top: false,
@@ -667,7 +677,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                           ),
                           IconButton(
                             icon: const Icon(Icons.close, size: 20),
-                            onPressed: () => Navigator.pop(context),
+                            onPressed: () => Navigator.of(bottomSheetContext).pop(),
                           ),
                         ],
                       ),
@@ -677,6 +687,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                       child: TextField(
+                        controller: searchInputController,
                         autofocus: false,
                         decoration: InputDecoration(
                           hintText: '${tr(ref, 'Search...')} ($translatedLabel)',
@@ -685,6 +696,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                               ? IconButton(
                                   icon: const Icon(Icons.clear, size: 18),
                                   onPressed: () {
+                                    searchInputController.clear();
                                     setModalState(() {
                                       searchQuery = '';
                                     });
@@ -713,20 +725,16 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                     Flexible(
                       child: ListView(
                         shrinkWrap: true,
+                        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                         children: [
                           if (hasCustomQuery)
                             ListTile(
                               leading: const Icon(Icons.add_circle_outline, color: AppColors.editorialSecondary),
                               title: Text(
-                                '${tr(ref, 'Use')} "$searchQuery"',
+                                '${tr(ref, 'Use')} "${searchQuery.trim()}"',
                                 style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.editorialSecondary),
                               ),
-                              onTap: () {
-                                setState(() {
-                                  controller.text = searchQuery.trim();
-                                });
-                                Navigator.pop(context);
-                              },
+                              onTap: () => selectAndClose(searchQuery.trim()),
                             ),
                           if (filteredSuggestions.isEmpty && !hasCustomQuery)
                             Padding(
@@ -751,12 +759,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                 trailing: isSelected
                                     ? const Icon(Icons.check_circle, color: AppColors.editorialSecondary, size: 20)
                                     : null,
-                                onTap: () {
-                                  setState(() {
-                                    controller.text = item;
-                                  });
-                                  Navigator.pop(context);
-                                },
+                                onTap: () => selectAndClose(item),
                               );
                             }),
                         ],
@@ -780,7 +783,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   }) {
     final translatedLabel = tr(ref, label);
     final translatedHint = hintText != null ? tr(ref, hintText) : null;
-    final displayValue = controller.text.isNotEmpty ? tr(ref, controller.text) : '';
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: InkWell(
@@ -789,7 +791,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         child: IgnorePointer(
           child: TextFormField(
             key: ValueKey('${controller.text}_${ref.watch(languageProvider)}'),
-            initialValue: displayValue,
+            controller: controller,
             decoration: InputDecoration(
               labelText: translatedLabel,
               hintText: translatedHint,
