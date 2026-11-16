@@ -2246,7 +2246,7 @@ class _CourseQaTabState extends ConsumerState<_CourseQaTab> {
                                 decoration: BoxDecoration(
                                   color: isInst
                                       ? AppColors.primaryGreen.withValues(alpha: 0.08)
-                                      : (isDark ? Colors.white10 : AppColors.cardLight),
+                                      : (isDark ? Colors.white10 : AppColors.bgLight),
                                   borderRadius: BorderRadius.circular(8),
                                   border: Border.all(
                                     color: isInst
