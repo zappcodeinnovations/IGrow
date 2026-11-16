@@ -18,7 +18,7 @@ class DiscountBannerNotifier extends StateNotifier<AsyncValue<DiscountBannerMode
   Future<void> fetchActiveBanner() async {
     try {
       final response = await http.get(
-        Uri.parse('https://iagrow.zappcode.in/api/v1/support/app-config/'),
+        Uri.parse('https://iagrow.zappcode.in/api/v1/auth/system-settings/'),
         headers: {'Accept': 'application/json'},
       ).timeout(const Duration(seconds: 10));
 
@@ -33,7 +33,10 @@ class DiscountBannerNotifier extends StateNotifier<AsyncValue<DiscountBannerMode
               .toList();
 
           if (activeList.isNotEmpty) {
-            final latest = activeList.last;
+            final latest = activeList.firstWhere(
+              (b) => b.active,
+              orElse: () => activeList.last,
+            );
             final prefs = await SharedPreferences.getInstance();
             final isDismissed = prefs.getBool('$_dismissedPrefix${latest.id}') ?? false;
 
