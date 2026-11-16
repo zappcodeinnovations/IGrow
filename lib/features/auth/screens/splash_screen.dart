@@ -10,6 +10,7 @@ import '../../../core/services/app_config_service.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/services/version_service.dart';
 import '../../../core/widgets/app_update_dialog.dart';
+import '../../../data/models/user_role.dart';
 import '../providers/auth_provider.dart';
 
 /// Splash screen with canopy gradient and auto-navigation.
@@ -123,7 +124,18 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       if (pendingRoute != null && pendingRoute.isNotEmpty) {
         NotificationService.pendingLaunchRoute = null;
         debugPrint('🚀 [SplashScreen] Fulfilling pending notification launch route: $pendingRoute');
-        context.go(pendingRoute);
+
+        // Check if pending route is role-specific and needs conversion for instructor
+        final role = authState.user?.activeRole;
+        String resolvedRoute = pendingRoute;
+        if (role == UserRole.instructor || role == UserRole.admin) {
+          if (resolvedRoute.startsWith('/farmer/community')) {
+            resolvedRoute = resolvedRoute.replaceFirst('/farmer/community', RouteNames.instructorCommunity);
+          } else if (resolvedRoute == '/community' || resolvedRoute.startsWith('/community?')) {
+            resolvedRoute = resolvedRoute.replaceFirst('/community', RouteNames.instructorCommunity);
+          }
+        }
+        context.go(resolvedRoute);
         return;
       }
       // Go to the correct home based on role (router handles this via redirect).

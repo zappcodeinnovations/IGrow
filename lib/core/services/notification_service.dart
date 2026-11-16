@@ -178,8 +178,8 @@ class NotificationService {
 
     if (targetRoute == null && isCommunity) {
       targetRoute = postId != null && postId.toString().isNotEmpty
-          ? '/farmer/community?postId=${postId.toString()}'
-          : '/farmer/community';
+          ? '/community?postId=${postId.toString()}'
+          : '/community';
     }
 
     // Check for Support Ticket notification
@@ -444,6 +444,29 @@ class NotificationService {
           print('🔔 FCM Initial Message opened from terminated state: ${message.data}');
         }
         onNotificationClick?.call(message);
+      }
+    });
+
+    // 4. Also check FlutterLocalNotifications launch details (for iOS notification center cold launch)
+    _localNotifications.getNotificationAppLaunchDetails().then((NotificationAppLaunchDetails? details) {
+      if (details != null && details.didNotificationLaunchApp) {
+        final payload = details.notificationResponse?.payload;
+        if (payload != null && payload.isNotEmpty && !payload.endsWith('.pdf')) {
+          try {
+            Map<String, dynamic> data = {};
+            if (payload.startsWith('{') && payload.endsWith('}')) {
+              data = jsonDecode(payload);
+            }
+            if (kDebugMode) {
+              print('🔔 Local Notification launched app from terminated state: $data');
+            }
+            NotificationService.handleNotificationTap(data);
+          } catch (e) {
+            if (kDebugMode) {
+              print('⚠️ Error parsing local notification launch payload: $e');
+            }
+          }
+        }
       }
     });
   }

@@ -405,6 +405,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const CreateHubScreen(),
       ),
       GoRoute(
+        path: '/community',
+        redirect: (context, state) {
+          final authState = ref.read(authProvider);
+          final role = authState.user?.activeRole;
+          final query = state.uri.query.isNotEmpty ? '?${state.uri.query}' : '';
+          if (role == UserRole.instructor || role == UserRole.admin) {
+            return '${RouteNames.instructorCommunity}$query';
+          }
+          return '${RouteNames.farmerCommunity}$query';
+        },
+      ),
+      GoRoute(
         path: RouteNames.notifications,
         builder: (context, state) => const NotificationsScreen(),
       ),

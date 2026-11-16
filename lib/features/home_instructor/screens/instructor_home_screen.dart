@@ -19,6 +19,7 @@ import '../../certificates/providers/certificates_provider.dart';
 import '../../notifications/providers/notification_provider.dart';
 import '../../../core/widgets/shimmer_placeholders.dart';
 import '../../instructor_dashboard/widgets/my_students_sheet.dart';
+import '../../../core/services/app_config_service.dart';
 
 class InstructorHomeScreen extends ConsumerStatefulWidget {
   const InstructorHomeScreen({super.key});
@@ -627,6 +628,202 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
             backgroundColor: AppColors.error,
           ),
         );
+      }
+    }
+  }
+
+  Future<void> _submitEBookForReview(dynamic ebook) async {
+    final ebookId = ebook.id?.toString();
+    final ebookTitle = ebook.title?.toString() ?? 'this draft e-book';
+    if (ebookId == null || ebookId.isEmpty) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: Text(tr(ref, 'Send for Review')),
+        content: Text(
+          '${tr(ref, 'Are you sure you want to submit')} "$ebookTitle" ${tr(ref, 'for admin review? Once approved, it will be published and visible to all students.')}',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(c, false),
+            child: Text(tr(ref, 'Cancel')),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.primaryGreen),
+            onPressed: () => Navigator.pop(c, true),
+            child: Text(tr(ref, 'Send for Review')),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await ref.read(instructorRepositoryProvider).submitEBook(ebookId);
+        if (!mounted) return;
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.clearSnackBars();
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(tr(ref, 'E-book submitted for review successfully')),
+            backgroundColor: AppColors.primaryGreen,
+          ),
+        );
+        ref.invalidate(instructorEbooksProvider);
+        ref.invalidate(studentEbooksProvider);
+        ref.invalidate(instructorStatsProvider);
+      } catch (e) {
+        if (!mounted) return;
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.clearSnackBars();
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _editEBookPrice(dynamic ebook) async {
+    final ebookId = ebook.id?.toString();
+    if (ebookId == null || ebookId.isEmpty) return;
+
+    final currentPrice = (ebook.price ?? '0').toString().replaceAll('₹', '').trim();
+    final priceController = TextEditingController(text: currentPrice == '0.00' ? '0' : currentPrice);
+
+    final config = ref.read(appConfigProvider);
+    final allowsCustomPrice = config.allowsCustomCoursePrice;
+    String selectedTier = const ['0', '249', '499', '999', '1499'].contains(currentPrice)
+        ? currentPrice
+        : '0';
+
+    final newPrice = await showDialog<String>(
+      context: context,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryGreen.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.currency_rupee, color: AppColors.primaryGreen, size: 20),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text(
+                  'Edit E-Book Price',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Set pricing for "${ebook.title ?? 'E-Book'}". Enter 0 to offer this e-book for free to learners.',
+                style: const TextStyle(fontSize: 13, color: AppColors.inkSoft),
+              ),
+              const SizedBox(height: 16),
+              if (allowsCustomPrice)
+                TextField(
+                  controller: priceController,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    prefixIcon: const Icon(Icons.currency_rupee, size: 18),
+                    labelText: 'Price (₹)',
+                    hintText: 'e.g. 299',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                )
+              else
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: ['0', '249', '499', '999', '1499'].map((tier) {
+                    final isSel = selectedTier == tier;
+                    return ChoiceChip(
+                      label: Text(tier == '0' ? 'FREE' : '₹$tier'),
+                      selected: isSel,
+                      selectedColor: AppColors.primaryGreen,
+                      labelStyle: TextStyle(
+                        color: isSel ? Colors.white : AppColors.inkDark,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      onSelected: (_) => setDialogState(() => selectedTier = tier),
+                    );
+                  }).toList(),
+                ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx),
+              child: Text(tr(ref, 'Cancel')),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primaryGreen,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: () {
+                final val = allowsCustomPrice ? priceController.text.trim() : selectedTier;
+                Navigator.pop(dialogCtx, val);
+              },
+              child: Text(tr(ref, 'Save Price')),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (newPrice != null) {
+      final parsed = double.tryParse(newPrice);
+      if (parsed == null || parsed < 0) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Please enter a valid price (>= 0)'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+        return;
+      }
+
+      try {
+        final formatted = parsed.toStringAsFixed(2);
+        await ref.read(instructorRepositoryProvider).updateEBook(ebookId, {
+          'price': formatted,
+        });
+        ref.invalidate(instructorEbooksProvider);
+        ref.invalidate(studentEbooksProvider);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Price updated to ₹$formatted'),
+              backgroundColor: AppColors.primaryGreen,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(e.toString().replaceAll('Exception: ', '')),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
       }
     }
   }
@@ -1296,6 +1493,8 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                                 context.push('/farmer/ebook/${ebook.id}');
                               }
                             },
+                            onEdit: () => _editEBookPrice(ebook),
+                            onSubmitForReview: () => _submitEBookForReview(ebook),
                             onDelete: () => _deleteEBook(ebook),
                           ),
                         );
@@ -1823,12 +2022,16 @@ class _AgriLearnEbookCard extends ConsumerWidget {
     required this.ebook,
     this.onTap,
     this.onViewLive,
+    this.onEdit,
+    this.onSubmitForReview,
     this.onDelete,
   });
 
   final dynamic ebook;
   final VoidCallback? onTap;
   final VoidCallback? onViewLive;
+  final VoidCallback? onEdit;
+  final VoidCallback? onSubmitForReview;
   final VoidCallback? onDelete;
 
   String _resolveStatus(dynamic statusObj) {
@@ -1846,6 +2049,8 @@ class _AgriLearnEbookCard extends ConsumerWidget {
     final hasCover = ebook.coverImage != null && ebook.coverImage.toString().trim().isNotEmpty;
     final status = _resolveStatus(ebook.status);
     final isLive = status == 'APPROVED';
+    final isDraft = status == 'DRAFT';
+    final isReview = status == 'REVIEW';
 
     Color badgeBg;
     Color badgeText;
@@ -2004,10 +2209,15 @@ class _AgriLearnEbookCard extends ConsumerWidget {
             ],
           ),
 
-          // Action Buttons: [View in Library] or [Delete] for Drafts
-          if ((isLive && onViewLive != null) || (!isLive && onDelete != null)) ...[
+          // Action Buttons:
+          // Draft: [Edit] [Send for Review] [Delete]
+          // Under Review: [Delete] (Send for Review hidden)
+          // Live: [View in Library]
+          if (isLive || isDraft || isReview || onDelete != null) ...[
             const SizedBox(height: 12),
-            Row(
+            Wrap(
+              spacing: 8,
+              runSpacing: 6,
               children: [
                 if (isLive && onViewLive != null)
                   OutlinedButton.icon(
@@ -2025,6 +2235,44 @@ class _AgriLearnEbookCard extends ConsumerWidget {
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
                         color: Colors.teal.shade700,
+                      ),
+                    ),
+                  ),
+                if (!isLive && onEdit != null)
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      side: const BorderSide(color: AppColors.primaryGreen),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    onPressed: onEdit,
+                    icon: const Icon(Icons.edit_outlined, size: 14, color: AppColors.primaryGreen),
+                    label: Text(
+                      tr(ref, 'Edit'),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primaryGreen,
+                      ),
+                    ),
+                  ),
+                if (isDraft && onSubmitForReview != null)
+                  FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primaryGreen,
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    onPressed: onSubmitForReview,
+                    icon: const Icon(Icons.send_rounded, size: 13, color: Colors.white),
+                    label: Text(
+                      tr(ref, 'Send for Review'),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
                       ),
                     ),
                   ),
