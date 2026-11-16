@@ -24,10 +24,18 @@ final instructorTransactionsProvider = FutureProvider<List<Map<String, dynamic>>
   return await repo.getTransactions();
 });
 
-/// Provider for fetching the instructor's pending Q&A questions.
+typedef InstructorQaQuery = ({String status, String courseId});
+
+/// Provider for fetching the instructor's Q&A questions with filters.
+final instructorQaFilteredProvider = FutureProvider.autoDispose.family<List<Map<String, dynamic>>, InstructorQaQuery>((ref, query) async {
+  final repo = ref.watch(instructorRepositoryProvider);
+  return await repo.getQuestions(status: query.status, courseId: query.courseId);
+});
+
+/// Backward-compatible provider for fetching the instructor's pending Q&A questions.
 final instructorQaProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
   final repo = ref.watch(instructorRepositoryProvider);
-  return await repo.getQuestions();
+  return await repo.getQuestions(status: 'ALL');
 });
 
 typedef InstructorCoursesQuery = ({String search, String ordering});

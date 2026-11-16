@@ -2110,9 +2110,13 @@ class _CourseQaTabState extends ConsumerState<_CourseQaTab> {
                 itemBuilder: (context, index) {
                   final q = questions[index];
                   final answer = q['answer'] ?? q['answer_text'];
-                  final studentName = q['student_name'] ?? 'Student';
-                  final questionText = q['question'] ?? q['question_text'] ?? '';
+                  final studentName = q['user_name'] ?? q['student_name'] ?? 'Student';
+                  final questionText = q['question_text'] ?? q['question'] ?? '';
                   final questionId = q['id']?.toString();
+                  final rawAnswers = q['answers'];
+                  final answersList = (rawAnswers is List)
+                      ? rawAnswers.whereType<Map<String, dynamic>>().toList()
+                      : <Map<String, dynamic>>[];
 
                   return Card(
                     margin: const EdgeInsets.only(bottom: 12),
@@ -2229,8 +2233,59 @@ class _CourseQaTabState extends ConsumerState<_CourseQaTab> {
                             questionText,
                             style: const TextStyle(fontSize: 14),
                           ),
-                          if (answer != null &&
-                              answer.toString().trim().isNotEmpty) ...[
+                          // Threaded Answers List
+                          if (answersList.isNotEmpty) ...[
+                            const SizedBox(height: 12),
+                            ...answersList.map((ans) {
+                              final ansUser = ans['user_name'] ?? (ans['is_instructor_answer'] == true ? 'Guide' : 'Member');
+                              final ansText = ans['answer_text'] ?? '';
+                              final isInst = ans['is_instructor_answer'] == true;
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 8),
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: isInst
+                                      ? AppColors.primaryGreen.withValues(alpha: 0.08)
+                                      : (isDark ? Colors.white10 : AppColors.cardLight),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: isInst
+                                        ? AppColors.primaryGreen.withValues(alpha: 0.25)
+                                        : (isDark ? AppColors.lineDark : AppColors.lineLight),
+                                  ),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        if (isInst) ...[
+                                          const Icon(Icons.verified, size: 15, color: AppColors.primaryGreen),
+                                          const SizedBox(width: 5),
+                                        ],
+                                        Text(
+                                          ansUser,
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 12,
+                                            color: isInst ? AppColors.primaryGreen : (isDark ? Colors.white : AppColors.inkDark),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      ansText.toString(),
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: isDark ? Colors.white70 : AppColors.inkDark,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }),
+                          ] else if (answer != null && answer.toString().trim().isNotEmpty) ...[
                             const SizedBox(height: 12),
                             Container(
                               padding: const EdgeInsets.all(12),
@@ -2238,8 +2293,7 @@ class _CourseQaTabState extends ConsumerState<_CourseQaTab> {
                                 color: AppColors.primaryGreen.withValues(alpha: 0.08),
                                 borderRadius: BorderRadius.circular(8),
                                 border: Border.all(
-                                  color:
-                                      AppColors.primaryGreen.withValues(alpha: 0.25),
+                                  color: AppColors.primaryGreen.withValues(alpha: 0.25),
                                 ),
                               ),
                               child: Column(
@@ -2247,9 +2301,7 @@ class _CourseQaTabState extends ConsumerState<_CourseQaTab> {
                                 children: [
                                   const Row(
                                     children: [
-                                      Icon(Icons.verified,
-                                          size: 16,
-                                          color: AppColors.primaryGreen),
+                                      Icon(Icons.verified, size: 16, color: AppColors.primaryGreen),
                                       SizedBox(width: 6),
                                       Text(
                                         'Instructor Answer',
@@ -2266,9 +2318,7 @@ class _CourseQaTabState extends ConsumerState<_CourseQaTab> {
                                     answer.toString(),
                                     style: TextStyle(
                                       fontSize: 13,
-                                      color: isDark
-                                          ? Colors.white70
-                                          : AppColors.inkDark,
+                                      color: isDark ? Colors.white70 : AppColors.inkDark,
                                     ),
                                   ),
                                 ],

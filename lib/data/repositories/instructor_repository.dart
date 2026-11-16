@@ -893,8 +893,35 @@ class InstructorRepository {
 
   // ── Q&A ─────────────────────────────────────────────────────────
 
-  /// Fetch pending questions.
-  Future<List<Map<String, dynamic>>> getQuestions() async {
+  /// Fetch questions with status filter ('UNRESOLVED' | 'RESOLVED' | 'ALL') and optional courseId.
+  Future<List<Map<String, dynamic>>> getQuestions({
+    String status = 'ALL',
+    String? courseId,
+  }) async {
+    final token = await tokenStorage.getAccessToken();
+    final queryParams = <String, String>{
+      'status': status,
+      if (courseId != null && courseId.isNotEmpty && courseId != 'ALL') 'course_id': courseId,
+    };
+    final uri = Uri.https('iagrow.zappcode.in', '/api/v1/instructor/qa/', queryParams);
+    try {
+      final response = await http.get(
+        uri,
+        headers: {
+          if (token != null) 'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      );
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+        if (decoded is List) {
+          return decoded.whereType<Map<String, dynamic>>().toList();
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ [InstructorRepository] getQuestions HTTP failed: $e');
+    }
+
     final response = await appApi.apiV1InstructorQaGet();
     final dynamic data = response.body;
     if (data is List) {
@@ -904,7 +931,7 @@ class InstructorRepository {
   }
 
   /// Answer a question.
-  Future<void> answerQuestion(String questionId, String answer) async {
+  Future<Map<String, dynamic>> answerQuestion(String questionId, String answer) async {
     final token = await tokenStorage.getAccessToken();
     final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/instructor/qa/$questionId/answer/');
     final rawResponse = await http.post(
@@ -920,6 +947,50 @@ class InstructorRepository {
     );
     if (rawResponse.statusCode >= 300) {
       throw Exception('Failed to answer question: ${rawResponse.body}');
+    }
+    try {
+      final decoded = jsonDecode(utf8.decode(rawResponse.bodyBytes));
+      if (decoded is Map<String, dynamic>) return decoded;
+    } catch (_) {}
+    return {};
+  }
+
+  /// Update an existing instructor reply.
+  Future<Map<String, dynamic>> updateInstructorAnswer(String answerId, String answer) async {
+    final token = await tokenStorage.getAccessToken();
+    final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/instructor/qa/answers/$answerId/');
+    final rawResponse = await http.patch(
+      uri,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'answer_text': answer,
+      }),
+    );
+    if (rawResponse.statusCode >= 300) {
+      throw Exception('Failed to update answer: ${rawResponse.body}');
+    }
+    try {
+      final decoded = jsonDecode(utf8.decode(rawResponse.bodyBytes));
+      if (decoded is Map<String, dynamic>) return decoded;
+    } catch (_) {}
+    return {};
+  }
+
+  /// Delete an instructor reply.
+  Future<void> deleteInstructorAnswer(String answerId) async {
+    final token = await tokenStorage.getAccessToken();
+    final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/instructor/qa/answers/$answerId/');
+    final rawResponse = await http.delete(
+      uri,
+      headers: {
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (rawResponse.statusCode >= 300) {
+      throw Exception('Failed to delete answer: ${rawResponse.body}');
     }
   }
 

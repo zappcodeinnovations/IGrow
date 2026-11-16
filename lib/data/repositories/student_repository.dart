@@ -533,6 +533,30 @@ class StudentRepository {
     }
   }
 
+  /// Reply to a course Q&A question (peers & instructor).
+  Future<Map<String, dynamic>> replyQaQuestion(String questionId, String answerText) async {
+    final token = await tokenStorage.getAccessToken();
+    final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/progress/qa/$questionId/reply/');
+    final response = await http.post(
+      uri,
+      headers: {
+        if (token != null) 'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'answer_text': answerText,
+      }),
+    );
+    if (response.statusCode >= 300) {
+      throw Exception('Failed to reply to question: ${response.body}');
+    }
+    try {
+      final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+      if (decoded is Map<String, dynamic>) return decoded;
+    } catch (_) {}
+    return {};
+  }
+
   // ── Notes ───────────────────────────────────────────────────────
 
   /// Get private notes for a course.

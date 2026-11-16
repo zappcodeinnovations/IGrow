@@ -103,9 +103,16 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
           final title = n.title.toLowerCase();
           final msg = n.message.toLowerCase();
           return t.contains('QA') ||
+              t.contains('QUESTION') ||
+              t.contains('ANSWER') ||
+              t.contains('REPLY') ||
               title.contains('q&a') ||
               title.contains('question') ||
               title.contains('answer') ||
+              title.contains('doubt') ||
+              title.contains('inquiry') ||
+              msg.contains('question') ||
+              msg.contains('answer') ||
               msg.contains('replied');
         }).toList();
       case 0: // All
@@ -438,20 +445,39 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                   final filtered = _filterNotifications(allNotifications, _activeFilterIndex);
 
                   if (filtered.isEmpty) {
+                    final isQaTab = _activeFilterIndex == 3;
                     return ListView(
                       children: [
-                        const SizedBox(height: 100),
+                        const SizedBox(height: 80),
                         EmptyState(
                           icon: _activeFilterIndex == 1
                               ? Icons.mark_chat_read_outlined
-                              : Icons.notifications_off_outlined,
+                              : (isQaTab ? Icons.question_answer_outlined : Icons.notifications_off_outlined),
                           title: _activeFilterIndex == 1
                               ? 'No Unread Notifications'
-                              : 'No Notifications Found',
+                              : (isQaTab ? 'No Q&A Notifications' : 'No Notifications Found'),
                           subtitle: _activeFilterIndex == 1
                               ? 'You are all caught up! Great job.'
-                              : 'New course updates, announcements, and Q&A replies will appear here.',
+                              : (isQaTab
+                                  ? 'When students ask questions in your courses, alerts will show here.'
+                                  : 'New course updates, announcements, and Q&A replies will appear here.'),
                         ),
+                        if (isQaTab) ...[
+                          const SizedBox(height: 18),
+                          Center(
+                            child: ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primaryGreen,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                              ),
+                              icon: const Icon(Icons.forum_outlined, size: 18),
+                              label: const Text('Open Q&A Forum', style: TextStyle(fontWeight: FontWeight.bold)),
+                              onPressed: () => context.push('/instructor/qa'),
+                            ),
+                          ),
+                        ],
                       ],
                     );
                   }
