@@ -715,6 +715,33 @@ class _InstructorStateB extends ConsumerWidget {
                           ],
                         ),
 
+                        if (hub.description.trim().isNotEmpty) ...[
+                          const SizedBox(height: 10),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? Colors.white.withValues(alpha: 0.04)
+                                  : AppColors.primaryGreen.withValues(alpha: 0.05),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: isDark
+                                    ? Colors.white.withValues(alpha: 0.06)
+                                    : AppColors.primaryGreen.withValues(alpha: 0.12),
+                              ),
+                            ),
+                            child: Text(
+                              hub.description.trim(),
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                height: 1.4,
+                                color: isDark ? Colors.white.withValues(alpha: 0.85) : AppColors.inkDark,
+                              ),
+                            ),
+                          ),
+                        ],
+
                         const SizedBox(height: 12),
                         Divider(
                           height: 1,
@@ -1849,6 +1876,19 @@ class _CommunityCard extends ConsumerWidget {
                     ),
                   ],
                 ),
+            if (hub.description.trim().isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Text(
+                hub.description.trim(),
+                style: TextStyle(
+                  fontSize: 13,
+                  height: 1.4,
+                  color: isDark ? Colors.white.withValues(alpha: 0.8) : AppColors.inkSoft,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
             const SizedBox(height: 12),
 
             // Badges: Location & Farming Topics

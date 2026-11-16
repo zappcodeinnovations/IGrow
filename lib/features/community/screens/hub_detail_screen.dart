@@ -588,6 +588,56 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                   ),
                 ),
 
+                // ─── Community Description Banner ─────────────────
+                if (hub.description.trim().isNotEmpty)
+                  SliverToBoxAdapter(
+                    child: Container(
+                      margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF18261E) : Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isDark ? const Color(0xFF2C3E32) : const Color(0xFFE2EBE0),
+                          width: 1.2,
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.info_outline_rounded,
+                                size: 16,
+                                color: isDark ? const Color(0xFF86EFAC) : AppColors.primaryGreen,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                tr(ref, 'About Community'),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.3,
+                                  color: isDark ? const Color(0xFF86EFAC) : AppColors.primaryGreen,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            hub.description.trim(),
+                            style: TextStyle(
+                              fontSize: 13,
+                              height: 1.45,
+                              color: isDark ? Colors.white70 : AppColors.inkDark,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
                 // ─── If Instructor, Quick Post Bar ─────────────────
                 if (isAuthorOrInstructor)
                   SliverToBoxAdapter(
