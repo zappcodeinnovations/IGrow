@@ -452,7 +452,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       // ─── Shell Router (Bottom Navigation) ────────────────────────────
       ShellRoute(
         navigatorKey: shellNavigatorKey,
-        observers: [appRouteObserver],
         builder: (context, state, child) {
           return ShellScaffold(child: child);
         },
