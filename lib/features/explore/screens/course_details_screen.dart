@@ -3060,11 +3060,6 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen>
                     ],
                   ),
                 ),
-                Icon(
-                  Icons.chevron_right_rounded,
-                  size: 20,
-                  color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
-                ),
               ],
             ),
           ),
