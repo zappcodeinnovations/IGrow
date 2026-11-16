@@ -684,6 +684,40 @@ class _InstructorStateB extends ConsumerWidget {
                                           ),
                                         ),
                                       ],
+                                      const SizedBox(width: 6),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: hub.isPrivate
+                                              ? Colors.amber.withValues(alpha: isDark ? 0.2 : 0.1)
+                                              : AppColors.primaryGreen.withValues(alpha: isDark ? 0.2 : 0.1),
+                                          borderRadius: BorderRadius.circular(6),
+                                          border: Border.all(
+                                            color: hub.isPrivate
+                                                ? Colors.amber.withValues(alpha: 0.4)
+                                                : AppColors.primaryGreen.withValues(alpha: 0.4),
+                                          ),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(
+                                              hub.isPrivate ? Icons.lock_outline_rounded : Icons.public_rounded,
+                                              size: 11,
+                                              color: hub.isPrivate ? Colors.amber : AppColors.primaryGreen,
+                                            ),
+                                            const SizedBox(width: 3),
+                                            Text(
+                                              hub.isPrivate ? 'Private' : 'Public',
+                                              style: TextStyle(
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.bold,
+                                                color: hub.isPrivate ? Colors.amber : AppColors.primaryGreen,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
                                     ],
                                   ),
                                   const SizedBox(height: 4),
