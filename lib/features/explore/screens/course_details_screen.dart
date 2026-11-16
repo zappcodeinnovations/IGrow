@@ -24,6 +24,7 @@ import '../../home_farmer/providers/student_provider.dart';
 import '../../wishlist/providers/wishlist_provider.dart';
 import '../providers/explore_provider.dart';
 import '../widgets/course_review_modal.dart';
+import 'course_player_screen.dart' show resolveQualityStreamUrl;
 
 /// Agrilearn Live Course View (Public Landing & Details Screen)
 /// Matches Agrilearn website layout:
@@ -222,6 +223,8 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen>
   Duration? _activePreviewLimit;
   bool _isAddingToCart = false;
   bool _isTogglingWishlist = false;
+  String _selectedQuality = 'Auto';
+  String? _activeBaseStreamUrl;
 
   // Track expanded state for sections
   final Map<String, bool> _sectionExpanded = {};
@@ -429,13 +432,15 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen>
           bunnyId: bunnyId,
           authToken: token,
         );
+        _activeBaseStreamUrl = resolved.primaryUrl;
+        final effectiveUrl = resolveQualityStreamUrl(resolved.primaryUrl, _selectedQuality);
 
         bool initialized = false;
 
         // Attempt 1: Primary Stream URL with headers
         try {
           _videoPlayerController = VideoPlayerController.networkUrl(
-            Uri.parse(resolved.primaryUrl),
+            Uri.parse(effectiveUrl),
             httpHeaders: resolved.headers,
           );
           await _videoPlayerController!.initialize().timeout(
@@ -502,6 +507,23 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen>
         allowFullScreen: true,
         allowMuting: true,
         showControls: true,
+        showOptions: true,
+        additionalOptions: (context) {
+          if (_activeBaseStreamUrl == null || !_activeBaseStreamUrl!.startsWith('http')) {
+            return [];
+          }
+          return [
+            OptionItem(
+              onTap: (ctx) {
+                Navigator.of(ctx).pop();
+                _showMainQualitySelectionSheet(context);
+              },
+              iconData: Icons.tune_rounded,
+              title: 'Quality',
+              subtitle: _selectedQuality,
+            ),
+          ];
+        },
         materialProgressColors: ChewieProgressColors(
           playedColor: AppColors.primaryGreen,
           handleColor: AppColors.primaryGreen,
@@ -565,6 +587,289 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen>
             ),
             backgroundColor: Colors.red.shade700,
             duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
+  void _showMainQualitySelectionSheet(BuildContext sheetContext) {
+    final isDark = Theme.of(sheetContext).brightness == Brightness.dark;
+
+    final qualities = [
+      {
+        'value': 'Auto',
+        'title': 'Auto (Recommended)',
+        'desc': 'Adjusts resolution dynamically based on network',
+        'icon': Icons.auto_awesome_rounded,
+      },
+      {
+        'value': '480p',
+        'title': '480p (High)',
+        'desc': 'Clear picture quality, best on Wi-Fi',
+        'icon': Icons.hd_outlined,
+      },
+      {
+        'value': '360p',
+        'title': '360p (Standard)',
+        'desc': 'Balanced video quality & data usage',
+        'icon': Icons.smart_display_outlined,
+      },
+      {
+        'value': '240p',
+        'title': '240p (Data Saver)',
+        'desc': 'Lowest data usage, suitable for weak cellular',
+        'icon': Icons.data_saver_on_outlined,
+      },
+    ];
+
+    showModalBottomSheet(
+      context: sheetContext,
+      useRootNavigator: true,
+      backgroundColor: isDark ? AppColors.cardDark : AppColors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.tune_rounded,
+                            color: AppColors.primaryGreen, size: 22),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Video Playback Quality',
+                          style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
+                      ],
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded, size: 20),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                ...qualities.map((item) {
+                  final value = item['value'] as String;
+                  final isSelected = _selectedQuality == value;
+                  return InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      if (!isSelected) {
+                        _changeMainVideoQuality(value);
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 12, horizontal: 12),
+                      margin: const EdgeInsets.symmetric(vertical: 4),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? AppColors.primaryGreen.withValues(alpha: 0.1)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(12),
+                        border: isSelected
+                            ? Border.all(
+                                color: AppColors.primaryGreen
+                                    .withValues(alpha: 0.3))
+                            : null,
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            item['icon'] as IconData,
+                            size: 20,
+                            color: isSelected
+                                ? AppColors.primaryGreen
+                                : AppColors.inkSoft,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  item['title'] as String,
+                                  style: Theme.of(ctx)
+                                      .textTheme
+                                      .bodyMedium
+                                      ?.copyWith(
+                                        fontWeight: isSelected
+                                            ? FontWeight.bold
+                                            : FontWeight.w500,
+                                        color: isSelected
+                                            ? AppColors.primaryGreen
+                                            : null,
+                                      ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  item['desc'] as String,
+                                  style: Theme.of(ctx)
+                                      .textTheme
+                                      .bodySmall
+                                      ?.copyWith(
+                                        color: isDark
+                                            ? Colors.white60
+                                            : AppColors.inkSoft,
+                                      ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (isSelected)
+                            const Icon(
+                              Icons.check_circle_rounded,
+                              color: AppColors.primaryGreen,
+                              size: 20,
+                            ),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _changeMainVideoQuality(String newQuality) async {
+    if (_videoPlayerController == null || _activeBaseStreamUrl == null) return;
+    final previousQuality = _selectedQuality;
+    final currentPosition = _videoPlayerController!.value.position;
+    final wasPlaying = _videoPlayerController!.value.isPlaying;
+
+    setState(() {
+      _selectedQuality = newQuality;
+      _isLoadingVideo = true;
+    });
+
+    try {
+      final targetUrl = resolveQualityStreamUrl(_activeBaseStreamUrl!, newQuality);
+      final token = await ref.read(tokenStorageProvider).getAccessToken();
+      final isBunny = targetUrl.contains('b-cdn.net') ||
+          targetUrl.contains('bunny') ||
+          targetUrl.contains('mediadelivery.net');
+      Map<String, String> headers = {};
+      final isBackendHost = targetUrl.contains('iagrow.zappcode.in') ||
+          targetUrl.contains('localhost') ||
+          targetUrl.contains('127.0.0.1') ||
+          targetUrl.contains('10.0.2.2');
+      if (token != null && isBackendHost) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+      if (isBunny) {
+        headers['Referer'] = 'https://iframe.mediadelivery.net/';
+        headers['User-Agent'] =
+            'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36';
+      }
+
+      VideoPlayerController newController = VideoPlayerController.networkUrl(
+        Uri.parse(targetUrl),
+        httpHeaders: headers,
+      );
+
+      try {
+        await newController.initialize().timeout(
+          const Duration(seconds: 12),
+          onTimeout: () => throw Exception('Quality switch timed out'),
+        );
+      } catch (err) {
+        debugPrint('⚠️ [CourseDetails] Quality stream failed with headers, retrying without: $err');
+        await newController.dispose();
+        newController = VideoPlayerController.networkUrl(Uri.parse(targetUrl));
+        await newController.initialize().timeout(
+          const Duration(seconds: 12),
+          onTimeout: () => throw Exception('Quality switch timed out on retry'),
+        );
+      }
+
+      _videoPlayerController?.removeListener(_onMainVideoPlayerTick);
+      final oldPlayer = _videoPlayerController;
+      final oldChewie = _chewieController;
+
+      _videoPlayerController = newController;
+      if (currentPosition > Duration.zero) {
+        await _videoPlayerController!.seekTo(currentPosition);
+      }
+      _videoPlayerController!.addListener(_onMainVideoPlayerTick);
+
+      _chewieController = ChewieController(
+        videoPlayerController: _videoPlayerController!,
+        autoPlay: wasPlaying,
+        looping: false,
+        allowFullScreen: true,
+        allowMuting: true,
+        showControls: true,
+        showOptions: true,
+        additionalOptions: (context) {
+          return [
+            OptionItem(
+              onTap: (ctx) {
+                Navigator.of(ctx).pop();
+                _showMainQualitySelectionSheet(context);
+              },
+              iconData: Icons.tune_rounded,
+              title: 'Quality',
+              subtitle: _selectedQuality,
+            ),
+          ];
+        },
+        materialProgressColors: ChewieProgressColors(
+          playedColor: AppColors.primaryGreen,
+          handleColor: AppColors.primaryGreen,
+          backgroundColor: AppColors.lineLight,
+          bufferedColor: AppColors.canopyStart,
+        ),
+      );
+
+      oldChewie?.dispose();
+      await oldPlayer?.dispose();
+
+      if (wasPlaying) {
+        await _videoPlayerController!.play();
+      }
+
+      if (mounted) {
+        setState(() {
+          _isLoadingVideo = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Video quality changed to $newQuality'),
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('❌ [CourseDetails] Failed to change video quality: $e');
+      if (mounted) {
+        setState(() {
+          _selectedQuality = previousQuality;
+          _isLoadingVideo = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not switch quality ($e)'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
           ),
         );
       }
@@ -3222,6 +3527,8 @@ class _FreePreviewModalSheetState extends State<_FreePreviewModalSheet> {
   String? _error;
   bool _previewLimitReached = false;
   bool _isReplaying = false;
+  String _selectedQuality = 'Auto';
+  String? _activeBaseStreamUrl;
 
   @override
   void initState() {
@@ -3300,13 +3607,15 @@ class _FreePreviewModalSheetState extends State<_FreePreviewModalSheet> {
         bunnyId: widget.lecture.bunnyVideoId,
         authToken: widget.token,
       );
+      _activeBaseStreamUrl = resolved.primaryUrl;
+      final effectiveUrl = resolveQualityStreamUrl(resolved.primaryUrl, _selectedQuality);
 
       bool initialized = false;
 
       // Attempt 1: Primary Stream URL with headers
       try {
         _controller = VideoPlayerController.networkUrl(
-          Uri.parse(resolved.primaryUrl),
+          Uri.parse(effectiveUrl),
           httpHeaders: resolved.headers,
         );
         await _controller!.initialize().timeout(const Duration(seconds: 10));
@@ -3337,7 +3646,7 @@ class _FreePreviewModalSheetState extends State<_FreePreviewModalSheet> {
         await _controller?.dispose();
         try {
           _controller = VideoPlayerController.networkUrl(
-            Uri.parse(resolved.primaryUrl),
+            Uri.parse(effectiveUrl),
           );
           await _controller!.initialize().timeout(const Duration(seconds: 10));
           initialized = true;
@@ -3361,6 +3670,23 @@ class _FreePreviewModalSheetState extends State<_FreePreviewModalSheet> {
         allowFullScreen: true,
         allowMuting: true,
         showControls: true,
+        showOptions: true,
+        additionalOptions: (context) {
+          if (_activeBaseStreamUrl == null || !_activeBaseStreamUrl!.startsWith('http')) {
+            return [];
+          }
+          return [
+            OptionItem(
+              onTap: (ctx) {
+                Navigator.of(ctx).pop();
+                _showModalQualitySelectionSheet(context);
+              },
+              iconData: Icons.tune_rounded,
+              title: 'Quality',
+              subtitle: _selectedQuality,
+            ),
+          ];
+        },
         materialProgressColors: ChewieProgressColors(
           playedColor: AppColors.primaryGreen,
           handleColor: AppColors.primaryGreen,
@@ -3377,6 +3703,286 @@ class _FreePreviewModalSheetState extends State<_FreePreviewModalSheet> {
           _error =
               'Unable to stream this preview video. Please check your internet connection.';
         });
+      }
+    }
+  }
+
+  void _showModalQualitySelectionSheet(BuildContext sheetContext) {
+    final isDark = Theme.of(sheetContext).brightness == Brightness.dark;
+
+    final qualities = [
+      {
+        'value': 'Auto',
+        'title': 'Auto (Recommended)',
+        'desc': 'Adjusts resolution dynamically based on network',
+        'icon': Icons.auto_awesome_rounded,
+      },
+      {
+        'value': '480p',
+        'title': '480p (High)',
+        'desc': 'Clear picture quality, best on Wi-Fi',
+        'icon': Icons.hd_outlined,
+      },
+      {
+        'value': '360p',
+        'title': '360p (Standard)',
+        'desc': 'Balanced video quality & data usage',
+        'icon': Icons.smart_display_outlined,
+      },
+      {
+        'value': '240p',
+        'title': '240p (Data Saver)',
+        'desc': 'Lowest data usage, suitable for weak cellular',
+        'icon': Icons.data_saver_on_outlined,
+      },
+    ];
+
+    showModalBottomSheet(
+      context: sheetContext,
+      useRootNavigator: true,
+      backgroundColor: isDark ? AppColors.cardDark : AppColors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.tune_rounded,
+                            color: AppColors.primaryGreen, size: 22),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Video Playback Quality',
+                          style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
+                      ],
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded, size: 20),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                ...qualities.map((item) {
+                  final value = item['value'] as String;
+                  final isSelected = _selectedQuality == value;
+                  return InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      if (!isSelected) {
+                        _changeModalVideoQuality(value);
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 12, horizontal: 12),
+                      margin: const EdgeInsets.symmetric(vertical: 4),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? AppColors.primaryGreen.withValues(alpha: 0.1)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(12),
+                        border: isSelected
+                            ? Border.all(
+                                color: AppColors.primaryGreen
+                                    .withValues(alpha: 0.3))
+                            : null,
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            item['icon'] as IconData,
+                            size: 20,
+                            color: isSelected
+                                ? AppColors.primaryGreen
+                                : AppColors.inkSoft,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  item['title'] as String,
+                                  style: Theme.of(ctx)
+                                      .textTheme
+                                      .bodyMedium
+                                      ?.copyWith(
+                                        fontWeight: isSelected
+                                            ? FontWeight.bold
+                                            : FontWeight.w500,
+                                        color: isSelected
+                                            ? AppColors.primaryGreen
+                                            : null,
+                                      ),
+                                ),
+                                Text(
+                                  item['desc'] as String,
+                                  style: Theme.of(ctx)
+                                      .textTheme
+                                      .bodySmall
+                                      ?.copyWith(
+                                        fontSize: 11,
+                                        color: AppColors.inkSoft,
+                                      ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (isSelected)
+                            const Icon(
+                              Icons.check_circle_rounded,
+                              color: AppColors.primaryGreen,
+                              size: 20,
+                            ),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _changeModalVideoQuality(String newQuality) async {
+    if (_controller == null || _activeBaseStreamUrl == null) return;
+    final previousQuality = _selectedQuality;
+    final currentPosition = _controller!.value.position;
+    final wasPlaying = _controller!.value.isPlaying;
+
+    setState(() {
+      _selectedQuality = newQuality;
+      _isLoading = true;
+    });
+
+    try {
+      final targetUrl = resolveQualityStreamUrl(_activeBaseStreamUrl!, newQuality);
+      final isBunny = targetUrl.contains('b-cdn.net') ||
+          targetUrl.contains('bunny') ||
+          targetUrl.contains('mediadelivery.net');
+      Map<String, String> headers = {};
+      final isBackendHost = targetUrl.contains('iagrow.zappcode.in') ||
+          targetUrl.contains('localhost') ||
+          targetUrl.contains('127.0.0.1') ||
+          targetUrl.contains('10.0.2.2');
+      if (widget.token != null && isBackendHost) {
+        headers['Authorization'] = 'Bearer ${widget.token}';
+      }
+      if (isBunny) {
+        headers['Referer'] = 'https://iframe.mediadelivery.net/';
+        headers['User-Agent'] =
+            'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36';
+      }
+
+      VideoPlayerController newController = VideoPlayerController.networkUrl(
+        Uri.parse(targetUrl),
+        httpHeaders: headers,
+      );
+
+      try {
+        await newController.initialize().timeout(
+          const Duration(seconds: 12),
+          onTimeout: () => throw Exception('Quality switch timed out'),
+        );
+      } catch (err) {
+        debugPrint('⚠️ [PreviewModal] Quality stream failed with headers, retrying without: $err');
+        await newController.dispose();
+        newController = VideoPlayerController.networkUrl(Uri.parse(targetUrl));
+        await newController.initialize().timeout(
+          const Duration(seconds: 12),
+          onTimeout: () => throw Exception('Quality switch timed out on retry'),
+        );
+      }
+
+      _controller?.removeListener(_onVideoPlayerTick);
+      final oldPlayer = _controller;
+      final oldChewie = _chewieController;
+
+      _controller = newController;
+      if (currentPosition > Duration.zero) {
+        await _controller!.seekTo(currentPosition);
+      }
+      _controller!.addListener(_onVideoPlayerTick);
+
+      _chewieController = ChewieController(
+        videoPlayerController: _controller!,
+        autoPlay: wasPlaying,
+        looping: false,
+        allowFullScreen: true,
+        allowMuting: true,
+        showControls: true,
+        showOptions: true,
+        additionalOptions: (context) {
+          return [
+            OptionItem(
+              onTap: (ctx) {
+                Navigator.of(ctx).pop();
+                _showModalQualitySelectionSheet(context);
+              },
+              iconData: Icons.tune_rounded,
+              title: 'Quality',
+              subtitle: _selectedQuality,
+            ),
+          ];
+        },
+        materialProgressColors: ChewieProgressColors(
+          playedColor: AppColors.primaryGreen,
+          handleColor: AppColors.primaryGreen,
+          backgroundColor: AppColors.lineLight,
+          bufferedColor: AppColors.canopyStart,
+        ),
+      );
+
+      oldChewie?.dispose();
+      await oldPlayer?.dispose();
+
+      if (wasPlaying) {
+        await _controller!.play();
+      }
+
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Video quality changed to $newQuality'),
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('❌ [PreviewModal] Failed to change video quality: $e');
+      if (mounted) {
+        setState(() {
+          _selectedQuality = previousQuality;
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not switch quality ($e)'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
     }
   }
