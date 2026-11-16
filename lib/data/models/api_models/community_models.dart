@@ -140,6 +140,7 @@ class CommunityHub {
   final int memberCount;
   final bool isMember;
   final bool isOwner;
+  final bool isPrivate;
   final bool isActive;
   final String disabledReason;
   final String disabledBy;
@@ -161,6 +162,7 @@ class CommunityHub {
     required this.memberCount,
     required this.isMember,
     this.isOwner = false,
+    this.isPrivate = false,
     this.isActive = true,
     this.disabledReason = '',
     this.disabledBy = '',
@@ -193,6 +195,7 @@ class CommunityHub {
     final bool active = activeVal == null ? true : (activeVal == true || activeVal == 1 || activeVal == 'true');
     final String reason = (json['disabled_reason'] ?? json['deactivated_reason'] ?? '').toString();
     final String disabledBy = (json['disabled_by'] ?? '').toString();
+    final bool privateVal = json['is_private'] == true || json['is_private'] == 1 || json['is_private'] == 'true';
 
     return CommunityHub(
       id: (json['id'] ?? '').toString(),
@@ -214,6 +217,7 @@ class CommunityHub {
           (json['is_member'] ?? json['is_joined'] ?? json['joined'] ?? json['has_joined']) == 1 ||
           (json['is_member'] ?? json['is_joined'] ?? json['joined'] ?? json['has_joined']) == 'true',
       isOwner: json['is_owner'] == true || json['is_host'] == true,
+      isPrivate: privateVal,
       isActive: active,
       disabledReason: reason,
       disabledBy: disabledBy,
@@ -239,6 +243,7 @@ class CommunityHub {
     int? memberCount,
     bool? isMember,
     bool? isOwner,
+    bool? isPrivate,
     bool? isActive,
     String? disabledReason,
     String? disabledBy,
@@ -260,6 +265,7 @@ class CommunityHub {
       memberCount: memberCount ?? this.memberCount,
       isMember: isMember ?? this.isMember,
       isOwner: isOwner ?? this.isOwner,
+      isPrivate: isPrivate ?? this.isPrivate,
       isActive: isActive ?? this.isActive,
       disabledReason: disabledReason ?? this.disabledReason,
       disabledBy: disabledBy ?? this.disabledBy,

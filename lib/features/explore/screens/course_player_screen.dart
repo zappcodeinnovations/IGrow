@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:chewie/chewie.dart';
 import 'package:flutter/material.dart';
@@ -13,6 +14,7 @@ import '../../../core/services/course_progress_service.dart';
 import '../../../core/services/quiz_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_error_state.dart';
+import '../../../data/models/api_models/certificate_model.dart';
 import '../../../data/models/api_models/course_models.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../certificates/providers/certificates_provider.dart';

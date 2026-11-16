@@ -35,6 +35,7 @@ class _CreateHubScreenState extends ConsumerState<CreateHubScreen> {
   File? _selectedLogo;
   final _picker = ImagePicker();
   bool _isSubmitting = false;
+  bool _isPrivate = false;
 
   static const _commonCrops = [
     'Cotton', 'Citrus', 'Soybean', 'Organic Farming', 'Dairy', 'Sugarcane', 'Wheat', 'Vegetables', 'Pulses'
@@ -246,6 +247,7 @@ class _CreateHubScreenState extends ConsumerState<CreateHubScreen> {
         farmingTopics: _topics,
         rules: _rulesController.text.trim(),
         logoPath: _selectedLogo?.path,
+        isPrivate: _isPrivate,
       );
 
       if (mounted) {
@@ -439,6 +441,184 @@ class _CreateHubScreenState extends ConsumerState<CreateHubScreen> {
                           validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter state' : null,
                         ),
                       ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Privacy Setting (Public vs Private) Card
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: cardBg,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: cardBorder, width: 1.2),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Community Privacy',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: isDark ? Colors.white : AppColors.inkDark,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Choose who can discover and join your agricultural hub.',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        color: isDark ? Colors.white70 : AppColors.inkSoft,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        // Public Option
+                        Expanded(
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(14),
+                            onTap: () => setState(() => _isPrivate = false),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                              decoration: BoxDecoration(
+                                color: !_isPrivate
+                                    ? AppColors.primaryGreen.withValues(alpha: isDark ? 0.2 : 0.08)
+                                    : (isDark ? Colors.black26 : const Color(0xFFF8FAF7)),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: !_isPrivate
+                                      ? AppColors.primaryGreen
+                                      : (isDark ? AppColors.lineDark : const Color(0xFFE2EBE0)),
+                                  width: !_isPrivate ? 1.8 : 1,
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(6),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.primaryGreen.withValues(alpha: 0.15),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(
+                                          Icons.public_rounded,
+                                          size: 18,
+                                          color: AppColors.primaryGreen,
+                                        ),
+                                      ),
+                                      Icon(
+                                        !_isPrivate
+                                            ? Icons.radio_button_checked_rounded
+                                            : Icons.radio_button_off_rounded,
+                                        color: !_isPrivate ? AppColors.primaryGreen : Colors.grey,
+                                        size: 20,
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Text(
+                                    'Public Hub',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                      color: isDark ? Colors.white : AppColors.inkDark,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    'Anyone can find & join directly without approval.',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      height: 1.3,
+                                      color: isDark ? Colors.white60 : AppColors.inkSoft,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        // Private Option
+                        Expanded(
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(14),
+                            onTap: () => setState(() => _isPrivate = true),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                              decoration: BoxDecoration(
+                                color: _isPrivate
+                                    ? AppColors.primaryGreen.withValues(alpha: isDark ? 0.2 : 0.08)
+                                    : (isDark ? Colors.black26 : const Color(0xFFF8FAF7)),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: _isPrivate
+                                      ? AppColors.primaryGreen
+                                      : (isDark ? AppColors.lineDark : const Color(0xFFE2EBE0)),
+                                  width: _isPrivate ? 1.8 : 1,
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(6),
+                                        decoration: BoxDecoration(
+                                          color: Colors.amber.withValues(alpha: 0.15),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(
+                                          Icons.lock_outline_rounded,
+                                          size: 18,
+                                          color: Colors.amber,
+                                        ),
+                                      ),
+                                      Icon(
+                                        _isPrivate
+                                            ? Icons.radio_button_checked_rounded
+                                            : Icons.radio_button_off_rounded,
+                                        color: _isPrivate ? AppColors.primaryGreen : Colors.grey,
+                                        size: 20,
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Text(
+                                    'Private Hub',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                      color: isDark ? Colors.white : AppColors.inkDark,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    'Restricted hub; requires invitation or approval.',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      height: 1.3,
+                                      color: isDark ? Colors.white60 : AppColors.inkSoft,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),

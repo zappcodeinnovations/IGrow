@@ -223,6 +223,7 @@ class CommunityRepository {
     required List<String> farmingTopics,
     String rules = '',
     String? logoPath,
+    bool isPrivate = false,
   }) async {
     return _safe(() async {
       final uri = Uri.parse('$baseUrl/hubs/');
@@ -240,6 +241,7 @@ class CommunityRepository {
         request.fields['districts'] = jsonEncode(districts);
         request.fields['farming_topics'] = jsonEncode(farmingTopics);
         request.fields['rules'] = rules;
+        request.fields['is_private'] = isPrivate.toString();
         request.files.add(await http.MultipartFile.fromPath('logo', logoPath));
 
         final streamed = await request.send().timeout(const Duration(seconds: 30));
@@ -258,6 +260,7 @@ class CommunityRepository {
             'districts': districts,
             'farming_topics': farmingTopics,
             'rules': rules,
+            'is_private': isPrivate,
           }),
         ).timeout(const Duration(seconds: 15));
         _handleError(response);
