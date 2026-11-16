@@ -47,8 +47,8 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     return;
   }
 
-  final rawTitle = message.data['title'];
-  final rawBody  = message.data['body'];
+  final rawTitle = message.data['title'] ?? message.data['header'];
+  final rawBody  = message.data['body'] ?? message.data['message'] ?? message.data['content'] ?? message.data['description'];
 
   // Check for localized keys in notification or data payload
   final titleLocKey = message.notification?.titleLocKey ?? message.data['title_loc_key'] ?? message.data['title_key'];
@@ -68,10 +68,11 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
   final title = (resolved.title.trim().isNotEmpty)
       ? resolved.title.trim()
-      : (message.data.isNotEmpty ? 'iAgrow Notification' : null);
+      : (message.data.isNotEmpty ? (rawTitle?.toString() ?? 'iAgrow Notification') : null);
   final body = resolved.body.trim();
 
-  if (title != null) {
+  // Guard: Never show an empty notification card with blank body and generic fallback title
+  if (title != null && (title != 'iAgrow Notification' || body.isNotEmpty)) {
     try {
       // Initialize local notifications plugin in this background isolate
       final plugin = FlutterLocalNotificationsPlugin();
