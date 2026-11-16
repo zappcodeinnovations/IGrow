@@ -112,8 +112,10 @@ class CommunityHubsNotifier extends StateNotifier<AsyncValue<List<CommunityHub>>
   final String stateName;
   final String districtName;
 
-  Future<void> fetchHubs({String? search}) async {
-    state = const AsyncValue.loading();
+  Future<void> fetchHubs({String? search, bool silent = false}) async {
+    if (!silent) {
+      state = const AsyncValue.loading();
+    }
     try {
       final hubs = await _repo.getHubs(
         state: stateName,
@@ -122,7 +124,9 @@ class CommunityHubsNotifier extends StateNotifier<AsyncValue<List<CommunityHub>>
       );
       state = AsyncValue.data(hubs);
     } catch (e, st) {
-      state = AsyncValue.error(e, st);
+      if (!silent) {
+        state = AsyncValue.error(e, st);
+      }
     }
   }
 
@@ -288,8 +292,10 @@ class CommunityPostsNotifier extends StateNotifier<AsyncValue<List<CommunityPost
   final String? topicId;
   final String? hubId;
 
-  Future<void> fetchPosts({String? search, String? ordering}) async {
-    state = const AsyncValue.loading();
+  Future<void> fetchPosts({String? search, String? ordering, bool silent = false}) async {
+    if (!silent) {
+      state = const AsyncValue.loading();
+    }
     try {
       final posts = await _repo.getPosts(
         hubId: hubId,
@@ -299,7 +305,9 @@ class CommunityPostsNotifier extends StateNotifier<AsyncValue<List<CommunityPost
       );
       state = AsyncValue.data(posts);
     } catch (e, st) {
-      state = AsyncValue.error(e, st);
+      if (!silent) {
+        state = AsyncValue.error(e, st);
+      }
     }
   }
 

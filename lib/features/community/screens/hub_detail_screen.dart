@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -23,6 +24,23 @@ class HubDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
+  Timer? _silentPollTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    // Silent polling every 15 seconds to update like counts, reactions, view counts, and comments in real-time
+    _silentPollTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      if (!mounted) return;
+      ref.read(communityHubPostsProvider(widget.hubId).notifier).fetchPosts(silent: true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _silentPollTimer?.cancel();
+    super.dispose();
+  }
   void _confirmLeave(BuildContext context, CommunityHub hub) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     showDialog(

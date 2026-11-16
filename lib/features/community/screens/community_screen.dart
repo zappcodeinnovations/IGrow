@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -30,6 +31,8 @@ class CommunityScreen extends ConsumerStatefulWidget {
 }
 
 class _CommunityScreenState extends ConsumerState<CommunityScreen> {
+  Timer? _silentPollTimer;
+
   void _showLocationPicker(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -55,10 +58,43 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
     });
   }
 
+  void _startSilentRefreshTimer() {
+    _silentPollTimer?.cancel();
+    // Silently refresh community feeds every 15 seconds to sync reactions, likes & comments without showing full-screen spinners
+    _silentPollTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      if (!mounted) return;
+      final currentUser = ref.read(authProvider).user;
+      final isInstructor = currentUser?.isInstructor == true || currentUser?.isAdmin == true;
+
+      if (isInstructor) {
+        final hubAsync = ref.read(myInstructorHubProvider);
+        final hub = hubAsync.valueOrNull;
+        if (hub != null && hub.id.isNotEmpty) {
+          ref.read(communityHubPostsProvider(hub.id).notifier).fetchPosts(silent: true);
+        }
+      } else {
+        // Student module: silently refresh hub list and current selected hub posts
+        ref.read(communityHubsProvider.notifier).fetchHubs(silent: true);
+        final selectedHub = ref.read(selectedHubProvider);
+        if (selectedHub != null && selectedHub.id.isNotEmpty) {
+          ref.read(communityHubPostsProvider(selectedHub.id).notifier).fetchPosts(silent: true);
+        }
+        ref.read(communityPostsProvider.notifier).fetchPosts(silent: true);
+      }
+    });
+  }
+
   @override
   void initState() {
     super.initState();
     _checkPendingCommentModal();
+    _startSilentRefreshTimer();
+  }
+
+  @override
+  void dispose() {
+    _silentPollTimer?.cancel();
+    super.dispose();
   }
 
   @override
