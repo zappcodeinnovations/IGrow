@@ -1,12 +1,14 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/network/swagger_generated/app_api.swagger.dart' show CourseList;
 import '../../../data/models/api_models/certificate_model.dart';
 import '../../../data/models/api_models/course_models.dart';
 import '../../../data/repositories/certificate_repository.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../explore/providers/explore_provider.dart';
 import '../../home_farmer/providers/student_provider.dart';
+import '../../home_instructor/providers/instructor_home_provider.dart';
 
 // ── Repository Provider ─────────────────────────────────────────────
 
@@ -21,6 +23,7 @@ final certificateRepositoryProvider = Provider<CertificateRepository>((ref) {
 /// Calls GET /api/v1/certificates/my/, with automatic self-healing sync from completed student enrollments.
 final myCertificatesProvider = FutureProvider.autoDispose<List<CertificateModel>>((ref) async {
   final repo = ref.watch(certificateRepositoryProvider);
+  final deactivatedIds = ref.watch(deactivatedCoursesProvider);
   List<CertificateModel> certs = [];
   try {
     debugPrint('🎓 [CertificatesProvider] Fetching my certificates from backend');
@@ -29,6 +32,35 @@ final myCertificatesProvider = FutureProvider.autoDispose<List<CertificateModel>
   } catch (e) {
     debugPrint('❌ [CertificatesProvider] Error fetching certificates: $e');
   }
+
+  // Cross-reference live active catalog courses to detect global deactivations
+  final activeCatalog = await ref.watch(studentCatalogProvider(const CatalogQuery()).future).catchError((_) => <CourseList>[]);
+  final activeCourseIds = <String>{};
+  final activeCourseSlugs = <String>{};
+  for (final c in activeCatalog) {
+    if (c.id != null && c.id!.isNotEmpty) activeCourseIds.add(c.id!.toLowerCase());
+    if (c.slug != null && c.slug!.isNotEmpty) activeCourseSlugs.add(c.slug!.toLowerCase());
+  }
+
+  // Filter out certificates belonging to deactivated courses
+  certs.removeWhere((c) {
+    final cId = (c.courseId ?? '').trim().toLowerCase();
+    final cSlug = (c.courseSlug ?? '').trim().toLowerCase();
+
+    // 1. Locally marked deactivated
+    final isExplicitlyDeactivated = (cId.isNotEmpty && deactivatedIds.any((d) => d.toLowerCase() == cId)) ||
+        (cSlug.isNotEmpty && deactivatedIds.any((d) => d.toLowerCase() == cSlug));
+    if (isExplicitlyDeactivated) return true;
+
+    // 2. Global backend deactivation: missing from active catalog
+    if (activeCourseIds.isNotEmpty || activeCourseSlugs.isNotEmpty) {
+      final isInActiveCatalog = (cId.isNotEmpty && activeCourseIds.contains(cId)) ||
+          (cSlug.isNotEmpty && activeCourseSlugs.contains(cSlug));
+      if (!isInActiveCatalog) return true;
+    }
+
+    return false;
+  });
 
   // Cross-reference completed enrollments: if a student has completed a course (100%),
   // auto-request/claim its certificate via GET /api/v1/certificates/course/{id}/ if missing from `my/`

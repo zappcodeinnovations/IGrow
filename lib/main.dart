@@ -74,8 +74,8 @@ void main() async {
     );
     await NotificationService.instance.initialize(
       onNotificationClick: (message) {
-        // Handle notification tap — navigate based on message.data if needed
         debugPrint('🔔 [App] Notification tapped: ${message.data}');
+        NotificationService.handleNotificationTap(message.data);
       },
     );
   } catch (e) {

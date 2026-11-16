@@ -44,6 +44,11 @@ class _ShellScaffoldState extends ConsumerState<ShellScaffold> {
 
   void _checkIncompleteProfilePrompt() {
     if (!mounted || _checkedProfileCompletion) return;
+    final currentLoc = GoRouterState.of(context).uri.toString();
+    // Do not show profile popup over direct notification destinations like course/ebook view
+    if (currentLoc.contains('/course/') || currentLoc.contains('/ebook/')) {
+      return;
+    }
     _checkedProfileCompletion = true;
     final user = ref.read(authProvider).user;
     if (user != null &&

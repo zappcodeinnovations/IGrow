@@ -323,17 +323,17 @@ class _MyStudentsSheetState extends ConsumerState<MyStudentsSheet> {
                     children: [
                       Text(
                         tr(ref, 'View All'),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.primaryGreen,
+                          color: isDark ? const Color(0xFF4ADE80) : AppColors.primaryGreen,
                         ),
                       ),
                       const SizedBox(width: 3),
-                      const Icon(
+                      Icon(
                         Icons.arrow_forward_ios_rounded,
                         size: 11,
-                        color: AppColors.primaryGreen,
+                        color: isDark ? const Color(0xFF4ADE80) : AppColors.primaryGreen,
                       ),
                     ],
                   ),

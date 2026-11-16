@@ -16,10 +16,14 @@ import '../../auth/providers/auth_provider.dart';
 import '../../home_farmer/providers/weather_provider.dart';
 import '../providers/community_provider.dart';
 import '../widgets/create_post_sheets.dart';
+import '../widgets/hub_members_sheet.dart';
+import '../widgets/post_comments_bottom_sheet.dart';
 import '../widgets/rich_post_card.dart';
 
 class CommunityScreen extends ConsumerStatefulWidget {
-  const CommunityScreen({super.key});
+  const CommunityScreen({super.key, this.initialPostId});
+
+  final String? initialPostId;
 
   @override
   ConsumerState<CommunityScreen> createState() => _CommunityScreenState();
@@ -35,8 +39,36 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
     );
   }
 
+  void _checkPendingCommentModal() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final targetPostId = widget.initialPostId ?? ref.read(pendingCommunityCommentPostIdProvider);
+      if (targetPostId != null && targetPostId.isNotEmpty) {
+        ref.read(pendingCommunityCommentPostIdProvider.notifier).state = null;
+        PostCommentsBottomSheet.show(
+          context,
+          postId: targetPostId,
+          postAuthorName: 'Community Post',
+          isHubActive: true,
+        );
+      }
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _checkPendingCommentModal();
+  }
+
   @override
   Widget build(BuildContext context) {
+    ref.listen<String?>(pendingCommunityCommentPostIdProvider, (prev, next) {
+      if (next != null && next.isNotEmpty) {
+        _checkPendingCommentModal();
+      }
+    });
+
     final currentUser = ref.watch(authProvider).user;
     final isInstructor = currentUser?.isInstructor == true || currentUser?.isAdmin == true;
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -498,64 +530,65 @@ class _InstructorStateB extends ConsumerWidget {
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: isDark
+                        ? [const Color(0xFF1B2E21), const Color(0xFF14241A)]
+                        : [Colors.white, const Color(0xFFF9FCF8)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
                   borderRadius: BorderRadius.circular(22),
-                  onTap: () => context.push('/community/hub/${hub.id}'),
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: isDark
-                            ? [const Color(0xFF1B2E21), const Color(0xFF14241A)]
-                            : [Colors.white, const Color(0xFFF9FCF8)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(22),
-                      border: Border.all(color: borderColor, width: 1.2),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.primaryGreen.withValues(alpha: isDark ? 0.25 : 0.08),
-                          blurRadius: 18,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
+                  border: Border.all(color: borderColor, width: 1.2),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primaryGreen.withValues(alpha: isDark ? 0.25 : 0.08),
+                      blurRadius: 18,
+                      offset: const Offset(0, 4),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Official Badge Row
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                        // Top Bar: Official Badge + Broadcast Badge + Status/Action
                         Row(
                           children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
-                              decoration: BoxDecoration(
-                                color: AppColors.primaryGreen.withValues(alpha: isDark ? 0.25 : 0.12),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: AppColors.primaryGreen.withValues(alpha: 0.3)),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(Icons.verified_rounded, size: 13, color: AppColors.primaryGreen),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    tr(ref, 'OFFICIAL INSTRUCTOR HUB'),
-                                    style: const TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w800,
-                                      color: AppColors.primaryGreen,
-                                      letterSpacing: 0.5,
+                            Flexible(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primaryGreen.withValues(alpha: isDark ? 0.25 : 0.12),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: AppColors.primaryGreen.withValues(alpha: 0.3)),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.verified_rounded, size: 13, color: AppColors.primaryGreen),
+                                    const SizedBox(width: 4),
+                                    Flexible(
+                                      child: Text(
+                                        tr(ref, 'OFFICIAL INSTRUCTOR HUB'),
+                                        style: const TextStyle(
+                                          fontSize: 9.5,
+                                          fontWeight: FontWeight.w800,
+                                          color: AppColors.primaryGreen,
+                                          letterSpacing: 0.3,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                        maxLines: 1,
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ),
-                            const Spacer(),
+                            const SizedBox(width: 6),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                               decoration: BoxDecoration(
                                 color: isDark ? Colors.white10 : const Color(0xFFF1F5F9),
                                 borderRadius: BorderRadius.circular(8),
@@ -563,12 +596,12 @@ class _InstructorStateB extends ConsumerWidget {
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(Icons.podcasts_rounded, size: 12, color: Color(0xFF2563EB)),
+                                  const Icon(Icons.podcasts_rounded, size: 11, color: Color(0xFF2563EB)),
                                   const SizedBox(width: 4),
                                   Text(
-                                    tr(ref, 'Broadcast Channel'),
+                                    tr(ref, 'Broadcast'),
                                     style: const TextStyle(
-                                      fontSize: 10,
+                                      fontSize: 9.5,
                                       fontWeight: FontWeight.w600,
                                       color: Color(0xFF2563EB),
                                     ),
@@ -578,14 +611,15 @@ class _InstructorStateB extends ConsumerWidget {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 14),
+                        const SizedBox(height: 12),
 
-                        // Hub Logo, Title & Metadata
+                        // Hub Info Row: Logo + Title + Status Pill
                         Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             Container(
-                              width: 58,
-                              height: 58,
+                              width: 52,
+                              height: 52,
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(
                                   colors: [
@@ -595,34 +629,35 @@ class _InstructorStateB extends ConsumerWidget {
                                   begin: Alignment.topLeft,
                                   end: Alignment.bottomRight,
                                 ),
-                                borderRadius: BorderRadius.circular(16),
+                                borderRadius: BorderRadius.circular(14),
                                 border: Border.all(color: AppColors.primaryGreen.withValues(alpha: 0.4), width: 1.5),
                               ),
                               child: ClipRRect(
-                                borderRadius: BorderRadius.circular(14),
+                                borderRadius: BorderRadius.circular(12),
                                 child: hub.logo != null && hub.logo!.isNotEmpty
                                     ? CachedNetworkImage(
                                         imageUrl: hub.logo!,
                                         fit: BoxFit.cover,
                                         errorWidget: (_, __, ___) =>
-                                            const Icon(Icons.agriculture_rounded, color: AppColors.primaryGreen, size: 30),
+                                            const Icon(Icons.agriculture_rounded, color: AppColors.primaryGreen, size: 28),
                                       )
-                                    : const Icon(Icons.agriculture_rounded, color: AppColors.primaryGreen, size: 30),
+                                    : const Icon(Icons.agriculture_rounded, color: AppColors.primaryGreen, size: 28),
                               ),
                             ),
-                            const SizedBox(width: 14),
+                            const SizedBox(width: 12),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Row(
                                     children: [
-                                      Flexible(
+                                      Expanded(
                                         child: Text(
                                           hub.name,
                                           style: TextStyle(
                                             fontWeight: FontWeight.w800,
-                                            fontSize: 18,
+                                            fontSize: 17,
                                             color: isDark ? Colors.white : AppColors.inkDark,
                                             letterSpacing: -0.3,
                                           ),
@@ -631,7 +666,7 @@ class _InstructorStateB extends ConsumerWidget {
                                         ),
                                       ),
                                       if (!hub.isActive) ...[
-                                        const SizedBox(width: 8),
+                                        const SizedBox(width: 6),
                                         Container(
                                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                           decoration: BoxDecoration(
@@ -642,7 +677,7 @@ class _InstructorStateB extends ConsumerWidget {
                                           child: const Text(
                                             'Inactive',
                                             style: TextStyle(
-                                              fontSize: 11,
+                                              fontSize: 10,
                                               fontWeight: FontWeight.bold,
                                               color: Colors.redAccent,
                                             ),
@@ -651,39 +686,25 @@ class _InstructorStateB extends ConsumerWidget {
                                       ],
                                     ],
                                   ),
-                                  const SizedBox(height: 6),
-                                  Wrap(
-                                    spacing: 6,
-                                    runSpacing: 4,
+                                  const SizedBox(height: 4),
+                                  Row(
                                     children: [
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                        decoration: BoxDecoration(
-                                          color: AppColors.primaryGreen.withValues(alpha: isDark ? 0.25 : 0.12),
-                                          borderRadius: BorderRadius.circular(10),
-                                        ),
-                                        child: Text(
-                                          '👥 ${hub.memberCount} Members',
-                                          style: const TextStyle(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.bold,
-                                            color: AppColors.primaryGreen,
-                                          ),
-                                        ),
+                                      Icon(
+                                        Icons.location_on_rounded,
+                                        size: 13,
+                                        color: isDark ? Colors.white60 : AppColors.inkSoft,
                                       ),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                        decoration: BoxDecoration(
-                                          color: isDark ? Colors.white10 : const Color(0xFFF1F5F9),
-                                          borderRadius: BorderRadius.circular(10),
-                                        ),
+                                      const SizedBox(width: 3),
+                                      Expanded(
                                         child: Text(
-                                          '📍 ${hub.state}, ${hub.districts.isNotEmpty ? hub.districts.first : ""}',
+                                          '${hub.state}, ${hub.districts.isNotEmpty ? hub.districts.first : ""}',
                                           style: TextStyle(
-                                            fontSize: 11,
+                                            fontSize: 11.5,
                                             color: isDark ? Colors.white70 : AppColors.inkSoft,
-                                            fontWeight: FontWeight.w600,
+                                            fontWeight: FontWeight.w500,
                                           ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
                                     ],
@@ -691,47 +712,102 @@ class _InstructorStateB extends ConsumerWidget {
                                 ],
                               ),
                             ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 12),
+                        Divider(
+                          height: 1,
+                          thickness: 1,
+                          color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.06),
+                        ),
+                        const SizedBox(height: 10),
+
+                        // Bottom Actions Row: Members count sheet trigger + Deactivate/Reactivate button
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(8),
+                                onTap: () => HubMembersSheet.show(context, hub),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primaryGreen.withValues(alpha: isDark ? 0.2 : 0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: AppColors.primaryGreen.withValues(alpha: isDark ? 0.35 : 0.2),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(
+                                        Icons.group_rounded,
+                                        size: 14,
+                                        color: AppColors.primaryGreen,
+                                      ),
+                                      const SizedBox(width: 5),
+                                      Text(
+                                        '${hub.memberCount} ${tr(ref, "Members")}',
+                                        style: const TextStyle(
+                                          fontSize: 11.5,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppColors.primaryGreen,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 3),
+                                      const Icon(
+                                        Icons.chevron_right_rounded,
+                                        size: 14,
+                                        color: AppColors.primaryGreen,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
                             // Deactivate / Reactivate Action for Host Instructor
-                            if (!hub.isActive && hub.disabledBy == 'ADMIN') ...[
-                              const SizedBox(width: 8),
+                            if (!hub.isActive && hub.disabledBy == 'ADMIN')
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                                 decoration: BoxDecoration(
                                   color: Colors.amber.withValues(alpha: isDark ? 0.2 : 0.1),
-                                  borderRadius: BorderRadius.circular(10),
+                                  borderRadius: BorderRadius.circular(8),
                                   border: Border.all(color: Colors.amber.withValues(alpha: 0.4)),
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    const Icon(Icons.lock_outline_rounded, size: 14, color: Colors.amber),
+                                    const Icon(Icons.lock_outline_rounded, size: 13, color: Colors.amber),
                                     const SizedBox(width: 4),
                                     Text(
                                       tr(ref, 'Locked by Admin'),
                                       style: const TextStyle(
-                                        fontSize: 11.5,
+                                        fontSize: 11,
                                         fontWeight: FontWeight.w700,
                                         color: Colors.amber,
                                       ),
                                     ),
                                   ],
                                 ),
-                              ),
-                            ] else ...[
-                              const SizedBox(width: 8),
+                              )
+                            else
                               Tooltip(
                                 message: hub.isActive ? tr(ref, 'Deactivate Community Hub') : tr(ref, 'Reactivate Community Hub'),
                                 child: Material(
                                   color: Colors.transparent,
                                   child: InkWell(
-                                    borderRadius: BorderRadius.circular(10),
+                                    borderRadius: BorderRadius.circular(8),
                                     onTap: () => _confirmToggleHubActive(context, ref, hub),
                                     child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                                       decoration: BoxDecoration(
                                         color: (hub.isActive ? Colors.orange : AppColors.primaryGreen)
                                             .withValues(alpha: isDark ? 0.2 : 0.08),
-                                        borderRadius: BorderRadius.circular(10),
+                                        borderRadius: BorderRadius.circular(8),
                                         border: Border.all(
                                           color: (hub.isActive ? Colors.orange : AppColors.primaryGreen)
                                               .withValues(alpha: 0.35),
@@ -743,14 +819,14 @@ class _InstructorStateB extends ConsumerWidget {
                                         children: [
                                           Icon(
                                             hub.isActive ? Icons.pause_circle_outline_rounded : Icons.play_circle_outline_rounded,
-                                            size: 16,
+                                            size: 15,
                                             color: hub.isActive ? Colors.orange : AppColors.primaryGreen,
                                           ),
                                           const SizedBox(width: 4),
                                           Text(
                                             hub.isActive ? tr(ref, 'Deactivate') : tr(ref, 'Reactivate'),
                                             style: TextStyle(
-                                              fontSize: 12,
+                                              fontSize: 11.5,
                                               fontWeight: FontWeight.w700,
                                               color: hub.isActive ? Colors.orange : AppColors.primaryGreen,
                                             ),
@@ -761,14 +837,11 @@ class _InstructorStateB extends ConsumerWidget {
                                   ),
                                 ),
                               ),
-                            ],
                           ],
                         ),
                       ],
                     ),
                   ),
-                ),
-              ),
             ),
           ),
 
@@ -1485,9 +1558,9 @@ class _MyHubsList extends ConsumerWidget {
         if (joinedHubs.isEmpty) {
           return SliverToBoxAdapter(
             child: _EmptyHubsCard(
-              title: "You haven't joined any community yet.",
-              desc: "Join your regional hub to get daily expert farming tips, webinar invites, and seminar updates!",
-              buttonLabel: 'Explore Recommendations',
+              title: tr(ref, "You haven't joined any community yet."),
+              desc: tr(ref, "Join your regional hub to get daily expert farming tips, webinar invites, and seminar updates!"),
+              buttonLabel: tr(ref, 'Explore Recommendations'),
               isDark: isDark,
               onButtonTap: () => ref.read(studentCommunityTabProvider.notifier).state = 0,
             ),
@@ -1563,16 +1636,16 @@ class _CommunityCard extends ConsumerWidget {
               child: const Icon(Icons.exit_to_app_rounded, color: Colors.red, size: 20),
             ),
             const SizedBox(width: 10),
-            const Expanded(
+            Expanded(
               child: Text(
-                'Leave Community?',
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                tr(ref, 'Leave Community?'),
+                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
               ),
             ),
           ],
         ),
         content: Text(
-          'Are you sure you want to leave "${hub.name}"? You will no longer receive announcements and updates from this instructor.',
+          '${tr(ref, "Are you sure you want to leave")} "${hub.name}"? ${tr(ref, "You will no longer receive announcements and updates from this instructor.")}',
           style: TextStyle(
             fontSize: 13.5,
             color: isDark ? Colors.white70 : AppColors.inkSoft,
@@ -1583,7 +1656,7 @@ class _CommunityCard extends ConsumerWidget {
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: Text(
-              'Cancel',
+              tr(ref, 'Cancel'),
               style: TextStyle(color: isDark ? Colors.white60 : Colors.grey, fontWeight: FontWeight.w600),
             ),
           ),
@@ -1605,9 +1678,9 @@ class _CommunityCard extends ConsumerWidget {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Left "${hub.name}"'),
+                      content: Text('${tr(ref, "Left")} "${hub.name}"'),
                       action: SnackBarAction(
-                        label: 'Undo',
+                        label: tr(ref, 'Undo'),
                         textColor: const Color(0xFF4ADE80),
                         onPressed: () async {
                           try {
@@ -1620,7 +1693,7 @@ class _CommunityCard extends ConsumerWidget {
                             ref.invalidate(hubDetailsProvider(hub.id));
                           } catch (e) {
                             if (context.mounted) {
-                              AppToast.showFriendlyError(context, e, prefix: 'Failed to join');
+                              AppToast.showFriendlyError(context, e, prefix: tr(ref, 'Failed to join'));
                             }
                           }
                         },
@@ -1630,11 +1703,11 @@ class _CommunityCard extends ConsumerWidget {
                 }
               } catch (e) {
                 if (context.mounted) {
-                  AppToast.showFriendlyError(context, e, prefix: 'Failed to leave community');
+                  AppToast.showFriendlyError(context, e, prefix: tr(ref, 'Failed to leave community'));
                 }
               }
             },
-            child: const Text('Leave', style: TextStyle(fontWeight: FontWeight.bold)),
+            child: Text(tr(ref, 'Leave'), style: const TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -1832,7 +1905,7 @@ class _CommunityCard extends ConsumerWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  '👥 ${hub.memberCount} farmers',
+                  '👥 ${formatNum(ref, hub.memberCount)} ${tr(ref, 'farmers')}',
                   style: TextStyle(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w600,
@@ -1854,9 +1927,9 @@ class _CommunityCard extends ConsumerWidget {
                           ),
                           onPressed: () => _confirmLeave(context, ref),
                           icon: const Icon(Icons.check_circle_rounded, size: 16, color: AppColors.editorialSecondary),
-                          label: const Text(
-                            'Joined ✓',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                          label: Text(
+                            tr(ref, 'Joined ✓'),
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
                           ),
                         )
                       : ElevatedButton(
@@ -1877,9 +1950,9 @@ class _CommunityCard extends ConsumerWidget {
                                 if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                      content: Text('Joined "${hub.name}"!'),
+                                      content: Text('${tr(ref, "Joined")} "${hub.name}"!'),
                                       action: SnackBarAction(
-                                        label: 'View',
+                                        label: tr(ref, 'View'),
                                         textColor: const Color(0xFF4ADE80),
                                         onPressed: () {
                                           context.push('/community/hub/${hub.id}');
@@ -1890,11 +1963,14 @@ class _CommunityCard extends ConsumerWidget {
                                 }
                               } catch (e) {
                                 if (context.mounted) {
-                                  AppToast.showFriendlyError(context, e, prefix: 'Failed to join');
+                                  AppToast.showFriendlyError(context, e, prefix: tr(ref, 'Failed to join'));
                                 }
                               }
                             },
-                            child: const Text('+ Join Community', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5)),
+                            child: Text(
+                              tr(ref, '+ Join Community'),
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5),
+                            ),
                           ),
                 ),
               ],

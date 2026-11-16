@@ -191,6 +191,29 @@ class StudentRepository {
       }
     }
 
+    // 4. Fallback to instructor endpoint if the user is an instructor previewing their draft/review e-book
+    try {
+      final token = await tokenStorage.getAccessToken();
+      if (token != null) {
+        final instructorUri = Uri.parse('https://iagrow.zappcode.in/api/v1/instructor/ebooks/$slugOrId/');
+        final instructorRes = await http.get(
+          instructorUri,
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+        );
+        if (instructorRes.statusCode >= 200 && instructorRes.statusCode < 300) {
+          final data = jsonDecode(instructorRes.body) as Map<String, dynamic>;
+          debugPrint('✅ [StudentRepository] getEbookDetail instructor endpoint SUCCESS: ${data['title']} (status: ${data['status']})');
+          return EBook.fromJson(data);
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ [StudentRepository] getEbookDetail instructor fallback error: $e');
+    }
+
     throw ApiException.network();
   }
 
@@ -365,7 +388,7 @@ class StudentRepository {
         },
       );
       if (response.statusCode >= 200 && response.statusCode < 300) {
-        debugPrint('✅ [StudentRepository] getCourseProgress SUCCESS (${response.statusCode})');
+        debugPrint('✅ [StudentRepository] getCourseProgress SUCCESS (${response.statusCode}): ${response.body}');
         final decoded = jsonDecode(response.body);
         if (decoded is Map<String, dynamic>) return decoded;
         if (decoded is List) return {'lectures': decoded};
@@ -725,6 +748,15 @@ class StudentRepository {
               ? options[correctOptionIndex].trim().toLowerCase()
               : (q['correct_answer']?.toString().trim().toLowerCase() ?? '');
           isCorrect = selectedAnswer.trim().toLowerCase() == correctAnswer;
+        }
+
+        // Fallback: If user index equals correctOptionIndex or string matches
+        if (!isCorrect && selectedAnswer is int && options.isNotEmpty && selectedAnswer < options.length) {
+          final chosenText = options[selectedAnswer].trim().toLowerCase();
+          final ansText = q['correct_answer']?.toString().trim().toLowerCase();
+          if (ansText != null && ansText.isNotEmpty && (chosenText == ansText || chosenText.contains(ansText) || ansText.contains(chosenText))) {
+            isCorrect = true;
+          }
         }
 
         if (isCorrect) {

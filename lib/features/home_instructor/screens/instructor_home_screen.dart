@@ -15,9 +15,11 @@ import '../../auth/providers/auth_provider.dart';
 import '../../explore/providers/explore_provider.dart';
 import '../../home_farmer/providers/farmer_home_provider.dart';
 import '../../home_farmer/providers/student_provider.dart';
+import '../../certificates/providers/certificates_provider.dart';
 import '../../notifications/providers/notification_provider.dart';
 import '../../../core/widgets/shimmer_placeholders.dart';
 import '../../instructor_dashboard/widgets/my_students_sheet.dart';
+import '../../../core/services/app_config_service.dart';
 
 class InstructorHomeScreen extends ConsumerStatefulWidget {
   const InstructorHomeScreen({super.key});
@@ -482,6 +484,7 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
       try {
         debugPrint('📤 [DEACTIVATE] Deactivating course: ${course.id}');
         await ref.read(instructorRepositoryProvider).archiveCourse(course.id);
+        await ref.read(deactivatedCoursesProvider.notifier).markDeactivated(course.id);
         debugPrint('✅ [DEACTIVATE] Successfully deactivated course: ${course.id}');
         if (!mounted) return;
         final messenger = ScaffoldMessenger.of(context);
@@ -498,6 +501,9 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
         ref.invalidate(studentCatalogProvider);
         ref.invalidate(featuredCoursesProvider);
         ref.invalidate(exploreCoursesProvider);
+        ref.invalidate(studentEnrollmentsProvider);
+        ref.invalidate(myCertificatesProvider);
+        ref.invalidate(certificateEnrollmentsProvider);
       } catch (e) {
         if (!mounted) return;
         final messenger = ScaffoldMessenger.of(context);
@@ -537,6 +543,7 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
       try {
         debugPrint('📤 [REACTIVATE] Reactivating course: ${course.id}');
         await ref.read(instructorRepositoryProvider).unarchiveCourse(course.id);
+        await ref.read(deactivatedCoursesProvider.notifier).markReactivated(course.id);
         debugPrint('✅ [REACTIVATE] Successfully reactivated course: ${course.id}');
         if (!mounted) return;
         final messenger = ScaffoldMessenger.of(context);
@@ -553,6 +560,9 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
         ref.invalidate(studentCatalogProvider);
         ref.invalidate(featuredCoursesProvider);
         ref.invalidate(exploreCoursesProvider);
+        ref.invalidate(studentEnrollmentsProvider);
+        ref.invalidate(myCertificatesProvider);
+        ref.invalidate(certificateEnrollmentsProvider);
       } catch (e) {
         if (!mounted) return;
         final messenger = ScaffoldMessenger.of(context);
@@ -605,6 +615,260 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
         ref.invalidate(studentCatalogProvider);
         ref.invalidate(featuredCoursesProvider);
         ref.invalidate(exploreCoursesProvider);
+        ref.invalidate(studentEnrollmentsProvider);
+        ref.invalidate(myCertificatesProvider);
+        ref.invalidate(certificateEnrollmentsProvider);
+      } catch (e) {
+        if (!mounted) return;
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.clearSnackBars();
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _submitEBookForReview(dynamic ebook) async {
+    final ebookId = ebook.id?.toString();
+    final ebookTitle = ebook.title?.toString() ?? 'this draft e-book';
+    if (ebookId == null || ebookId.isEmpty) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: Text(tr(ref, 'Send for Review')),
+        content: Text(
+          '${tr(ref, 'Are you sure you want to submit')} "$ebookTitle" ${tr(ref, 'for admin review? Once approved, it will be published and visible to all students.')}',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(c, false),
+            child: Text(tr(ref, 'Cancel')),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.primaryGreen),
+            onPressed: () => Navigator.pop(c, true),
+            child: Text(tr(ref, 'Send for Review')),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await ref.read(instructorRepositoryProvider).submitEBook(ebookId);
+        if (!mounted) return;
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.clearSnackBars();
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(tr(ref, 'E-book submitted for review successfully')),
+            backgroundColor: AppColors.primaryGreen,
+          ),
+        );
+        ref.invalidate(instructorEbooksProvider);
+        ref.invalidate(studentEbooksProvider);
+        ref.invalidate(instructorStatsProvider);
+      } catch (e) {
+        if (!mounted) return;
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.clearSnackBars();
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _editEBookPrice(dynamic ebook) async {
+    final ebookId = ebook.id?.toString();
+    if (ebookId == null || ebookId.isEmpty) return;
+
+    final currentPrice = (ebook.price ?? '0').toString().replaceAll('₹', '').trim();
+    final priceController = TextEditingController(text: currentPrice == '0.00' ? '0' : currentPrice);
+
+    final config = ref.read(appConfigProvider);
+    final allowsCustomPrice = config.allowsCustomCoursePrice;
+    String selectedTier = const ['0', '249', '499', '999', '1499'].contains(currentPrice)
+        ? currentPrice
+        : '0';
+
+    final newPrice = await showDialog<String>(
+      context: context,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryGreen.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.currency_rupee, color: AppColors.primaryGreen, size: 20),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text(
+                  'Edit E-Book Price',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Set pricing for "${ebook.title ?? 'E-Book'}". Enter 0 to offer this e-book for free to learners.',
+                style: const TextStyle(fontSize: 13, color: AppColors.inkSoft),
+              ),
+              const SizedBox(height: 16),
+              if (allowsCustomPrice)
+                TextField(
+                  controller: priceController,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    prefixIcon: const Icon(Icons.currency_rupee, size: 18),
+                    labelText: 'Price (₹)',
+                    hintText: 'e.g. 299',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                )
+              else
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: ['0', '249', '499', '999', '1499'].map((tier) {
+                    final isSel = selectedTier == tier;
+                    return ChoiceChip(
+                      label: Text(tier == '0' ? 'FREE' : '₹$tier'),
+                      selected: isSel,
+                      selectedColor: AppColors.primaryGreen,
+                      labelStyle: TextStyle(
+                        color: isSel ? Colors.white : AppColors.inkDark,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      onSelected: (_) => setDialogState(() => selectedTier = tier),
+                    );
+                  }).toList(),
+                ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx),
+              child: Text(tr(ref, 'Cancel')),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primaryGreen,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: () {
+                final val = allowsCustomPrice ? priceController.text.trim() : selectedTier;
+                Navigator.pop(dialogCtx, val);
+              },
+              child: Text(tr(ref, 'Save Price')),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (newPrice != null) {
+      final parsed = double.tryParse(newPrice);
+      if (parsed == null || parsed < 0) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Please enter a valid price (>= 0)'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+        return;
+      }
+
+      try {
+        final formatted = parsed.toStringAsFixed(2);
+        await ref.read(instructorRepositoryProvider).updateEBook(ebookId, {
+          'price': formatted,
+        });
+        ref.invalidate(instructorEbooksProvider);
+        ref.invalidate(studentEbooksProvider);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Price updated to ₹$formatted'),
+              backgroundColor: AppColors.primaryGreen,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(e.toString().replaceAll('Exception: ', '')),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _deleteEBook(dynamic ebook) async {
+    final ebookId = ebook.id?.toString();
+    final ebookTitle = ebook.title?.toString() ?? 'this draft e-book';
+    if (ebookId == null || ebookId.isEmpty) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: Text(tr(ref, 'Delete Draft E-Book')),
+        content: Text(
+          '${tr(ref, 'Are you sure you want to permanently delete')} "$ebookTitle"? ${tr(ref, 'This action cannot be undone.')}',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(c, false),
+            child: Text(tr(ref, 'Cancel')),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+            onPressed: () => Navigator.pop(c, true),
+            child: Text(tr(ref, 'Delete')),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await ref.read(instructorRepositoryProvider).deleteEBook(ebookId);
+        if (!mounted) return;
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.clearSnackBars();
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(tr(ref, 'Draft e-book deleted successfully')),
+            backgroundColor: AppColors.primaryGreen,
+          ),
+        );
+        ref.invalidate(instructorEbooksProvider);
+        ref.invalidate(studentEbooksProvider);
+        ref.invalidate(instructorStatsProvider);
       } catch (e) {
         if (!mounted) return;
         final messenger = ScaffoldMessenger.of(context);
@@ -1030,7 +1294,13 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                       final tabParam = _selectedDashboardTab == 1 ? '?tab=1' : '';
                       context.push('${RouteNames.instructorUploads}$tabParam');
                     },
-                    child: Text(tr(ref, 'See All')),
+                    style: TextButton.styleFrom(
+                      foregroundColor: isDark ? const Color(0xFF4ADE80) : AppColors.primaryGreen,
+                    ),
+                    child: Text(
+                      tr(ref, 'See All'),
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
                   ),
                 ],
               ),
@@ -1223,6 +1493,9 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                                 context.push('/farmer/ebook/${ebook.id}');
                               }
                             },
+                            onEdit: () => _editEBookPrice(ebook),
+                            onSubmitForReview: () => _submitEBookForReview(ebook),
+                            onDelete: () => _deleteEBook(ebook),
                           ),
                         );
                       }).toList(),
@@ -1273,13 +1546,20 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                   Text(tr(ref, 'Recent Transactions'), style: Theme.of(context).textTheme.headlineSmall),
                   TextButton.icon(
                     onPressed: () => context.push(RouteNames.instructorTransactions),
-                    icon: const Icon(Icons.arrow_forward_rounded, size: 16),
+                    icon: Icon(
+                      Icons.arrow_forward_rounded,
+                      size: 16,
+                      color: isDark ? const Color(0xFF4ADE80) : AppColors.primaryGreen,
+                    ),
                     label: Text(
                       tr(ref, 'View All'),
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? const Color(0xFF4ADE80) : AppColors.primaryGreen,
+                      ),
                     ),
                     style: TextButton.styleFrom(
-                      foregroundColor: AppColors.primaryGreen,
+                      foregroundColor: isDark ? const Color(0xFF4ADE80) : AppColors.primaryGreen,
                       visualDensity: VisualDensity.compact,
                     ),
                   ),
@@ -1317,11 +1597,22 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                         Center(
                           child: OutlinedButton.icon(
                             onPressed: () => context.push(RouteNames.instructorTransactions),
-                            icon: const Icon(Icons.receipt_long_rounded, size: 16),
-                            label: Text('View All ${transactions.length} Transactions'),
+                            icon: Icon(
+                              Icons.receipt_long_rounded,
+                              size: 16,
+                              color: isDark ? const Color(0xFF4ADE80) : AppColors.primaryGreen,
+                            ),
+                            label: Text(
+                              'View All ${transactions.length} Transactions',
+                              style: TextStyle(
+                                color: isDark ? const Color(0xFF4ADE80) : AppColors.primaryGreen,
+                              ),
+                            ),
                             style: OutlinedButton.styleFrom(
-                              foregroundColor: AppColors.primaryGreen,
-                              side: const BorderSide(color: AppColors.primaryGreen),
+                              foregroundColor: isDark ? const Color(0xFF4ADE80) : AppColors.primaryGreen,
+                              side: BorderSide(
+                                color: isDark ? const Color(0xFF4ADE80) : AppColors.primaryGreen,
+                              ),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                               visualDensity: VisualDensity.compact,
                             ),
@@ -1454,17 +1745,29 @@ class AgriLearnCourseCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final status = (course.status ?? 'DRAFT').toUpperCase();
+    final isDeactivated = ref.watch(deactivatedCoursesProvider).contains(course.id) ||
+        status == 'ARCHIVED' ||
+        status == 'INACTIVE';
 
     Color badgeBg;
     Color badgeText;
     String badgeLabel;
 
-    final isLive = status == 'APPROVED' ||
-        status == 'LIVE' ||
-        status == 'PUBLISHED' ||
-        status == 'ACTIVE';
+    final isLive = (status == 'APPROVED' ||
+            status == 'LIVE' ||
+            status == 'PUBLISHED' ||
+            status == 'ACTIVE') &&
+        !isDeactivated;
 
-    if (isLive) {
+    // Only new made courses still in draft / review period can be deleted.
+    // Approved and subsequently deactivated courses must NOT show a delete button.
+    final canDelete = !isLive && !isDeactivated && (status == 'DRAFT' || status == 'PROCESSING' || status == 'REVIEW' || status == 'REJECTED');
+
+    if (isDeactivated) {
+      badgeBg = isDark ? Colors.amber.withValues(alpha: 0.2) : Colors.amber.shade50;
+      badgeText = isDark ? Colors.amberAccent : Colors.amber.shade900;
+      badgeLabel = tr(ref, '• Deactivated');
+    } else if (isLive) {
       badgeBg = Colors.green.shade50;
       badgeText = Colors.green.shade700;
       badgeLabel = tr(ref, '• Live');
@@ -1665,7 +1968,7 @@ class AgriLearnCourseCard extends ConsumerWidget {
                           ),
                         ),
                       ),
-                    if ((status == 'ARCHIVED' || status == 'INACTIVE') && onReactivate != null)
+                    if (isDeactivated && onReactivate != null)
                       OutlinedButton.icon(
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -1684,7 +1987,7 @@ class AgriLearnCourseCard extends ConsumerWidget {
                           ),
                         ),
                       ),
-                    if (!isLive && onDelete != null)
+                    if (canDelete && onDelete != null)
                       OutlinedButton.icon(
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -1719,11 +2022,17 @@ class _AgriLearnEbookCard extends ConsumerWidget {
     required this.ebook,
     this.onTap,
     this.onViewLive,
+    this.onEdit,
+    this.onSubmitForReview,
+    this.onDelete,
   });
 
   final dynamic ebook;
   final VoidCallback? onTap;
   final VoidCallback? onViewLive;
+  final VoidCallback? onEdit;
+  final VoidCallback? onSubmitForReview;
+  final VoidCallback? onDelete;
 
   String _resolveStatus(dynamic statusObj) {
     if (statusObj == null) return 'DRAFT';
@@ -1740,6 +2049,8 @@ class _AgriLearnEbookCard extends ConsumerWidget {
     final hasCover = ebook.coverImage != null && ebook.coverImage.toString().trim().isNotEmpty;
     final status = _resolveStatus(ebook.status);
     final isLive = status == 'APPROVED';
+    final isDraft = status == 'DRAFT';
+    final isReview = status == 'REVIEW';
 
     Color badgeBg;
     Color badgeText;
@@ -1898,26 +2209,93 @@ class _AgriLearnEbookCard extends ConsumerWidget {
             ],
           ),
 
-          // Action Button: [View in Library]
-          if (isLive && onViewLive != null) ...[
+          // Action Buttons:
+          // Draft: [Edit] [Send for Review] [Delete]
+          // Under Review: [Delete] (Send for Review hidden)
+          // Live: [View in Library]
+          if (isLive || isDraft || isReview || onDelete != null) ...[
             const SizedBox(height: 12),
-            OutlinedButton.icon(
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                side: BorderSide(color: Colors.teal.shade400),
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-              onPressed: onViewLive,
-              icon: Icon(Icons.visibility_outlined, size: 14, color: Colors.teal.shade700),
-              label: Text(
-                tr(ref, 'View in Library'),
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.teal.shade700,
-                ),
-              ),
+            Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              children: [
+                if (isLive && onViewLive != null)
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      side: BorderSide(color: Colors.teal.shade400),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    onPressed: onViewLive,
+                    icon: Icon(Icons.visibility_outlined, size: 14, color: Colors.teal.shade700),
+                    label: Text(
+                      tr(ref, 'View in Library'),
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.teal.shade700,
+                      ),
+                    ),
+                  ),
+                if (!isLive && onEdit != null)
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      side: const BorderSide(color: AppColors.primaryGreen),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    onPressed: onEdit,
+                    icon: const Icon(Icons.edit_outlined, size: 14, color: AppColors.primaryGreen),
+                    label: Text(
+                      tr(ref, 'Edit'),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primaryGreen,
+                      ),
+                    ),
+                  ),
+                if (isDraft && onSubmitForReview != null)
+                  FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primaryGreen,
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    onPressed: onSubmitForReview,
+                    icon: const Icon(Icons.send_rounded, size: 13, color: Colors.white),
+                    label: Text(
+                      tr(ref, 'Send for Review'),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                if (!isLive && onDelete != null)
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      side: const BorderSide(color: Color(0xFFEF4444)),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    onPressed: onDelete,
+                    icon: const Icon(Icons.delete_outline_rounded, size: 14, color: Color(0xFFEF4444)),
+                    label: Text(
+                      tr(ref, 'Delete'),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFFEF4444),
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ],
         ],

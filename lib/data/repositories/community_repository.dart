@@ -165,6 +165,41 @@ class CommunityRepository {
     });
   }
 
+  /// Fetches members list for a community hub.
+  /// Hits standard `/hubs/$hubId/members/` endpoint. If backend returns 404 or empty,
+  /// returns an empty list gracefully so the app stays fully stable.
+  Future<List<HubMember>> getHubMembers(String hubId) async {
+    return _safe(() async {
+      final uri = Uri.parse('$baseUrl/hubs/$hubId/members/');
+      try {
+        final response = await http
+            .get(uri, headers: await _getHeaders())
+            .timeout(const Duration(seconds: 12));
+        if (response.statusCode == 404) {
+          return <HubMember>[];
+        }
+        _handleError(response);
+        final data = jsonDecode(response.body);
+        final results = data is List
+            ? data
+            : (data is Map && data.containsKey('results')
+                ? data['results'] as List? ?? []
+                : (data is Map && data.containsKey('members')
+                    ? data['members'] as List? ?? []
+                    : (data is Map && data.containsKey('data')
+                        ? data['data'] as List? ?? []
+                        : [])));
+
+        return results
+            .whereType<Map<String, dynamic>>()
+            .map((json) => HubMember.fromJson(json))
+            .toList();
+      } catch (_) {
+        return <HubMember>[];
+      }
+    });
+  }
+
   Future<Map<String, dynamic>> toggleJoinHub(String hubId) async {
     return _safe(() async {
       final uri = Uri.parse('$baseUrl/hubs/$hubId/join/');

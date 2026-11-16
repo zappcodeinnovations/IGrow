@@ -1,9 +1,10 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../core/router/route_names.dart';
-import '../../data/models/discount_banner_model.dart';
+import '../../../core/router/route_names.dart';
+import '../../../data/models/discount_banner_model.dart';
 import '../providers/discount_banner_provider.dart';
 
 class OfferDialog extends ConsumerWidget {
@@ -53,11 +54,17 @@ class OfferDialog extends ConsumerWidget {
                   if (banner.imageUrl != null && banner.imageUrl!.isNotEmpty)
                     AspectRatio(
                       aspectRatio: 16 / 9,
-                      child: Image.network(
-                        banner.imageUrl!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => _buildFallbackHeader(),
-                      ),
+                      child: banner.imageUrl!.startsWith('data:image')
+                          ? Image.memory(
+                              base64Decode(banner.imageUrl!.split(',').last),
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => _buildFallbackHeader(),
+                            )
+                          : Image.network(
+                              banner.imageUrl!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => _buildFallbackHeader(),
+                            ),
                     )
                   else
                     _buildFallbackHeader(),

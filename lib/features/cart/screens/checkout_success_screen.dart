@@ -9,11 +9,13 @@ import 'package:printing/printing.dart';
 
 import '../../../core/network/swagger_generated/app_api.swagger.dart' show EBook;
 import '../../../core/router/route_names.dart';
+import '../../../core/services/course_progress_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/pdf_theme_helper.dart';
 import '../../../data/models/api_models/course_models.dart';
 import '../../../data/models/api_models/order_models.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../home_farmer/providers/student_provider.dart';
 import '../providers/cart_provider.dart';
 
 class CheckoutSuccessScreen extends ConsumerStatefulWidget {
@@ -520,10 +522,17 @@ class _CheckoutSuccessScreenState extends ConsumerState<CheckoutSuccessScreen> {
                         isEbook ? 'Read E-Book Now' : 'Start Learning',
                         style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
                       ),
-                      onPressed: () {
+                      onPressed: () async {
                         if (isEbook && itemId.isNotEmpty) {
                           context.push('/farmer/ebook/$itemId');
                         } else if (itemId.isNotEmpty) {
+                          // Ensure freshly purchased course starts with 0% progress
+                          await CourseProgressService.instance.saveCompletedLectures(itemId, {});
+                          await CourseProgressService.instance.saveCoursePercentage(itemId, 0.0);
+                          ref.invalidate(courseProgressStateProvider(itemId));
+                          ref.invalidate(coursePercentageProvider(itemId));
+                          ref.invalidate(studentEnrollmentsProvider);
+                          if (!context.mounted) return;
                           context.push('/player/$itemId?fromCheckout=true');
                         } else {
                           context.go(RouteNames.farmerHome);

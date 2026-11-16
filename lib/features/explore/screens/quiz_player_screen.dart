@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/services/quiz_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../certificates/providers/certificates_provider.dart';
 import '../../home_farmer/providers/student_provider.dart';
 
 class QuizPlayerScreen extends ConsumerStatefulWidget {
@@ -64,6 +65,9 @@ class _QuizPlayerScreenState extends ConsumerState<QuizPlayerScreen> {
       if (isPassed) {
         await QuizService.setSectionQuizPassed(widget.sectionId, true);
         ref.invalidate(sectionQuizPassedProvider(widget.sectionId));
+        ref.invalidate(studentEnrollmentsProvider);
+        ref.invalidate(myCertificatesProvider);
+        ref.invalidate(certificateEnrollmentsProvider);
       }
 
       // Record in Quiz History for the farmer/student panel
@@ -299,18 +303,39 @@ class _QuizPlayerScreenState extends ConsumerState<QuizPlayerScreen> {
                       String correctAnswerText = '';
 
                       if (backendItem.isNotEmpty) {
-                        isCorrect = backendItem['correct'] == true;
-                        final correctIdx = backendItem['correct_answer'] as int?;
+                        isCorrect = backendItem['correct'] == true ||
+                            backendItem['is_correct'] == true;
+                        final correctIdx = (backendItem['correct_answer'] ??
+                                backendItem['correct_option_index']) as int?;
                         if (correctIdx != null && correctIdx >= 0 && correctIdx < options.length) {
                           correctAnswerText = options[correctIdx];
+                        } else if (backendItem['correct_answer'] != null) {
+                          correctAnswerText = backendItem['correct_answer'].toString();
                         }
-                      } else {
-                        final correctIdx = q['correct_option_index'] as int? ?? 0;
-                        isCorrect = userIndex == correctIdx;
-                        if (correctIdx >= 0 && correctIdx < options.length) {
-                          correctAnswerText = options[correctIdx];
-                        } else if (q['correct_answer'] != null) {
-                          correctAnswerText = q['correct_answer'].toString();
+                      }
+
+                      // Fallback verification if backend result is missing or reported incorrect:
+                      // If the user's selected text exactly matches the correct answer text or option, it IS correct!
+                      final correctIdx = q['correct_option_index'] as int? ??
+                          (q['correct_answer'] is int ? q['correct_answer'] as int : null);
+                      final correctAnsText = q['correct_answer']?.toString();
+
+                      if (correctAnsText != null && correctAnsText.trim().isNotEmpty) {
+                        if (correctAnswerText.isEmpty) correctAnswerText = correctAnsText;
+                      } else if (correctIdx != null && correctIdx >= 0 && correctIdx < options.length) {
+                        if (correctAnswerText.isEmpty) correctAnswerText = options[correctIdx];
+                      }
+
+                      if (!isCorrect && userIndex != null && userIndex >= 0 && userIndex < options.length) {
+                        final chosen = options[userIndex].trim().toLowerCase();
+                        if (correctIdx != null && userIndex == correctIdx) {
+                          isCorrect = true;
+                        } else if (correctAnswerText.isNotEmpty &&
+                            chosen == correctAnswerText.trim().toLowerCase()) {
+                          isCorrect = true;
+                        } else if (correctAnsText != null &&
+                            chosen == correctAnsText.trim().toLowerCase()) {
+                          isCorrect = true;
                         }
                       }
 

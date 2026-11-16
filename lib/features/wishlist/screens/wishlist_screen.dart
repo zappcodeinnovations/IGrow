@@ -92,7 +92,7 @@ class _WishlistScreenState extends ConsumerState<WishlistScreen>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'Wishlist',
+                    tr(ref, 'Wishlist'),
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 18,
@@ -161,10 +161,10 @@ class _WishlistScreenState extends ConsumerState<WishlistScreen>
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
                     ),
-                    tabs: const [
-                      Tab(text: 'All'),
-                      Tab(text: 'Courses'),
-                      Tab(text: 'E-Books'),
+                    tabs: [
+                      Tab(text: tr(ref, 'All')),
+                      Tab(text: tr(ref, 'Courses')),
+                      Tab(text: tr(ref, 'E-Books')),
                     ],
                   ),
                 ),
@@ -261,10 +261,10 @@ class _WishlistScreenState extends ConsumerState<WishlistScreen>
             const SizedBox(height: 60),
             EmptyState(
               icon: Icons.favorite_border_rounded,
-              title: 'Your wishlist is empty',
+              title: tr(ref, 'Your wishlist is empty'),
               subtitle:
-                  "Save courses and e-books you're interested in for later.",
-              actionLabel: 'Explore Courses',
+                  tr(ref, "Save courses and e-books you're interested in for later."),
+              actionLabel: tr(ref, 'Explore Courses'),
               onAction: () => context.go('/farmer/explore'),
             ),
           ],
@@ -284,7 +284,25 @@ class _WishlistScreenState extends ConsumerState<WishlistScreen>
         separatorBuilder: (_, __) => const SizedBox(height: 14),
         itemBuilder: (context, index) {
           final item = items[index];
-          return _WishlistCard(item: item);
+          return Dismissible(
+            key: Key(item.id.isNotEmpty ? item.id : 'wishlist_${item.targetId}_$index'),
+            direction: DismissDirection.endToStart,
+            background: Container(
+              alignment: Alignment.centerRight,
+              padding: const EdgeInsets.only(right: 20),
+              decoration: BoxDecoration(
+                color: Colors.redAccent,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Icon(Icons.delete_outline, color: Colors.white, size: 24),
+            ),
+            onDismissed: (_) {
+              ref.read(wishlistProvider.notifier).removeItem(
+                item.id.isNotEmpty ? item.id : item.targetId,
+              );
+            },
+            child: _WishlistCard(item: item),
+          );
         },
       ),
     );

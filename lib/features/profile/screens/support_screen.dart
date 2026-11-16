@@ -806,7 +806,7 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
                 },
                 style: TextStyle(color: isDark ? Colors.white : AppColors.inkDark),
                 decoration: InputDecoration(
-                  hintText: 'e.g. Video player error in module 2',
+                  hintText: tr(ref, 'e.g. Video player error in module 2'),
                   hintStyle: TextStyle(
                     color: isDark ? Colors.white38 : Colors.grey.shade400,
                     fontSize: 14,
@@ -863,7 +863,7 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
                 },
                 style: TextStyle(color: isDark ? Colors.white : AppColors.inkDark),
                 decoration: InputDecoration(
-                  hintText: 'Describe what happened, error message, or steps to reproduce...',
+                  hintText: tr(ref, 'Describe what happened, error message, or steps to reproduce...'),
                   hintStyle: TextStyle(
                     color: isDark ? Colors.white38 : Colors.grey.shade400,
                     fontSize: 14,

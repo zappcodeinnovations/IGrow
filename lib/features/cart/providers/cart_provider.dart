@@ -203,22 +203,66 @@ class CartNotifier extends AsyncNotifier<ApiCart> {
     }
   }
 
-  /// Remove a course or ebook from the cart.
+  /// Remove a course or ebook from the cart optimistically.
   Future<void> removeFromCart(String itemId, {String? ebookId}) async {
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
+    final previousState = state;
+
+    // 1. Optimistic local removal: update state immediately so UI card disappears without reloading screen
+    if (state.hasValue) {
+      final currentCart = state.value!;
+      final updatedItems = currentCart.items.where((it) {
+        if (ebookId != null && ebookId.isNotEmpty && it.isEbook) {
+          return it.ebook != ebookId && it.effectiveId != itemId && it.id != itemId;
+        }
+        return it.effectiveId != itemId && it.id != itemId && it.course != itemId;
+      }).toList();
+
+      // Recalculate estimated total locally
+      double newTotal = 0.0;
+      for (final it in updatedItems) {
+        final p = double.tryParse(it.price.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0.0;
+        newTotal += p;
+      }
+
+      state = AsyncData(ApiCart(
+        id: currentCart.id,
+        items: updatedItems,
+        itemCount: updatedItems.length.toString(),
+        total: newTotal > 0 ? newTotal.toStringAsFixed(2) : '0.00',
+      ));
+    }
+
+    // 2. Perform backend removal in background
+    try {
       await _repository.removeFromCart(itemId, ebookId: ebookId);
-      return _fetchCart();
-    });
+      final freshCart = await _repository.getCart();
+      state = AsyncData(freshCart);
+    } catch (e) {
+      debugPrint('⚠️ [CartNotifier] removeFromCart error: $e');
+      state = previousState;
+      rethrow;
+    }
   }
 
-  /// Clear all items from the cart.
+  /// Clear all items from the cart optimistically.
   Future<void> clearCart() async {
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
+    final previousState = state;
+    if (state.hasValue) {
+      state = AsyncData(ApiCart(
+        id: state.value!.id,
+        items: const [],
+        itemCount: '0',
+        total: '0.00',
+      ));
+    }
+    try {
       await _repository.clearCart();
-      return _fetchCart();
-    });
+      final freshCart = await _repository.getCart();
+      state = AsyncData(freshCart);
+    } catch (e) {
+      state = previousState;
+      rethrow;
+    }
   }
 
   /// Step 1: Create Razorpay Order

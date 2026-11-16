@@ -113,10 +113,10 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
               parent: AlwaysScrollableScrollPhysics(),
             ),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // ── 1. Curved Deep Forest Green Header (Strictly matching prototype) ─────
-                Container(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── 1. Curved Deep Forest Green Header (Strictly matching prototype) ─────
+            Container(
               width: double.infinity,
               decoration: BoxDecoration(
                 color: isDark
@@ -310,9 +310,9 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                   const SizedBox(height: 22),
 
                   // Greeting Title with Namaste & Waving Hand
-                  const Text(
-                    'Namaste, grow with knowledge',
-                    style: TextStyle(
+                  Text(
+                    tr(ref, 'Namaste, grow with knowledge'),
+                    style: const TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.w800,
                       color: Colors.white,
@@ -324,7 +324,7 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                   const Text('👋', style: TextStyle(fontSize: 24)),
                   const SizedBox(height: 6),
                   Text(
-                    'Learn farming from the best',
+                    tr(ref, 'Learn farming from the best'),
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w400,
@@ -578,17 +578,17 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                               children: [
                                 Text(
                                   tr(ref, 'See all'),
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.bold,
-                                    color: Color(0xFF1B4D2E),
+                                    color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF1B4D2E),
                                   ),
                                 ),
                                 const SizedBox(width: 2),
-                                const Icon(
+                                Icon(
                                   Icons.arrow_forward_rounded,
                                   size: 14,
-                                  color: Color(0xFF1B4D2E),
+                                  color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF1B4D2E),
                                 ),
                               ],
                             ),
@@ -776,7 +776,7 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                         final courseTitle =
                             activeEnrollment?.courseTitle ?? 'zhc';
                         final progressPct =
-                            (activeEnrollment?.completionPercentage ?? 100)
+                            (activeEnrollment?.completionPercentage ?? 0.0)
                                 .round();
                         final isComplete = progressPct >= 100;
                         final courseTarget =
@@ -792,7 +792,7 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(
-                                  'Recent Module',
+                                  tr(ref, 'Recent Module'),
                                   style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.w600,
@@ -806,8 +806,8 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                                   onTap: () =>
                                       context.go(RouteNames.farmerLearning),
                                   borderRadius: BorderRadius.circular(6),
-                                  child: const Padding(
-                                    padding: EdgeInsets.symmetric(
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
                                       horizontal: 4,
                                       vertical: 2,
                                     ),
@@ -815,17 +815,17 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                         Text(
-                                          'My Learning',
+                                          tr(ref, 'My Learning'),
                                           style: TextStyle(
                                             fontSize: 12,
                                             fontWeight: FontWeight.w600,
-                                            color: AppColors.editorialSecondary,
+                                            color: isDark ? const Color(0xFF4ADE80) : AppColors.editorialSecondary,
                                           ),
                                         ),
                                         Icon(
                                           Icons.chevron_right,
                                           size: 16,
-                                          color: AppColors.editorialSecondary,
+                                          color: isDark ? const Color(0xFF4ADE80) : AppColors.editorialSecondary,
                                         ),
                                       ],
                                     ),
@@ -922,8 +922,8 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                                                   const SizedBox(width: 4),
                                                   Text(
                                                     isComplete
-                                                        ? 'MODULE COMPLETE'
-                                                        : 'IN PROGRESS',
+                                                        ? tr(ref, 'MODULE COMPLETE')
+                                                        : tr(ref, 'IN PROGRESS'),
                                                     style: TextStyle(
                                                       fontSize: 10,
                                                       fontWeight:
@@ -1007,9 +1007,9 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                                                   BorderRadius.circular(9999),
                                             ),
                                           ),
-                                          child: const Text(
-                                            'Resume',
-                                            style: TextStyle(
+                                          child: Text(
+                                            tr(ref, 'Resume'),
+                                            style: const TextStyle(
                                               fontSize: 12,
                                               fontWeight: FontWeight.w600,
                                             ),
@@ -1025,7 +1025,7 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                                         MainAxisAlignment.spaceBetween,
                                     children: [
                                       Text(
-                                        'Progress',
+                                        tr(ref, 'Progress'),
                                         style: TextStyle(
                                           fontSize: 12,
                                           fontWeight: FontWeight.w600,
@@ -1104,16 +1104,16 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Row(
-                                children: const [
-                                  Icon(
+                                children: [
+                                  const Icon(
                                     Icons.lightbulb_outline_rounded,
                                     size: 18,
                                     color: AppColors.editorialSecondary,
                                   ),
-                                  SizedBox(width: 6),
+                                  const SizedBox(width: 6),
                                   Text(
-                                    'DAILY AGRICULTURAL TIP',
-                                    style: TextStyle(
+                                    tr(ref, 'DAILY AGRICULTURAL TIP'),
+                                    style: const TextStyle(
                                       fontSize: 10.5,
                                       fontWeight: FontWeight.bold,
                                       letterSpacing: 0.6,
@@ -1147,7 +1147,7 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                               ),
                             ),
                             child: Text(
-                              '“Optimizing drip line pressure to 1.0–1.5 bar minimizes emitter clogging and ensures uniform micro-nutrient dissemination across lateral orchard rows.”',
+                              tr(ref, 'Optimizing drip line pressure to 1.0–1.5 bar minimizes emitter clogging and ensures uniform micro-nutrient dissemination across lateral orchard rows.'),
                               style: TextStyle(
                                 fontSize: 13.5,
                                 fontStyle: FontStyle.italic,
@@ -1163,7 +1163,7 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
-                                'Prof. R. Deshmukh • Soil & Water Div.',
+                                tr(ref, 'Prof. R. Deshmukh • Soil & Water Div.'),
                                 style: TextStyle(
                                   fontSize: 11,
                                   color: isDark
@@ -1174,11 +1174,11 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                               InkWell(
                                 onTap: () {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
+                                    SnackBar(
                                       content: Text(
-                                        'Tip saved to your agriculture notes',
+                                        tr(ref, 'Tip saved to your agriculture notes'),
                                       ),
-                                      duration: Duration(seconds: 2),
+                                      duration: const Duration(seconds: 2),
                                     ),
                                   );
                                 },
@@ -1194,7 +1194,7 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                                     ),
                                     const SizedBox(width: 2),
                                     Text(
-                                      'Save',
+                                      tr(ref, 'Save'),
                                       style: TextStyle(
                                         fontSize: 11.5,
                                         fontWeight: FontWeight.w600,
@@ -1217,12 +1217,13 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                 ),
               ),
             ),
-          ),
-          // ── Floating Special Offer Badge (Bottom-Right) ──
-          const FloatingOfferBadge(),
-        ],
+          ],
+        ),
       ),
-    );
+    ),
+    const FloatingOfferBadge(),
+  ],
+);
   }
 }
 

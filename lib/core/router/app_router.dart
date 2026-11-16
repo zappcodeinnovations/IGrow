@@ -60,10 +60,12 @@ import 'route_names.dart';
 
 final rootNavigatorKey = GlobalKey<NavigatorState>();
 final shellNavigatorKey = GlobalKey<NavigatorState>();
+final RouteObserver<ModalRoute<void>> appRouteObserver = RouteObserver<ModalRoute<void>>();
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     navigatorKey: rootNavigatorKey,
+    observers: [appRouteObserver],
     initialLocation: RouteNames.splash,
     refreshListenable: GoRouterRefreshStream(ref.read(authProvider.notifier).stream),
     errorBuilder: (context, state) => NotFoundScreen(
@@ -403,6 +405,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const CreateHubScreen(),
       ),
       GoRoute(
+        path: '/community',
+        redirect: (context, state) {
+          final authState = ref.read(authProvider);
+          final role = authState.user?.activeRole;
+          final query = state.uri.query.isNotEmpty ? '?${state.uri.query}' : '';
+          if (role == UserRole.instructor || role == UserRole.admin) {
+            return '${RouteNames.instructorCommunity}$query';
+          }
+          return '${RouteNames.farmerCommunity}$query';
+        },
+      ),
+      GoRoute(
         path: RouteNames.notifications,
         builder: (context, state) => const NotificationsScreen(),
       ),
@@ -483,11 +497,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: RouteNames.farmerCommunity,
-            pageBuilder: (context, state) => _buildSlideRightPage(
-              context: context,
-              state: state,
-              child: const CommunityScreen(),
-            ),
+            pageBuilder: (context, state) {
+              final postId = state.uri.queryParameters['postId'] ?? state.uri.queryParameters['post_id'];
+              return _buildSlideRightPage(
+                context: context,
+                state: state,
+                child: CommunityScreen(initialPostId: postId),
+              );
+            },
           ),
           GoRoute(
             path: RouteNames.farmerProfile,
@@ -509,11 +526,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: RouteNames.instructorCommunity,
-            pageBuilder: (context, state) => _buildSlideRightPage(
-              context: context,
-              state: state,
-              child: const CommunityScreen(),
-            ),
+            pageBuilder: (context, state) {
+              final postId = state.uri.queryParameters['postId'] ?? state.uri.queryParameters['post_id'];
+              return _buildSlideRightPage(
+                context: context,
+                state: state,
+                child: CommunityScreen(initialPostId: postId),
+              );
+            },
           ),
           GoRoute(
             path: RouteNames.instructorProfile,

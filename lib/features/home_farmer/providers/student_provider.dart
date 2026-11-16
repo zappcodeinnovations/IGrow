@@ -7,6 +7,7 @@ import '../../../core/services/course_progress_service.dart';
 import '../../../core/services/quiz_service.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../cart/providers/cart_provider.dart';
+import '../../home_instructor/providers/instructor_home_provider.dart';
 
 final studentRepositoryProvider = Provider<StudentRepository>((ref) {
   return StudentRepository(
@@ -291,6 +292,18 @@ final studentEnrollmentsProvider = FutureProvider.autoDispose<List<Enrollment>>(
   final repo = ref.watch(studentRepositoryProvider);
   final response = await repo.getEnrollments();
   final list = List<Enrollment>.from(response.results);
+  final deactivatedIds = ref.watch(deactivatedCoursesProvider);
+
+  // Fetch live active catalog courses to cross-reference deactivated/archived courses.
+  // When an instructor deactivates/archives a course, the backend removes it from /courses/catalog/.
+  // A course missing from the active catalog is treated as deactivated.
+  final activeCatalog = await ref.watch(studentCatalogProvider(const CatalogQuery()).future).catchError((_) => <CourseList>[]);
+  final activeCourseIds = <String>{};
+  final activeCourseSlugs = <String>{};
+  for (final c in activeCatalog) {
+    if (c.id != null && c.id!.isNotEmpty) activeCourseIds.add(c.id!.toLowerCase());
+    if (c.slug != null && c.slug!.isNotEmpty) activeCourseSlugs.add(c.slug!.toLowerCase());
+  }
 
   // Cross-reference completed orders so freshly bought courses appear immediately even before backend batch enrollment sync
   try {
@@ -300,6 +313,8 @@ final studentEnrollmentsProvider = FutureProvider.autoDispose<List<Enrollment>>(
       // Only include successful or pending/confirmed orders
       if (status == 'SUCCESS' || status == 'COMPLETED' || status == 'PAID' || status == null) {
         for (final item in order.items) {
+          if (item.isEbook) continue; // E-books belong exclusively to E-Books section
+
           final courseId = item.course;
           final courseSlug = item.courseSlug;
           if (courseId == null && courseSlug == null) continue;
@@ -327,6 +342,26 @@ final studentEnrollmentsProvider = FutureProvider.autoDispose<List<Enrollment>>(
     // Orders fetch is non-fatal fallback
   }
 
+  // Filter out deactivated/archived courses so they never show in the student's panel
+  list.removeWhere((enr) {
+    final cId = enr.course.trim().toLowerCase();
+    final cSlug = (enr.courseSlug ?? '').trim().toLowerCase();
+    
+    // 1. Locally marked deactivated by instructor action on this device
+    final isExplicitlyDeactivated = (cId.isNotEmpty && deactivatedIds.any((d) => d.toLowerCase() == cId)) ||
+        (cSlug.isNotEmpty && deactivatedIds.any((d) => d.toLowerCase() == cSlug));
+    if (isExplicitlyDeactivated) return true;
+
+    // 2. Global backend deactivation: If active catalog loaded successfully and does not contain this course
+    if (activeCourseIds.isNotEmpty || activeCourseSlugs.isNotEmpty) {
+      final isInActiveCatalog = (cId.isNotEmpty && activeCourseIds.contains(cId)) ||
+          (cSlug.isNotEmpty && activeCourseSlugs.contains(cSlug));
+      if (!isInActiveCatalog) return true;
+    }
+
+    return false;
+  });
+
   final enriched = <Enrollment>[];
   for (final enr in list) {
     final primaryKey = (enr.courseSlug != null && enr.courseSlug!.isNotEmpty) ? enr.courseSlug! : enr.course;
@@ -340,10 +375,10 @@ final studentEnrollmentsProvider = FutureProvider.autoDispose<List<Enrollment>>(
     if (localPercent != null && localPercent > 0.0) {
       effectivePercentage = localPercent > effectivePercentage ? localPercent : effectivePercentage;
     } else if (localCompleted.isNotEmpty && effectivePercentage == 0.0) {
-      effectivePercentage = 100.0;
+      effectivePercentage = 50.0; // Videos completed, quiz still pending
     }
 
-    final isCompleted = effectivePercentage >= 100.0 || (enr.completed == true);
+    final isCompleted = effectivePercentage >= 100.0;
 
     enriched.add(enr.copyWith(
       completionPercentage: effectivePercentage,
@@ -446,7 +481,7 @@ Set<String> parseCompletedLectureIds(dynamic progressData) {
       });
     }
 
-    final cList = progressData['completed_lectures'] ?? progressData['lectures'];
+    final cList = progressData['completed_lectures'];
     if (cList is List) {
       for (final item in cList) {
         if (item is Map) {
@@ -455,8 +490,21 @@ Set<String> parseCompletedLectureIds(dynamic progressData) {
           if (id != null && isDone) {
             completed.add(id.toString());
           }
-        } else if (item != null) {
+        } else if (item != null && item.toString().isNotEmpty) {
           completed.add(item.toString());
+        }
+      }
+    }
+
+    final lecturesList = progressData['lectures'];
+    if (lecturesList is List) {
+      for (final item in lecturesList) {
+        if (item is Map) {
+          final id = item['lecture_id'] ?? item['lecture'] ?? item['id'];
+          final isDone = item['is_completed'] == true || item['completed'] == true;
+          if (id != null && isDone) {
+            completed.add(id.toString());
+          }
         }
       }
     }
@@ -468,8 +516,6 @@ Set<String> parseCompletedLectureIds(dynamic progressData) {
         if (id != null && isDone) {
           completed.add(id.toString());
         }
-      } else if (item != null) {
-        completed.add(item.toString());
       }
     }
   }
@@ -539,7 +585,7 @@ class CourseProgressNotifier extends StateNotifier<AsyncValue<Set<String>>> {
         currentCompletedLectures: updatedSet,
       );
     } else {
-      final percent = updatedSet.isNotEmpty ? 100.0 : 0.0;
+      final percent = updatedSet.isNotEmpty ? 50.0 : 0.0;
       await CourseProgressService.instance.saveCoursePercentage(slug, percent);
     }
 

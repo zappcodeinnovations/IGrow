@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
-import '../../data/models/discount_banner_model.dart';
+import '../../../data/models/discount_banner_model.dart';
 
 final discountBannerProvider = StateNotifierProvider<DiscountBannerNotifier, AsyncValue<DiscountBannerModel?>>((ref) {
   return DiscountBannerNotifier();
@@ -33,7 +33,10 @@ class DiscountBannerNotifier extends StateNotifier<AsyncValue<DiscountBannerMode
               .toList();
 
           if (activeList.isNotEmpty) {
-            final latest = activeList.last;
+            final latest = activeList.firstWhere(
+              (b) => b.active,
+              orElse: () => activeList.last,
+            );
             final prefs = await SharedPreferences.getInstance();
             final isDismissed = prefs.getBool('$_dismissedPrefix${latest.id}') ?? false;
 

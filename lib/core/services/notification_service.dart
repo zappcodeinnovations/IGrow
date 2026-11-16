@@ -6,12 +6,15 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:pdf/pdf.dart';
 import 'package:printing/printing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../localization/app_strings.dart';
 import '../network/token_storage.dart';
+import '../router/app_router.dart';
+import '../router/route_names.dart';
 
 /// Top-level background message handler for FCM.
 /// Must be a top-level function annotated with @pragma('vm:entry-point').
@@ -34,11 +37,18 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   // ─── IMPORTANT: Show local notification for data-only messages ───────────
   // When a FCM "data-only" message arrives (no notification payload),
   // Android will NOT auto-display anything — we must show it manually.
-  // For "notification" messages, FCM handles display automatically via the
-  // default_notification_channel_id set in AndroidManifest.xml.
-  // We show here as a safety net so screen-off / background always shows.
-  final rawTitle = message.notification?.title ?? message.data['title'];
-  final rawBody  = message.notification?.body  ?? message.data['body'];
+  // For "notification" messages (where message.notification != null),
+  // Android OS automatically displays the notification using the default channel.
+  // If we also call plugin.show(), Android creates a DUPLICATE notification banner!
+  if (message.notification != null) {
+    if (kDebugMode) {
+      print('ℹ️ [BackgroundHandler] Notification payload already handled by Android OS. Skipping local duplicate.');
+    }
+    return;
+  }
+
+  final rawTitle = message.data['title'];
+  final rawBody  = message.data['body'];
 
   // Check for localized keys in notification or data payload
   final titleLocKey = message.notification?.titleLocKey ?? message.data['title_loc_key'] ?? message.data['title_key'];
@@ -91,7 +101,7 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
             visibility: NotificationVisibility.public,
           ),
         ),
-        payload: message.data.toString(),
+        payload: jsonEncode(message.data),
       );
     } catch (e) {
       developer.log('Failed to show background notification: $e', name: 'NotificationService');
@@ -125,6 +135,103 @@ class NotificationService {
   );
 
   bool _isInitialized = false;
+
+  /// Cache of recently displayed notification deduplication keys with timestamps
+  /// to guard against duplicate push deliveries within a 10-second window.
+  final Map<String, int> _recentNotificationTimestamps = {};
+
+  /// Pending route from a push notification tap received while the app
+  /// was cold-starting or during splash animation. Consumed once home loads.
+  static String? pendingLaunchRoute;
+
+  /// Centralized notification tap redirection
+  static void handleNotificationTap(Map<String, dynamic> data) {
+    if (data.isEmpty) return;
+    if (kDebugMode) {
+      print('🚀 [NotificationService] Routing notification tap with data: $data');
+    }
+
+    String? targetRoute;
+
+    // Direct route payload
+    final route = data['route']?.toString() ?? data['screen']?.toString() ?? data['path']?.toString();
+    if (route != null && route.isNotEmpty) {
+      targetRoute = route;
+    }
+
+    final type = (data['type'] ?? data['entity_type'] ?? data['model'] ?? '').toString().toLowerCase();
+
+    // Check for Q&A notification
+    if (targetRoute == null && (type.contains('qa') || type.contains('question') || data.containsKey('question_id'))) {
+      targetRoute = '/instructor/qa';
+    }
+
+    // Check for Community Post / Comment notification
+    final postId = data['post_id'] ?? data['postId'] ?? (type.contains('post') || type.contains('comment') ? (data['id'] ?? data['entity_id']) : null);
+    final isCommunity = type.contains('comment') ||
+        type.contains('post') ||
+        type.contains('community') ||
+        data.containsKey('post_id') ||
+        data.containsKey('postId') ||
+        (data['title']?.toString().toLowerCase().contains('comment') ?? false) ||
+        (data['body']?.toString().toLowerCase().contains('commented') ?? false);
+
+    if (targetRoute == null && isCommunity) {
+      targetRoute = postId != null && postId.toString().isNotEmpty
+          ? '/community?postId=${postId.toString()}'
+          : '/community';
+    }
+
+    // Check for Support Ticket notification
+    final isSupport = type.contains('ticket') || type.contains('support') || data.containsKey('ticket_id');
+    if (targetRoute == null && isSupport) {
+      targetRoute = '/support?tab=my-tickets';
+    }
+
+    // Check for Course notification
+    final courseId = data['course_id'] ?? data['courseId'] ?? data['course'] ?? data['course_slug'] ?? (type.contains('course') ? (data['id'] ?? data['entity_id']) : null);
+    if (targetRoute == null && courseId != null && courseId.toString().trim().isNotEmpty) {
+      targetRoute = '/farmer/course/${courseId.toString().trim()}';
+    }
+
+    // Check for E-Book notification
+    final ebookId = data['ebook_id'] ?? data['ebookId'] ?? data['ebook'] ?? data['ebook_slug'] ?? (type.contains('ebook') ? (data['id'] ?? data['entity_id']) : null);
+    if (targetRoute == null && ebookId != null && ebookId.toString().trim().isNotEmpty) {
+      targetRoute = '/farmer/ebook/${ebookId.toString().trim()}';
+    } else if (targetRoute == null && (type.contains('ebook') || (data['title']?.toString().toLowerCase().contains('ebook') ?? false))) {
+      final ebookTitle = data['ebook_title'] ?? data['title'];
+      if (ebookTitle != null && ebookTitle.toString().trim().isNotEmpty) {
+        var cleanTitle = ebookTitle.toString().replaceAll(RegExp(r'^(?:New\s+E-Book:\s*|New\s+Ebook:\s*)', caseSensitive: false), '').trim();
+        cleanTitle = cleanTitle.replaceAll(RegExp(r'\.{2,}$'), '').trim();
+        targetRoute = '/explore?tab=ebooks&search=${Uri.encodeComponent(cleanTitle)}';
+      } else {
+        targetRoute = '/explore?tab=ebooks';
+      }
+    }
+
+    if (targetRoute == null) return;
+
+    final navContext = rootNavigatorKey.currentContext;
+    if (navContext != null) {
+      final currentRoute = GoRouterState.of(navContext).matchedLocation;
+      if (currentRoute == RouteNames.splash || currentRoute == '/') {
+        if (kDebugMode) {
+          print('⏳ [NotificationService] App is currently on splash ($currentRoute). Stashing pendingLaunchRoute = $targetRoute');
+        }
+        pendingLaunchRoute = targetRoute;
+      } else {
+        if (kDebugMode) {
+          print('🚀 [NotificationService] Navigating directly to $targetRoute');
+        }
+        navContext.push(targetRoute);
+      }
+    } else {
+      if (kDebugMode) {
+        print('⏳ [NotificationService] No Navigator context yet. Stashing pendingLaunchRoute = $targetRoute');
+      }
+      pendingLaunchRoute = targetRoute;
+    }
+  }
 
   /// When true, course draft creation notifications are deferred until all media uploads reach 100%.
   static bool isCourseDraftUploading = false;
@@ -247,30 +354,44 @@ class NotificationService {
           print('🔔 Local notification clicked with payload: ${response.payload}');
         }
         final payload = response.payload;
-        if (payload != null && payload.isNotEmpty && payload.endsWith('.pdf')) {
-          try {
-            final file = File(payload);
-            if (await file.exists()) {
-              final bytes = await file.readAsBytes();
-              final pageFormat = (!kIsWeb && Platform.isIOS)
-                  ? const PdfPageFormat(
-                      595.28,
-                      420.94, // 70.7% scaling to match portrait viewport
-                      marginAll: 0,
-                    )
-                  : PdfPageFormat.a4.landscape;
+        if (payload != null && payload.isNotEmpty) {
+          if (payload.endsWith('.pdf')) {
+            try {
+              final file = File(payload);
+              if (await file.exists()) {
+                final bytes = await file.readAsBytes();
+                final pageFormat = (!kIsWeb && Platform.isIOS)
+                    ? const PdfPageFormat(
+                        595.28,
+                        420.94, // 70.7% scaling to match portrait viewport
+                        marginAll: 0,
+                      )
+                    : PdfPageFormat.a4.landscape;
 
-              await Printing.layoutPdf(
-                format: pageFormat,
-                dynamicLayout: false,
-                forceCustomPrintPaper: true,
-                onLayout: (_) async => bytes,
-                name: file.uri.pathSegments.last,
-              );
+                await Printing.layoutPdf(
+                  format: pageFormat,
+                  dynamicLayout: false,
+                  forceCustomPrintPaper: true,
+                  onLayout: (_) async => bytes,
+                  name: file.uri.pathSegments.last,
+                );
+              }
+            } catch (e) {
+              if (kDebugMode) {
+                print('⚠️ Could not open downloaded PDF from notification: $e');
+              }
             }
-          } catch (e) {
-            if (kDebugMode) {
-              print('⚠️ Could not open downloaded PDF from notification: $e');
+          } else {
+            try {
+              Map<String, dynamic> data = {};
+              if (payload.startsWith('{') && payload.endsWith('}')) {
+                data = jsonDecode(payload);
+              }
+              NotificationService.handleNotificationTap(data);
+            } catch (e) {
+              if (kDebugMode) {
+                print('⚠️ Failed to parse local notification payload: $e');
+              }
             }
           }
         }
@@ -325,6 +446,29 @@ class NotificationService {
         onNotificationClick?.call(message);
       }
     });
+
+    // 4. Also check FlutterLocalNotifications launch details (for iOS notification center cold launch)
+    _localNotifications.getNotificationAppLaunchDetails().then((NotificationAppLaunchDetails? details) {
+      if (details != null && details.didNotificationLaunchApp) {
+        final payload = details.notificationResponse?.payload;
+        if (payload != null && payload.isNotEmpty && !payload.endsWith('.pdf')) {
+          try {
+            Map<String, dynamic> data = {};
+            if (payload.startsWith('{') && payload.endsWith('}')) {
+              data = jsonDecode(payload);
+            }
+            if (kDebugMode) {
+              print('🔔 Local Notification launched app from terminated state: $data');
+            }
+            NotificationService.handleNotificationTap(data);
+          } catch (e) {
+            if (kDebugMode) {
+              print('⚠️ Error parsing local notification launch payload: $e');
+            }
+          }
+        }
+      }
+    });
   }
 
   /// Display a heads-up notification when app is in the foreground
@@ -358,6 +502,27 @@ class NotificationService {
     // Defer premature course creation push notification while video/media upload is active
     final lowerTitle = title.toLowerCase();
     final lowerBody = body.toLowerCase();
+
+    // ─── Deduplication Guard ──────────────────────────────────────────────
+    // Guard against identical notifications received within 8 seconds
+    // (e.g. when backend fires multiple signals or user has multiple device tokens).
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final dedupeKey = '${message.messageId ?? ""}_${title.trim()}_${body.trim()}';
+    if (_recentNotificationTimestamps.containsKey(dedupeKey)) {
+      final prevTime = _recentNotificationTimestamps[dedupeKey] ?? 0;
+      if (now - prevTime < 8000) {
+        if (kDebugMode) {
+          print('🛡️ [NotificationService] Deduplication Guard: Suppressed duplicate notification banner for "$title"');
+        }
+        return;
+      }
+    }
+    _recentNotificationTimestamps[dedupeKey] = now;
+    // Clean old keys if map exceeds 50 entries
+    if (_recentNotificationTimestamps.length > 50) {
+      _recentNotificationTimestamps.removeWhere((_, time) => now - time > 30000);
+    }
+
     final isCourseCreationNotification = lowerTitle.contains('course created') ||
         lowerBody.contains('saved as a draft');
     if (isCourseCreationNotification && isCourseDraftUploading) {
@@ -396,7 +561,7 @@ class NotificationService {
             presentSound: true,
           ),
         ),
-        payload: message.data.toString(),
+        payload: jsonEncode(message.data),
       );
       if (kDebugMode) {
         print('✅ [_showForegroundNotification] Successfully displayed notification #$notificationId: $title');

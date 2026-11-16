@@ -10,6 +10,7 @@ import 'package:video_player/video_player.dart';
 
 import '../../../core/localization/app_strings.dart';
 import '../../../core/network/api_exception.dart';
+import '../../../core/router/app_router.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/app_toast.dart';
@@ -23,6 +24,7 @@ import '../../home_farmer/providers/student_provider.dart';
 import '../../wishlist/providers/wishlist_provider.dart';
 import '../providers/explore_provider.dart';
 import '../widgets/course_review_modal.dart';
+import 'course_player_screen.dart' show resolveQualityStreamUrl;
 
 /// Agrilearn Live Course View (Public Landing & Details Screen)
 /// Matches Agrilearn website layout:
@@ -209,20 +211,69 @@ class CourseDetailsScreen extends ConsumerStatefulWidget {
       _CourseDetailsScreenState();
 }
 
-class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
+class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen>
+    with WidgetsBindingObserver, RouteAware {
   VideoPlayerController? _videoPlayerController;
   ChewieController? _chewieController;
   String? _activeVideoUrl;
   bool _isPlayingVideo = false;
   bool _isLoadingVideo = false;
+  bool _mainPreviewLimitReached = false;
+  bool _isMainReplaying = false;
+  Duration? _activePreviewLimit;
   bool _isAddingToCart = false;
   bool _isTogglingWishlist = false;
+  String _selectedQuality = 'Auto';
+  String? _activeBaseStreamUrl;
 
   // Track expanded state for sections
   final Map<String, bool> _sectionExpanded = {};
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final modalRoute = ModalRoute.of(context);
+    if (modalRoute != null) {
+      appRouteObserver.subscribe(this, modalRoute);
+    }
+  }
+
+  @override
+  void didPushNext() {
+    // When navigating to Cart, Wishlist, Player or other screens, pause preview playback
+    _pauseVideoPlayback();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.detached) {
+      _pauseVideoPlayback();
+    }
+  }
+
+  void _pauseVideoPlayback() {
+    if (_videoPlayerController != null && _videoPlayerController!.value.isPlaying) {
+      _videoPlayerController!.pause();
+      if (mounted) {
+        setState(() => _isPlayingVideo = false);
+      }
+    }
+  }
+
+  @override
   void dispose() {
+    appRouteObserver.unsubscribe(this);
+    WidgetsBinding.instance.removeObserver(this);
+    _videoPlayerController?.removeListener(_onMainVideoPlayerTick);
+    _videoPlayerController?.pause();
     _chewieController?.dispose();
     _videoPlayerController?.dispose();
     super.dispose();
@@ -295,11 +346,62 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
     return '$hours hr $remainingMinutes mins';
   }
 
+
+  void _onMainVideoPlayerTick() {
+    if (_videoPlayerController == null || !_videoPlayerController!.value.isInitialized) return;
+    if (_isMainReplaying) return;
+    final limit = _activePreviewLimit;
+    if (limit == null) return;
+    final currentPos = _videoPlayerController!.value.position;
+    final totalDuration = _videoPlayerController!.value.duration;
+
+    if (totalDuration > limit && currentPos >= limit) {
+      if (_videoPlayerController!.value.isPlaying) {
+        _videoPlayerController!.pause();
+      }
+      if (!_mainPreviewLimitReached) {
+        _videoPlayerController!.seekTo(limit);
+        if (_chewieController != null && _chewieController!.isFullScreen) {
+          _chewieController!.exitFullScreen();
+        }
+        if (mounted) {
+          setState(() {
+            _mainPreviewLimitReached = true;
+          });
+        }
+      }
+    } else if (_mainPreviewLimitReached && currentPos < limit) {
+      if (mounted) {
+        setState(() {
+          _mainPreviewLimitReached = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _replayMainSample() async {
+    if (_videoPlayerController == null) return;
+    _isMainReplaying = true;
+    setState(() => _mainPreviewLimitReached = false);
+    try {
+      await _videoPlayerController!.pause();
+      await _videoPlayerController!.seekTo(Duration.zero);
+      await _videoPlayerController!.play();
+    } catch (e) {
+      debugPrint('⚠️ [MainPreview] Replay failed: ');
+    } finally {
+      _isMainReplaying = false;
+    }
+  }
+
   Future<void> _initializePlayer(
     String videoUrl, {
     bool autoPlay = false,
     String? bunnyId,
+    Duration? previewLimit,
   }) async {
+    _activePreviewLimit = previewLimit;
+    _mainPreviewLimitReached = false;
     if (_activeVideoUrl == videoUrl && _videoPlayerController != null) {
       if (autoPlay && !_videoPlayerController!.value.isPlaying) {
         _videoPlayerController!.play();
@@ -316,6 +418,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
 
     final oldChewie = _chewieController;
     final oldPlayer = _videoPlayerController;
+    oldPlayer?.removeListener(_onMainVideoPlayerTick);
     _chewieController = null;
     _videoPlayerController = null;
     oldChewie?.dispose();
@@ -329,13 +432,15 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
           bunnyId: bunnyId,
           authToken: token,
         );
+        _activeBaseStreamUrl = resolved.primaryUrl;
+        final effectiveUrl = resolveQualityStreamUrl(resolved.primaryUrl, _selectedQuality);
 
         bool initialized = false;
 
         // Attempt 1: Primary Stream URL with headers
         try {
           _videoPlayerController = VideoPlayerController.networkUrl(
-            Uri.parse(resolved.primaryUrl),
+            Uri.parse(effectiveUrl),
             httpHeaders: resolved.headers,
           );
           await _videoPlayerController!.initialize().timeout(
@@ -393,6 +498,8 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
 
       if (!mounted) return;
 
+      _videoPlayerController!.addListener(_onMainVideoPlayerTick);
+
       _chewieController = ChewieController(
         videoPlayerController: _videoPlayerController!,
         autoPlay: autoPlay,
@@ -400,6 +507,23 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
         allowFullScreen: true,
         allowMuting: true,
         showControls: true,
+        showOptions: true,
+        additionalOptions: (context) {
+          if (_activeBaseStreamUrl == null || !_activeBaseStreamUrl!.startsWith('http')) {
+            return [];
+          }
+          return [
+            OptionItem(
+              onTap: (ctx) {
+                Navigator.of(ctx).pop();
+                _showMainQualitySelectionSheet(context);
+              },
+              iconData: Icons.tune_rounded,
+              title: 'Quality',
+              subtitle: _selectedQuality,
+            ),
+          ];
+        },
         materialProgressColors: ChewieProgressColors(
           playedColor: AppColors.primaryGreen,
           handleColor: AppColors.primaryGreen,
@@ -463,6 +587,289 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
             ),
             backgroundColor: Colors.red.shade700,
             duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
+  void _showMainQualitySelectionSheet(BuildContext sheetContext) {
+    final isDark = Theme.of(sheetContext).brightness == Brightness.dark;
+
+    final qualities = [
+      {
+        'value': 'Auto',
+        'title': 'Auto (Recommended)',
+        'desc': 'Adjusts resolution dynamically based on network',
+        'icon': Icons.auto_awesome_rounded,
+      },
+      {
+        'value': '480p',
+        'title': '480p (High)',
+        'desc': 'Clear picture quality, best on Wi-Fi',
+        'icon': Icons.hd_outlined,
+      },
+      {
+        'value': '360p',
+        'title': '360p (Standard)',
+        'desc': 'Balanced video quality & data usage',
+        'icon': Icons.smart_display_outlined,
+      },
+      {
+        'value': '240p',
+        'title': '240p (Data Saver)',
+        'desc': 'Lowest data usage, suitable for weak cellular',
+        'icon': Icons.data_saver_on_outlined,
+      },
+    ];
+
+    showModalBottomSheet(
+      context: sheetContext,
+      useRootNavigator: true,
+      backgroundColor: isDark ? AppColors.cardDark : AppColors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.tune_rounded,
+                            color: AppColors.primaryGreen, size: 22),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Video Playback Quality',
+                          style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
+                      ],
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded, size: 20),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                ...qualities.map((item) {
+                  final value = item['value'] as String;
+                  final isSelected = _selectedQuality == value;
+                  return InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      if (!isSelected) {
+                        _changeMainVideoQuality(value);
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 12, horizontal: 12),
+                      margin: const EdgeInsets.symmetric(vertical: 4),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? AppColors.primaryGreen.withValues(alpha: 0.1)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(12),
+                        border: isSelected
+                            ? Border.all(
+                                color: AppColors.primaryGreen
+                                    .withValues(alpha: 0.3))
+                            : null,
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            item['icon'] as IconData,
+                            size: 20,
+                            color: isSelected
+                                ? AppColors.primaryGreen
+                                : AppColors.inkSoft,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  item['title'] as String,
+                                  style: Theme.of(ctx)
+                                      .textTheme
+                                      .bodyMedium
+                                      ?.copyWith(
+                                        fontWeight: isSelected
+                                            ? FontWeight.bold
+                                            : FontWeight.w500,
+                                        color: isSelected
+                                            ? AppColors.primaryGreen
+                                            : null,
+                                      ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  item['desc'] as String,
+                                  style: Theme.of(ctx)
+                                      .textTheme
+                                      .bodySmall
+                                      ?.copyWith(
+                                        color: isDark
+                                            ? Colors.white60
+                                            : AppColors.inkSoft,
+                                      ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (isSelected)
+                            const Icon(
+                              Icons.check_circle_rounded,
+                              color: AppColors.primaryGreen,
+                              size: 20,
+                            ),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _changeMainVideoQuality(String newQuality) async {
+    if (_videoPlayerController == null || _activeBaseStreamUrl == null) return;
+    final previousQuality = _selectedQuality;
+    final currentPosition = _videoPlayerController!.value.position;
+    final wasPlaying = _videoPlayerController!.value.isPlaying;
+
+    setState(() {
+      _selectedQuality = newQuality;
+      _isLoadingVideo = true;
+    });
+
+    try {
+      final targetUrl = resolveQualityStreamUrl(_activeBaseStreamUrl!, newQuality);
+      final token = await ref.read(tokenStorageProvider).getAccessToken();
+      final isBunny = targetUrl.contains('b-cdn.net') ||
+          targetUrl.contains('bunny') ||
+          targetUrl.contains('mediadelivery.net');
+      Map<String, String> headers = {};
+      final isBackendHost = targetUrl.contains('iagrow.zappcode.in') ||
+          targetUrl.contains('localhost') ||
+          targetUrl.contains('127.0.0.1') ||
+          targetUrl.contains('10.0.2.2');
+      if (token != null && isBackendHost) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+      if (isBunny) {
+        headers['Referer'] = 'https://iframe.mediadelivery.net/';
+        headers['User-Agent'] =
+            'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36';
+      }
+
+      VideoPlayerController newController = VideoPlayerController.networkUrl(
+        Uri.parse(targetUrl),
+        httpHeaders: headers,
+      );
+
+      try {
+        await newController.initialize().timeout(
+          const Duration(seconds: 12),
+          onTimeout: () => throw Exception('Quality switch timed out'),
+        );
+      } catch (err) {
+        debugPrint('⚠️ [CourseDetails] Quality stream failed with headers, retrying without: $err');
+        await newController.dispose();
+        newController = VideoPlayerController.networkUrl(Uri.parse(targetUrl));
+        await newController.initialize().timeout(
+          const Duration(seconds: 12),
+          onTimeout: () => throw Exception('Quality switch timed out on retry'),
+        );
+      }
+
+      _videoPlayerController?.removeListener(_onMainVideoPlayerTick);
+      final oldPlayer = _videoPlayerController;
+      final oldChewie = _chewieController;
+
+      _videoPlayerController = newController;
+      if (currentPosition > Duration.zero) {
+        await _videoPlayerController!.seekTo(currentPosition);
+      }
+      _videoPlayerController!.addListener(_onMainVideoPlayerTick);
+
+      _chewieController = ChewieController(
+        videoPlayerController: _videoPlayerController!,
+        autoPlay: wasPlaying,
+        looping: false,
+        allowFullScreen: true,
+        allowMuting: true,
+        showControls: true,
+        showOptions: true,
+        additionalOptions: (context) {
+          return [
+            OptionItem(
+              onTap: (ctx) {
+                Navigator.of(ctx).pop();
+                _showMainQualitySelectionSheet(context);
+              },
+              iconData: Icons.tune_rounded,
+              title: 'Quality',
+              subtitle: _selectedQuality,
+            ),
+          ];
+        },
+        materialProgressColors: ChewieProgressColors(
+          playedColor: AppColors.primaryGreen,
+          handleColor: AppColors.primaryGreen,
+          backgroundColor: AppColors.lineLight,
+          bufferedColor: AppColors.canopyStart,
+        ),
+      );
+
+      oldChewie?.dispose();
+      await oldPlayer?.dispose();
+
+      if (wasPlaying) {
+        await _videoPlayerController!.play();
+      }
+
+      if (mounted) {
+        setState(() {
+          _isLoadingVideo = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Video quality changed to $newQuality'),
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('❌ [CourseDetails] Failed to change video quality: $e');
+      if (mounted) {
+        setState(() {
+          _selectedQuality = previousQuality;
+          _isLoadingVideo = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not switch quality ($e)'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
           ),
         );
       }
@@ -948,6 +1355,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                             isEnrolled,
                             previewVideoUrl: videoUrl,
                             previewBunnyId: previewLecture?.bunnyVideoId,
+                            previewLecture: previewLecture,
                             isInstructor: isInstructor,
                           ),
                         ),
@@ -978,6 +1386,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                         totalLectures,
                         previewVideoUrl: videoUrl,
                         previewBunnyId: previewLecture?.bunnyVideoId,
+                        previewLecture: previewLecture,
                         isInstructor: isInstructor,
                       ),
                       Padding(
@@ -1397,6 +1806,8 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
     ApiCourseDetail course, {
     String? previewVideoUrl,
     String? previewBunnyId,
+    ApiLecture? previewLecture,
+    bool isEnrolled = false,
     BorderRadius? borderRadius,
   }) {
     final categoryText = course.categoryDisplay ??
@@ -1410,7 +1821,95 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
         child: _isPlayingVideo &&
                 _chewieController != null &&
                 _chewieController!.videoPlayerController.value.isInitialized
-            ? Chewie(controller: _chewieController!)
+            ? Stack(
+                fit: StackFit.expand,
+                children: [
+                  Chewie(controller: _chewieController!),
+                  if (_mainPreviewLimitReached)
+                    Positioned.fill(
+                      child: Container(
+                        color: Colors.black.withValues(alpha: 0.88),
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: AppColors.primaryGreen.withValues(alpha: 0.2),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.lock_outline_rounded,
+                                color: AppColors.primaryGreen,
+                                size: 26,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            const Text(
+                              'Preview Time Limit Reached',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'Enroll now to unlock full course and complete video access.',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 11,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 10),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 6,
+                              alignment: WrapAlignment.center,
+                              children: [
+                                OutlinedButton.icon(
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: Colors.white70,
+                                    side: const BorderSide(color: Colors.white38),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 4,
+                                    ),
+                                  ),
+                                  onPressed: _replayMainSample,
+                                  icon: const Icon(Icons.replay_rounded, size: 14),
+                                  label: const Text(
+                                    'Replay Sample',
+                                    style: TextStyle(fontSize: 11),
+                                  ),
+                                ),
+                                ElevatedButton.icon(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.primaryGreen,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 4,
+                                    ),
+                                  ),
+                                  onPressed: () => _handleBuyNow(context, course),
+                                  icon: const Icon(Icons.shopping_bag_outlined, size: 14),
+                                  label: const Text(
+                                    'Enroll Now',
+                                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              )
             : Stack(
                 fit: StackFit.expand,
                 children: [
@@ -1525,10 +2024,12 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                           onTap: () {
                             if (previewVideoUrl != null &&
                                 previewVideoUrl.isNotEmpty) {
+                              final limitSec = previewLecture?.previewDuration ?? course.previewDuration ?? 30;
                               _initializePlayer(
                                 previewVideoUrl,
                                 autoPlay: true,
                                 bunnyId: previewBunnyId,
+                                previewLimit: isEnrolled ? null : Duration(seconds: limitSec),
                               );
                             } else {
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -1603,6 +2104,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
     int totalLectures, {
     String? previewVideoUrl,
     String? previewBunnyId,
+    ApiLecture? previewLecture,
     bool isInstructor = false,
   }) {
     final inCart = (course.id.isNotEmpty && ref.watch(isCourseInCartProvider(course.id))) ||
@@ -1635,6 +2137,8 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
           course,
           previewVideoUrl: previewVideoUrl,
           previewBunnyId: previewBunnyId,
+          previewLecture: previewLecture,
+          isEnrolled: isEnrolled,
         ),
 
         // 2. Course Details Body Matching Mockup
@@ -1932,10 +2436,12 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                     ),
                     onPressed: () {
                       if (previewVideoUrl != null && previewVideoUrl.isNotEmpty) {
+                        final limitSec = previewLecture?.previewDuration ?? course.previewDuration ?? 30;
                         _initializePlayer(
                           previewVideoUrl,
                           autoPlay: true,
                           bunnyId: previewBunnyId,
+                          previewLimit: isEnrolled ? null : Duration(seconds: limitSec),
                         );
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -1971,6 +2477,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
     bool isEnrolled, {
     String? previewVideoUrl,
     String? previewBunnyId,
+    ApiLecture? previewLecture,
     bool isInstructor = false,
   }) {
     final priceText =
@@ -2015,6 +2522,8 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
             course,
             previewVideoUrl: previewVideoUrl,
             previewBunnyId: previewBunnyId,
+            previewLecture: previewLecture,
+            isEnrolled: isEnrolled,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
           ),
 
@@ -2300,37 +2809,13 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              tr(ref, "What you will learn"),
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: isDark ? Colors.white : const Color(0xFF132A13),
-              ),
-            ),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  tr(ref, 'See all'),
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1B4D2E),
-                  ),
-                ),
-                const SizedBox(width: 2),
-                const Icon(
-                  Icons.arrow_forward_rounded,
-                  size: 14,
-                  color: Color(0xFF1B4D2E),
-                ),
-              ],
-            ),
-          ],
+        Text(
+          tr(ref, "What you will learn"),
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: isDark ? Colors.white : const Color(0xFF132A13),
+          ),
         ),
         const SizedBox(height: 12),
         ...outcomes.map(
@@ -2347,7 +2832,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    item,
+                    tr(ref, item),
                     style: TextStyle(
                       fontSize: 13,
                       color: isDark ? Colors.white70 : const Color(0xFF4A5568),
@@ -2373,37 +2858,13 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              tr(ref, 'Course curriculum'),
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: isDark ? Colors.white : const Color(0xFF132A13),
-              ),
-            ),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  tr(ref, 'See all'),
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1B4D2E),
-                  ),
-                ),
-                const SizedBox(width: 2),
-                const Icon(
-                  Icons.arrow_forward_rounded,
-                  size: 14,
-                  color: Color(0xFF1B4D2E),
-                ),
-              ],
-            ),
-          ],
+        Text(
+          tr(ref, 'Course curriculum'),
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: isDark ? Colors.white : const Color(0xFF132A13),
+          ),
         ),
         const SizedBox(height: 12),
 
@@ -2411,7 +2872,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 12),
             child: Text(
-              'No curriculum sections published yet.',
+              tr(ref, 'No curriculum sections published yet.'),
               style: TextStyle(
                 color: isDark ? Colors.white60 : Colors.grey.shade600,
                 fontSize: 13,
@@ -2482,7 +2943,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  '${section.lectures.length} lessons · ${durationMins > 0 ? durationMins : 24} min',
+                                  '${formatNum(ref, section.lectures.length)} ${tr(ref, "lessons")} · ${formatNum(ref, durationMins > 0 ? durationMins : 24)} ${tr(ref, "min")}',
                                   style: TextStyle(
                                     fontSize: 11,
                                     color: isDark ? Colors.white60 : const Color(0xFF718096),
@@ -2683,9 +3144,9 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                     color: AppColors.signalYellow.withValues(alpha: 0.4),
                   ),
                 ),
-                child: const Text(
-                  'Free Preview',
-                  style: TextStyle(
+                child: Text(
+                  tr(ref, 'Free Preview'),
+                  style: const TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
                     color: Color(0xFFB28700),
@@ -2722,13 +3183,13 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
     final desc =
         course.description ??
         course.shortDescription ??
-        'No description provided.';
+        tr(ref, 'No description provided.');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Description',
+          tr(ref, 'Description'),
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
@@ -3066,6 +3527,8 @@ class _FreePreviewModalSheetState extends State<_FreePreviewModalSheet> {
   String? _error;
   bool _previewLimitReached = false;
   bool _isReplaying = false;
+  String _selectedQuality = 'Auto';
+  String? _activeBaseStreamUrl;
 
   @override
   void initState() {
@@ -3144,13 +3607,15 @@ class _FreePreviewModalSheetState extends State<_FreePreviewModalSheet> {
         bunnyId: widget.lecture.bunnyVideoId,
         authToken: widget.token,
       );
+      _activeBaseStreamUrl = resolved.primaryUrl;
+      final effectiveUrl = resolveQualityStreamUrl(resolved.primaryUrl, _selectedQuality);
 
       bool initialized = false;
 
       // Attempt 1: Primary Stream URL with headers
       try {
         _controller = VideoPlayerController.networkUrl(
-          Uri.parse(resolved.primaryUrl),
+          Uri.parse(effectiveUrl),
           httpHeaders: resolved.headers,
         );
         await _controller!.initialize().timeout(const Duration(seconds: 10));
@@ -3181,7 +3646,7 @@ class _FreePreviewModalSheetState extends State<_FreePreviewModalSheet> {
         await _controller?.dispose();
         try {
           _controller = VideoPlayerController.networkUrl(
-            Uri.parse(resolved.primaryUrl),
+            Uri.parse(effectiveUrl),
           );
           await _controller!.initialize().timeout(const Duration(seconds: 10));
           initialized = true;
@@ -3205,6 +3670,23 @@ class _FreePreviewModalSheetState extends State<_FreePreviewModalSheet> {
         allowFullScreen: true,
         allowMuting: true,
         showControls: true,
+        showOptions: true,
+        additionalOptions: (context) {
+          if (_activeBaseStreamUrl == null || !_activeBaseStreamUrl!.startsWith('http')) {
+            return [];
+          }
+          return [
+            OptionItem(
+              onTap: (ctx) {
+                Navigator.of(ctx).pop();
+                _showModalQualitySelectionSheet(context);
+              },
+              iconData: Icons.tune_rounded,
+              title: 'Quality',
+              subtitle: _selectedQuality,
+            ),
+          ];
+        },
         materialProgressColors: ChewieProgressColors(
           playedColor: AppColors.primaryGreen,
           handleColor: AppColors.primaryGreen,
@@ -3221,6 +3703,286 @@ class _FreePreviewModalSheetState extends State<_FreePreviewModalSheet> {
           _error =
               'Unable to stream this preview video. Please check your internet connection.';
         });
+      }
+    }
+  }
+
+  void _showModalQualitySelectionSheet(BuildContext sheetContext) {
+    final isDark = Theme.of(sheetContext).brightness == Brightness.dark;
+
+    final qualities = [
+      {
+        'value': 'Auto',
+        'title': 'Auto (Recommended)',
+        'desc': 'Adjusts resolution dynamically based on network',
+        'icon': Icons.auto_awesome_rounded,
+      },
+      {
+        'value': '480p',
+        'title': '480p (High)',
+        'desc': 'Clear picture quality, best on Wi-Fi',
+        'icon': Icons.hd_outlined,
+      },
+      {
+        'value': '360p',
+        'title': '360p (Standard)',
+        'desc': 'Balanced video quality & data usage',
+        'icon': Icons.smart_display_outlined,
+      },
+      {
+        'value': '240p',
+        'title': '240p (Data Saver)',
+        'desc': 'Lowest data usage, suitable for weak cellular',
+        'icon': Icons.data_saver_on_outlined,
+      },
+    ];
+
+    showModalBottomSheet(
+      context: sheetContext,
+      useRootNavigator: true,
+      backgroundColor: isDark ? AppColors.cardDark : AppColors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.tune_rounded,
+                            color: AppColors.primaryGreen, size: 22),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Video Playback Quality',
+                          style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
+                      ],
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded, size: 20),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                ...qualities.map((item) {
+                  final value = item['value'] as String;
+                  final isSelected = _selectedQuality == value;
+                  return InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      if (!isSelected) {
+                        _changeModalVideoQuality(value);
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 12, horizontal: 12),
+                      margin: const EdgeInsets.symmetric(vertical: 4),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? AppColors.primaryGreen.withValues(alpha: 0.1)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(12),
+                        border: isSelected
+                            ? Border.all(
+                                color: AppColors.primaryGreen
+                                    .withValues(alpha: 0.3))
+                            : null,
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            item['icon'] as IconData,
+                            size: 20,
+                            color: isSelected
+                                ? AppColors.primaryGreen
+                                : AppColors.inkSoft,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  item['title'] as String,
+                                  style: Theme.of(ctx)
+                                      .textTheme
+                                      .bodyMedium
+                                      ?.copyWith(
+                                        fontWeight: isSelected
+                                            ? FontWeight.bold
+                                            : FontWeight.w500,
+                                        color: isSelected
+                                            ? AppColors.primaryGreen
+                                            : null,
+                                      ),
+                                ),
+                                Text(
+                                  item['desc'] as String,
+                                  style: Theme.of(ctx)
+                                      .textTheme
+                                      .bodySmall
+                                      ?.copyWith(
+                                        fontSize: 11,
+                                        color: AppColors.inkSoft,
+                                      ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (isSelected)
+                            const Icon(
+                              Icons.check_circle_rounded,
+                              color: AppColors.primaryGreen,
+                              size: 20,
+                            ),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _changeModalVideoQuality(String newQuality) async {
+    if (_controller == null || _activeBaseStreamUrl == null) return;
+    final previousQuality = _selectedQuality;
+    final currentPosition = _controller!.value.position;
+    final wasPlaying = _controller!.value.isPlaying;
+
+    setState(() {
+      _selectedQuality = newQuality;
+      _isLoading = true;
+    });
+
+    try {
+      final targetUrl = resolveQualityStreamUrl(_activeBaseStreamUrl!, newQuality);
+      final isBunny = targetUrl.contains('b-cdn.net') ||
+          targetUrl.contains('bunny') ||
+          targetUrl.contains('mediadelivery.net');
+      Map<String, String> headers = {};
+      final isBackendHost = targetUrl.contains('iagrow.zappcode.in') ||
+          targetUrl.contains('localhost') ||
+          targetUrl.contains('127.0.0.1') ||
+          targetUrl.contains('10.0.2.2');
+      if (widget.token != null && isBackendHost) {
+        headers['Authorization'] = 'Bearer ${widget.token}';
+      }
+      if (isBunny) {
+        headers['Referer'] = 'https://iframe.mediadelivery.net/';
+        headers['User-Agent'] =
+            'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36';
+      }
+
+      VideoPlayerController newController = VideoPlayerController.networkUrl(
+        Uri.parse(targetUrl),
+        httpHeaders: headers,
+      );
+
+      try {
+        await newController.initialize().timeout(
+          const Duration(seconds: 12),
+          onTimeout: () => throw Exception('Quality switch timed out'),
+        );
+      } catch (err) {
+        debugPrint('⚠️ [PreviewModal] Quality stream failed with headers, retrying without: $err');
+        await newController.dispose();
+        newController = VideoPlayerController.networkUrl(Uri.parse(targetUrl));
+        await newController.initialize().timeout(
+          const Duration(seconds: 12),
+          onTimeout: () => throw Exception('Quality switch timed out on retry'),
+        );
+      }
+
+      _controller?.removeListener(_onVideoPlayerTick);
+      final oldPlayer = _controller;
+      final oldChewie = _chewieController;
+
+      _controller = newController;
+      if (currentPosition > Duration.zero) {
+        await _controller!.seekTo(currentPosition);
+      }
+      _controller!.addListener(_onVideoPlayerTick);
+
+      _chewieController = ChewieController(
+        videoPlayerController: _controller!,
+        autoPlay: wasPlaying,
+        looping: false,
+        allowFullScreen: true,
+        allowMuting: true,
+        showControls: true,
+        showOptions: true,
+        additionalOptions: (context) {
+          return [
+            OptionItem(
+              onTap: (ctx) {
+                Navigator.of(ctx).pop();
+                _showModalQualitySelectionSheet(context);
+              },
+              iconData: Icons.tune_rounded,
+              title: 'Quality',
+              subtitle: _selectedQuality,
+            ),
+          ];
+        },
+        materialProgressColors: ChewieProgressColors(
+          playedColor: AppColors.primaryGreen,
+          handleColor: AppColors.primaryGreen,
+          backgroundColor: AppColors.lineLight,
+          bufferedColor: AppColors.canopyStart,
+        ),
+      );
+
+      oldChewie?.dispose();
+      await oldPlayer?.dispose();
+
+      if (wasPlaying) {
+        await _controller!.play();
+      }
+
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Video quality changed to $newQuality'),
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('❌ [PreviewModal] Failed to change video quality: $e');
+      if (mounted) {
+        setState(() {
+          _selectedQuality = previousQuality;
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not switch quality ($e)'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
     }
   }

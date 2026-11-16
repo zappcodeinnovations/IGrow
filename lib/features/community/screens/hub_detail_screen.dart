@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
+import '../../../core/localization/app_strings.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/app_toast.dart';
 import '../../../core/widgets/app_error_state.dart';
@@ -9,6 +10,7 @@ import '../../../data/models/api_models/community_models.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../providers/community_provider.dart';
 import '../widgets/create_post_sheets.dart';
+import '../widgets/hub_members_sheet.dart';
 import '../widgets/rich_post_card.dart';
 
 class HubDetailScreen extends ConsumerStatefulWidget {
@@ -39,13 +41,13 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
               child: const Icon(Icons.exit_to_app_rounded, color: Colors.red, size: 20),
             ),
             const SizedBox(width: 10),
-            const Expanded(
-              child: Text('Leave Community?', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+            Expanded(
+              child: Text(tr(ref, 'Leave Community?'), style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
             ),
           ],
         ),
         content: Text(
-          'Are you sure you want to leave "${hub.name}"? You will no longer receive announcements and updates from this instructor.',
+          '${tr(ref, "Are you sure you want to leave")} "${hub.name}"? ${tr(ref, "You will no longer receive announcements and updates from this instructor.")}',
           style: TextStyle(
             fontSize: 13.5,
             color: isDark ? Colors.white70 : AppColors.inkSoft,
@@ -55,7 +57,7 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text('Cancel', style: TextStyle(color: isDark ? Colors.white60 : Colors.grey, fontWeight: FontWeight.w600)),
+            child: Text(tr(ref, 'Cancel'), style: TextStyle(color: isDark ? Colors.white60 : Colors.grey, fontWeight: FontWeight.w600)),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
@@ -75,9 +77,9 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Left "${hub.name}"'),
+                      content: Text('${tr(ref, "Left")} "${hub.name}"'),
                       action: SnackBarAction(
-                        label: 'Undo',
+                        label: tr(ref, 'Undo'),
                         textColor: const Color(0xFF4ADE80),
                         onPressed: () async {
                           try {
@@ -90,7 +92,7 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                             ref.invalidate(hubDetailsProvider(hub.id));
                           } catch (e) {
                             if (context.mounted) {
-                              AppToast.showFriendlyError(context, e, prefix: 'Failed to join');
+                              AppToast.showFriendlyError(context, e, prefix: tr(ref, 'Failed to join'));
                             }
                           }
                         },
@@ -100,11 +102,11 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                 }
               } catch (e) {
                 if (context.mounted) {
-                  AppToast.showFriendlyError(context, e, prefix: 'Failed to leave');
+                  AppToast.showFriendlyError(context, e, prefix: tr(ref, 'Failed to leave'));
                 }
               }
             },
-            child: const Text('Leave', style: TextStyle(fontWeight: FontWeight.bold)),
+            child: Text(tr(ref, 'Leave'), style: const TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -486,12 +488,30 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                                 ],
                               ),
                               const SizedBox(height: 2),
-                              Text(
-                                '👥 ${hub.memberCount} Members',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.primaryGreen,
+                              InkWell(
+                                borderRadius: BorderRadius.circular(8),
+                                onTap: () => HubMembersSheet.show(context, hub),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 2),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        '👥 ${hub.memberCount} Members',
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.primaryGreen,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      const Icon(
+                                        Icons.arrow_forward_ios_rounded,
+                                        size: 9,
+                                        color: AppColors.primaryGreen,
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ],
@@ -516,9 +536,9 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                                     ),
                                     onPressed: () => _confirmLeave(context, hub),
                                     icon: const Icon(Icons.check_circle_rounded, size: 14, color: AppColors.editorialSecondaryFixedDim),
-                                    label: const Text(
-                                      'Joined ✓',
-                                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+                                    label: Text(
+                                      tr(ref, 'Joined ✓'),
+                                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
                                     ),
                                   )
                                 : OutlinedButton(
@@ -553,9 +573,9 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                                         }
                                       }
                                     },
-                                    child: const Text(
-                                      '+ Join',
-                                      style: TextStyle(
+                                    child: Text(
+                                      tr(ref, '+ Join'),
+                                      style: const TextStyle(
                                         fontWeight: FontWeight.bold,
                                         fontSize: 12.5,
                                         letterSpacing: 0.2,

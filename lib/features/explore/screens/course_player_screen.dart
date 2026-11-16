@@ -10,6 +10,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../../core/services/offline_download_service.dart';
 import '../../../core/services/course_progress_service.dart';
+import '../../../core/services/quiz_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_error_state.dart';
 import '../../../data/models/api_models/course_models.dart';
@@ -18,6 +19,7 @@ import '../../certificates/providers/certificates_provider.dart';
 import '../../certificates/widgets/certificate_viewer_dialog.dart';
 import '../../home_farmer/providers/student_provider.dart';
 import '../providers/explore_provider.dart';
+import '../../../core/router/app_router.dart';
 import '../../../core/router/route_names.dart';
 
 /// Resolves the effective stream URL for the selected quality (Auto, 240p, 360p, 480p, 720p).
@@ -69,7 +71,7 @@ class CoursePlayerScreen extends ConsumerStatefulWidget {
 }
 
 class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
-    with WidgetsBindingObserver {
+    with WidgetsBindingObserver, RouteAware {
   VideoPlayerController? _videoPlayerController;
   ChewieController? _chewieController;
 
@@ -103,6 +105,30 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final modalRoute = ModalRoute.of(context);
+    if (modalRoute != null) {
+      appRouteObserver.subscribe(this, modalRoute);
+    }
+  }
+
+  @override
+  void didPushNext() {
+    // When another route is pushed on top (e.g. Cart, Wishlist, Quiz, etc.), stop playback immediately
+    _videoPlayerController?.pause();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.detached) {
+      _videoPlayerController?.pause();
+    }
+  }
+
+  @override
   void didChangeMetrics() {
     // Called by Flutter whenever the window metrics change (e.g. keyboard
     // slides in/out).  We read the bottom view-inset from the first view.
@@ -116,9 +142,11 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
 
   @override
   void dispose() {
+    appRouteObserver.unsubscribe(this);
     WidgetsBinding.instance.removeObserver(this);
     _flushCurrentProgress();
     _videoPlayerController?.removeListener(_onVideoPlayerTick);
+    _videoPlayerController?.pause();
     _videoPlayerController?.dispose();
     _chewieController?.dispose();
     WakelockPlus.disable();
@@ -150,8 +178,10 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
 
       final progressRatio = (position.inMilliseconds / duration.inMilliseconds).clamp(0.0, 1.0);
 
-      // 1. Auto-complete current lecture when 90% or more is watched
+      // 1. Auto-complete current lecture when 90% or more is watched (requires real playback of at least 5s)
       if (progressRatio >= 0.90 &&
+          duration.inSeconds >= 5 &&
+          position.inSeconds >= 5 &&
           !_hasAutoCompletedCurrentLecture &&
           _currentLecture != null &&
           _activeSlug != null) {
@@ -178,6 +208,19 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
     final slug = _activeSlug ?? course?.slug ?? widget.courseId;
     final courseId = course?.id ?? widget.courseId;
 
+    bool allQuizzesPassed = false;
+    if (course != null && course.sections.isNotEmpty) {
+      bool allPassed = true;
+      for (final sec in course.sections) {
+        final passed = await QuizService.isSectionQuizPassed(sec.id);
+        if (!passed) {
+          allPassed = false;
+          break;
+        }
+      }
+      allQuizzesPassed = allPassed;
+    }
+
     await CourseProgressService.instance.updateLectureWatchAndRecalculate(
       courseSlugOrId: slug,
       secondaryKey: courseId,
@@ -185,6 +228,7 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
       watchRatio: ratio,
       positionSeconds: positionSeconds,
       allLectureIds: allLectureIds.isNotEmpty ? allLectureIds : [_currentLecture!.id],
+      quizPassed: allQuizzesPassed,
     );
 
     // Refresh enrollment & percentage providers so dashboard & player reflect progress immediately
@@ -209,14 +253,16 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
     } catch (_) {}
   }
 
-  void _triggerAutoCompletion(ApiLecture lecture) {
+  void _triggerAutoCompletion(ApiLecture lecture) async {
     if (_activeSlug == null) return;
+    final allLectures = _currentCourse?.sections.expand((s) => s.lectures).toList() ?? [];
     ref
         .read(courseProgressStateProvider(_activeSlug!).notifier)
         .markLectureCompletion(
           lecture.id,
           completed: true,
           watchedTime: _videoPlayerController?.value.position.inSeconds,
+          totalLectures: allLectures.length,
         );
 
     if (mounted) {
@@ -253,7 +299,19 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
     final currentCompleted = ref.read(courseProgressStateProvider(_activeSlug!)).value ?? <String>{};
     final updatedCompleted = {...currentCompleted, justCompletedLectureId};
 
-    final isAllDone = allLectures.every((l) => updatedCompleted.contains(l.id));
+    final isAllLecturesDone = allLectures.every((l) => updatedCompleted.contains(l.id));
+
+    // Require both: all lectures completed AND all section quizzes passed before awarding certificate
+    bool allQuizzesPassed = true;
+    for (final sec in course.sections) {
+      final passed = await QuizService.isSectionQuizPassed(sec.id);
+      if (!passed) {
+        allQuizzesPassed = false;
+        break;
+      }
+    }
+
+    final isAllDone = isAllLecturesDone && allQuizzesPassed;
 
     if (isAllDone) {
       try {
@@ -1094,12 +1152,30 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
           final totalLecturesCount = allLectures.length;
           final completedCount =
               allLectures.where((l) => completedIds.contains(l.id)).length;
-          final discretePercent = totalLecturesCount > 0
-              ? ((completedCount / totalLecturesCount) * 100).round()
-              : 0;
-          final granularPercentAsync = ref.watch(coursePercentageProvider(_activeSlug!));
-          final granularPercent = granularPercentAsync.value?.round() ?? 0;
-          final completionPercent = granularPercent > discretePercent ? granularPercent : discretePercent;
+
+          // Check passing status of section quizzes
+          final totalSections = course.sections.length;
+          int passedQuizzesCount = 0;
+          for (final section in course.sections) {
+            final isPassed = ref.watch(sectionQuizPassedProvider(section.id)).value ?? false;
+            if (isPassed) {
+              passedQuizzesCount++;
+            }
+          }
+          final bool allQuizzesPassed = totalSections > 0 && passedQuizzesCount == totalSections;
+
+          // Video completion accounts for 50%, quiz passing accounts for 50%
+          final double videoRatio = totalLecturesCount > 0
+              ? (completedCount / totalLecturesCount).clamp(0.0, 1.0)
+              : 0.0;
+          final double quizRatio = totalSections > 0
+              ? (passedQuizzesCount / totalSections).clamp(0.0, 1.0)
+              : 0.0;
+
+          final double videoPercent = videoRatio * 50.0;
+          final double quizPercent = quizRatio * 50.0;
+          final int completionPercent = (videoPercent + quizPercent).round();
+          final double progressValue = (videoPercent + quizPercent) / 100.0;
           return Column(
             children: [
               // ── 1. Video Player / Reading Banner Area ─────────────
@@ -1257,111 +1333,6 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          // Mark as Complete Toggle
-                          OutlinedButton.icon(
-                            style: OutlinedButton.styleFrom(
-                              visualDensity: VisualDensity.compact,
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 4),
-                              side: BorderSide(
-                                color: completedIds.contains(_currentLecture!.id)
-                                    ? AppColors.primaryGreen
-                                    : AppColors.inkSoft.withValues(alpha: 0.5),
-                              ),
-                              backgroundColor:
-                                  completedIds.contains(_currentLecture!.id)
-                                      ? AppColors.primaryGreen.withValues(alpha: 0.1)
-                                      : Colors.transparent,
-                            ),
-                            icon: Icon(
-                              completedIds.contains(_currentLecture!.id)
-                                  ? Icons.check_circle
-                                  : Icons.check_circle_outline,
-                              size: 15,
-                              color: completedIds.contains(_currentLecture!.id)
-                                  ? AppColors.primaryGreen
-                                  : AppColors.inkSoft,
-                            ),
-                            label: Text(
-                              completedIds.contains(_currentLecture!.id)
-                                  ? 'Completed'
-                                  : 'Mark Done',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: completedIds.contains(_currentLecture!.id)
-                                    ? AppColors.primaryGreen
-                                    : (isDark ? Colors.white : AppColors.inkDark),
-                              ),
-                            ),
-                            onPressed: () {
-                              final isCurrentlyDone =
-                                  completedIds.contains(_currentLecture!.id);
-                              if (isCurrentlyDone) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Lecture already marked as completed! ✓'),
-                                    duration: Duration(seconds: 2),
-                                  ),
-                                );
-                                return;
-                              }
-                              ref
-                                  .read(
-                                      courseProgressStateProvider(_activeSlug!)
-                                          .notifier)
-                                  .markLectureCompletion(
-                                    _currentLecture!.id,
-                                    completed: true,
-                                    watchedTime: _videoPlayerController
-                                        ?.value.position.inSeconds,
-                                  );
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Marked as completed! ✓'),
-                                  duration: Duration(seconds: 2),
-                                ),
-                              );
-                              _checkCourseCompletionAndShowCelebration(course, _currentLecture!.id);
-                            },
-                          ),
-                          const SizedBox(width: 2),
-                          IconButton(
-                            visualDensity: VisualDensity.compact,
-                            constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
-                            padding: const EdgeInsets.all(4),
-                            tooltip: 'Quick Bookmark',
-                            icon: const Icon(Icons.bookmark_add_outlined, color: AppColors.accentOrange, size: 20),
-                            onPressed: () async {
-                              final currentSec = _videoPlayerController?.value.position.inSeconds ?? 0;
-                              final m = currentSec ~/ 60;
-                              final s = currentSec % 60;
-                              final timeFormatted = '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
-                              final text = '🔖 Bookmark at $timeFormatted in ${_currentLecture!.title}';
-                              try {
-                                await ref.read(studentRepositoryProvider).postCourseNote(
-                                      _activeSlug!,
-                                      text,
-                                      currentSec,
-                                    );
-                                ref.invalidate(courseNotesProvider(_activeSlug!));
-                                if (!mounted || !context.mounted) return;
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Row(
-                                        children: [
-                                          const Icon(Icons.bookmark_added_rounded, color: Colors.white, size: 20),
-                                          const SizedBox(width: 8),
-                                          Text('Bookmarked at $timeFormatted!'),
-                                        ],
-                                      ),
-                                      backgroundColor: AppColors.accentOrange,
-                                      duration: const Duration(seconds: 2),
-                                    ),
-                                  );
-                              } catch (_) {}
-                            },
-                          ),
                           if (_hasNextLecture(course)) ...[
                             IconButton(
                               visualDensity: VisualDensity.compact,
@@ -1414,6 +1385,8 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
                               currentLecture: _currentLecture,
                               completedIds: completedIds,
                               completionPercent: completionPercent,
+                              progressValue: progressValue,
+                              allQuizzesPassed: allQuizzesPassed,
                               completedCount: completedCount,
                               totalLectures: totalLecturesCount,
                               videoPlayerController: _videoPlayerController,
@@ -1481,6 +1454,8 @@ class _CurriculumTab extends ConsumerWidget {
     required this.currentLecture,
     required this.completedIds,
     required this.completionPercent,
+    required this.progressValue,
+    required this.allQuizzesPassed,
     required this.completedCount,
     required this.totalLectures,
     required this.onSelectLecture,
@@ -1492,6 +1467,8 @@ class _CurriculumTab extends ConsumerWidget {
   final ApiLecture? currentLecture;
   final Set<String> completedIds;
   final int completionPercent;
+  final double progressValue;
+  final bool allQuizzesPassed;
   final int completedCount;
   final int totalLectures;
   final Function(ApiLecture, ApiCourseSection) onSelectLecture;
@@ -1502,6 +1479,7 @@ class _CurriculumTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bookmarkedLectures = ref.watch(lectureBookmarksProvider(course.slug ?? course.id));
+    final isCertificateUnlocked = completionPercent >= 100 && allQuizzesPassed;
 
     return RefreshIndicator(
       color: AppColors.primaryGreen,
@@ -1551,9 +1529,7 @@ class _CurriculumTab extends ConsumerWidget {
               ClipRRect(
                 borderRadius: BorderRadius.circular(6),
                 child: LinearProgressIndicator(
-                  value: totalLectures > 0
-                      ? (completedCount / totalLectures)
-                      : 0.0,
+                  value: progressValue.clamp(0.0, 1.0),
                   minHeight: 8,
                   backgroundColor: isDark
                       ? AppColors.lineDark
@@ -1563,38 +1539,57 @@ class _CurriculumTab extends ConsumerWidget {
                   ),
                 ),
               ),
-              if (completionPercent >= 100 || (totalLectures > 0 && completedCount >= totalLectures)) ...[
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFD4AF37),
-                      foregroundColor: Colors.black87,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                    ),
-                    icon: const Icon(Icons.workspace_premium_rounded, size: 20),
-                    label: const Text('View Official Certificate', style: TextStyle(fontWeight: FontWeight.bold)),
-                    onPressed: () async {
-                      try {
-                        final repo = ref.read(certificateRepositoryProvider);
-                        final status = await repo.getCourseCertificate(course.id);
-                        if (!context.mounted) return;
-                        if (status.certificate != null) {
-                          CertificateViewerDialog.show(context, certificate: status.certificate);
-                        } else {
-                          context.push(RouteNames.certificates);
-                        }
-                      } catch (_) {
-                        if (context.mounted) {
-                          context.push(RouteNames.certificates);
-                        }
-                      }
-                    },
+              const SizedBox(height: 12),
+              // View Official Certificate button:
+              // Greyed out until quiz is passed with passing marks & lectures completed.
+              // Enabled and clickable only after passing quiz and completing lectures (100%).
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isCertificateUnlocked
+                        ? const Color(0xFFD4AF37)
+                        : (isDark ? Colors.white12 : Colors.grey.shade300),
+                    foregroundColor: isCertificateUnlocked
+                        ? Colors.black87
+                        : (isDark ? Colors.white38 : Colors.grey.shade600),
+                    disabledBackgroundColor: isDark ? Colors.white12 : Colors.grey.shade300,
+                    disabledForegroundColor: isDark ? Colors.white38 : Colors.grey.shade600,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
                   ),
+                  icon: Icon(
+                    isCertificateUnlocked
+                        ? Icons.workspace_premium_rounded
+                        : Icons.lock_outline_rounded,
+                    size: 20,
+                  ),
+                  label: Text(
+                    isCertificateUnlocked
+                        ? 'View Official Certificate'
+                        : 'View Official Certificate (Pass Quiz to Unlock)',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  onPressed: isCertificateUnlocked
+                      ? () async {
+                          try {
+                            final repo = ref.read(certificateRepositoryProvider);
+                            final status = await repo.getCourseCertificate(course.id);
+                            if (!context.mounted) return;
+                            if (status.certificate != null) {
+                              CertificateViewerDialog.show(context, certificate: status.certificate);
+                            } else {
+                              context.push(RouteNames.certificates);
+                            }
+                          } catch (_) {
+                            if (context.mounted) {
+                              context.push(RouteNames.certificates);
+                            }
+                          }
+                        }
+                      : null,
                 ),
-              ],
+              ),
             ],
           ),
         ),
@@ -1841,7 +1836,15 @@ class _CurriculumTab extends ConsumerWidget {
                             fontWeight: isPassed ? FontWeight.bold : FontWeight.w600,
                           ),
                         ),
-                        onPressed: () => context.push('/quiz/${section.id}'),
+                        onPressed: () async {
+                          await context.push('/quiz/${section.id}');
+                          ref.invalidate(sectionQuizPassedProvider(section.id));
+                          ref.invalidate(studentEnrollmentsProvider);
+                          ref.invalidate(myCertificatesProvider);
+                          ref.invalidate(certificateEnrollmentsProvider);
+                          final slug = course.slug ?? course.id;
+                          ref.invalidate(coursePercentageProvider(slug));
+                        },
                       ),
                     );
                   },
@@ -2470,11 +2473,21 @@ class _CourseNotesTabState extends ConsumerState<_CourseNotesTab> {
 
   Future<void> _submit() async {
     final text = _controller.text.trim();
-    if (text.isEmpty) return;
+    if (text.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please enter a note before adding.'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+      return;
+    }
 
     final sec = _getCurrentSeconds();
+    final formatted = _formatTime(sec);
     setState(() => _isSubmitting = true);
-    // Dismiss keyboard before submitting so screen returns to normal
     if (mounted) FocusScope.of(context).unfocus();
     try {
       await ref.read(studentRepositoryProvider).postCourseNote(
@@ -2484,14 +2497,31 @@ class _CourseNotesTabState extends ConsumerState<_CourseNotesTab> {
           );
       _controller.clear();
       ref.invalidate(courseNotesProvider(widget.courseSlug));
+      if (mounted) {
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.clearSnackBars();
+        messenger.showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+                const SizedBox(width: 8),
+                Text('Note added at ' + formatted + '!'),
+              ],
+            ),
+            backgroundColor: AppColors.primaryGreen,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
     } catch (e) {
       if (mounted) {
         final messenger = ScaffoldMessenger.of(context);
         messenger.clearSnackBars();
         messenger.showSnackBar(
           SnackBar(
-            content: Text('Failed to save note: $e'),
-            duration: const Duration(milliseconds: 2000),
+            content: Text('Failed to save note: ' + e.toString()),
+            duration: const Duration(seconds: 3),
           ),
         );
       }
@@ -2566,35 +2596,6 @@ class _CourseNotesTabState extends ConsumerState<_CourseNotesTab> {
                   onSelected: (val) {
                     if (val) setState(() => _activeFilter = 'bookmarks');
                   },
-                ),
-                const SizedBox(width: 10),
-                // Quick Bookmark Button
-                InkWell(
-                  onTap: _isSubmitting ? null : _quickBookmark,
-                  borderRadius: BorderRadius.circular(8),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: AppColors.accentOrange.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.accentOrange.withValues(alpha: 0.3)),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.bookmark_add_rounded, size: 14, color: AppColors.accentOrange),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Bookmark ${_formatTime(widget.currentPositionSeconds)}',
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.accentOrange,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
                 ),
               ],
             ),
@@ -2728,79 +2729,146 @@ class _CourseNotesTabState extends ConsumerState<_CourseNotesTab> {
           ),
         ),
 
-        // ── Input Strip at Bottom ─────────────────────────────────
-        // viewInsets.bottom is needed because resizeToAvoidBottomInset
-        // is false on the parent Scaffold.
-        Container(
-          padding: EdgeInsets.only(
-            left: 16,
-            right: 16,
-            top: 10,
-            bottom: 10 +
-                MediaQuery.of(context).padding.bottom +
-                MediaQuery.of(context).viewInsets.bottom,
-          ),
-          decoration: BoxDecoration(
-            color: isDark ? AppColors.cardDark : Colors.white,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 10,
-                offset: const Offset(0, -3),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _controller,
-                  decoration: InputDecoration(
-                    hintText:
-                        'Add note at ${_formatTime(_getCurrentSeconds())}...',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(
-                        color: isDark ? Colors.white12 : AppColors.lineLight,
-                      ),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(
-                        color: isDark ? Colors.white12 : AppColors.lineLight,
-                      ),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(
-                        color: AppColors.accentOrange,
-                        width: 1.5,
-                      ),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 10),
-                  ),
-                  onSubmitted: (_) => _submit(),
+        // ── Input Strip at Bottom (Conditional by active tab) ─────
+        if (_activeFilter == 'all')
+          const SizedBox.shrink()
+        else if (_activeFilter == 'notes')
+          Container(
+            padding: EdgeInsets.only(
+              left: 16,
+              right: 16,
+              top: 10,
+              bottom: 10 +
+                  MediaQuery.of(context).padding.bottom +
+                  MediaQuery.of(context).viewInsets.bottom,
+            ),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.cardDark : Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, -3),
                 ),
-              ),
-              const SizedBox(width: 10),
-              _isSubmitting
-                  ? const SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: AppColors.accentOrange,
+              ],
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _controller,
+                    decoration: InputDecoration(
+                      hintText: 'Add note at ${_formatTime(_getCurrentSeconds())}...',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: isDark ? Colors.white12 : AppColors.lineLight,
+                        ),
                       ),
-                    )
-                  : IconButton(
-                      icon: const Icon(Icons.add_circle,
-                          color: AppColors.accentOrange),
-                      onPressed: _submit,
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: isDark ? Colors.white12 : AppColors.lineLight,
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(
+                          color: AppColors.accentOrange,
+                          width: 1.5,
+                        ),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10),
                     ),
-            ],
+                    onSubmitted: (_) => _submit(),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                _isSubmitting
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.accentOrange,
+                        ),
+                      )
+                    : IconButton(
+                        icon: const Icon(Icons.add_circle,
+                            color: AppColors.accentOrange, size: 28),
+                        onPressed: _submit,
+                      ),
+              ],
+            ),
+          )
+        else if (_activeFilter == 'bookmarks')
+          Container(
+            padding: EdgeInsets.only(
+              left: 16,
+              right: 16,
+              top: 10,
+              bottom: 10 +
+                  MediaQuery.of(context).padding.bottom +
+                  MediaQuery.of(context).viewInsets.bottom,
+            ),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.cardDark : Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, -3),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isDark ? Colors.white12 : AppColors.lineLight,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.bookmark_add_rounded, size: 18, color: AppColors.accentOrange),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Add bookmark at ${_formatTime(_getCurrentSeconds())}',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: isDark ? Colors.white70 : AppColors.inkDark,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                _isSubmitting
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.accentOrange,
+                        ),
+                      )
+                    : IconButton(
+                        icon: const Icon(Icons.add_circle,
+                            color: AppColors.accentOrange, size: 28),
+                        tooltip: 'Add Bookmark',
+                        onPressed: _quickBookmark,
+                      ),
+              ],
+            ),
           ),
-        ),
       ],
     );
   }
@@ -3213,6 +3281,78 @@ class _CourseReviewsTabState extends ConsumerState<_CourseReviewsTab> {
                                 ),
                               ],
                             ),
+                          ),
+                          // Delete Review button (visible for author or if currentUser matches)
+                          Builder(
+                            builder: (context) {
+                              final currentUser = ref.read(authProvider).user;
+                              final currentUserId = currentUser?.id.toString();
+                              final currentName = currentUser?.fullName.trim().toLowerCase();
+                              final reviewName = review.studentName.trim().toLowerCase();
+                              final isAuthor = review.isMyReview ||
+                                  (currentUserId != null && review.studentId == currentUserId) ||
+                                  (currentName != null && currentName.isNotEmpty && (currentName == reviewName || reviewName.contains(currentName) || currentName.contains(reviewName)));
+
+                              if (!isAuthor) return const SizedBox.shrink();
+
+                              return IconButton(
+                                icon: const Icon(Icons.delete_outline_rounded, size: 18, color: AppColors.error),
+                                tooltip: 'Delete Review',
+                                visualDensity: VisualDensity.compact,
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                                onPressed: () async {
+                                  final confirmed = await showDialog<bool>(
+                                    context: context,
+                                    builder: (dialogCtx) => AlertDialog(
+                                      title: const Text('Delete Review'),
+                                      content: const Text('Are you sure you want to delete your review?'),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () => Navigator.pop(dialogCtx, false),
+                                          child: const Text('Cancel'),
+                                        ),
+                                        ElevatedButton(
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: AppColors.error,
+                                            foregroundColor: Colors.white,
+                                          ),
+                                          onPressed: () => Navigator.pop(dialogCtx, true),
+                                          child: const Text('Delete'),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+
+                                  if (confirmed == true) {
+                                    try {
+                                      await ref.read(courseRepositoryProvider).deleteCourseReview(widget.courseSlug, review.id);
+                                      ref.invalidate(courseReviewsProvider(widget.courseSlug));
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(
+                                            content: Text('Review deleted successfully.'),
+                                            backgroundColor: AppColors.primaryGreen,
+                                            duration: Duration(seconds: 2),
+                                          ),
+                                        );
+                                      }
+                                    } catch (e) {
+                                      if (context.mounted) {
+                                        final cleanMsg = e.toString().replaceAll('Exception: ', '').trim();
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text(cleanMsg.isNotEmpty ? cleanMsg : 'Could not delete review. Please try again.'),
+                                            backgroundColor: AppColors.error,
+                                            duration: const Duration(seconds: 3),
+                                          ),
+                                        );
+                                      }
+                                    }
+                                  }
+                                },
+                              );
+                            },
                           ),
                         ],
                       ),

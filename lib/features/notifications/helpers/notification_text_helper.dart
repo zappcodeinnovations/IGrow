@@ -49,6 +49,23 @@ class NotificationTextHelper {
       if (translated != 'notif_support_ticket_title') {
         return _interpolate(translated, notif.params, currentLang);
       }
+    } else if (nType == 'NEW_ENROLLMENT' || notif.title.toLowerCase().contains('new student enrolled') || notif.title.toLowerCase().contains('new enrollment')) {
+      final translated = AppStrings.tr('notif_new_enrollment_title', languageCode: currentLang);
+      if (translated != 'notif_new_enrollment_title') return translated;
+    } else if (nType == 'QA' || nType == 'QUESTION' || notif.title.toLowerCase().contains('question') || notif.title.toLowerCase().contains('q&a')) {
+      final isReply = notif.title.toLowerCase().contains('reply') || notif.message.toLowerCase().contains('replied');
+      final key = isReply ? 'notif_qa_reply_title' : 'notif_qa_question_title';
+      final translated = AppStrings.tr(key, languageCode: currentLang);
+      if (translated != key) return translated;
+    } else if (nType == 'APPROVED' || nType == 'COURSE_APPROVED' || notif.title.toLowerCase().contains('course approved')) {
+      final translated = AppStrings.tr('notif_course_approved_title', languageCode: currentLang);
+      if (translated != 'notif_course_approved_title') return translated;
+    } else if (nType == 'REJECTED' || nType == 'COURSE_REJECTED' || notif.title.toLowerCase().contains('rejected') || notif.title.toLowerCase().contains('course review update')) {
+      final translated = AppStrings.tr('notif_course_rejected_title', languageCode: currentLang);
+      if (translated != 'notif_course_rejected_title') return translated;
+    } else if (nType == 'COMMENT' || nType == 'POST_COMMENT' || notif.title.toLowerCase().contains('comment')) {
+      final translated = AppStrings.tr('notif_comment_title', languageCode: currentLang);
+      if (translated != 'notif_comment_title') return translated;
     }
 
     // 2. Try Backend Provided Translations Object
@@ -98,6 +115,40 @@ class NotificationTextHelper {
       final translated = AppStrings.tr('notif_support_ticket_status_updated', languageCode: currentLang);
       if (translated != 'notif_support_ticket_status_updated') {
         return _interpolate(translated, notif.params, currentLang);
+      }
+    } else if (nType == 'NEW_ENROLLMENT' || notif.title.toLowerCase().contains('enrolled') || notif.message.toLowerCase().contains('enrolled')) {
+      final translated = AppStrings.tr('notif_new_enrollment_body', languageCode: currentLang);
+      if (translated != 'notif_new_enrollment_body') {
+        final courseTitle = notif.courseTitle ?? notif.params?['course_title'] ?? '';
+        final studentName = notif.params?['student_name'] ?? 'Student';
+        return _interpolate(translated, {'student_name': studentName, 'course_title': courseTitle}, currentLang);
+      }
+    } else if (nType == 'QA' || nType == 'QUESTION' || notif.title.toLowerCase().contains('question') || notif.title.toLowerCase().contains('q&a')) {
+      final isReply = notif.title.toLowerCase().contains('reply') || notif.message.toLowerCase().contains('replied');
+      final key = isReply ? 'notif_qa_reply_body' : 'notif_qa_question_body';
+      final translated = AppStrings.tr(key, languageCode: currentLang);
+      if (translated != key) {
+        final courseTitle = notif.courseTitle ?? notif.params?['course_title'] ?? '';
+        final studentName = notif.params?['student_name'] ?? 'Student';
+        return _interpolate(translated, {'student_name': studentName, 'course_title': courseTitle}, currentLang);
+      }
+    } else if (nType == 'APPROVED' || nType == 'COURSE_APPROVED' || notif.title.toLowerCase().contains('approved')) {
+      final translated = AppStrings.tr('notif_course_approved_body', languageCode: currentLang);
+      if (translated != 'notif_course_approved_body') {
+        final courseTitle = notif.courseTitle ?? notif.params?['course_title'] ?? '';
+        return _interpolate(translated, {'course_title': courseTitle}, currentLang);
+      }
+    } else if (nType == 'REJECTED' || nType == 'COURSE_REJECTED' || notif.title.toLowerCase().contains('rejected')) {
+      final translated = AppStrings.tr('notif_course_rejected_body', languageCode: currentLang);
+      if (translated != 'notif_course_rejected_body') {
+        final courseTitle = notif.courseTitle ?? notif.params?['course_title'] ?? '';
+        return _interpolate(translated, {'course_title': courseTitle}, currentLang);
+      }
+    } else if (nType == 'COMMENT' || nType == 'POST_COMMENT' || notif.title.toLowerCase().contains('comment')) {
+      final translated = AppStrings.tr('notif_comment_body', languageCode: currentLang);
+      if (translated != 'notif_comment_body') {
+        final authorName = notif.params?['author_name'] ?? 'Someone';
+        return _interpolate(translated, {'author_name': authorName}, currentLang);
       }
     }
 

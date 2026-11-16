@@ -10,6 +10,7 @@ import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/app_toast.dart';
 import '../../../core/services/apple_iap_service.dart';
+import '../../../core/services/course_progress_service.dart';
 import '../../../data/models/api_models/course_models.dart';
 import '../../../data/models/api_models/order_models.dart';
 import '../../../core/services/app_config_service.dart';
@@ -118,9 +119,16 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
             signature: signature,
           );
 
-      // Invalidate enrollments, orders, and clear cart if checking out cart
+      // Invalidate enrollments, orders, ebooks, and clear cart if checking out cart
+      if (widget.directCourseId != null) {
+        await CourseProgressService.instance.resetCourseProgress(widget.directCourseId!);
+        ref.invalidate(courseProgressStateProvider(widget.directCourseId!));
+        ref.invalidate(coursePercentageProvider(widget.directCourseId!));
+      }
       ref.invalidate(studentEnrollmentsProvider);
       ref.invalidate(ordersProvider);
+      ref.invalidate(studentPurchasedEbooksProvider);
+      ref.invalidate(studentEbooksProvider);
       if (widget.directCourseId != null) {
         ref.invalidate(courseDetailProvider(widget.directCourseId!));
       } else {
@@ -220,6 +228,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       if (status == 'FREE_ENROLLED') {
         ref.invalidate(studentEnrollmentsProvider);
         ref.invalidate(ordersProvider);
+        ref.invalidate(studentPurchasedEbooksProvider);
+        ref.invalidate(studentEbooksProvider);
         if (widget.directCourseId == null) {
           await ref.read(cartProvider.notifier).clearCart();
         }
