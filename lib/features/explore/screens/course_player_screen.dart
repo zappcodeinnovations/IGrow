@@ -1484,11 +1484,11 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
                             fontSize: 13, fontWeight: FontWeight.bold),
                         unselectedLabelStyle: const TextStyle(
                             fontSize: 13, fontWeight: FontWeight.w500),
-                        tabs: const [
-                          Tab(text: 'Curriculum'),
-                          Tab(text: 'Q&A'),
-                          Tab(text: 'Notes & Bookmarks'),
-                          Tab(text: 'Reviews'),
+                        tabs: [
+                          Tab(text: tr(ref, 'Curriculum')),
+                          Tab(text: tr(ref, 'Q&A')),
+                          Tab(text: tr(ref, 'Notes & Bookmarks')),
+                          Tab(text: tr(ref, 'Reviews')),
                         ],
                       ),
                       Expanded(

@@ -1575,8 +1575,8 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
                       padding: const EdgeInsets.all(4),
                       child: Icon(
                         isMasked
-                            ? Icons.visibility_outlined
-                            : Icons.visibility_off_outlined,
+                            ? Icons.visibility_off_outlined
+                            : Icons.visibility_outlined,
                         size: 18,
                         color: AppColors.primaryGreen,
                       ),

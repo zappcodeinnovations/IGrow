@@ -2211,7 +2211,7 @@ class _LocationPickerSheetState extends ConsumerState<_LocationPickerSheet> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Select District Area',
+                  tr(ref, 'Select District Area'),
                   style: TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.bold,
@@ -2247,7 +2247,7 @@ class _LocationPickerSheetState extends ConsumerState<_LocationPickerSheet> {
                       const Icon(Icons.my_location_rounded, color: AppColors.primaryGreen, size: 16),
                       const SizedBox(width: 8),
                       Text(
-                        'Use GPS Location: ${WeatherService.lastResolvedCity}',
+                        '${tr(ref, 'Use GPS Location')}: ${tr(ref, WeatherService.lastResolvedCity!)}',
                         style: const TextStyle(
                           color: AppColors.primaryGreen,
                           fontWeight: FontWeight.bold,
@@ -2266,7 +2266,7 @@ class _LocationPickerSheetState extends ConsumerState<_LocationPickerSheet> {
               children: _popularDistricts.map((d) {
                 final isSelected = currentDistrict.toLowerCase() == d.toLowerCase();
                 return ChoiceChip(
-                  label: Text(d),
+                  label: Text(tr(ref, d)),
                   selected: isSelected,
                   selectedColor: AppColors.primaryGreen,
                   labelStyle: TextStyle(
