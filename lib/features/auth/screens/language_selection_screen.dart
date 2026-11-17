@@ -121,7 +121,7 @@ class _LanguageSelectionScreenState extends ConsumerState<LanguageSelectionScree
                       final prefs = await SharedPreferences.getInstance();
                       await prefs.setBool('has_selected_language', true);
                       if (context.mounted) {
-                        context.go(RouteNames.chooseRole);
+                        context.go(RouteNames.login);
                       }
                     },
                   ),

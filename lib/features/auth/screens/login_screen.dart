@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -31,152 +32,35 @@ class LoginScreen extends ConsumerStatefulWidget {
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends ConsumerState<LoginScreen>
-    with SingleTickerProviderStateMixin {
-  final _formKey = GlobalKey<FormState>();
+class _LoginScreenState extends ConsumerState<LoginScreen> {
+  final _phoneController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _scrollController = ScrollController();
+  final _emailFormKey = GlobalKey<FormState>();
+
   bool _obscurePassword = true;
-  bool _isEmailLoading = false;
+  bool _isPhoneLoading = false;
   bool _isGoogleLoading = false;
   bool _isAppleLoading = false;
-  String? _persistedRole;
-
-  late final AnimationController _pulseController;
-  late final Animation<double> _pulseScale;
-  late final Animation<double> _pulseGlow;
-  bool _shouldPulseSwitchRole = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadPersistedRole();
-
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 700),
-    );
-
-    _pulseScale = Tween<double>(begin: 1.0, end: 1.08).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
-    );
-
-    _pulseGlow = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
-    );
-  }
-
-  void _triggerSwitchRolePulse() {
-    setState(() => _shouldPulseSwitchRole = true);
-    _pulseController.forward(from: 0.0).then((_) {
-      _pulseController.reverse().then((_) {
-        _pulseController.forward().then((_) {
-          _pulseController.reverse().then((_) {
-            _pulseController.forward().then((_) {
-              _pulseController.reverse().then((_) {
-                if (mounted) {
-                  setState(() => _shouldPulseSwitchRole = false);
-                }
-              });
-            });
-          });
-        });
-      });
-    });
-  }
-
-  Future<void> _loadPersistedRole() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final role = prefs.getString('selected_auth_role') ?? prefs.getString('active_user_role');
-      if (mounted && role != null) {
-        setState(() => _persistedRole = role);
-      }
-    } catch (_) {}
-  }
-
-  bool get _isInstructorRole {
-    final effectiveRole = (widget.selectedRole ?? _persistedRole)?.toLowerCase().trim();
-    return effectiveRole == 'instructor';
-  }
+  bool _isEmailLoading = false;
+  bool _showEmailFields = false;
 
   @override
   void dispose() {
-    _pulseController.dispose();
+    _phoneController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _scrollController.dispose();
     super.dispose();
   }
 
-  Future<void> _login() async {
-    // Dismiss keyboard immediately to prevent layout jumps
-    FocusScope.of(context).unfocus();
-    FocusManager.instance.primaryFocus?.unfocus();
-
-    if (_scrollController.hasClients && _scrollController.offset > 0) {
-      _scrollController.animateTo(
-        0,
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOut,
-      );
-    }
-
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
-
-    final email = _emailController.text.trim();
-    final password = _passwordController.text;
-
-    setState(() => _isEmailLoading = true);
-    try {
-      final currentExpectedRole = (widget.selectedRole ?? _persistedRole ?? 'farmer').toLowerCase().trim();
-      await ref.read(authProvider.notifier).login(
-            email: email,
-            password: password,
-            expectedRole: currentExpectedRole,
-          );
-
-      if (!mounted) return;
-
-      final authState = ref.read(authProvider);
-      if (authState.isAuthenticated && authState.user != null) {
-        final backendRole = authState.user!.activeRole;
-        final prefs = await SharedPreferences.getInstance();
-
-        if (backendRole == UserRole.instructor) {
-          await prefs.setString('active_user_role', 'instructor');
-          await prefs.setString('selected_auth_role', 'instructor');
-        } else {
-          await prefs.setString('active_user_role', 'farmer');
-          await prefs.setString('selected_auth_role', 'farmer');
-        }
-
-        if (!mounted) return;
-
-        final hasSelectedLanguage =
-            prefs.getBool('has_selected_language') ?? false;
-        if (hasSelectedLanguage) {
-          context.go(RouteNames.authSuccess);
-        } else {
-          context.go(RouteNames.languageSelection);
-        }
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isEmailLoading = false);
-      }
-    }
-  }
-
   Future<void> _handleSocialSuccess() async {
     if (!mounted) return;
 
     final user = ref.read(authProvider).user;
-    // If user is missing phone number, prompt them to complete details
-    final needsDetails = user != null &&
+    final needsDetails =
+        user != null &&
         (user.phone.trim().isEmpty ||
             (user.locationState == null || user.locationState!.trim().isEmpty));
 
@@ -192,7 +76,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     if (!mounted) return;
 
     final backendRole = updatedUser.activeRole;
-
     if (backendRole == UserRole.instructor) {
       await prefs.setString('active_user_role', 'instructor');
       await prefs.setString('selected_auth_role', 'instructor');
@@ -215,34 +98,31 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     FocusScope.of(context).unfocus();
     setState(() => _isGoogleLoading = true);
     try {
-      print('\n👉 [LOGIN_SCREEN] Starting Google Sign-In...');
       final payload = await SocialAuthService.instance.signInWithGoogle();
       if (payload == null) {
-        print('⚠️ [LOGIN_SCREEN] Google Sign-In returned null (user canceled or no credential available).');
         if (mounted) {
-          AppToast.show(context, 'Google Sign-In was cancelled or no credential was returned.', isError: true);
+          AppToast.show(
+            context,
+            tr(ref, 'Google Sign-In was cancelled.'),
+            isError: true,
+          );
         }
         return;
       }
 
-      print('✅ [LOGIN_SCREEN] Google Sign-In token received. Sending to backend...');
-      final currentExpectedRole = (widget.selectedRole ?? _persistedRole ?? 'farmer').toLowerCase().trim();
-      final success = await ref.read(authProvider.notifier).socialLogin(
+      final success = await ref
+          .read(authProvider.notifier)
+          .socialLogin(
             provider: 'google',
             idToken: payload['id_token'] as String,
             fullName: payload['full_name'] as String?,
             fcmToken: payload['fcm_token'] as String?,
-            expectedRole: currentExpectedRole,
           );
 
       if (success) {
-        print('✅ [LOGIN_SCREEN] Backend social login success! Navigating...');
         await _handleSocialSuccess();
-      } else {
-        print('❌ [LOGIN_SCREEN] Backend social login failed. State error: ${ref.read(authProvider).error}');
       }
-    } catch (e, st) {
-      print('❌ [LOGIN_SCREEN] Google Sign-In Exception: $e\n$st');
+    } catch (e) {
       if (mounted) {
         AppToast.show(context, getUserFriendlyErrorMessage(e), isError: true);
       }
@@ -258,15 +138,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     setState(() => _isAppleLoading = true);
     try {
       final payload = await SocialAuthService.instance.signInWithApple();
-      if (payload == null) return; // cancelled or unsupported
+      if (payload == null) return;
 
-      final currentExpectedRole = (widget.selectedRole ?? _persistedRole ?? 'farmer').toLowerCase().trim();
-      final success = await ref.read(authProvider.notifier).socialLogin(
+      final success = await ref
+          .read(authProvider.notifier)
+          .socialLogin(
             provider: 'apple',
             idToken: payload['id_token'] as String,
             fullName: payload['full_name'] as String?,
             fcmToken: payload['fcm_token'] as String?,
-            expectedRole: currentExpectedRole,
           );
 
       if (success) {
@@ -283,29 +163,89 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     }
   }
 
+  Future<void> _sendPhoneOtp() async {
+    FocusScope.of(context).unfocus();
+    final phone = _phoneController.text.trim();
+    if (phone.length != 10) {
+      AppToast.show(
+        context,
+        tr(ref, 'Mobile number must be exactly 10 digits.'),
+        isError: true,
+      );
+      return;
+    }
+
+    setState(() => _isPhoneLoading = true);
+    try {
+      // In SMS Gateway flow, navigate to OTP verification screen with phone number
+      context.push('${RouteNames.otp}?phone=$phone&purpose=PHONE_LOGIN');
+    } finally {
+      if (mounted) {
+        setState(() => _isPhoneLoading = false);
+      }
+    }
+  }
+
+  Future<void> _loginWithEmail() async {
+    FocusScope.of(context).unfocus();
+    if (!_emailFormKey.currentState!.validate()) {
+      return;
+    }
+
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
+    setState(() => _isEmailLoading = true);
+    try {
+      await ref
+          .read(authProvider.notifier)
+          .login(email: email, password: password);
+
+      if (!mounted) return;
+
+      final authState = ref.read(authProvider);
+      if (authState.isAuthenticated && authState.user != null) {
+        final prefs = await SharedPreferences.getInstance();
+        if (!mounted) return;
+        final hasSelectedLanguage =
+            prefs.getBool('has_selected_language') ?? false;
+        if (hasSelectedLanguage) {
+          context.go(RouteNames.authSuccess);
+        } else {
+          context.go(RouteNames.languageSelection);
+        }
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isEmailLoading = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     ref.listen<AuthState>(authProvider, (previous, next) {
-      if ((next.status == AuthStatus.error || next.status == AuthStatus.unauthenticated) &&
+      if ((next.status == AuthStatus.error ||
+              next.status == AuthStatus.unauthenticated) &&
           next.error != null &&
           next.error!.isNotEmpty &&
           previous?.error != next.error) {
         final errorMsg = next.error!;
-        final lower = errorMsg.toLowerCase();
-        if (lower.contains('switch to student') ||
-            lower.contains('switch to instructor') ||
-            lower.contains('registered as a student') ||
-            lower.contains('registered as an instructor') ||
-            lower.contains('role')) {
-          _triggerSwitchRolePulse();
-        }
-        AppToast.show(context, tr(ref, getUserFriendlyErrorMessage(errorMsg)), isError: true);
+        AppToast.show(
+          context,
+          tr(ref, getUserFriendlyErrorMessage(errorMsg)),
+          isError: true,
+        );
         ref.read(authProvider.notifier).clearError();
       }
     });
 
-    ref.watch(authProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bool isAnyLoading =
+        _isGoogleLoading ||
+        _isAppleLoading ||
+        _isPhoneLoading ||
+        _isEmailLoading;
 
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
@@ -320,428 +260,429 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
               keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Form(
-                  key: _formKey,
-                  child: AutofillGroup(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 16),
+
+                    // Back Button leading back to Language Selection
+                    const AppElevatedBackButton(
+                      fallbackRoute: RouteNames.languageSelection,
+                    ),
+
+                    const SizedBox(height: 26),
+
+                    // Brand Heading
+                    Text(
+                      tr(ref, 'Welcome to'),
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 34,
+                        fontWeight: FontWeight.w800,
+                        color: isDark
+                            ? AppColors.organicHeadingDark
+                            : AppColors.organicHeadingGreen,
+                        height: 1.15,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    Text(
+                      'iAgrow 🌱',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 34,
+                        fontWeight: FontWeight.w800,
+                        color: isDark
+                            ? AppColors.organicOliveDark
+                            : AppColors.organicOliveGreen,
+                        height: 1.15,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    // Subtitle
+                    Text(
+                      tr(
+                        ref,
+                        'Sign in with your preferred option to continue.',
+                      ),
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w400,
+                        color: isDark
+                            ? AppColors.organicSubtitleDark
+                            : AppColors.organicSubtitleGreen,
+                        height: 1.35,
+                      ),
+                    ),
+
+                    const SizedBox(height: 32),
+
+                    // 1. TOP SOCIAL SIGN-IN OPTIONS
+                    // Google Sign-In Button
+                    AppSocialButton.google(
+                      text: tr(ref, 'Continue with Google'),
+                      isDark: isDark,
+                      isLoading: _isGoogleLoading,
+                      onPressed: isAnyLoading ? null : _loginWithGoogle,
+                    ),
+
+                    // Apple Sign-In Button (iOS only)
+                    if (Platform.isIOS) ...[
+                      const SizedBox(height: 12),
+                      AppSocialButton.apple(
+                        text: tr(ref, 'Sign in with Apple'),
+                        isDark: isDark,
+                        isLoading: _isAppleLoading,
+                        onPressed: isAnyLoading ? null : _loginWithApple,
+                      ),
+                    ],
+
+                    const SizedBox(height: 24),
+
+                    // Divider with "OR"
+                    Row(
                       children: [
-                        const SizedBox(height: 16),
-
-                        // Reusable Elevated Back Button
-                        const AppElevatedBackButton(
-                          fallbackRoute: RouteNames.chooseRole,
-                        ),
-
-                        const SizedBox(height: 28),
-
-                        // Headline: "Welcome"
-                        Text(
-                          tr(ref, 'Welcome'),
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 40,
-                            fontWeight: FontWeight.w800,
+                        Expanded(
+                          child: Divider(
                             color: isDark
-                                ? AppColors.organicHeadingDark
-                                : AppColors.organicHeadingGreen,
-                            height: 1.12,
-                            letterSpacing: -0.6,
+                                ? AppColors.lineDark
+                                : AppColors.organicBorderLight,
+                            thickness: 1,
                           ),
                         ),
-
-                        // Headline: "Back! 👏" with celebratory accents
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Text(
-                              tr(ref, 'Back!'),
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 40,
-                                fontWeight: FontWeight.w800,
-                                color: isDark
-                                    ? AppColors.organicOliveDark
-                                    : AppColors.organicOliveGreen,
-                                height: 1.15,
-                                letterSpacing: -0.6,
-                              ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 14),
+                          child: Text(
+                            tr(ref, 'OR CONTINUE WITH PHONE').toUpperCase(),
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w700,
+                              color: isDark
+                                  ? AppColors.organicSubtitleDark
+                                  : AppColors.organicSubtitleGreen,
+                              letterSpacing: 1.1,
                             ),
-                            const SizedBox(width: 8),
-                            Stack(
-                              clipBehavior: Clip.none,
-                              alignment: Alignment.center,
-                              children: [
-                                const Text(
-                                  '👏',
-                                  style: TextStyle(fontSize: 34),
-                                ),
-                                Positioned(
-                                  top: -6,
-                                  right: -7,
-                                  child: CustomPaint(
-                                    size: const Size(20, 20),
-                                    painter: EmojiCelebrationPainter(isDark: isDark),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
+                          ),
                         ),
-
-                        const SizedBox(height: 10),
-
-                        // Subtitle
-                        Text(
-                          _isInstructorRole
-                              ? tr(ref, 'Sign in to continue your teaching journey.')
-                              : tr(ref, 'Sign in to continue your learning journey.'),
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 15.5,
-                            fontWeight: FontWeight.w400,
+                        Expanded(
+                          child: Divider(
                             color: isDark
-                                ? AppColors.organicSubtitleDark
-                                : AppColors.organicSubtitleGreen,
-                            height: 1.35,
+                                ? AppColors.lineDark
+                                : AppColors.organicBorderLight,
+                            thickness: 1,
                           ),
                         ),
+                      ],
+                    ),
 
-                        const SizedBox(height: 36),
+                    const SizedBox(height: 20),
 
-                        // Input Card: Email (Reusable AppPillTextField)
-                        AppPillTextField(
-                          controller: _emailController,
-                          hintText: tr(ref, 'Email'),
-                          prefixIcon: Icons.email_outlined,
-                          keyboardType: TextInputType.emailAddress,
-                          textInputAction: TextInputAction.next,
-                          autofillHints: const [
-                            AutofillHints.email,
-                            AutofillHints.username,
-                          ],
-                          validator: (v) {
-                            if (v == null || v.trim().isEmpty) {
-                              return tr(ref, 'Email is required');
-                            }
-                            final trimmed = v.trim();
-                            final emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
-                            if (!emailRegex.hasMatch(trimmed)) {
-                              return tr(ref, 'Please enter a valid email address');
-                            }
-                            return null;
-                          },
-                        ),
+                    // 2. SIGN IN WITH MOBILE NUMBER
+                    AppPillTextField(
+                      controller: _phoneController,
+                      hintText: tr(ref, 'Enter 10-digit mobile number'),
+                      prefixIcon: Icons.phone_android_rounded,
+                      keyboardType: TextInputType.phone,
+                      textInputAction: TextInputAction.done,
+                      maxLength: 10,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      onSubmitted: (_) => _sendPhoneOtp(),
+                    ),
 
-                        const SizedBox(height: 16),
+                    const SizedBox(height: 14),
 
-                        // Input Card: Password (Reusable AppPillTextField)
-                        AppPillTextField(
-                          controller: _passwordController,
-                          hintText: tr(ref, 'Password'),
-                          prefixIcon: Icons.lock_outline_rounded,
-                          obscureText: _obscurePassword,
-                          textInputAction: TextInputAction.done,
-                          autofillHints: const [AutofillHints.password],
-                          onSubmitted: (_) => _login(),
-                          suffixIcon: GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                _obscurePassword = !_obscurePassword;
-                              });
-                            },
-                            behavior: HitTestBehavior.opaque,
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
-                              child: Icon(
-                                _obscurePassword
-                                    ? Icons.visibility_off_outlined
-                                    : Icons.visibility_outlined,
-                                size: 21,
-                                color: isDark
-                                    ? AppColors.organicIconDark
-                                    : AppColors.organicIconLight,
-                              ),
-                            ),
-                          ),
-                          validator: (v) {
-                            if (v == null || v.isEmpty) {
-                              return tr(ref, 'Password is required');
-                            }
-                            return null;
-                          },
-                        ),
+                    AppGradientButton(
+                      label: tr(ref, 'Get OTP'),
+                      isLoading: _isPhoneLoading,
+                      onPressed: isAnyLoading ? () {} : () => _sendPhoneOtp(),
+                    ),
 
-                        const SizedBox(height: 14),
+                    const SizedBox(height: 20),
 
-                        // Switch Portal button on left & "Forgot Password?" on right
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            AnimatedBuilder(
-                              animation: _pulseController,
-                              builder: (context, child) {
-                                final glowVal = _pulseGlow.value;
-                                final scaleVal = _shouldPulseSwitchRole ? _pulseScale.value : 1.0;
-                                final pulseColor = _isInstructorRole
-                                    ? AppColors.primaryGreen
-                                    : const Color(0xFFF59E0B);
-
-                                return Transform.scale(
-                                  scale: scaleVal,
-                                  child: GestureDetector(
-                                    onTap: () async {
-                                      final targetRole = _isInstructorRole ? 'farmer' : 'instructor';
-                                      final prefs = await SharedPreferences.getInstance();
-                                      await prefs.setString('selected_auth_role', targetRole);
-                                      if (context.mounted) {
-                                        context.go('${RouteNames.login}?role=$targetRole');
-                                      }
-                                    },
-                                    behavior: HitTestBehavior.opaque,
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 6,
-                                        horizontal: 10,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: _shouldPulseSwitchRole
-                                            ? Color.lerp(
-                                                isDark ? AppColors.cardDark : const Color(0xFFF3F7F4),
-                                                pulseColor.withValues(alpha: 0.18),
-                                                glowVal,
-                                              )
-                                            : (isDark ? AppColors.cardDark : const Color(0xFFF3F7F4)),
-                                        borderRadius: BorderRadius.circular(16),
-                                        border: Border.all(
-                                          color: _shouldPulseSwitchRole
-                                              ? Color.lerp(
-                                                  isDark ? AppColors.lineDark : AppColors.organicBorderLight,
-                                                  pulseColor,
-                                                  glowVal,
-                                                )!
-                                              : (isDark ? AppColors.lineDark : AppColors.organicBorderLight),
-                                          width: _shouldPulseSwitchRole ? (1.0 + 1.2 * glowVal) : 1,
-                                        ),
-                                        boxShadow: _shouldPulseSwitchRole
-                                            ? [
-                                                BoxShadow(
-                                                  color: pulseColor.withValues(alpha: 0.45 * glowVal),
-                                                  blurRadius: 10 * glowVal,
-                                                  spreadRadius: 2 * glowVal,
-                                                )
-                                              ]
-                                            : null,
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(
-                                            Icons.swap_horiz_rounded,
-                                            size: 16,
-                                            color: _shouldPulseSwitchRole
-                                                ? Color.lerp(
-                                                    isDark ? AppColors.organicActionLinkDark : AppColors.organicActionLink,
-                                                    pulseColor,
-                                                    glowVal,
-                                                  )
-                                                : (isDark ? AppColors.organicActionLinkDark : AppColors.organicActionLink),
-                                          ),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            tr(ref, _isInstructorRole ? 'Student Login' : 'Instructor Login'),
-                                            style: GoogleFonts.plusJakartaSans(
-                                              fontSize: 12.5,
-                                              fontWeight: FontWeight.w700,
-                                              color: _shouldPulseSwitchRole
-                                                  ? Color.lerp(
-                                                      isDark ? AppColors.organicActionLinkDark : AppColors.organicActionLink,
-                                                      pulseColor,
-                                                      glowVal,
-                                                    )
-                                                  : (isDark ? AppColors.organicActionLinkDark : AppColors.organicActionLink),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                );
+                    // 3. DISCREET "OR USE EMAIL AND PASSWORD" TEXT LINK
+                    Center(
+                      child: GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _showEmailFields = !_showEmailFields;
+                          });
+                          if (_showEmailFields) {
+                            Future.delayed(
+                              const Duration(milliseconds: 150),
+                              () {
+                                if (_scrollController.hasClients) {
+                                  _scrollController.animateTo(
+                                    _scrollController.position.maxScrollExtent,
+                                    duration: const Duration(milliseconds: 300),
+                                    curve: Curves.easeOut,
+                                  );
+                                }
                               },
-                            ),
-                            GestureDetector(
-                              onTap: () => context.push(RouteNames.forgotPassword),
-                              behavior: HitTestBehavior.opaque,
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 4,
-                                  horizontal: 2,
-                                ),
-                                child: Text(
-                                  tr(ref, 'Forgot Password?'),
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 14.5,
-                                    fontWeight: FontWeight.w600,
-                                    color: isDark
-                                        ? AppColors.organicActionLinkDark
-                                        : AppColors.organicActionLink,
-                                    decoration: TextDecoration.underline,
-                                    decorationColor: isDark
-                                        ? AppColors.organicActionLinkDark
-                                        : AppColors.organicActionLink,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-
-                        const SizedBox(height: 20),
-
-                        // EULA / Terms Notice required by Apple Guideline 1.2
-                        GestureDetector(
-                          onTap: () => EulaTermsDialog.show(context),
-                          behavior: HitTestBehavior.opaque,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 4),
-                            child: Text.rich(
-                              TextSpan(
-                                text: 'By continuing, you agree to our ',
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 12,
-                                  height: 1.4,
-                                  color: isDark ? Colors.white70 : AppColors.inkSoft,
-                                ),
-                                children: [
-                                  TextSpan(
-                                    text: 'Terms of Use (EULA)',
-                                    style: GoogleFonts.plusJakartaSans(
-                                      fontWeight: FontWeight.bold,
-                                      color: isDark
-                                          ? AppColors.organicActionLinkDark
-                                          : AppColors.organicActionLink,
-                                      decoration: TextDecoration.underline,
-                                    ),
-                                  ),
-                                  const TextSpan(
-                                    text: ' and zero-tolerance policy against objectionable content and abusive users.',
-                                  ),
-                                ],
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
+                            );
+                          }
+                        },
+                        behavior: HitTestBehavior.opaque,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 6,
+                            horizontal: 12,
                           ),
-                        ),
-
-                        const SizedBox(height: 16),
-
-                        // Reusable HD Green Gradient Pill Sign In Button
-                        AppGradientButton(
-                          label: tr(ref, 'Sign In'),
-                          isLoading: _isEmailLoading,
-                          onPressed: (_isEmailLoading || _isGoogleLoading || _isAppleLoading)
-                              ? () {}
-                              : () => _login(),
-                        ),
-
-                        const SizedBox(height: 24),
-
-                        // Modern "OR" Divider
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Divider(
-                                color: isDark
-                                    ? AppColors.lineDark
-                                    : AppColors.organicBorderLight,
-                                thickness: 1,
-                              ),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 14),
-                              child: Text(
-                                tr(ref, 'OR').toUpperCase(),
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: isDark
-                                      ? AppColors.organicSubtitleDark
-                                      : AppColors.organicSubtitleGreen,
-                                  letterSpacing: 1.2,
-                                ),
-                              ),
-                            ),
-                            Expanded(
-                              child: Divider(
-                                color: isDark
-                                    ? AppColors.lineDark
-                                    : AppColors.organicBorderLight,
-                                thickness: 1,
-                              ),
-                            ),
-                          ],
-                        ),
-
-                        const SizedBox(height: 20),
-
-                        // Google Sign-In Button
-                        AppSocialButton.google(
-                          text: tr(ref, 'Continue with Google'),
-                          isDark: isDark,
-                          isLoading: _isGoogleLoading,
-                          onPressed: (_isEmailLoading || _isGoogleLoading || _isAppleLoading) ? null : _loginWithGoogle,
-                        ),
-
-                        // Apple Sign-In Button (iOS only)
-                        if (Platform.isIOS) ...[
-                          const SizedBox(height: 12),
-                          AppSocialButton.apple(
-                            text: tr(ref, 'Sign in with Apple'),
-                            isDark: isDark,
-                            isLoading: _isAppleLoading,
-                            onPressed: (_isEmailLoading || _isGoogleLoading || _isAppleLoading) ? null : _loginWithApple,
-                          ),
-                        ],
-
-                        const SizedBox(height: 32),
-
-                        // Bottom Sign Up Link
-                        Center(
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
-                                tr(ref, "Don't have an account? "),
+                                tr(
+                                  ref,
+                                  _showEmailFields
+                                      ? 'Hide email sign in'
+                                      : 'or use email and password',
+                                ),
                                 style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w600,
                                   color: isDark
-                                      ? const Color(0xFFB0C4AF)
-                                      : const Color(0xFF1E2B1F),
+                                      ? AppColors.organicActionLinkDark
+                                      : AppColors.organicActionLink,
+                                  decoration: TextDecoration.underline,
+                                  decorationColor: isDark
+                                      ? AppColors.organicActionLinkDark
+                                      : AppColors.organicActionLink,
                                 ),
                               ),
-                              GestureDetector(
-                                onTap: () => context.push(
-                                  '${RouteNames.register}?role=${widget.selectedRole ?? 'farmer'}',
-                                ),
-                                behavior: HitTestBehavior.opaque,
-                                child: Text(
-                                  tr(ref, 'Sign Up'),
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w700,
-                                    color: isDark
-                                        ? AppColors.organicActionLinkDark
-                                        : const Color(0xFF0F5B24),
-                                  ),
-                                ),
+                              const SizedBox(width: 4),
+                              Icon(
+                                _showEmailFields
+                                    ? Icons.keyboard_arrow_up_rounded
+                                    : Icons.keyboard_arrow_down_rounded,
+                                size: 18,
+                                color: isDark
+                                    ? AppColors.organicActionLinkDark
+                                    : AppColors.organicActionLink,
                               ),
                             ],
                           ),
                         ),
-
-                        const SizedBox(height: 32),
-                      ],
+                      ),
                     ),
-                  ),
+
+                    // Expandable Email / Password Form
+                    if (_showEmailFields) ...[
+                      const SizedBox(height: 16),
+                      Form(
+                        key: _emailFormKey,
+                        child: Column(
+                          children: [
+                            AppPillTextField(
+                              controller: _emailController,
+                              hintText: tr(ref, 'Email'),
+                              prefixIcon: Icons.email_outlined,
+                              keyboardType: TextInputType.emailAddress,
+                              textInputAction: TextInputAction.next,
+                              autofillHints: const [
+                                AutofillHints.email,
+                                AutofillHints.username,
+                              ],
+                              validator: (v) {
+                                if (v == null || v.trim().isEmpty) {
+                                  return tr(ref, 'Email is required');
+                                }
+                                final trimmed = v.trim();
+                                final emailRegex = RegExp(
+                                  r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
+                                );
+                                if (!emailRegex.hasMatch(trimmed)) {
+                                  return tr(
+                                    ref,
+                                    'Please enter a valid email address',
+                                  );
+                                }
+                                return null;
+                              },
+                            ),
+
+                            const SizedBox(height: 14),
+
+                            AppPillTextField(
+                              controller: _passwordController,
+                              hintText: tr(ref, 'Password'),
+                              prefixIcon: Icons.lock_outline_rounded,
+                              obscureText: _obscurePassword,
+                              textInputAction: TextInputAction.done,
+                              autofillHints: const [AutofillHints.password],
+                              onSubmitted: (_) => _loginWithEmail(),
+                              suffixIcon: GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    _obscurePassword = !_obscurePassword;
+                                  });
+                                },
+                                behavior: HitTestBehavior.opaque,
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                  ),
+                                  child: Icon(
+                                    _obscurePassword
+                                        ? Icons.visibility_off_outlined
+                                        : Icons.visibility_outlined,
+                                    size: 21,
+                                    color: isDark
+                                        ? AppColors.organicIconDark
+                                        : AppColors.organicIconLight,
+                                  ),
+                                ),
+                              ),
+                              validator: (v) {
+                                if (v == null || v.isEmpty) {
+                                  return tr(ref, 'Password is required');
+                                }
+                                return null;
+                              },
+                            ),
+
+                            const SizedBox(height: 10),
+
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: GestureDetector(
+                                onTap: () =>
+                                    context.push(RouteNames.forgotPassword),
+                                behavior: HitTestBehavior.opaque,
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 4,
+                                    horizontal: 2,
+                                  ),
+                                  child: Text(
+                                    tr(ref, 'Forgot Password?'),
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: isDark
+                                          ? AppColors.organicActionLinkDark
+                                          : AppColors.organicActionLink,
+                                      decoration: TextDecoration.underline,
+                                      decorationColor: isDark
+                                          ? AppColors.organicActionLinkDark
+                                          : AppColors.organicActionLink,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                            const SizedBox(height: 14),
+
+                            AppGradientButton(
+                              label: tr(ref, 'Sign In with Email'),
+                              isLoading: _isEmailLoading,
+                              onPressed: isAnyLoading
+                                  ? () {}
+                                  : () => _loginWithEmail(),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+
+                    const SizedBox(height: 32),
+
+                    // Bottom Register Option
+                    Center(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            tr(ref, "Don't have an account? "),
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: isDark
+                                  ? const Color(0xFFB0C4AF)
+                                  : const Color(0xFF1E2B1F),
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: () {
+                              context.push(RouteNames.register);
+                            },
+                            behavior: HitTestBehavior.opaque,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 4),
+                              child: Text(
+                                tr(ref, 'Sign Up'),
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: isDark
+                                      ? AppColors.organicActionLinkDark
+                                      : AppColors.organicActionLink,
+                                  decoration: TextDecoration.underline,
+                                  decorationColor: isDark
+                                      ? AppColors.organicActionLinkDark
+                                      : AppColors.organicActionLink,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // 4. EULA & TERMS & PRIVACY POLICY (MANDATORY FOR PLAY STORE / APP STORE COMPLIANCE)
+                    GestureDetector(
+                      onTap: () => EulaTermsDialog.show(context),
+                      behavior: HitTestBehavior.opaque,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: Text.rich(
+                          TextSpan(
+                            text: 'By continuing, you agree to our ',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              height: 1.45,
+                              color: isDark
+                                  ? Colors.white70
+                                  : AppColors.inkSoft,
+                            ),
+                            children: [
+                              TextSpan(
+                                text: 'Terms of Use (EULA)',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontWeight: FontWeight.bold,
+                                  color: isDark
+                                      ? AppColors.organicActionLinkDark
+                                      : AppColors.organicActionLink,
+                                  decoration: TextDecoration.underline,
+                                ),
+                              ),
+                              const TextSpan(text: ' and '),
+                              TextSpan(
+                                text: 'Privacy Policy',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontWeight: FontWeight.bold,
+                                  color: isDark
+                                      ? AppColors.organicActionLinkDark
+                                      : AppColors.organicActionLink,
+                                  decoration: TextDecoration.underline,
+                                ),
+                              ),
+                              const TextSpan(
+                                text:
+                                    '. We maintain a zero-tolerance policy against objectionable content and abusive users.',
+                              ),
+                            ],
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 28),
+                  ],
                 ),
               ),
             ),
