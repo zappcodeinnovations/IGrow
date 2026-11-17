@@ -796,7 +796,7 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 100),
                   ],
                 ),
               ),
