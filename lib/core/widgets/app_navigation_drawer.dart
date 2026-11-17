@@ -24,16 +24,22 @@ class AppNavigationDrawer extends ConsumerWidget {
         ? 'Verified Instructor'
         : (user?.activeRole == UserRole.admin ? 'Administrator' : 'Research Fellow');
 
-    return Drawer(
-      backgroundColor: isDark ? AppColors.cardDark : AppColors.editorialSurface,
-      elevation: 16,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.horizontal(right: Radius.circular(24)),
-      ),
-      child: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
+    final screenWidth = MediaQuery.of(context).size.width;
+    // Constrain the drawer width to at most 75% of screen or 290dp so it doesn't take too much space
+    final drawerWidth = (screenWidth * 0.72).clamp(240.0, 290.0);
+
+    return SizedBox(
+      width: drawerWidth,
+      child: Drawer(
+        backgroundColor: isDark ? AppColors.cardDark : AppColors.editorialSurface,
+        elevation: 16,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.horizontal(right: Radius.circular(24)),
+        ),
+        child: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
             // ── Drawer Header ──────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 12, 16),
@@ -283,8 +289,9 @@ class AppNavigationDrawer extends ConsumerWidget {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildSectionHeader(BuildContext context, String title, bool isDark) {
     return Padding(
