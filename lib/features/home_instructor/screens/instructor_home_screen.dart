@@ -21,6 +21,7 @@ import '../../notifications/providers/notification_provider.dart';
 import '../../../core/widgets/shimmer_placeholders.dart';
 import '../../instructor_dashboard/widgets/my_students_sheet.dart';
 import '../../../core/services/app_config_service.dart';
+import '../../../data/models/user_role.dart';
 
 class InstructorHomeScreen extends ConsumerStatefulWidget {
   const InstructorHomeScreen({super.key});
@@ -30,6 +31,50 @@ class InstructorHomeScreen extends ConsumerStatefulWidget {
 }
 
 class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
+  void _showSwitchToStudentDialog(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: isDark ? const Color(0xFF14241A) : Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: const [
+            Icon(Icons.swap_horiz_rounded, color: Color(0xFF16A34A), size: 28),
+            SizedBox(width: 10),
+            Text('Switch Mode', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+          ],
+        ),
+        content: const Text(
+          'You are switching to Student Mode. You will be able to browse courses, read eBooks, and learn farming techniques.',
+          style: TextStyle(fontSize: 14, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF1B4D2E),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            onPressed: () async {
+              Navigator.pop(dialogCtx);
+              // Switch role in AuthProvider and navigate to Student panel
+              await ref.read(authProvider.notifier).switchRole(UserRole.farmer);
+              if (context.mounted) {
+                context.go(RouteNames.farmerHome);
+              }
+            },
+            child: const Text('OK, Switch', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
   final _searchController = TextEditingController();
   String _searchQuery = '';
   String _ordering = '';
@@ -1017,42 +1062,88 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
             Builder(
               builder: (context) {
                 final unreadCount = ref.watch(unreadNotificationsCountProvider);
-                return InkWell(
-                  borderRadius: BorderRadius.circular(16),
-                  onTap: () => context.push(RouteNames.notifications),
-                  child: Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: isDark ? AppColors.cardDark : AppColors.white,
+                return Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    InkWell(
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: isDark ? AppColors.lineDark : AppColors.lineLight,
+                      onTap: () => context.push(RouteNames.notifications),
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: isDark ? AppColors.cardDark : AppColors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: isDark ? AppColors.lineDark : AppColors.lineLight,
+                          ),
+                        ),
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            Icon(
+                              Icons.notifications_outlined,
+                              size: 20,
+                              color: isDark ? AppColors.white : AppColors.inkDark,
+                            ),
+                            if (unreadCount > 0)
+                              Positioned(
+                                top: 8,
+                                right: 8,
+                                child: Container(
+                                  width: 7,
+                                  height: 7,
+                                  decoration: const BoxDecoration(
+                                    color: AppColors.accentOrange,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
                     ),
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        Icon(
-                          Icons.notifications_outlined,
-                          color: isDark ? AppColors.white : AppColors.inkDark,
+                    const SizedBox(width: 8),
+                    // Switch to Student Mode Pill Button
+                    InkWell(
+                      onTap: () => _showSwitchToStudentDialog(context),
+                      borderRadius: BorderRadius.circular(20),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1B4D2E),
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.12),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
-                        if (unreadCount > 0)
-                          Positioned(
-                            top: 8,
-                            right: 8,
-                            child: Container(
-                              width: 8,
-                              height: 8,
-                              decoration: const BoxDecoration(
-                                color: AppColors.accentOrange,
-                                shape: BoxShape.circle,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: const [
+                            Icon(
+                              Icons.swap_horiz_rounded,
+                              size: 16,
+                              color: Color(0xFF86EFAC),
+                            ),
+                            SizedBox(width: 5),
+                            Text(
+                              'Student',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.2,
                               ),
                             ),
-                          ),
-                      ],
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
+                  ],
                 );
               },
             ),

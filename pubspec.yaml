@@ -83,6 +83,8 @@ flutter:
 
   assets:
     - assets/images/
+    - assets/images/categories/
+    - assets/images/banners/
 
 flutter_launcher_icons:
   android: "launcher_icon"

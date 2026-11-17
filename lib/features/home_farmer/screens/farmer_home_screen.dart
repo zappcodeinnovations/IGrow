@@ -15,10 +15,11 @@ import '../../../core/services/quiz_service.dart';
 import '../providers/student_provider.dart';
 import '../providers/weather_provider.dart';
 import '../../news/widgets/home_news_carousel.dart';
-import '../../wishlist/providers/wishlist_provider.dart';
 import '../../../core/widgets/shell_scaffold.dart';
 import '../../../core/localization/app_strings.dart';
+import '../../../data/models/user_role.dart';
 import '../widgets/floating_offer_badge.dart';
+import '../widgets/home_banner_carousel.dart';
 
 /// Upgraded Student / Farmer Dashboard Screen matching the Agrilearn Web UI & UX.
 class FarmerHomeScreen extends ConsumerStatefulWidget {
@@ -29,6 +30,50 @@ class FarmerHomeScreen extends ConsumerStatefulWidget {
 }
 
 class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
+  void _showSwitchRoleDialog(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: isDark ? const Color(0xFF14241A) : Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: const [
+            Icon(Icons.swap_horiz_rounded, color: Color(0xFF16A34A), size: 28),
+            SizedBox(width: 10),
+            Text('Switch Mode', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+          ],
+        ),
+        content: const Text(
+          'You are switching to Instructor Mode. You will be able to create courses, manage students, and view teaching analytics.',
+          style: TextStyle(fontSize: 14, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF1B4D2E),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            onPressed: () async {
+              Navigator.pop(dialogCtx);
+              // Switch role in AuthProvider and navigate to Instructor panel
+              await ref.read(authProvider.notifier).switchRole(UserRole.instructor);
+              if (context.mounted) {
+                context.go(RouteNames.instructorHome);
+              }
+            },
+            child: const Text('OK, Switch', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
   // Quiz history initialized clean for the farmer account, dynamically loaded from QuizService
   final List<Map<String, dynamic>> _quizHistory = [];
   final TextEditingController _searchController = TextEditingController();
@@ -76,17 +121,6 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
         .catchError((_) => <Enrollment>[]);
   }
 
-  String _getTimeBasedGreeting() {
-    final hour = DateTime.now().hour;
-    if (hour < 12) {
-      return 'Good morning 🌾';
-    } else if (hour < 17) {
-      return 'Good afternoon 🍊';
-    } else {
-      return 'Good evening 🌙';
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -97,8 +131,7 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
     final firstName = fullName.split(' ').first;
 
     // Fetch async data providers
-    final weatherAsync = ref.watch(weatherProvider);
-    final weatherData = weatherAsync.valueOrNull;
+    ref.watch(weatherProvider);
 
     return Stack(
       children: [
@@ -114,317 +147,175 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
             child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── 1. Curved Deep Forest Green Header (Strictly matching prototype) ─────
+            // ── 1. Clean Transparent / Natural Top App Bar ─────
             Container(
               width: double.infinity,
-              decoration: BoxDecoration(
-                color: isDark
-                    ? const Color(0xFF143E24)
-                    : const Color(0xFF1B4D2E),
-                borderRadius: const BorderRadius.vertical(
-                  bottom: Radius.circular(32),
-                ),
-              ),
               padding: EdgeInsets.only(
-                top: MediaQuery.of(context).padding.top + 12,
-                left: 20,
-                right: 20,
-                bottom: 24,
+                top: MediaQuery.of(context).padding.top + 10,
+                left: 18,
+                right: 18,
+                bottom: 12,
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Brand Header Row: Sprout Icon + "IAGROW ACADEMY" + Right Icons (Notification bell, etc.)
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
-                        children: [
-                          InkWell(
-                            onTap: () {
-                              if (shellScaffoldKey.currentState != null) {
-                                shellScaffoldKey.currentState!.openDrawer();
-                              } else {
-                                Scaffold.of(context).openDrawer();
-                              }
-                            },
-                            borderRadius: BorderRadius.circular(9999),
-                            child: Container(
-                              width: 36,
-                              height: 36,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.white.withValues(alpha: 0.12),
-                              ),
-                              child: const Icon(
-                                Icons.menu_rounded,
-                                size: 20,
-                                color: Colors.white,
-                              ),
-                            ),
+                      InkWell(
+                        onTap: () {
+                          if (shellScaffoldKey.currentState != null) {
+                            shellScaffoldKey.currentState!.openDrawer();
+                          } else {
+                            Scaffold.of(context).openDrawer();
+                          }
+                        },
+                        borderRadius: BorderRadius.circular(9999),
+                        child: Container(
+                          width: 38,
+                          height: 38,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: isDark
+                                ? Colors.white.withValues(alpha: 0.08)
+                                : const Color(0xFFE8F0EA),
                           ),
-                          const SizedBox(width: 10),
-                          const Icon(
-                            Icons.eco_rounded,
-                            size: 19,
-                            color: Color(0xFF86EFAC),
+                          child: Icon(
+                            Icons.menu_rounded,
+                            size: 20,
+                            color: isDark ? Colors.white : const Color(0xFF1B4D2E),
                           ),
-                          const SizedBox(width: 6),
-                          const Text(
-                            'IAGROW',
-                            style: TextStyle(
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 1.1,
-                              color: Color(0xFF86EFAC),
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
-                      Row(
-                        children: [
-                          // Notification Bell
-                          InkWell(
-                            onTap: () => context.push(RouteNames.notifications),
-                            borderRadius: BorderRadius.circular(9999),
-                            child: Container(
-                              width: 36,
-                              height: 36,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.white.withValues(alpha: 0.12),
-                              ),
-                              child: Stack(
-                                alignment: Alignment.center,
-                                children: [
-                                  const Icon(
-                                    Icons.notifications_outlined,
-                                    size: 20,
-                                    color: Colors.white,
-                                  ),
-                                  if (ref.watch(
-                                        unreadNotificationsCountProvider,
-                                      ) >
-                                      0)
-                                    Positioned(
-                                      top: 8,
-                                      right: 8,
-                                      child: Container(
-                                        width: 7,
-                                        height: 7,
-                                        decoration: const BoxDecoration(
-                                          color: Color(0xFFFBBF24),
-                                          shape: BoxShape.circle,
-                                        ),
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          // Wishlist / Heart
-                          Consumer(
-                            builder: (context, ref, child) {
-                              final wishlistCount = ref
-                                  .watch(wishlistProvider)
-                                  .maybeWhen(
-                                    data: (items) => items.length,
-                                    orElse: () => 0,
-                                  );
-                              return InkWell(
-                                onTap: () => context.push(RouteNames.wishlist),
-                                borderRadius: BorderRadius.circular(9999),
-                                child: Container(
-                                  width: 36,
-                                  height: 36,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: Colors.white.withValues(alpha: 0.12),
-                                  ),
-                                  child: Stack(
-                                    alignment: Alignment.center,
-                                    children: [
-                                      const Icon(
-                                        Icons.favorite_border_rounded,
-                                        size: 19,
-                                        color: Colors.white,
-                                      ),
-                                      if (wishlistCount > 0)
-                                        Positioned(
-                                          top: 6,
-                                          right: 6,
-                                          child: Container(
-                                            padding: const EdgeInsets.all(2.5),
-                                            decoration: const BoxDecoration(
-                                              color: Colors.redAccent,
-                                              shape: BoxShape.circle,
-                                            ),
-                                            constraints: const BoxConstraints(
-                                              minWidth: 13,
-                                              minHeight: 13,
-                                            ),
-                                            child: Text(
-                                              '$wishlistCount',
-                                              style: const TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 8,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                              textAlign: TextAlign.center,
-                                            ),
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                          const SizedBox(width: 8),
-                          // Profile Avatar Pill
-                          InkWell(
-                            onTap: () => context.go(RouteNames.farmerProfile),
-                            borderRadius: BorderRadius.circular(9999),
-                            child: Container(
-                              width: 32,
-                              height: 32,
-                              decoration: const BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.white,
-                              ),
-                              child: const Center(
-                                child: Icon(
-                                  Icons.person,
-                                  size: 18,
-                                  color: Color(0xFF1B4D2E),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
+                      const SizedBox(width: 10),
+                      const Icon(
+                        Icons.eco_rounded,
+                        size: 20,
+                        color: Color(0xFF16A34A),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'IAGROW',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.1,
+                          color: isDark ? const Color(0xFF86EFAC) : const Color(0xFF1B4D2E),
+                        ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 22),
-
-                  // Greeting Title with Namaste & Waving Hand
-                  Text(
-                    tr(ref, 'Namaste, grow with knowledge'),
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
-                      letterSpacing: -0.4,
-                      height: 1.2,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  const Text('👋', style: TextStyle(fontSize: 24)),
-                  const SizedBox(height: 6),
-                  Text(
-                    tr(ref, 'Learn farming from the best'),
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w400,
-                      color: Colors.white.withValues(alpha: 0.85),
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-
-                  // Search Bar inside Green Header
-                  Container(
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF0F2618) : Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: isDark
-                            ? Colors.white.withValues(alpha: 0.15)
-                            : Colors.transparent,
-                        width: 1,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(
-                            alpha: isDark ? 0.3 : 0.12,
+                  Row(
+                    children: [
+                      // Notification Bell
+                      InkWell(
+                        onTap: () => context.push(RouteNames.notifications),
+                        borderRadius: BorderRadius.circular(9999),
+                        child: Container(
+                          width: 38,
+                          height: 38,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: isDark
+                                ? Colors.white.withValues(alpha: 0.08)
+                                : const Color(0xFFE8F0EA),
                           ),
-                          blurRadius: 10,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: TextField(
-                      controller: _searchController,
-                      textInputAction: TextInputAction.search,
-                      onChanged: (val) {
-                        setState(() {
-                          _searchQuery = val.trim();
-                        });
-                      },
-                      decoration: InputDecoration(
-                        hintText: tr(ref, 'Search farming courses...'),
-                        hintStyle: TextStyle(
-                          fontSize: 13.5,
-                          color: isDark
-                              ? Colors.white60
-                              : const Color(0xFF888888),
-                        ),
-                        prefixIcon: Icon(
-                          Icons.search_rounded,
-                          color: isDark
-                              ? Colors.white70
-                              : const Color(0xFF666666),
-                          size: 20,
-                        ),
-                        suffixIcon: _searchQuery.isNotEmpty
-                            ? IconButton(
-                                icon: const Icon(Icons.clear_rounded, size: 18),
-                                color: isDark
-                                    ? Colors.white70
-                                    : const Color(0xFF666666),
-                                onPressed: () {
-                                  _searchController.clear();
-                                  setState(() {
-                                    _searchQuery = '';
-                                  });
-                                },
-                              )
-                            : null,
-                        border: InputBorder.none,
-                        enabledBorder: InputBorder.none,
-                        focusedBorder: InputBorder.none,
-                        filled: true,
-                        fillColor: Colors.transparent,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 12,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              Icon(
+                                Icons.notifications_outlined,
+                                size: 20,
+                                color: isDark ? Colors.white : const Color(0xFF1B4D2E),
+                              ),
+                              if (ref.watch(unreadNotificationsCountProvider) > 0)
+                                Positioned(
+                                  top: 9,
+                                  right: 9,
+                                  child: Container(
+                                    width: 7,
+                                    height: 7,
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFFFBBF24),
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
                         ),
                       ),
-                      cursorColor: isDark
-                          ? Colors.white
-                          : AppColors.primaryGreen,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: isDark ? Colors.white : const Color(0xFF1E1E1E),
+                      const SizedBox(width: 10),
+                      // Switch to Instructor Mode Pill Button
+                      InkWell(
+                        onTap: () => _showSwitchRoleDialog(context),
+                        borderRadius: BorderRadius.circular(20),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF1B4D2E),
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.12),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: const [
+                              Icon(
+                                Icons.swap_horiz_rounded,
+                                size: 16,
+                                color: Color(0xFF86EFAC),
+                              ),
+                              SizedBox(width: 5),
+                              Text(
+                                'Instructor',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.2,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                    ),
+                    ],
                   ),
                 ],
               ),
             ),
 
-            // ── 2. Content Body on Light/Dark Canvas ───────────────────────
+            const SizedBox(height: 14),
+
+            // ── 2. Top Interactive Swiping Banner Carousel ───────────────────
+            // Slide 0: High-aesthetic ambient welcome landscape
+            // Slide 1..N: Featured Courses (Tap opens modal with View Course)
+            ref.watch(studentCatalogProvider(const CatalogQuery())).maybeWhen(
+              data: (courses) => HomeBannerCarousel(
+                courses: courses.take(6).toList(),
+                userName: firstName,
+              ),
+              orElse: () => HomeBannerCarousel(
+                courses: const [],
+                userName: firstName,
+              ),
+            ),
+
+            // ── 3. Content Body on Light/Dark Canvas ───────────────────────
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
               child: ResponsiveContentConstraint(
                 maxWidth: 1040,
                 padding: EdgeInsets.zero,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // ── "Browse by category" Section (App's actual dynamic categories) ──────
+                    // ── "Browse by category" Section with matching graphic badges ─────
                     if (_searchQuery.isEmpty) ...[
                       Text(
                         tr(ref, 'Browse by category'),
@@ -442,8 +333,9 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                           .watch(studentCategoriesProvider)
                           .when(
                             data: (categories) {
-                              if (categories.isEmpty)
+                              if (categories.isEmpty) {
                                 return const SizedBox.shrink();
+                              }
                               return SizedBox(
                                 height: 98,
                                 child: ListView.separated(
@@ -453,7 +345,7 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                                       const SizedBox(width: 14),
                                   itemBuilder: (context, index) {
                                     final cat = categories[index];
-                                    final iconData = _getCategoryIcon(cat.name);
+                                    final imageAsset = _getCategoryAssetImage(cat.name);
                                     final pastelBg = _getCategoryBg(
                                       index,
                                       isDark,
@@ -470,25 +362,30 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
                                           Container(
-                                            width: 62,
-                                            height: 62,
+                                            width: 64,
+                                            height: 64,
                                             decoration: BoxDecoration(
-                                              color: pastelBg,
-                                              borderRadius:
-                                                  BorderRadius.circular(16),
-                                              border: Border.all(
-                                                color: isDark
-                                                    ? AppColors.lineDark
-                                                    : Colors.transparent,
-                                              ),
+                                              borderRadius: BorderRadius.circular(18),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.08),
+                                                  blurRadius: 8,
+                                                  offset: const Offset(0, 3),
+                                                ),
+                                              ],
                                             ),
-                                            child: Center(
-                                              child: Icon(
-                                                iconData,
-                                                size: 28,
-                                                color: _getCategoryColor(
-                                                  index,
-                                                  isDark,
+                                            child: ClipRRect(
+                                              borderRadius: BorderRadius.circular(18),
+                                              child: Image.asset(
+                                                imageAsset,
+                                                fit: BoxFit.cover,
+                                                errorBuilder: (_, __, ___) => Container(
+                                                  color: pastelBg,
+                                                  child: Icon(
+                                                    _getCategoryIcon(cat.name),
+                                                    size: 28,
+                                                    color: _getCategoryColor(index, isDark),
+                                                  ),
                                                 ),
                                               ),
                                             ),
@@ -915,6 +812,30 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
 }
 
 // ── Category Icon & Color Helpers ─────────────────────────────
+String _getCategoryAssetImage(String name) {
+  final lower = name.toLowerCase();
+  if (lower.contains('dairy') || lower.contains('cow') || lower.contains('milk') || lower.contains('animal') || lower.contains('दुग्ध')) {
+    return 'assets/images/categories/dairy_farming.png';
+  } else if (lower.contains('food') || lower.contains('process') || lower.contains('खाद्य') || lower.contains('प्रक्रिया')) {
+    return 'assets/images/categories/food_processing.png';
+  } else if (lower.contains('horticult') || lower.contains('fruit') || lower.contains('veget') || lower.contains('बागवानी') || lower.contains('उद्यान')) {
+    return 'assets/images/categories/horticulture.png';
+  } else if (lower.contains('crop') || lower.contains('agronomy') || lower.contains('फसल') || lower.contains('पिके')) {
+    return 'assets/images/categories/crop_production.png';
+  } else if (lower.contains('organic') || lower.contains('जैविक') || lower.contains('सेंद्रिय')) {
+    return 'assets/images/categories/organic_farming.png';
+  } else if (lower.contains('pest') || lower.contains('protect') || lower.contains('कीट') || lower.contains('कीड')) {
+    return 'assets/images/categories/pest_control.png';
+  } else if (lower.contains('machin') || lower.contains('tech') || lower.contains('tractor') || lower.contains('यंत्र') || lower.contains('अवजारे')) {
+    return 'assets/images/categories/farm_machinery.png';
+  } else if (lower.contains('soil') || lower.contains('मृदा') || lower.contains('माती')) {
+    return 'assets/images/categories/soil.png';
+  } else if (lower.contains('water') || lower.contains('irrigat') || lower.contains('सिंचाई') || lower.contains('सिंचन')) {
+    return 'assets/images/categories/water.png';
+  }
+  return 'assets/images/categories/agronomy.png';
+}
+
 IconData _getCategoryIcon(String name) {
   final lower = name.toLowerCase();
   if (lower.contains('crop') || lower.contains('field')) {
