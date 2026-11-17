@@ -52,42 +52,6 @@ class _HomeBannerCarouselState extends State<HomeBannerCarousel> {
     });
   }
 
-  void _goToPrevious() {
-    _autoPlayTimer?.cancel();
-    if (_currentPage > 0) {
-      _pageController.animateToPage(
-        _currentPage - 1,
-        duration: const Duration(milliseconds: 400),
-        curve: Curves.easeInOut,
-      );
-    } else {
-      _pageController.animateToPage(
-        _totalItems - 1,
-        duration: const Duration(milliseconds: 400),
-        curve: Curves.easeInOut,
-      );
-    }
-    _startAutoPlay();
-  }
-
-  void _goToNext() {
-    _autoPlayTimer?.cancel();
-    if (_currentPage < _totalItems - 1) {
-      _pageController.animateToPage(
-        _currentPage + 1,
-        duration: const Duration(milliseconds: 400),
-        curve: Curves.easeInOut,
-      );
-    } else {
-      _pageController.animateToPage(
-        0,
-        duration: const Duration(milliseconds: 400),
-        curve: Curves.easeInOut,
-      );
-    }
-    _startAutoPlay();
-  }
-
   @override
   void dispose() {
     _autoPlayTimer?.cancel();
@@ -103,39 +67,21 @@ class _HomeBannerCarouselState extends State<HomeBannerCarousel> {
       children: [
         SizedBox(
           height: 206,
-          child: Stack(
+          child: PageView.builder(
+            controller: _pageController,
             clipBehavior: Clip.none,
-            alignment: Alignment.center,
-            children: [
-              PageView.builder(
-                controller: _pageController,
-                clipBehavior: Clip.none,
-                itemCount: _totalItems,
-                onPageChanged: (idx) {
-                  setState(() => _currentPage = idx);
-                },
-                itemBuilder: (context, index) {
-                  if (index == 0) {
-                    return _buildWelcomeSlide(isDark);
-                  } else {
-                    final course = widget.courses[index - 1];
-                    return _buildCourseSlide(course, isDark);
-                  }
-                },
-              ),
-
-              // Left navigation arrow button
-              Positioned(
-                left: 6,
-                child: _buildNavArrow(Icons.chevron_left_rounded, _goToPrevious),
-              ),
-
-              // Right navigation arrow button
-              Positioned(
-                right: 6,
-                child: _buildNavArrow(Icons.chevron_right_rounded, _goToNext),
-              ),
-            ],
+            itemCount: _totalItems,
+            onPageChanged: (idx) {
+              setState(() => _currentPage = idx);
+            },
+            itemBuilder: (context, index) {
+              if (index == 0) {
+                return _buildWelcomeSlide(isDark);
+              } else {
+                final course = widget.courses[index - 1];
+                return _buildCourseSlide(course, isDark);
+              }
+            },
           ),
         ),
 
@@ -161,32 +107,6 @@ class _HomeBannerCarouselState extends State<HomeBannerCarousel> {
           }),
         ),
       ],
-    );
-  }
-
-  Widget _buildNavArrow(IconData icon, VoidCallback onTap) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
-        child: Container(
-          width: 32,
-          height: 32,
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.92),
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.18),
-                blurRadius: 6,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Icon(icon, size: 20, color: const Color(0xFF1B4D2E)),
-        ),
-      ),
     );
   }
 
