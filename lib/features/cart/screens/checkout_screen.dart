@@ -687,55 +687,60 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                   color: Colors.black.withValues(alpha: 0.4),
                   alignment: Alignment.center,
                   padding: const EdgeInsets.symmetric(horizontal: 32),
-                  child: Container(
-                    width: double.infinity,
-                    constraints: const BoxConstraints(maxWidth: 300),
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-                    decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF1E2820) : Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.08),
-                          blurRadius: 24,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const SizedBox(
-                          width: 36,
-                          height: 36,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 3.0,
-                            strokeCap: StrokeCap.round,
-                            color: AppColors.primaryGreen,
+                  child: Material(
+                    type: MaterialType.transparency,
+                    child: Container(
+                      width: double.infinity,
+                      constraints: const BoxConstraints(maxWidth: 300),
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF1E2820) : Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.08),
+                            blurRadius: 24,
+                            offset: const Offset(0, 8),
                           ),
-                        ),
-                        const SizedBox(height: 20),
-                        Text(
-                          'Securing Your Enrollment',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: -0.2,
-                            color: isDark ? Colors.white : AppColors.inkDark,
+                        ],
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const SizedBox(
+                            width: 36,
+                            height: 36,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 3.0,
+                              strokeCap: StrokeCap.round,
+                              color: AppColors.primaryGreen,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Please wait while we confirm your access.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: isDark ? Colors.white60 : AppColors.inkSoft,
-                            height: 1.4,
+                          const SizedBox(height: 20),
+                          Text(
+                            'Securing Your Enrollment',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: -0.2,
+                              color: isDark ? Colors.white : AppColors.inkDark,
+                              decoration: TextDecoration.none,
+                            ),
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 8),
+                          Text(
+                            'Please wait while we confirm your access.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: isDark ? Colors.white60 : AppColors.inkSoft,
+                              height: 1.4,
+                              decoration: TextDecoration.none,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
