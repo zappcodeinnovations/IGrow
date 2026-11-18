@@ -6,6 +6,7 @@ import '../../../core/localization/app_strings.dart';
 import '../../../core/network/swagger_generated/app_api.swagger.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/app_error_state.dart';
 import '../../../core/widgets/shell_scaffold.dart';
 import '../../../core/widgets/shimmer_placeholders.dart';
 import '../../cart/providers/cart_provider.dart';
@@ -46,7 +47,7 @@ class _MyLearningScreenState extends ConsumerState<MyLearningScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final enrollmentsAsync = ref.watch(studentEnrollmentsProvider);
-    final ebooksAsync = ref.watch(studentEbooksProvider(const EbooksQuery()));
+    final ebooksAsync = ref.watch(studentPurchasedEbooksProvider);
     final cartState = ref.watch(cartProvider);
     final cartItemCount = cartState.maybeWhen(
       data: (cart) => cart.items.length,
@@ -225,15 +226,32 @@ class _MyLearningScreenState extends ConsumerState<MyLearningScreen> {
                     builder: (context, constraints) {
                       final double width = constraints.maxWidth;
                       final double aspectRatio = width < 360 ? 2.05 : (width < 420 ? 2.22 : 2.45);
-                      final enrollmentsCount = enrollmentsAsync.maybeWhen(data: (list) => list.length, orElse: () => 0);
-                      final ebooksCount = ebooksAsync.maybeWhen(data: (list) => list.length, orElse: () => 0);
-                      final completedCount = enrollmentsAsync.maybeWhen(
+                      final purchasedEbooks = ebooksAsync.maybeWhen(data: (list) => list, orElse: () => <EBook>[]);
+                      final ebookKeys = <String>{
+                        for (final eb in purchasedEbooks) ...[
+                          if (eb.id != null && eb.id!.isNotEmpty) eb.id!.toLowerCase(),
+                          if (eb.slug != null && eb.slug!.isNotEmpty) eb.slug!.toLowerCase(),
+                          if (eb.title.isNotEmpty) eb.title.trim().toLowerCase(),
+                        ]
+                      };
+                      final courseEnrollments = enrollmentsAsync.maybeWhen(
                         data: (list) => list.where((e) {
-                          final pct = (e.completionPercentage ?? 0).toDouble();
-                          return pct >= 100.0;
-                        }).length,
-                        orElse: () => 0,
+                          final cId = e.course.toLowerCase();
+                          final cSlug = e.courseSlug?.toLowerCase();
+                          final cTitle = e.courseTitle?.trim().toLowerCase();
+                          final isEbook = ebookKeys.contains(cId) ||
+                              (cSlug != null && ebookKeys.contains(cSlug)) ||
+                              (cTitle != null && ebookKeys.contains(cTitle));
+                          return !isEbook;
+                        }).toList(),
+                        orElse: () => <Enrollment>[],
                       );
+                      final enrollmentsCount = courseEnrollments.length;
+                      final ebooksCount = purchasedEbooks.length;
+                      final completedCount = courseEnrollments.where((e) {
+                        final pct = (e.completionPercentage ?? 0).toDouble();
+                        return pct >= 100.0;
+                      }).length;
 
                       return GridView.count(
                         crossAxisCount: 2,
@@ -352,6 +370,7 @@ class _MyLearningScreenState extends ConsumerState<MyLearningScreen> {
                 color: AppColors.primaryGreen,
                 onRefresh: () async {
                   ref.invalidate(studentEnrollmentsProvider);
+                  ref.invalidate(studentPurchasedEbooksProvider);
                   ref.invalidate(studentEbooksProvider);
                   ref.invalidate(ordersProvider);
                   await ref.read(studentEnrollmentsProvider.future).catchError((_) => <Enrollment>[]);
@@ -374,8 +393,27 @@ class _MyLearningScreenState extends ConsumerState<MyLearningScreen> {
   ) {
     return enrollmentsAsync.when(
       data: (enrollments) {
+        // E-books must only be shown in their own section, remove from courses (All / In Progress / Completed)
+        final purchasedEbooks = ref.watch(studentPurchasedEbooksProvider).valueOrNull ?? [];
+        final ebookKeys = <String>{
+          for (final eb in purchasedEbooks) ...[
+            if (eb.id != null && eb.id!.isNotEmpty) eb.id!.toLowerCase(),
+            if (eb.slug != null && eb.slug!.isNotEmpty) eb.slug!.toLowerCase(),
+            if (eb.title.isNotEmpty) eb.title.trim().toLowerCase(),
+          ]
+        };
+
+        var items = enrollments.where((e) {
+          final cId = e.course.toLowerCase();
+          final cSlug = e.courseSlug?.toLowerCase();
+          final cTitle = e.courseTitle?.trim().toLowerCase();
+          final isEbook = ebookKeys.contains(cId) ||
+              (cSlug != null && ebookKeys.contains(cSlug)) ||
+              (cTitle != null && ebookKeys.contains(cTitle));
+          return !isEbook;
+        }).toList();
+
         // Filter by In Progress / Completed
-        var items = enrollments;
         if (_selectedFilterIndex == 1) {
           // Pending / In-progress courses (completion < 100%)
           items = items.where((e) => (e.completionPercentage ?? 0) < 100).toList();
@@ -607,13 +645,13 @@ class _MyLearningScreenState extends ConsumerState<MyLearningScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                Icons.cloud_off_rounded,
+                isOfflineOrNetworkError(err) ? Icons.wifi_off_rounded : Icons.cloud_off_rounded,
                 size: 48,
-                color: isDark ? Colors.white38 : AppColors.editorialOutlineVariant,
+                color: isOfflineOrNetworkError(err) ? Colors.orange : (isDark ? Colors.white38 : AppColors.editorialOutlineVariant),
               ),
               const SizedBox(height: 12),
               Text(
-                tr(ref, 'Unable to load your courses right now.'),
+                tr(ref, isOfflineOrNetworkError(err) ? 'No internet connection. Please try again later.' : 'Unable to load your courses right now.'),
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
@@ -801,7 +839,7 @@ class _MyLearningScreenState extends ConsumerState<MyLearningScreen> {
               const Icon(Icons.wifi_off_rounded, size: 48, color: Colors.orange),
               const SizedBox(height: 12),
               Text(
-                tr(ref, 'Unable to load your e-books right now. Please check your connection.'),
+                tr(ref, isOfflineOrNetworkError(err) ? 'No internet connection. Please try again later.' : 'Unable to load your e-books right now.'),
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 14,
@@ -812,7 +850,7 @@ class _MyLearningScreenState extends ConsumerState<MyLearningScreen> {
               ElevatedButton.icon(
                 icon: const Icon(Icons.refresh_rounded, size: 18),
                 label: Text(tr(ref, 'Try Again')),
-                onPressed: () => ref.invalidate(studentEbooksProvider),
+                onPressed: () => ref.invalidate(studentPurchasedEbooksProvider),
               ),
             ],
           ),

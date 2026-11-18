@@ -57,8 +57,8 @@ void main() {
       expect(find.text('Document File'), findsOneWidget);
       expect(find.text('Tap to select PDF or DOCX file'), findsOneWidget);
 
-      // Verify Submit Button exists
-      expect(find.text('Upload & Submit E-Book'), findsOneWidget);
+      // Verify Draft Button exists
+      expect(find.text('Create E-Book Draft'), findsOneWidget);
     });
   });
 }

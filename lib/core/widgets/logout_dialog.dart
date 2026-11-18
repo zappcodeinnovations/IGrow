@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../localization/app_strings.dart';
 import '../theme/app_colors.dart';
+import '../utils/app_toast.dart';
 import '../../data/models/user_role.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/cart/providers/cart_provider.dart';
@@ -40,7 +42,6 @@ class _LogoutConfirmationDialogState extends ConsumerState<LogoutConfirmationDia
 
   Future<void> _handleLogout() async {
     final nav = Navigator.of(context);
-    final messenger = ScaffoldMessenger.of(context);
 
     setState(() => _isLoading = true);
 
@@ -58,28 +59,24 @@ class _LogoutConfirmationDialogState extends ConsumerState<LogoutConfirmationDia
         nav.pop();
       }
 
-      messenger.clearSnackBars();
-      messenger.showSnackBar(
-        const SnackBar(
-          content: Text('Logged out successfully.'),
-          duration: Duration(milliseconds: 1800),
-          backgroundColor: AppColors.inkDark,
-        ),
+      if (!mounted) return;
+      AppToast.show(
+        context,
+        tr(ref, 'Logged out successfully.'),
+        severity: ToastSeverity.success,
+        duration: const Duration(milliseconds: 1800),
       );
 
-      if (!mounted) return;
       context.go('/login?role=${activeRole.name}');
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
+        AppToast.show(
+          context,
+          '${tr(ref, 'Logout failed: ')}$e',
+          severity: ToastSeverity.error,
+        );
       }
-      messenger.clearSnackBars();
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text('Logout failed: $e'),
-          backgroundColor: AppColors.error,
-        ),
-      );
     }
   }
 
@@ -110,7 +107,7 @@ class _LogoutConfirmationDialogState extends ConsumerState<LogoutConfirmationDia
           ),
           const SizedBox(height: 16),
           Text(
-            'Confirm Logout',
+            tr(ref, 'Confirm Logout'),
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                   color: isDark ? AppColors.white : AppColors.inkDark,
@@ -118,7 +115,7 @@ class _LogoutConfirmationDialogState extends ConsumerState<LogoutConfirmationDia
           ),
           const SizedBox(height: 10),
           Text(
-            'Are you sure you want to log out? You will need to sign in again to access your courses and account data.',
+            tr(ref, 'Are you sure you want to log out? You will need to sign in again to access your courses and account data.'),
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: isDark ? AppColors.lineLight : AppColors.inkSoft,
@@ -144,7 +141,7 @@ class _LogoutConfirmationDialogState extends ConsumerState<LogoutConfirmationDia
                   ),
                 ),
                 child: Text(
-                  'Cancel',
+                  tr(ref, 'Cancel'),
                   style: TextStyle(
                     color: isDark ? AppColors.white : AppColors.inkDark,
                     fontWeight: FontWeight.w600,
@@ -172,9 +169,9 @@ class _LogoutConfirmationDialogState extends ConsumerState<LogoutConfirmationDia
                           color: Colors.white,
                         ),
                       )
-                    : const Text(
-                        'Log Out',
-                        style: TextStyle(
+                    : Text(
+                        tr(ref, 'Log Out'),
+                        style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
                         ),

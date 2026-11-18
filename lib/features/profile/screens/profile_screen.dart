@@ -9,7 +9,6 @@ import '../../../core/theme/theme_provider.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/delete_account_dialog.dart';
 import '../../../core/widgets/logout_dialog.dart';
-import '../../../core/widgets/shell_scaffold.dart';
 import '../../../data/models/user_role.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../certificates/providers/certificates_provider.dart';
@@ -83,10 +82,8 @@ class ProfileScreen extends ConsumerWidget {
               onTap: () {
                 if (Navigator.of(context).canPop()) {
                   context.pop();
-                } else if (shellScaffoldKey.currentState != null) {
-                  shellScaffoldKey.currentState!.openDrawer();
                 } else {
-                  Scaffold.of(context).openDrawer();
+                  context.go(RouteNames.farmerHome);
                 }
               },
               borderRadius: BorderRadius.circular(20),
@@ -121,9 +118,18 @@ class ProfileScreen extends ConsumerWidget {
         ],
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          child: Column(
+        child: RefreshIndicator(
+          color: const Color(0xFF1B4D2E),
+          backgroundColor: isDark ? const Color(0xFF242724) : Colors.white,
+          onRefresh: () async {
+            await ref.read(authProvider.notifier).refreshUserSilent();
+            ref.invalidate(studentEnrollmentsProvider);
+            ref.invalidate(myCertificatesProvider);
+          },
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               const SizedBox(height: 12),
@@ -303,8 +309,9 @@ class ProfileScreen extends ConsumerWidget {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   // ── Metric Card Widget (Courses / Certificates) ──
   Widget _buildMetricCard({
@@ -454,6 +461,197 @@ class ProfileScreen extends ConsumerWidget {
   }
 
   // ═════════════════════════════════════════════════════════════════════════════
+  // CHANGE PASSWORD DIALOG (In-App Reset / Change Password)
+  // ═════════════════════════════════════════════════════════════════════════════
+  void _showChangePasswordDialog(BuildContext context, WidgetRef ref) {
+    final formKey = GlobalKey<FormState>();
+    final oldPasswordController = TextEditingController();
+    final newPasswordController = TextEditingController();
+    final confirmPasswordController = TextEditingController();
+    bool obscureOld = true;
+    bool obscureNew = true;
+    bool obscureConfirm = true;
+    bool isLoading = false;
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              backgroundColor: isDark ? AppColors.cardDark : Colors.white,
+              title: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white10 : const Color(0xFFE8F3EB),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.lock_reset_rounded, color: AppColors.primaryGreen, size: 22),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    tr(ref, 'Change Password'),
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : const Color(0xFF1B4D2E),
+                    ),
+                  ),
+                ],
+              ),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: Form(
+                  key: formKey,
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Current Password
+                        TextFormField(
+                          controller: oldPasswordController,
+                          obscureText: obscureOld,
+                          decoration: InputDecoration(
+                            labelText: tr(ref, 'Current Password'),
+                            prefixIcon: const Icon(Icons.lock_outline_rounded, size: 20),
+                            suffixIcon: IconButton(
+                              icon: Icon(obscureOld ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 20),
+                              onPressed: () => setDialogState(() => obscureOld = !obscureOld),
+                            ),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          ),
+                          validator: (val) {
+                            if (val == null || val.trim().isEmpty) {
+                              return tr(ref, 'Password is required');
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 14),
+
+                        // New Password
+                        TextFormField(
+                          controller: newPasswordController,
+                          obscureText: obscureNew,
+                          decoration: InputDecoration(
+                            labelText: tr(ref, 'New Password'),
+                            prefixIcon: const Icon(Icons.vpn_key_outlined, size: 20),
+                            suffixIcon: IconButton(
+                              icon: Icon(obscureNew ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 20),
+                              onPressed: () => setDialogState(() => obscureNew = !obscureNew),
+                            ),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          ),
+                          validator: (val) {
+                            if (val == null || val.trim().isEmpty) {
+                              return tr(ref, 'Password is required');
+                            }
+                            if (val.length < 8) {
+                              return 'Password must be at least 8 characters';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 14),
+
+                        // Confirm Password
+                        TextFormField(
+                          controller: confirmPasswordController,
+                          obscureText: obscureConfirm,
+                          decoration: InputDecoration(
+                            labelText: tr(ref, 'Confirm Password'),
+                            prefixIcon: const Icon(Icons.check_circle_outline_rounded, size: 20),
+                            suffixIcon: IconButton(
+                              icon: Icon(obscureConfirm ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 20),
+                              onPressed: () => setDialogState(() => obscureConfirm = !obscureConfirm),
+                            ),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          ),
+                          validator: (val) {
+                            if (val == null || val.trim().isEmpty) {
+                              return tr(ref, 'Password is required');
+                            }
+                            if (val != newPasswordController.text) {
+                              return tr(ref, 'Passwords don\'t match');
+                            }
+                            return null;
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              actionsPadding: const EdgeInsets.only(right: 16, bottom: 16, top: 4),
+              actions: [
+                TextButton(
+                  onPressed: isLoading ? null : () => Navigator.pop(dialogContext),
+                  child: Text(tr(ref, 'Cancel')),
+                ),
+                FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF1B4D2E),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  onPressed: isLoading
+                      ? null
+                      : () async {
+                          if (!formKey.currentState!.validate()) return;
+                          setDialogState(() => isLoading = true);
+
+                          final success = await ref.read(authProvider.notifier).changePassword(
+                                oldPassword: oldPasswordController.text,
+                                newPassword: newPasswordController.text,
+                                confirmPassword: confirmPasswordController.text,
+                              );
+
+                          if (context.mounted) {
+                            if (success) {
+                              Navigator.pop(dialogContext);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(tr(ref, 'Password changed successfully!')),
+                                  backgroundColor: AppColors.primaryGreen,
+                                ),
+                              );
+                            } else {
+                              setDialogState(() => isLoading = false);
+                              final error = ref.read(authProvider).error ?? 'Failed to update password';
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(error),
+                                  backgroundColor: AppColors.error,
+                                ),
+                              );
+                            }
+                          }
+                        },
+                  child: isLoading
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : Text(tr(ref, 'Change Password')),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // ═════════════════════════════════════════════════════════════════════════════
   // SETTINGS BOTTOM SHEET (Language, Dark Mode, Privacy, Notifications)
   // ═════════════════════════════════════════════════════════════════════════════
   void _showSettingsSheet(BuildContext context, WidgetRef ref) {
@@ -487,8 +685,8 @@ class ProfileScreen extends ConsumerWidget {
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
               ),
               child: SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -535,15 +733,15 @@ class ProfileScreen extends ConsumerWidget {
                       // Dark Mode Toggle
                       ListTile(
                         leading: Icon(
-                          sheetIsDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+                          Icons.dark_mode_rounded,
                           color: iconColor,
                         ),
                         title: Text(
-                          sheetIsDark ? tr(sheetRef, 'Light Mode') : tr(sheetRef, 'Dark Mode'),
+                          tr(sheetRef, 'Dark Mode'),
                           style: TextStyle(color: textColor, fontWeight: FontWeight.w600),
                         ),
                         subtitle: Text(
-                          sheetIsDark ? tr(sheetRef, 'Tap switch for light theme') : tr(sheetRef, 'Tap switch for dark theme'),
+                          tr(sheetRef, 'Tap switch for dark theme'),
                           style: TextStyle(color: subtitleColor, fontSize: 13),
                         ),
                         trailing: Switch(
@@ -583,6 +781,24 @@ class ProfileScreen extends ConsumerWidget {
                           context.push(RouteNames.notifications);
                         },
                       ),
+
+                      // Reset / Change Password
+                      ListTile(
+                        leading: Icon(Icons.lock_reset_rounded, color: iconColor),
+                        title: Text(
+                          tr(sheetRef, 'Change Password'),
+                          style: TextStyle(color: textColor, fontWeight: FontWeight.w600),
+                        ),
+                        subtitle: Text(
+                          tr(sheetRef, 'Reset / Change Password'),
+                          style: TextStyle(color: subtitleColor, fontSize: 13),
+                        ),
+                        trailing: Icon(Icons.chevron_right_rounded, color: chevronColor),
+                        onTap: () {
+                          Navigator.pop(sheetContext);
+                          _showChangePasswordDialog(context, ref);
+                        },
+                      ),
                     ],
                   ),
                 ),
@@ -606,9 +822,17 @@ class ProfileScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Column(
+        child: RefreshIndicator(
+          color: const Color(0xFF1B4D2E),
+          backgroundColor: isDark ? const Color(0xFF242724) : Colors.white,
+          onRefresh: () async {
+            await ref.read(authProvider.notifier).refreshUserSilent();
+            ref.invalidate(instructorStatsProvider);
+          },
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(20),
+            child: Column(
             children: [
               AppCard(
                 padding: const EdgeInsets.all(20),
@@ -651,8 +875,9 @@ class ProfileScreen extends ConsumerWidget {
                           Text(
                             user?.email ?? '',
                             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: AppColors.editorialOnSurfaceVariant,
-                                  fontSize: 12,
+                                  color: isDark ? Colors.white70 : AppColors.editorialOnSurfaceVariant,
+                                  fontSize: 12.5,
+                                  fontWeight: isDark ? FontWeight.w500 : FontWeight.normal,
                                 ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -730,7 +955,7 @@ class ProfileScreen extends ConsumerWidget {
                               ),
                               const SizedBox(height: 12),
                               Text(
-                                '₹$earnings',
+                                '₹${formatNum(ref, earnings)}',
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 28,
@@ -758,30 +983,29 @@ class ProfileScreen extends ConsumerWidget {
                     icon: Icons.phone_rounded,
                     label: tr(ref, 'Phone'),
                     value: user?.phone.isNotEmpty == true ? user!.phone : tr(ref, 'Not provided'),
-                    showChevron: false,
-                    onTap: () => _showComingSoon(context, ref),
+                    showChevron: true,
+                    onTap: () => context.push('/edit-profile'),
                   ),
                   _MenuItemData(
                     icon: Icons.location_on_rounded,
                     label: tr(ref, 'Location'),
                     value: user?.location ?? tr(ref, 'Not provided'),
-                    showChevron: false,
-                    onTap: () => _showComingSoon(context, ref),
+                    showChevron: true,
+                    onTap: () => context.push('/edit-profile'),
                   ),
-                  if (user?.bio != null && user!.bio!.isNotEmpty)
-                    _MenuItemData(
-                      icon: Icons.info_rounded,
-                      label: tr(ref, 'Bio'),
-                      value: user!.bio,
-                      showChevron: false,
-                      onTap: () => _showComingSoon(context, ref),
-                    ),
+                  _MenuItemData(
+                    icon: Icons.info_rounded,
+                    label: tr(ref, 'Bio'),
+                    value: user?.bio != null && user!.bio!.isNotEmpty ? user!.bio : tr(ref, 'Not provided'),
+                    showChevron: true,
+                    onTap: () => context.push('/edit-profile'),
+                  ),
                   _MenuItemData(
                     icon: Icons.star_rounded,
                     label: tr(ref, 'Expertise Tags'),
                     value: user?.expertiseTags ?? tr(ref, 'Not provided'),
-                    showChevron: false,
-                    onTap: () => _showComingSoon(context, ref),
+                    showChevron: true,
+                    onTap: () => context.push('/edit-profile'),
                   ),
                   _MenuItemData(
                     icon: Icons.work_rounded,
@@ -789,22 +1013,22 @@ class ProfileScreen extends ConsumerWidget {
                     value: user?.yearsOfExperience != null
                         ? '${user!.yearsOfExperience} ${tr(ref, 'years')}'
                         : tr(ref, 'Not provided'),
-                    showChevron: false,
-                    onTap: () => _showComingSoon(context, ref),
+                    showChevron: true,
+                    onTap: () => context.push('/edit-profile'),
                   ),
                   _MenuItemData(
                     icon: Icons.grass_rounded,
                     label: tr(ref, 'Specialty Crops'),
                     value: user?.specialtyCrops ?? tr(ref, 'Not provided'),
-                    showChevron: false,
-                    onTap: () => _showComingSoon(context, ref),
+                    showChevron: true,
+                    onTap: () => context.push('/edit-profile'),
                   ),
                   _MenuItemData(
                     icon: Icons.link_rounded,
                     label: tr(ref, 'Social Link'),
                     value: user?.socialLink ?? tr(ref, 'Not provided'),
-                    showChevron: false,
-                    onTap: () => _showComingSoon(context, ref),
+                    showChevron: true,
+                    onTap: () => context.push('/edit-profile'),
                   ),
                   _MenuItemData(
                     icon: Icons.verified_user_rounded,
@@ -834,8 +1058,8 @@ class ProfileScreen extends ConsumerWidget {
                     onTap: () => _showLanguageBottomSheet(context, ref),
                   ),
                   _MenuItemData(
-                    icon: isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
-                    label: isDark ? tr(ref, 'Light Mode') : tr(ref, 'Dark Mode'),
+                    icon: Icons.dark_mode_rounded,
+                    label: tr(ref, 'Dark Mode'),
                     trailingWidget: Switch(
                       value: isDark,
                       activeThumbColor: AppColors.primaryGreen,
@@ -853,6 +1077,11 @@ class ProfileScreen extends ConsumerWidget {
                     icon: Icons.notifications_outlined,
                     label: tr(ref, 'Notifications'),
                     onTap: () => context.push(RouteNames.notifications),
+                  ),
+                  _MenuItemData(
+                    icon: Icons.lock_reset_rounded,
+                    label: tr(ref, 'Change Password'),
+                    onTap: () => _showChangePasswordDialog(context, ref),
                   ),
                   _MenuItemData(
                     icon: Icons.privacy_tip_outlined,
@@ -944,8 +1173,9 @@ class ProfileScreen extends ConsumerWidget {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
   Widget _buildMenuSection({
     required BuildContext context,
     required WidgetRef ref,
@@ -1062,18 +1292,6 @@ class ProfileScreen extends ConsumerWidget {
           ),
         ),
       ],
-    );
-  }
-
-  void _showComingSoon(BuildContext context, WidgetRef ref) {
-    final messenger = ScaffoldMessenger.of(context);
-    messenger.clearSnackBars();
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(tr(ref, 'Feature coming soon')),
-        duration: const Duration(milliseconds: 1800),
-        behavior: SnackBarBehavior.floating,
-      ),
     );
   }
 }
@@ -1198,7 +1416,7 @@ void _showLanguageBottomSheet(BuildContext context, WidgetRef ref) {
                             messenger.clearSnackBars();
                             messenger.showSnackBar(
                               SnackBar(
-                                content: Text('Language set to ${lang['name']} (${lang['native']})'),
+                                content: Text('${tr(sheetRef, "Language set to")} ${lang['name']} (${lang['native']})'),
                                 backgroundColor: AppColors.primaryGreen,
                                 duration: const Duration(seconds: 2),
                               ),

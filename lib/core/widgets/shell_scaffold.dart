@@ -17,6 +17,9 @@ import '../utils/app_toast.dart';
 
 final GlobalKey<ScaffoldState> shellScaffoldKey = GlobalKey<ScaffoldState>();
 
+/// Callback that an active screen inside the shell can register to handle back press first
+bool Function()? shellCustomBackHandler;
+
 class ShellScaffold extends ConsumerStatefulWidget {
   const ShellScaffold({super.key, required this.child});
 
@@ -41,6 +44,11 @@ class _ShellScaffoldState extends ConsumerState<ShellScaffold> {
 
   void _checkIncompleteProfilePrompt() {
     if (!mounted || _checkedProfileCompletion) return;
+    final currentLoc = GoRouterState.of(context).uri.toString();
+    // Do not show profile popup over direct notification destinations like course/ebook view
+    if (currentLoc.contains('/course/') || currentLoc.contains('/ebook/')) {
+      return;
+    }
     _checkedProfileCompletion = true;
     final user = ref.read(authProvider).user;
     if (user != null &&
@@ -72,6 +80,9 @@ class _ShellScaffoldState extends ConsumerState<ShellScaffold> {
         currentIndex = 2;
       } else if (location.startsWith('/farmer/community')) {
         currentIndex = 3;
+      } else {
+        // e.g. /farmer/profile - not a primary bottom bar tab
+        currentIndex = -1;
       }
     } else {
       if (location.startsWith('/instructor/home')) {
@@ -82,6 +93,8 @@ class _ShellScaffoldState extends ConsumerState<ShellScaffold> {
         currentIndex = 2; // placeholder
       } else if (location.startsWith('/instructor/profile')) {
         currentIndex = 3;
+      } else {
+        currentIndex = -1;
       }
     }
 
@@ -89,6 +102,12 @@ class _ShellScaffoldState extends ConsumerState<ShellScaffold> {
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
+
+        // If active child screen handles the back press (e.g. Explore category/tab/search reset), prioritize it!
+        if (shellCustomBackHandler != null) {
+          final handled = shellCustomBackHandler!();
+          if (handled) return;
+        }
 
         // If drawer is open, close drawer first
         if (shellScaffoldKey.currentState?.isDrawerOpen == true) {

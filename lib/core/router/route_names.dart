@@ -25,6 +25,7 @@ class RouteNames {
 
   // Farmer sub-routes
   static const courseDetails = '/farmer/course/:id';
+  static const publicInstructorProfile = '/farmer/instructor/:id';
   static const cart = '/farmer/cart';
   static const checkout = '/farmer/checkout';
   static const paymentSuccess = '/farmer/payment-success';
@@ -47,6 +48,8 @@ class RouteNames {
   static const instructorUploads = '/instructor/uploads';
   static const instructorKyc = '/instructor/kyc';
   static const instructorReviews = '/instructor/reviews';
+  static const instructorTransactions = '/instructor/transactions';
+  static const instructorStudents = '/instructor/students';
 
   // ─── Shared ──────────────────────────────────────────────────────
   static const wallet = '/wallet';

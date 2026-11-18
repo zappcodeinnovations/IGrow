@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../router/app_router.dart';
 import '../router/route_names.dart';
 import '../theme/app_colors.dart';
+import '../widgets/app_error_state.dart';
 
 /// Severity level for toast and notification banners.
 enum ToastSeverity {
@@ -43,6 +44,11 @@ class AppToast {
   }) {
     final messenger = ScaffoldMessenger.of(context);
     messenger.clearSnackBars();
+
+    // Sanitize any error message or technical exception passed into toast
+    final cleanMessage = (isError || severity == ToastSeverity.error || severity == ToastSeverity.warning)
+        ? getUserFriendlyErrorMessage(message, fallback: message)
+        : message;
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final ToastSeverity effectiveSeverity = severity ??
@@ -117,7 +123,7 @@ class AppToast {
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                message,
+                cleanMessage,
                 style: TextStyle(
                   fontSize: 13.5,
                   fontWeight: FontWeight.w600,
@@ -160,6 +166,22 @@ class AppToast {
     );
   }
 
+  /// Informational toast with calm neutral styling.
+  static ScaffoldFeatureController<SnackBar, SnackBarClosedReason> showInfo(
+    BuildContext context,
+    String message, {
+    Duration duration = defaultDuration,
+    SnackBarAction? action,
+  }) {
+    return show(
+      context,
+      message,
+      severity: ToastSeverity.info,
+      duration: duration,
+      action: action,
+    );
+  }
+
   /// Critical/heavy error toast (system crash, payment failure, server outage).
   static ScaffoldFeatureController<SnackBar, SnackBarClosedReason> showError(
     BuildContext context,
@@ -171,6 +193,34 @@ class AppToast {
       context,
       message,
       severity: ToastSeverity.error,
+      duration: duration,
+      action: action,
+    );
+  }
+
+  /// Automatically extracts user-friendly message, masking raw socket exceptions with
+  /// "No internet connection. Please try again later."
+  static ScaffoldFeatureController<SnackBar, SnackBarClosedReason> showFriendlyError(
+    BuildContext context,
+    dynamic error, {
+    String? prefix,
+    Duration duration = const Duration(seconds: 4),
+    SnackBarAction? action,
+  }) {
+    final cleanMsg = getUserFriendlyErrorMessage(error);
+    final isNetwork = isOfflineOrNetworkError(error);
+    final String message;
+    if (isNetwork) {
+      message = cleanMsg; // Never show "Failed to ...: No internet" - show clean offline banner
+    } else if (prefix != null && prefix.isNotEmpty) {
+      message = '$prefix: $cleanMsg';
+    } else {
+      message = cleanMsg;
+    }
+
+    return showError(
+      context,
+      message,
       duration: duration,
       action: action,
     );

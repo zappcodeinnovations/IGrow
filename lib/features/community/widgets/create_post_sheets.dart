@@ -1,23 +1,92 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../../core/localization/app_strings.dart';
+import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/app_toast.dart';
 import '../../../core/widgets/app_time_picker.dart';
+import '../../../core/widgets/image_crop_rotate_screen.dart';
 import '../../../data/models/api_models/course_models.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../../home_instructor/providers/instructor_home_provider.dart';
 import '../providers/community_provider.dart';
 
 class CreatePostSheets {
   CreatePostSheets._();
 
+  static bool _ensureKycVerified(BuildContext context, WidgetRef ref) {
+    final user = ref.read(authProvider).user;
+    final isVerified = user?.isKycVerified == true || user?.isAdmin == true;
+    if (!isVerified) {
+      final isPending = user?.isKycPending == true;
+      showDialog(
+        context: context,
+        builder: (dialogContext) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: (isPending ? AppColors.accentOrange : AppColors.error).withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    isPending ? Icons.hourglass_top_rounded : Icons.verified_user_outlined,
+                    color: isPending ? AppColors.accentOrange : AppColors.error,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    isPending ? 'Verification Under Review' : 'KYC Required',
+                    style: Theme.of(dialogContext).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+            content: Text(
+              isPending
+                  ? 'Your KYC documents have been submitted and are under review. Broadcast publishing will unlock once approved.'
+                  : 'As per platform policy, you must complete your KYC verification before publishing community broadcast updates.',
+              style: Theme.of(dialogContext).textTheme.bodyMedium?.copyWith(height: 1.5, color: AppColors.inkSoft),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: isPending ? AppColors.accentOrange : AppColors.primaryGreen,
+                ),
+                onPressed: () {
+                  Navigator.of(dialogContext).pop();
+                  context.push(RouteNames.instructorKyc);
+                },
+                child: Text(isPending ? 'Check KYC Status' : 'Complete KYC Now'),
+              ),
+            ],
+          );
+        },
+      );
+      return false;
+    }
+    return true;
+  }
+
   // ─────────────────────────────────────────────────────────────────
   // A. 📝 GENERAL POST BOTTOM SHEET
   // ─────────────────────────────────────────────────────────────────
   static void showGeneralPost(BuildContext context, WidgetRef ref, String hubId) {
+    if (!_ensureKycVerified(context, ref)) return;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -30,6 +99,7 @@ class CreatePostSheets {
   // B. 📢 COURSE ANNOUNCEMENT BOTTOM SHEET
   // ─────────────────────────────────────────────────────────────────
   static void showAnnouncement(BuildContext context, WidgetRef ref, String hubId) {
+    if (!_ensureKycVerified(context, ref)) return;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -42,6 +112,7 @@ class CreatePostSheets {
   // C. 💻 ONLINE WEBINAR BOTTOM SHEET
   // ─────────────────────────────────────────────────────────────────
   static void showWebinar(BuildContext context, WidgetRef ref, String hubId) {
+    if (!_ensureKycVerified(context, ref)) return;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -54,6 +125,7 @@ class CreatePostSheets {
   // D. 🚜 OFFLINE SEMINAR BOTTOM SHEET
   // ─────────────────────────────────────────────────────────────────
   static void showSeminar(BuildContext context, WidgetRef ref, String hubId) {
+    if (!_ensureKycVerified(context, ref)) return;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -153,6 +225,7 @@ class _ModalWrapper extends StatelessWidget {
             Divider(height: 1, color: borderColor),
             Flexible(
               child: SingleChildScrollView(
+                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
                 child: child,
               ),
@@ -191,9 +264,18 @@ class _GeneralPostModalState extends ConsumerState<_GeneralPostModal> {
 
   Future<void> _pickImage(ImageSource source) async {
     try {
-      final picked = await _picker.pickImage(source: source, maxWidth: 1400, imageQuality: 85);
-      if (picked != null) {
-        setState(() => _imageFile = File(picked.path));
+      final picked = await _picker.pickImage(source: source, maxWidth: 1800, imageQuality: 88);
+      if (picked != null && mounted) {
+        final original = File(picked.path);
+        final edited = await ImageCropRotateScreen.cropAndRotate(
+          context,
+          imageFile: original,
+          title: 'Crop & Rotate Post Image',
+          allowFreeCrop: true,
+        );
+        if (mounted) {
+          setState(() => _imageFile = edited ?? original);
+        }
       }
     } catch (_) {}
   }
@@ -207,15 +289,30 @@ class _GeneralPostModalState extends ConsumerState<_GeneralPostModal> {
       return;
     }
 
+    // Auto-generate title if optional title field was left empty
+    String title = _titleController.text.trim();
+    if (title.isEmpty) {
+      final firstLine = content.split('\n').first.trim();
+      if (firstLine.isNotEmpty) {
+        title = firstLine.length > 50 ? '${firstLine.substring(0, 47)}...' : firstLine;
+      } else {
+        title = 'Community Post';
+      }
+    }
+
     setState(() => _isLoading = true);
     try {
       await ref.read(communityPostsProvider.notifier).createPost(
         hubId: widget.hubId,
         postType: 'POST',
-        title: _titleController.text.trim(),
+        title: title,
         content: content,
         imagePath: _imageFile?.path,
       );
+
+      if (widget.hubId.isNotEmpty) {
+        ref.read(communityHubPostsProvider(widget.hubId).notifier).fetchPosts();
+      }
 
       if (mounted) {
         Navigator.pop(context);
@@ -225,9 +322,7 @@ class _GeneralPostModalState extends ConsumerState<_GeneralPostModal> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to publish post: $e')),
-        );
+        AppToast.showFriendlyError(context, e, prefix: 'Failed to publish post');
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -402,21 +497,21 @@ class _AnnouncementModalState extends ConsumerState<_AnnouncementModal> {
   Future<void> _submit() async {
     if (_selectedCourse == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a course to announce')),
+        SnackBar(content: Text(tr(ref, 'Please select a course to announce'))),
       );
       return;
     }
     final courseStatus = _selectedCourse!.status?.toUpperCase();
     if (courseStatus != 'APPROVED' && courseStatus != 'PUBLISHED') {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Only approved courses can be announced to students')),
+        SnackBar(content: Text(tr(ref, 'Only approved courses can be announced to students'))),
       );
       return;
     }
     final content = _contentController.text.trim();
     if (content.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter an announcement message')),
+        SnackBar(content: Text(tr(ref, 'Please enter an announcement message'))),
       );
       return;
     }
@@ -443,9 +538,7 @@ class _AnnouncementModalState extends ConsumerState<_AnnouncementModal> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to publish announcement: $e')),
-        );
+        AppToast.showFriendlyError(context, e, prefix: 'Failed to publish announcement');
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -542,9 +635,9 @@ class _AnnouncementModalState extends ConsumerState<_AnnouncementModal> {
                                 color: AppColors.primaryGreen.withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(6),
                               ),
-                              child: const Text(
-                                'APPROVED',
-                                style: TextStyle(
+                              child: Text(
+                                tr(ref, 'APPROVED'),
+                                style: const TextStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.bold,
                                   color: AppColors.primaryGreen,
@@ -719,14 +812,14 @@ class _WebinarModalState extends ConsumerState<_WebinarModal> {
     final now = DateTime.now();
     final pickedDate = await showDatePicker(
       context: context,
-      initialDate: _eventDate ?? now.add(const Duration(days: 1)),
+      initialDate: _eventDate ?? now,
       firstDate: now,
       lastDate: now.add(const Duration(days: 180)),
     );
     if (pickedDate != null && mounted) {
       final pickedTime = await showAppTimePicker(
         context: context,
-        initialTime: _eventTime ?? const TimeOfDay(hour: 11, minute: 0),
+        initialTime: _eventTime ?? TimeOfDay.now(),
       );
       if (pickedTime != null && mounted) {
         setState(() {
@@ -740,6 +833,7 @@ class _WebinarModalState extends ConsumerState<_WebinarModal> {
   Future<void> _submit() async {
     final title = _titleController.text.trim();
     final link = _linkController.text.trim();
+    final rawContent = _contentController.text.trim();
     if (title.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter webinar title')));
       return;
@@ -752,6 +846,11 @@ class _WebinarModalState extends ConsumerState<_WebinarModal> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please provide Zoom/Meet link')));
       return;
     }
+
+    // Backend requires content to be non-empty
+    final content = rawContent.isNotEmpty
+        ? rawContent
+        : 'Join our online webinar on $title at ${_eventTime!.format(context)}.';
 
     final fullDateTime = DateTime(
       _eventDate!.year,
@@ -767,10 +866,14 @@ class _WebinarModalState extends ConsumerState<_WebinarModal> {
         hubId: widget.hubId,
         postType: 'WEBINAR',
         title: title,
-        content: _contentController.text.trim(),
+        content: content,
         eventDate: fullDateTime,
         link: link,
       );
+
+      if (widget.hubId.isNotEmpty) {
+        ref.read(communityHubPostsProvider(widget.hubId).notifier).fetchPosts();
+      }
 
       if (mounted) {
         Navigator.pop(context);
@@ -780,9 +883,7 @@ class _WebinarModalState extends ConsumerState<_WebinarModal> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to schedule webinar: $e')),
-        );
+        AppToast.showFriendlyError(context, e, prefix: 'Failed to schedule webinar');
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -932,14 +1033,14 @@ class _SeminarModalState extends ConsumerState<_SeminarModal> {
     final now = DateTime.now();
     final pickedDate = await showDatePicker(
       context: context,
-      initialDate: _eventDate ?? now.add(const Duration(days: 2)),
+      initialDate: _eventDate ?? now,
       firstDate: now,
       lastDate: now.add(const Duration(days: 180)),
     );
     if (pickedDate != null && mounted) {
       final pickedTime = await showAppTimePicker(
         context: context,
-        initialTime: _eventTime ?? const TimeOfDay(hour: 10, minute: 0),
+        initialTime: _eventTime ?? TimeOfDay.now(),
       );
       if (pickedTime != null && mounted) {
         setState(() {
@@ -953,6 +1054,7 @@ class _SeminarModalState extends ConsumerState<_SeminarModal> {
   Future<void> _submit() async {
     final title = _titleController.text.trim();
     final venue = _venueController.text.trim();
+    final rawContent = _contentController.text.trim();
     if (title.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter event title')));
       return;
@@ -965,6 +1067,11 @@ class _SeminarModalState extends ConsumerState<_SeminarModal> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter venue address')));
       return;
     }
+
+    // Backend CommunityPostCreateRequest requires `content` to be non-empty (minLength: 1)
+    final content = rawContent.isNotEmpty
+        ? rawContent
+        : 'Join us at $venue for $title on ${_eventDate!.day}/${_eventDate!.month}/${_eventDate!.year}.';
 
     final fullDateTime = DateTime(
       _eventDate!.year,
@@ -980,11 +1087,15 @@ class _SeminarModalState extends ConsumerState<_SeminarModal> {
         hubId: widget.hubId,
         postType: 'SEMINAR',
         title: title,
-        content: _contentController.text.trim(),
+        content: content,
         eventDate: fullDateTime,
         venueAddress: venue,
         link: _mapsLinkController.text.trim(),
       );
+
+      if (widget.hubId.isNotEmpty) {
+        ref.read(communityHubPostsProvider(widget.hubId).notifier).fetchPosts();
+      }
 
       if (mounted) {
         Navigator.pop(context);
@@ -994,9 +1105,7 @@ class _SeminarModalState extends ConsumerState<_SeminarModal> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to publish seminar: $e')),
-        );
+        AppToast.showFriendlyError(context, e, prefix: 'Failed to publish seminar');
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);

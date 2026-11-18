@@ -8,6 +8,9 @@ import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../data/models/api_models/notification_models.dart';
+import '../../auth/providers/auth_provider.dart';
+import '../../community/providers/community_provider.dart';
+import '../helpers/notification_text_helper.dart';
 import '../providers/notification_provider.dart';
 
 class NotificationsScreen extends ConsumerStatefulWidget {
@@ -100,15 +103,122 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
           final title = n.title.toLowerCase();
           final msg = n.message.toLowerCase();
           return t.contains('QA') ||
+              t.contains('QUESTION') ||
+              t.contains('ANSWER') ||
+              t.contains('REPLY') ||
               title.contains('q&a') ||
               title.contains('question') ||
               title.contains('answer') ||
+              title.contains('doubt') ||
+              title.contains('inquiry') ||
+              msg.contains('question') ||
+              msg.contains('answer') ||
               msg.contains('replied');
         }).toList();
       case 0: // All
       default:
         return items;
     }
+  }
+
+  Future<void> _handleNotificationTap(ApiNotification item) async {
+    if (!item.isRead) {
+      ref.read(notificationsProvider.notifier).markAsRead(item.id);
+    }
+
+    final type = item.notificationType.toUpperCase();
+
+    // 1a. Q&A Notification -> Route directly to Instructor Q&A screen
+    final isQaNotification = type.contains('QA') ||
+        item.title.toLowerCase().contains('q&a') ||
+        item.title.toLowerCase().contains('question') ||
+        item.message.toLowerCase().contains('question') ||
+        item.message.toLowerCase().contains('asked');
+
+    if (isQaNotification) {
+      context.push('/instructor/qa');
+      return;
+    }
+
+    // 1b. Course notification
+    if (item.course != null && item.course!.trim().isNotEmpty) {
+      context.push('/farmer/course/${item.course!.trim()}');
+      return;
+    }
+
+    // 1b. Support Ticket notification -> Route to Support > My Tickets tab
+    final isSupportTicket = type == 'SUPPORT_TICKET' ||
+        type == 'TICKET' ||
+        type == 'SUPPORT' ||
+        (item.titleKey != null && item.titleKey!.contains('ticket')) ||
+        (item.messageKey != null && item.messageKey!.contains('ticket')) ||
+        item.title.toLowerCase().contains('ticket') ||
+        item.message.toLowerCase().contains('ticket');
+
+    if (isSupportTicket) {
+      context.push('/support?tab=my-tickets');
+      return;
+    }
+
+    // 1c. Community Post / Comment notification -> Route to Community with comments open
+    final isCommunityPost = type.contains('COMMENT') ||
+        type.contains('POST') ||
+        type.contains('COMMUNITY') ||
+        item.title.toLowerCase().contains('comment') ||
+        item.message.toLowerCase().contains('commented') ||
+        item.message.toLowerCase().contains('reply');
+
+    if (isCommunityPost) {
+      final postId = item.params?['post_id'] ??
+          item.params?['postId'] ??
+          item.params?['id'];
+      final user = ref.read(authProvider).user;
+      final isInstructor = user?.isInstructor == true || user?.isAdmin == true;
+      final communityRoute = isInstructor ? RouteNames.instructorCommunity : RouteNames.farmerCommunity;
+      if (postId != null && postId.toString().isNotEmpty) {
+        ref.read(pendingCommunityCommentPostIdProvider.notifier).state = postId.toString();
+        context.go('$communityRoute?postId=${postId.toString()}');
+      } else {
+        context.go(communityRoute);
+      }
+      return;
+    }
+
+    // 2. E-Book notification -> Route to Explore > E-Books tab filtered by this book
+    final hasEbookHint = type == 'NEW_EBOOK' ||
+        item.title.toLowerCase().contains('e-book') ||
+        item.title.toLowerCase().contains('ebook') ||
+        (item.ebookId != null && item.ebookId!.trim().isNotEmpty);
+
+    if (hasEbookHint) {
+      String candidateTitle = (item.ebookTitle != null && item.ebookTitle!.isNotEmpty)
+          ? item.ebookTitle!
+          : item.title;
+
+      // Strip prefixes like "New E-Book: "
+      candidateTitle = candidateTitle.replaceAll(RegExp(r'^(?:New\s+E-Book:\s*|New\s+Ebook:\s*)', caseSensitive: false), '').trim();
+      // Remove trailing ellipsis
+      candidateTitle = candidateTitle.replaceAll(RegExp(r'\.{2,}$'), '').trim();
+
+      if (candidateTitle.isNotEmpty) {
+        final query = Uri.encodeComponent(candidateTitle);
+        context.go('${RouteNames.explore}?tab=ebooks&search=$query');
+      } else {
+        context.go('${RouteNames.explore}?tab=ebooks');
+      }
+      return;
+    }
+
+    // 3. Welcome or Explore notification
+    if (type == 'WELCOME' ||
+        item.title.toLowerCase().contains('welcome') ||
+        item.message.toLowerCase().contains('explore our top')) {
+      context.go(RouteNames.explore);
+      return;
+    }
+
+    // 4. Default fallback: Explore screen
+    context.go(RouteNames.explore);
   }
 
   @override
@@ -159,19 +269,23 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
               title: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    'Notifications',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                      color: isDark ? Colors.white : AppColors.editorialOnSurface,
-                      letterSpacing: -0.4,
+                  Flexible(
+                    child: Text(
+                      tr(ref, 'Notifications'),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 17,
+                        color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                        letterSpacing: -0.4,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   if (unreadCount > 0) ...[
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 6),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
                         color: isDark
                             ? AppColors.editorialSecondaryFixedDim.withValues(alpha: 0.3)
@@ -179,7 +293,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                         borderRadius: BorderRadius.circular(9999),
                       ),
                       child: Text(
-                        '$unreadCount new',
+                        '$unreadCount',
                         style: TextStyle(
                           color: isDark
                               ? AppColors.editorialSecondaryFixedDim
@@ -192,7 +306,8 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                   ],
                 ],
               ),
-              centerTitle: true,
+              centerTitle: false,
+              titleSpacing: 0,
               actions: [
                 Padding(
                   padding: const EdgeInsets.only(right: 12),
@@ -330,20 +445,39 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                   final filtered = _filterNotifications(allNotifications, _activeFilterIndex);
 
                   if (filtered.isEmpty) {
+                    final isQaTab = _activeFilterIndex == 3;
                     return ListView(
                       children: [
-                        const SizedBox(height: 100),
+                        const SizedBox(height: 80),
                         EmptyState(
                           icon: _activeFilterIndex == 1
                               ? Icons.mark_chat_read_outlined
-                              : Icons.notifications_off_outlined,
+                              : (isQaTab ? Icons.question_answer_outlined : Icons.notifications_off_outlined),
                           title: _activeFilterIndex == 1
                               ? 'No Unread Notifications'
-                              : 'No Notifications Found',
+                              : (isQaTab ? 'No Q&A Notifications' : 'No Notifications Found'),
                           subtitle: _activeFilterIndex == 1
                               ? 'You are all caught up! Great job.'
-                              : 'New course updates, announcements, and Q&A replies will appear here.',
+                              : (isQaTab
+                                  ? 'When students ask questions in your courses, alerts will show here.'
+                                  : 'New course updates, announcements, and Q&A replies will appear here.'),
                         ),
+                        if (isQaTab) ...[
+                          const SizedBox(height: 18),
+                          Center(
+                            child: ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primaryGreen,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                              ),
+                              icon: const Icon(Icons.forum_outlined, size: 18),
+                              label: const Text('Open Q&A Forum', style: TextStyle(fontWeight: FontWeight.bold)),
+                              onPressed: () => context.push('/instructor/qa'),
+                            ),
+                          ),
+                        ],
                       ],
                     );
                   }
@@ -375,14 +509,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                         },
                         child: InkWell(
                           borderRadius: BorderRadius.circular(18),
-                          onTap: () {
-                            if (!item.isRead) {
-                              ref.read(notificationsProvider.notifier).markAsRead(item.id);
-                            }
-                            if (item.course != null && item.course!.isNotEmpty) {
-                              context.push('/farmer/course/${item.course}');
-                            }
-                          },
+                          onTap: () => _handleNotificationTap(item),
                           child: Container(
                             padding: const EdgeInsets.all(14),
                             decoration: BoxDecoration(
@@ -426,7 +553,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                                         children: [
                                           Expanded(
                                             child: Text(
-                                              item.title,
+                                              NotificationTextHelper.getTitle(ref, item),
                                               style: TextStyle(
                                                 fontWeight: item.isRead ? FontWeight.w600 : FontWeight.bold,
                                                 fontSize: 14,
@@ -450,7 +577,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
-                                        item.message,
+                                        NotificationTextHelper.getBody(ref, item),
                                         style: TextStyle(
                                           color: isDark ? Colors.white70 : AppColors.editorialOnSurfaceVariant,
                                           fontSize: 13,

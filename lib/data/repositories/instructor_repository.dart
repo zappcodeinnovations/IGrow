@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../../core/network/api_client.dart';
+import '../../core/network/api_exception.dart';
 import '../../core/network/token_storage.dart';
 import '../models/api_models/course_models.dart';
 import '../models/api_models/user_profile.dart';
@@ -180,6 +181,7 @@ class InstructorRepository {
         return jsonDecode(response.body) as Map<String, dynamic>;
       } else {
         debugPrint('❌ [InstructorRepository] createCourse MULTIPART ERROR (${response.statusCode}): ${response.body}');
+        TokenStorage.checkResponse(response.statusCode, response.body);
         throw Exception('Failed to create course: ${response.body}');
       }
     } else {
@@ -323,6 +325,58 @@ class InstructorRepository {
       throw Exception(errorMsg);
     }
     debugPrint('✅ [InstructorRepository] deleteCourse SUCCESS');
+  }
+
+  /// Deactivate / Archive a course (hides from catalog, preserves enrolled student access).
+  Future<Map<String, dynamic>> archiveCourse(String courseId) async {
+    final token = await tokenStorage.getAccessToken();
+    final uri = Uri.parse(
+      'https://iagrow.zappcode.in/api/v1/instructor/courses/$courseId/archive/',
+    );
+    debugPrint('📤 [InstructorRepository] archiveCourse: POST $uri');
+    final rawResponse = await http.post(
+      uri,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
+    if (rawResponse.statusCode < 200 || rawResponse.statusCode >= 300) {
+      debugPrint('❌ [InstructorRepository] archiveCourse ERROR (${rawResponse.statusCode}): ${rawResponse.body}');
+      throw Exception(
+        'Failed to archive course (${rawResponse.statusCode}): ${rawResponse.body}',
+      );
+    }
+    final body = rawResponse.body;
+    debugPrint('✅ [InstructorRepository] archiveCourse SUCCESS: $body');
+    if (body.isEmpty) return {};
+    return jsonDecode(body) as Map<String, dynamic>;
+  }
+
+  /// Reactivate / Unarchive a course (makes it live on catalog again).
+  Future<Map<String, dynamic>> unarchiveCourse(String courseId) async {
+    final token = await tokenStorage.getAccessToken();
+    final uri = Uri.parse(
+      'https://iagrow.zappcode.in/api/v1/instructor/courses/$courseId/unarchive/',
+    );
+    debugPrint('📤 [InstructorRepository] unarchiveCourse: POST $uri');
+    final rawResponse = await http.post(
+      uri,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
+    if (rawResponse.statusCode < 200 || rawResponse.statusCode >= 300) {
+      debugPrint('❌ [InstructorRepository] unarchiveCourse ERROR (${rawResponse.statusCode}): ${rawResponse.body}');
+      throw Exception(
+        'Failed to reactivate course (${rawResponse.statusCode}): ${rawResponse.body}',
+      );
+    }
+    final body = rawResponse.body;
+    debugPrint('✅ [InstructorRepository] unarchiveCourse SUCCESS: $body');
+    if (body.isEmpty) return {};
+    return jsonDecode(body) as Map<String, dynamic>;
   }
 
   /// Publish a course (triggers AI moderation).
@@ -668,12 +722,13 @@ class InstructorRepository {
           return jsonDecode(response.body) as Map<String, dynamic>;
         } else {
           debugPrint('❌ [InstructorRepository] createEBook MULTIPART ERROR (${response.statusCode}): ${response.body}');
+          TokenStorage.checkResponse(response.statusCode, response.body);
           throw Exception('Failed to create ebook (${response.statusCode}): ${response.body}');
         }
       } on SocketException catch (_) {
-        throw Exception('No internet connection. Please check your network and try again.');
+        throw ApiException.network();
       } on TimeoutException catch (_) {
-        throw Exception('Connection timed out. Please check your internet connection and try again.');
+        throw ApiException.network();
       } on http.ClientException catch (e) {
         final s = e.toString().toLowerCase();
         if (s.contains('socket') ||
@@ -681,7 +736,7 @@ class InstructorRepository {
             s.contains('connection') ||
             s.contains('handshake') ||
             s.contains('host lookup')) {
-          throw Exception('No internet connection. Please check your network and try again.');
+          throw ApiException.network();
         }
         rethrow;
       }
@@ -700,9 +755,9 @@ class InstructorRepository {
 
   /// Update E-Book.
   Future<Map<String, dynamic>> updateEBook(String ebookId, Map<String, dynamic> updates) async {
+    final token = await tokenStorage.getAccessToken();
+    final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/instructor/ebooks/$ebookId/');
     try {
-      final token = await tokenStorage.getAccessToken();
-      final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/instructor/ebooks/$ebookId/');
       final rawResponse = await http.patch(
         uri,
         headers: {
@@ -715,11 +770,23 @@ class InstructorRepository {
 
       if (rawResponse.statusCode >= 200 && rawResponse.statusCode < 300) {
         debugPrint('✅ [InstructorRepository] updateEBook direct HTTP SUCCESS: ${rawResponse.body}');
-        return jsonDecode(rawResponse.body) as Map<String, dynamic>;
+        return jsonDecode(utf8.decode(rawResponse.bodyBytes)) as Map<String, dynamic>;
       }
+      TokenStorage.checkResponse(rawResponse.statusCode, rawResponse.body);
       debugPrint('⚠️ [InstructorRepository] updateEBook direct HTTP failed (${rawResponse.statusCode}): ${rawResponse.body}');
+      
+      // If server returned structured error details, propagate the exact server message
+      final decodedErr = jsonDecode(utf8.decode(rawResponse.bodyBytes));
+      if (decodedErr is Map) {
+        final msg = decodedErr['detail'] ?? decodedErr['error'] ?? decodedErr['price'] ?? decodedErr['message'];
+        if (msg != null) throw Exception(msg is List ? msg.join(', ') : msg.toString());
+      }
+      throw Exception('Failed to update ebook (${rawResponse.statusCode}): ${rawResponse.body}');
     } catch (e) {
-      debugPrint('⚠️ [InstructorRepository] updateEBook direct HTTP error: $e');
+      if (e is Exception && e.toString().contains('Failed to update ebook')) {
+        rethrow;
+      }
+      debugPrint('⚠️ [InstructorRepository] updateEBook fallback to Chopper after: $e');
     }
 
     final response = await appApi.apiV1InstructorEbooksIdPatch(
@@ -749,6 +816,54 @@ class InstructorRepository {
 
   /// Delete E-Book.
   Future<void> deleteEBook(String ebookId) async {
+    debugPrint('🗑️ [InstructorRepository] deleteEBook: ebookId=$ebookId');
+    try {
+      final token = await tokenStorage.getAccessToken();
+      final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/instructor/ebooks/$ebookId/');
+      final rawResponse = await http.delete(
+        uri,
+        headers: {
+          if (token != null) 'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      );
+      debugPrint('🗑️ [InstructorRepository] deleteEBook HTTP ${rawResponse.statusCode}: ${rawResponse.body}');
+      if (rawResponse.statusCode >= 200 && rawResponse.statusCode < 300) {
+        debugPrint('✅ [InstructorRepository] deleteEBook direct HTTP SUCCESS');
+        return;
+      }
+      TokenStorage.checkResponse(rawResponse.statusCode, rawResponse.body);
+      if (rawResponse.statusCode == 403) {
+        String detailMsg = 'You do not have permission to delete e-books. Please contact an administrator.';
+        try {
+          final decoded = jsonDecode(rawResponse.body);
+          if (decoded is Map && decoded['detail'] != null) {
+            detailMsg = decoded['detail'].toString();
+          }
+        } catch (_) {}
+        throw Exception(detailMsg);
+      }
+      if (rawResponse.statusCode >= 500) {
+        throw Exception('Server Error: Failed to delete e-book. Please try again later.');
+      }
+      String errorMsg = 'Failed to delete e-book';
+      try {
+        final decoded = jsonDecode(rawResponse.body);
+        if (decoded is Map && decoded['detail'] != null) {
+          errorMsg = decoded['detail'].toString();
+        }
+      } catch (_) {
+        errorMsg = 'Failed to delete e-book (HTTP ${rawResponse.statusCode})';
+      }
+      throw Exception(errorMsg);
+    } catch (e) {
+      if (e is Exception && !e.toString().contains('ClientException')) {
+        rethrow;
+      }
+      debugPrint('⚠️ [InstructorRepository] deleteEBook direct HTTP error: $e. Falling back to swagger client.');
+    }
+
     final response = await appApi.apiV1InstructorEbooksIdDelete(id: ebookId);
     if (!response.isSuccessful) {
       if (response.statusCode == 403) {
@@ -789,8 +904,35 @@ class InstructorRepository {
 
   // ── Q&A ─────────────────────────────────────────────────────────
 
-  /// Fetch pending questions.
-  Future<List<Map<String, dynamic>>> getQuestions() async {
+  /// Fetch questions with status filter ('UNRESOLVED' | 'RESOLVED' | 'ALL') and optional courseId.
+  Future<List<Map<String, dynamic>>> getQuestions({
+    String status = 'ALL',
+    String? courseId,
+  }) async {
+    final token = await tokenStorage.getAccessToken();
+    final queryParams = <String, String>{
+      'status': status,
+      if (courseId != null && courseId.isNotEmpty && courseId != 'ALL') 'course_id': courseId,
+    };
+    final uri = Uri.https('iagrow.zappcode.in', '/api/v1/instructor/qa/', queryParams);
+    try {
+      final response = await http.get(
+        uri,
+        headers: {
+          if (token != null) 'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      );
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+        if (decoded is List) {
+          return decoded.whereType<Map<String, dynamic>>().toList();
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ [InstructorRepository] getQuestions HTTP failed: $e');
+    }
+
     final response = await appApi.apiV1InstructorQaGet();
     final dynamic data = response.body;
     if (data is List) {
@@ -800,7 +942,7 @@ class InstructorRepository {
   }
 
   /// Answer a question.
-  Future<void> answerQuestion(String questionId, String answer) async {
+  Future<Map<String, dynamic>> answerQuestion(String questionId, String answer) async {
     final token = await tokenStorage.getAccessToken();
     final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/instructor/qa/$questionId/answer/');
     final rawResponse = await http.post(
@@ -816,6 +958,50 @@ class InstructorRepository {
     );
     if (rawResponse.statusCode >= 300) {
       throw Exception('Failed to answer question: ${rawResponse.body}');
+    }
+    try {
+      final decoded = jsonDecode(utf8.decode(rawResponse.bodyBytes));
+      if (decoded is Map<String, dynamic>) return decoded;
+    } catch (_) {}
+    return {};
+  }
+
+  /// Update an existing instructor reply.
+  Future<Map<String, dynamic>> updateInstructorAnswer(String answerId, String answer) async {
+    final token = await tokenStorage.getAccessToken();
+    final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/instructor/qa/answers/$answerId/');
+    final rawResponse = await http.patch(
+      uri,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'answer_text': answer,
+      }),
+    );
+    if (rawResponse.statusCode >= 300) {
+      throw Exception('Failed to update answer: ${rawResponse.body}');
+    }
+    try {
+      final decoded = jsonDecode(utf8.decode(rawResponse.bodyBytes));
+      if (decoded is Map<String, dynamic>) return decoded;
+    } catch (_) {}
+    return {};
+  }
+
+  /// Delete an instructor reply.
+  Future<void> deleteInstructorAnswer(String answerId) async {
+    final token = await tokenStorage.getAccessToken();
+    final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/instructor/qa/answers/$answerId/');
+    final rawResponse = await http.delete(
+      uri,
+      headers: {
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (rawResponse.statusCode >= 300) {
+      throw Exception('Failed to delete answer: ${rawResponse.body}');
     }
   }
 
@@ -861,6 +1047,7 @@ class InstructorRepository {
         return {};
       } else {
         debugPrint('❌ [InstructorRepository] uploadVideo ERROR (${response.statusCode}): ${response.body}');
+        TokenStorage.checkResponse(response.statusCode, response.body);
         if (response.body.contains('Bunny Stream API') || response.body.contains('Failed to initialize video')) {
           throw Exception('Video server notice: Bunny Stream CDN is currently being activated or under maintenance.');
         } else if (response.statusCode == 413) {
@@ -871,10 +1058,10 @@ class InstructorRepository {
         throw Exception('Failed to upload video (${response.statusCode}): ${response.body}');
       }
     } on TimeoutException {
-      rethrow;
+      throw ApiException.network();
     } on SocketException catch (sErr) {
       debugPrint('❌ [InstructorRepository] uploadVideo network error: $sErr');
-      throw Exception('Network connection failed during video upload. Please check your internet.');
+      throw ApiException.network();
     } catch (e) {
       debugPrint('❌ [InstructorRepository] uploadVideo error: $e');
       rethrow;
@@ -930,16 +1117,17 @@ class InstructorRepository {
         return {};
       } else {
         debugPrint('❌ [InstructorRepository] uploadResource ERROR (${response.statusCode}): ${response.body}');
+        TokenStorage.checkResponse(response.statusCode, response.body);
         if (response.statusCode == 413) {
           throw Exception('File size is too large for the server.');
         }
         throw Exception('Failed to upload resource (${response.statusCode}): ${response.body}');
       }
     } on TimeoutException {
-      rethrow;
+      throw ApiException.network();
     } on SocketException catch (sErr) {
       debugPrint('❌ [InstructorRepository] uploadResource network error: $sErr');
-      throw Exception('Network error while uploading study material. Please check your internet.');
+      throw ApiException.network();
     } catch (e) {
       debugPrint('❌ [InstructorRepository] uploadResource error: $e');
       rethrow;
@@ -988,6 +1176,7 @@ class InstructorRepository {
       return {};
     } else {
       debugPrint('❌ [InstructorRepository] uploadCertificateTemplate ERROR (${response.statusCode}): ${response.body}');
+      TokenStorage.checkResponse(response.statusCode, response.body);
       throw Exception('Failed to upload certificate (${response.statusCode}): ${response.body}');
     }
   }

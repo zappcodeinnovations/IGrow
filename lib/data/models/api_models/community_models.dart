@@ -45,6 +45,43 @@ class CommunityAuthor {
   }
 }
 
+class HubMember {
+  final String id;
+  final String name;
+  final String? avatar;
+  final String? location;
+  final String role;
+  final bool isHost;
+  final String? joinedAt;
+
+  HubMember({
+    required this.id,
+    required this.name,
+    this.avatar,
+    this.location,
+    this.role = 'Farmer',
+    this.isHost = false,
+    this.joinedAt,
+  });
+
+  factory HubMember.fromJson(Map<String, dynamic> json) {
+    final rawName = (json['full_name'] ?? json['name'] ?? json['user_name'] ?? json['username'] ?? 'Farmer').toString();
+    final rawRole = (json['role'] ?? json['user_role'] ?? 'Farmer').toString();
+    final rawLoc = (json['district'] ?? json['location'] ?? json['state'])?.toString();
+    final isHost = json['is_host'] == true || json['is_owner'] == true || rawRole.toUpperCase() == 'INSTRUCTOR';
+
+    return HubMember(
+      id: (json['id'] ?? json['user_id'] ?? '').toString(),
+      name: rawName.isNotEmpty ? rawName : 'Farmer',
+      avatar: (json['avatar'] ?? json['avatar_url'] ?? json['profile_image'])?.toString(),
+      location: rawLoc,
+      role: isHost ? 'Instructor' : (rawRole.isNotEmpty ? rawRole : 'Farmer'),
+      isHost: isHost,
+      joinedAt: (json['joined_at'] ?? json['created_at'])?.toString(),
+    );
+  }
+}
+
 class CommunityTopic {
   final String id;
   final String name;
@@ -102,6 +139,11 @@ class CommunityHub {
   final String rules;
   final int memberCount;
   final bool isMember;
+  final bool isOwner;
+  final bool isPrivate;
+  final bool isActive;
+  final String disabledReason;
+  final String disabledBy;
   final DateTime createdAt;
 
   CommunityHub({
@@ -119,6 +161,11 @@ class CommunityHub {
     this.rules = '',
     required this.memberCount,
     required this.isMember,
+    this.isOwner = false,
+    this.isPrivate = false,
+    this.isActive = true,
+    this.disabledReason = '',
+    this.disabledBy = '',
     required this.createdAt,
   });
 
@@ -144,6 +191,12 @@ class CommunityHub {
         instAvatar = json['instructor_avatar']?.toString();
       }
 
+    final activeVal = json['is_active'];
+    final bool active = activeVal == null ? true : (activeVal == true || activeVal == 1 || activeVal == 'true');
+    final String reason = (json['disabled_reason'] ?? json['deactivated_reason'] ?? '').toString();
+    final String disabledBy = (json['disabled_by'] ?? '').toString();
+    final bool privateVal = json['is_private'] == true || json['is_private'] == 1 || json['is_private'] == 'true';
+
     return CommunityHub(
       id: (json['id'] ?? '').toString(),
       name: (json['name'] ?? '').toString(),
@@ -163,6 +216,11 @@ class CommunityHub {
       isMember: (json['is_member'] ?? json['is_joined'] ?? json['joined'] ?? json['has_joined']) == true ||
           (json['is_member'] ?? json['is_joined'] ?? json['joined'] ?? json['has_joined']) == 1 ||
           (json['is_member'] ?? json['is_joined'] ?? json['joined'] ?? json['has_joined']) == 'true',
+      isOwner: json['is_owner'] == true || json['is_host'] == true,
+      isPrivate: privateVal,
+      isActive: active,
+      disabledReason: reason,
+      disabledBy: disabledBy,
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'].toString()) ?? DateTime.now()
           : DateTime.now(),
@@ -184,6 +242,11 @@ class CommunityHub {
     String? rules,
     int? memberCount,
     bool? isMember,
+    bool? isOwner,
+    bool? isPrivate,
+    bool? isActive,
+    String? disabledReason,
+    String? disabledBy,
     DateTime? createdAt,
   }) {
     return CommunityHub(
@@ -201,6 +264,11 @@ class CommunityHub {
       rules: rules ?? this.rules,
       memberCount: memberCount ?? this.memberCount,
       isMember: isMember ?? this.isMember,
+      isOwner: isOwner ?? this.isOwner,
+      isPrivate: isPrivate ?? this.isPrivate,
+      isActive: isActive ?? this.isActive,
+      disabledReason: disabledReason ?? this.disabledReason,
+      disabledBy: disabledBy ?? this.disabledBy,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -257,10 +325,36 @@ class CommunityPost {
   final String tag;
   final int viewsCount;
   final int reactionsCount;
-  final String? userReaction; // 'LIKE' | 'LOVE' | 'CLAP' | 'IDEA' | 'FARM'
+  final String? userReaction; // 'LIKE' | 'LOVE' | 'CLAP' | 'HELPFUL' | 'IDEA' | 'FARM'
+  final Map<String, int> reactionsBreakdown;
   final int commentsCount;
   final DateTime createdAt;
   final DateTime? updatedAt;
+
+  // Granular counts for thumbs up (LIKE) and heart (LOVE)
+  int get likeCount {
+    final count = reactionsBreakdown['LIKE'] ??
+        reactionsBreakdown['THUMBS_UP'] ??
+        reactionsBreakdown['GROW'] ??
+        reactionsBreakdown['LEAF'] ??
+        reactionsBreakdown['FARM'];
+    if (count != null) return count;
+    // Fallback if breakdown not populated:
+    if (userReaction == 'LIKE' || userReaction == 'FARM' || userReaction == 'GROW') {
+      return reactionsCount > 0 ? reactionsCount : 1;
+    }
+    return 0;
+  }
+
+  int get loveCount {
+    final count = reactionsBreakdown['LOVE'] ?? reactionsBreakdown['HEART'];
+    if (count != null) return count;
+    // Fallback if breakdown not populated:
+    if (userReaction == 'LOVE' || userReaction == 'HEART') {
+      return reactionsCount > 0 ? reactionsCount : 1;
+    }
+    return 0;
+  }
 
   // Backward-compatible getters
   int get likesCount => reactionsCount;
@@ -287,12 +381,14 @@ class CommunityPost {
     this.viewsCount = 0,
     int? reactionsCount,
     this.userReaction,
+    Map<String, int>? reactionsBreakdown,
     int? likesCount,
     bool? isLikedByMe,
     required this.commentsCount,
     required this.createdAt,
     this.updatedAt,
-  })  : reactionsCount = reactionsCount ?? likesCount ?? 0;
+  })  : reactionsCount = reactionsCount ?? likesCount ?? 0,
+        reactionsBreakdown = reactionsBreakdown ?? const {};
 
   factory CommunityPost.fromJson(Map<String, dynamic> json) {
     final authorMap = json['author'] is Map<String, dynamic>
@@ -349,11 +445,22 @@ class CommunityPost {
         json['likes_count'] as int? ??
         0;
 
+    final breakdownRaw = json['reactions_breakdown'];
+    final Map<String, int> parsedBreakdown = {};
+    if (breakdownRaw is Map) {
+      breakdownRaw.forEach((k, v) {
+        if (v is num) {
+          parsedBreakdown[k.toString().toUpperCase()] = v.toInt();
+        }
+      });
+    }
+
     String? parsedUserReaction = json['user_reaction']?.toString();
-    if (parsedUserReaction == null || parsedUserReaction.isEmpty) {
+    if (parsedUserReaction == null || parsedUserReaction.isEmpty || parsedUserReaction == 'null') {
+      parsedUserReaction = null;
       final isLiked = json['is_liked'] as bool? ?? json['is_liked_by_me'] as bool? ?? false;
       if (isLiked) {
-        parsedUserReaction = 'FARM';
+        parsedUserReaction = 'LIKE';
       }
     }
 
@@ -378,6 +485,7 @@ class CommunityPost {
       viewsCount: json['views_count'] as int? ?? 0,
       reactionsCount: parsedReactionsCount,
       userReaction: parsedUserReaction,
+      reactionsBreakdown: parsedBreakdown,
       commentsCount: json['comments_count'] as int? ?? 0,
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'].toString())?.toLocal() ?? DateTime.now()
@@ -401,6 +509,49 @@ class CommunityPost {
     return '$day/$month/$year • $hour12:$minute $period';
   }
 
+  /// Whether a scheduled webinar is currently open for joining (starts 15 minutes before event date up to 4 hours after).
+  bool get isWebinarJoinable {
+    if (eventDate == null) return true;
+    final now = DateTime.now();
+    final joinWindowStart = eventDate!.toLocal().subtract(const Duration(minutes: 15));
+    final sessionEnd = eventDate!.toLocal().add(const Duration(hours: 4));
+    return now.isAfter(joinWindowStart) && now.isBefore(sessionEnd);
+  }
+
+  /// Whether the webinar is scheduled in the future (starts more than 15 minutes ahead).
+  bool get isWebinarUpcoming {
+    if (eventDate == null) return false;
+    final now = DateTime.now();
+    final joinWindowStart = eventDate!.toLocal().subtract(const Duration(minutes: 15));
+    return now.isBefore(joinWindowStart);
+  }
+
+  /// Whether the webinar has already concluded (more than 4 hours past start).
+  bool get isWebinarEnded {
+    if (eventDate == null) return false;
+    final now = DateTime.now();
+    final sessionEnd = eventDate!.toLocal().add(const Duration(hours: 4));
+    return now.isAfter(sessionEnd);
+  }
+
+  /// Human-readable time remaining until the webinar starts (or null if already started or joinable).
+  String? get webinarCountdownMessage {
+    if (eventDate == null) return null;
+    final now = DateTime.now();
+    final localStart = eventDate!.toLocal();
+    if (now.isAfter(localStart)) return null;
+    final diff = localStart.difference(now);
+    if (diff.inDays > 1) {
+      return 'Starts in ${diff.inDays} days';
+    } else if (diff.inDays == 1) {
+      return 'Starts tomorrow';
+    } else if (diff.inHours > 0) {
+      return 'Starts in ${diff.inHours}h ${diff.inMinutes % 60}m';
+    } else {
+      return 'Starts in ${diff.inMinutes}m';
+    }
+  }
+
   CommunityPost copyWith({
     String? id,
     CommunityAuthor? author,
@@ -422,6 +573,7 @@ class CommunityPost {
     int? viewsCount,
     int? reactionsCount,
     String? userReaction,
+    Map<String, int>? reactionsBreakdown,
     int? likesCount,
     bool? isLikedByMe,
     int? commentsCount,
@@ -448,7 +600,8 @@ class CommunityPost {
       tag: tag ?? this.tag,
       viewsCount: viewsCount ?? this.viewsCount,
       reactionsCount: reactionsCount ?? likesCount ?? this.reactionsCount,
-      userReaction: userReaction ?? (isLikedByMe != null ? (isLikedByMe ? 'FARM' : null) : this.userReaction),
+      userReaction: userReaction ?? (isLikedByMe != null ? (isLikedByMe ? 'LIKE' : null) : this.userReaction),
+      reactionsBreakdown: reactionsBreakdown ?? this.reactionsBreakdown,
       commentsCount: commentsCount ?? this.commentsCount,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -473,6 +626,24 @@ class CommunityComment {
     required this.createdAt,
   });
 
+  CommunityComment copyWith({
+    String? id,
+    CommunityAuthor? author,
+    String? parentId,
+    String? authorRole,
+    String? content,
+    DateTime? createdAt,
+  }) {
+    return CommunityComment(
+      id: id ?? this.id,
+      author: author ?? this.author,
+      parentId: parentId ?? this.parentId,
+      authorRole: authorRole ?? this.authorRole,
+      content: content ?? this.content,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
   factory CommunityComment.fromJson(Map<String, dynamic> json) {
     Map<String, dynamic> authorMap;
     if (json['author'] is Map<String, dynamic>) {
@@ -490,11 +661,18 @@ class CommunityComment {
 
     final rawContent = json['content'] ?? json['comment'] ?? json['text'] ?? json['body'] ?? '';
     final role = (json['author_role'] ?? authorMap['author_role'] ?? 'STUDENT').toString();
+    final rawParent = json['parent'] ?? json['parent_id'] ?? json['parentId'] ?? json['reply_to'] ?? json['parent_comment_id'];
+    String? resolvedParentId;
+    if (rawParent is Map) {
+      resolvedParentId = rawParent['id']?.toString();
+    } else if (rawParent != null) {
+      resolvedParentId = rawParent.toString();
+    }
 
     return CommunityComment(
       id: json['id']?.toString() ?? '',
       author: CommunityAuthor.fromJson(authorMap),
-      parentId: json['parent']?.toString() ?? json['parent_id']?.toString(),
+      parentId: resolvedParentId,
       authorRole: role,
       content: rawContent.toString(),
       createdAt: json['created_at'] != null

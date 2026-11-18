@@ -77,6 +77,13 @@ class AppleIapService {
 
       if (purchase.status == PurchaseStatus.pending) {
         debugPrint('⏳ [AppleIapService] Purchase pending for ${purchase.productID}');
+      } else if (purchase.status == PurchaseStatus.canceled) {
+        debugPrint('🚫 [AppleIapService] Purchase CANCELED by user.');
+        if (_activePurchaseCompleter != null && !_activePurchaseCompleter!.isCompleted) {
+          _activePurchaseCompleter!.completeError(
+            Exception('Payment was cancelled.'),
+          );
+        }
       } else if (purchase.status == PurchaseStatus.error) {
         debugPrint('❌ [AppleIapService] Purchase error: ${purchase.error}');
         if (_activePurchaseCompleter != null && !_activePurchaseCompleter!.isCompleted) {
@@ -157,9 +164,9 @@ class AppleIapService {
       throw Exception('Failed to initiate Apple In-App Purchase sheet.');
     }
 
-    // 3. Wait for the purchase update to complete with a safety timeout of 3 minutes
+    // 3. Wait for the purchase update to complete with a safety timeout of 60 seconds
     return _activePurchaseCompleter!.future.timeout(
-      const Duration(minutes: 3),
+      const Duration(seconds: 60),
       onTimeout: () {
         throw TimeoutException('Apple In-App Purchase timed out. If you were charged, please restore purchases.');
       },

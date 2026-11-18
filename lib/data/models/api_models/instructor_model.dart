@@ -97,3 +97,108 @@ class ApiTopInstructor {
     ),
   ];
 }
+
+/// Detailed Public Instructor profile matching `/api/v1/instructors/<id>/`.
+class ApiPublicInstructorDetail {
+  const ApiPublicInstructorDetail({
+    required this.id,
+    required this.fullName,
+    this.email,
+    this.phoneNumber,
+    this.avatar,
+    this.bio,
+    this.expertiseTags,
+    this.specialtyCrops,
+    this.qualifications,
+    this.experience = 'Expert',
+    this.rating = 4.9,
+    this.totalStudents = 0,
+    this.totalCourses = 0,
+    this.courses = const [],
+  });
+
+  final String id;
+  final String fullName;
+  final String? email;
+  final String? phoneNumber;
+  final String? avatar;
+  final String? bio;
+  final String? expertiseTags;
+  final String? specialtyCrops;
+  final String? qualifications;
+  final String experience;
+  final double rating;
+  final int totalStudents;
+  final int totalCourses;
+  final List<ApiInstructorCourseItem> courses;
+
+  factory ApiPublicInstructorDetail.fromJson(Map<String, dynamic> json) {
+    double parseRating(dynamic val) {
+      if (val == null) return 4.9;
+      if (val is num) return val.toDouble();
+      return double.tryParse(val.toString()) ?? 4.9;
+    }
+
+    int parseInt(dynamic val, [int fallback = 0]) {
+      if (val == null) return fallback;
+      if (val is int) return val;
+      if (val is num) return val.toInt();
+      return int.tryParse(val.toString()) ?? fallback;
+    }
+
+    final rawCourses = json['courses'] as List? ?? [];
+    final courseList = rawCourses
+        .whereType<Map<String, dynamic>>()
+        .map((e) => ApiInstructorCourseItem.fromJson(e))
+        .toList();
+
+    return ApiPublicInstructorDetail(
+      id: json['id']?.toString() ?? '',
+      fullName: json['full_name']?.toString() ?? 'Instructor',
+      email: json['email']?.toString(),
+      phoneNumber: json['phone_number']?.toString(),
+      avatar: json['avatar']?.toString(),
+      bio: json['bio']?.toString(),
+      expertiseTags: json['expertise_tags']?.toString(),
+      specialtyCrops: json['specialty_crops']?.toString(),
+      qualifications: json['qualifications']?.toString(),
+      experience: json['experience']?.toString() ?? 'Expert',
+      rating: parseRating(json['rating']),
+      totalStudents: parseInt(json['total_students'], 0),
+      totalCourses: parseInt(json['total_courses'], courseList.length),
+      courses: courseList,
+    );
+  }
+}
+
+class ApiInstructorCourseItem {
+  const ApiInstructorCourseItem({
+    required this.id,
+    required this.title,
+    this.slug,
+    this.thumbnail,
+    this.price,
+    this.level,
+    this.categoryName,
+  });
+
+  final String id;
+  final String title;
+  final String? slug;
+  final String? thumbnail;
+  final String? price;
+  final String? level;
+  final String? categoryName;
+
+  factory ApiInstructorCourseItem.fromJson(Map<String, dynamic> json) {
+    return ApiInstructorCourseItem(
+      id: json['id']?.toString() ?? '',
+      title: json['title']?.toString() ?? 'Course',
+      slug: json['slug']?.toString(),
+      thumbnail: json['thumbnail']?.toString(),
+      price: json['price']?.toString(),
+      level: json['level']?.toString(),
+      categoryName: json['category_name']?.toString(),
+    );
+  }
+}

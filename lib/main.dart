@@ -10,6 +10,7 @@ import 'core/router/app_router.dart';
 import 'core/services/notification_service.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_provider.dart';
+import 'features/cart/providers/cart_provider.dart';
 import 'features/explore/providers/explore_provider.dart';
 import 'features/home_farmer/providers/farmer_home_provider.dart';
 import 'features/home_farmer/providers/student_provider.dart';
@@ -73,8 +74,8 @@ void main() async {
     );
     await NotificationService.instance.initialize(
       onNotificationClick: (message) {
-        // Handle notification tap — navigate based on message.data if needed
         debugPrint('🔔 [App] Notification tapped: ${message.data}');
+        NotificationService.handleNotificationTap(message.data);
       },
     );
   } catch (e) {
@@ -137,6 +138,8 @@ class _IGrowAppState extends ConsumerState<IGrowApp> {
     ref.invalidate(studentCatalogProvider);
     ref.invalidate(featuredCoursesProvider);
     ref.invalidate(exploreCoursesProvider);
+    ref.invalidate(ordersProvider);
+    ref.invalidate(cartProvider);
   }
 
   @override
@@ -176,12 +179,20 @@ class _IGrowAppState extends ConsumerState<IGrowApp> {
         routerConfig: router,
         debugShowCheckedModeBanner: false,
         builder: (context, child) {
-          return GestureDetector(
+          return Listener(
             behavior: HitTestBehavior.translucent,
-            onTap: () {
-              // Automatically unfocus any active input field and dismiss the keyboard
-              // when tapping anywhere outside an interactive control.
-              FocusManager.instance.primaryFocus?.unfocus();
+            onPointerDown: (event) {
+              final currentFocus = FocusManager.instance.primaryFocus;
+              if (currentFocus != null && currentFocus.hasFocus && currentFocus.context != null) {
+                final renderBox = currentFocus.context!.findRenderObject();
+                if (renderBox is RenderBox) {
+                  final localOffset = renderBox.globalToLocal(event.position);
+                  // If the pointer event landed outside the currently focused text field, unfocus
+                  if (!renderBox.paintBounds.contains(localOffset)) {
+                    currentFocus.unfocus();
+                  }
+                }
+              }
             },
             child: child ?? const SizedBox.shrink(),
           );

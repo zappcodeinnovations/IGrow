@@ -8,8 +8,9 @@ import '../providers/auth_provider.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
-import '../../../core/widgets/app_button.dart';
 import '../../../core/router/route_names.dart';
+import '../../../core/utils/app_toast.dart';
+import '../../../core/widgets/app_button.dart';
 
 /// OTP verification screen — 6-digit input with countdown timer.
 class OtpScreen extends ConsumerStatefulWidget {
@@ -48,14 +49,27 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
 
   Future<void> _resendOtp() async {
     _startTimer();
-    await ref.read(authProvider.notifier).resendOtp(email: widget.email);
+    ref.read(authProvider.notifier).clearError();
+    final success = await ref.read(authProvider.notifier).resendOtp(email: widget.email);
+    if (mounted) {
+      if (success) {
+        _otpController.clear();
+        AppToast.show(context, 'New OTP code sent to your email.');
+      } else {
+        final error = ref.read(authProvider).error;
+        if (error != null) {
+          AppToast.show(context, error, isError: true);
+        }
+      }
+    }
   }
 
   Future<void> _verify() async {
-    final otp = _otpController.text;
+    final otp = _otpController.text.trim();
     if (otp.length < 6) return;
     
     setState(() => _isVerifying = true);
+    ref.read(authProvider.notifier).clearError();
     
     // Default to password reset flow if purpose is missing
     if (widget.purpose == 'PASSWORD_RESET' || widget.purpose.isEmpty) {
@@ -68,6 +82,12 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
         setState(() => _isVerifying = false);
         if (resetToken != null) {
           context.push('${RouteNames.createPassword}?token=$resetToken');
+        } else {
+          // If verification failed (e.g. OTP already used or expired):
+          // Invalidate input fields and show user-friendly toast
+          final errorMsg = ref.read(authProvider).error ?? 'Invalid or expired OTP. Please request a new code.';
+          _otpController.clear();
+          AppToast.show(context, errorMsg, isError: true);
         }
       }
     } else {

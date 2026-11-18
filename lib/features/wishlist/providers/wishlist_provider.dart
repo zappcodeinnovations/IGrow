@@ -96,27 +96,44 @@ class WishlistNotifier extends StateNotifier<AsyncValue<List<ApiWishlistItem>>> 
       
       // If server confirmed addition and returned an ID, update the local item's ID
       if (result.inWishlist) {
-        if (result.id != null && result.id!.isNotEmpty && currentList.isNotEmpty) {
-          final idx = currentList.indexWhere(
-            (item) => item.targetId == courseId || item.id == courseId || item.slug == courseId,
+        final idx = currentList.indexWhere(
+          (item) => item.targetId == courseId || item.id == courseId || item.slug == courseId,
+        );
+        if (result.id != null && result.id!.isNotEmpty && idx >= 0) {
+          final old = currentList[idx];
+          currentList[idx] = ApiWishlistItem(
+            id: result.id!,
+            targetId: old.targetId.isNotEmpty ? old.targetId : courseId,
+            type: old.type,
+            title: old.title,
+            slug: old.slug,
+            thumbnail: old.thumbnail,
+            cover: old.cover,
+            price: old.price,
+            category: old.category,
+            rating: old.rating,
+            addedAt: old.addedAt ?? DateTime.now(),
           );
-          if (idx >= 0) {
-            final old = currentList[idx];
-            currentList[idx] = ApiWishlistItem(
-              id: result.id!,
-              targetId: old.targetId.isNotEmpty ? old.targetId : courseId,
-              type: old.type,
-              title: old.title,
-              slug: old.slug,
-              thumbnail: old.thumbnail,
-              cover: old.cover,
-              price: old.price,
-              category: old.category,
-              rating: old.rating,
-              addedAt: old.addedAt ?? DateTime.now(),
-            );
-            state = AsyncValue.data(currentList);
-          }
+          state = AsyncValue.data(currentList);
+        } else if (idx < 0 && previewItem != null) {
+          // If item was not yet in list, insert preview item with new ID
+          currentList.insert(
+            0,
+            ApiWishlistItem(
+              id: result.id ?? previewItem.id,
+              targetId: previewItem.targetId.isNotEmpty ? previewItem.targetId : courseId,
+              type: previewItem.type,
+              title: previewItem.title,
+              slug: previewItem.slug,
+              thumbnail: previewItem.thumbnail,
+              cover: previewItem.cover,
+              price: previewItem.price,
+              category: previewItem.category,
+              rating: previewItem.rating,
+              addedAt: previewItem.addedAt ?? DateTime.now(),
+            ),
+          );
+          state = AsyncValue.data(currentList);
         } else if (!isCurrentlyInWishlist && previewItem == null) {
           // Re-fetch from server to get full item details
           await loadWishlist();
@@ -199,27 +216,43 @@ class WishlistNotifier extends StateNotifier<AsyncValue<List<ApiWishlistItem>>> 
       final result = await repo.toggleWishlist(ebookId: ebookId);
 
       if (result.inWishlist) {
-        if (result.id != null && result.id!.isNotEmpty && currentList.isNotEmpty) {
-          final idx = currentList.indexWhere(
-            (item) => item.targetId == ebookId || item.id == ebookId || item.slug == ebookId,
+        final idx = currentList.indexWhere(
+          (item) => item.targetId == ebookId || item.id == ebookId || item.slug == ebookId,
+        );
+        if (result.id != null && result.id!.isNotEmpty && idx >= 0) {
+          final old = currentList[idx];
+          currentList[idx] = ApiWishlistItem(
+            id: result.id!,
+            targetId: old.targetId.isNotEmpty ? old.targetId : ebookId,
+            type: old.type,
+            title: old.title,
+            slug: old.slug,
+            thumbnail: old.thumbnail,
+            cover: old.cover,
+            price: old.price,
+            category: old.category,
+            rating: old.rating,
+            addedAt: old.addedAt ?? DateTime.now(),
           );
-          if (idx >= 0) {
-            final old = currentList[idx];
-            currentList[idx] = ApiWishlistItem(
-              id: result.id!,
-              targetId: old.targetId.isNotEmpty ? old.targetId : ebookId,
-              type: old.type,
-              title: old.title,
-              slug: old.slug,
-              thumbnail: old.thumbnail,
-              cover: old.cover,
-              price: old.price,
-              category: old.category,
-              rating: old.rating,
-              addedAt: old.addedAt ?? DateTime.now(),
-            );
-            state = AsyncValue.data(currentList);
-          }
+          state = AsyncValue.data(currentList);
+        } else if (idx < 0 && previewItem != null) {
+          currentList.insert(
+            0,
+            ApiWishlistItem(
+              id: result.id ?? previewItem.id,
+              targetId: previewItem.targetId.isNotEmpty ? previewItem.targetId : ebookId,
+              type: previewItem.type,
+              title: previewItem.title,
+              slug: previewItem.slug,
+              thumbnail: previewItem.thumbnail,
+              cover: previewItem.cover,
+              price: previewItem.price,
+              category: previewItem.category,
+              rating: previewItem.rating,
+              addedAt: previewItem.addedAt ?? DateTime.now(),
+            ),
+          );
+          state = AsyncValue.data(currentList);
         } else if (!isCurrentlyInWishlist && previewItem == null) {
           await loadWishlist();
         }
@@ -247,7 +280,18 @@ class WishlistNotifier extends StateNotifier<AsyncValue<List<ApiWishlistItem>>> 
 
     try {
       final repo = ref.read(wishlistRepositoryProvider);
-      return await repo.removeFromWishlist(idOrTargetId);
+      final removed = await repo.removeFromWishlist(idOrTargetId);
+      if (!removed) {
+        // If DELETE /wishlist/{id}/ fails (e.g. if the backend expects toggle or target ID),
+        // try fallback toggle to guarantee backend sync
+        try {
+          final toggleResult = await repo.toggleWishlist(courseId: idOrTargetId);
+          if (!toggleResult.inWishlist) {
+            return true;
+          }
+        } catch (_) {}
+      }
+      return removed;
     } catch (e) {
       debugPrint('⚠️ [WishlistNotifier] removeItem error: $e');
       await loadWishlist();

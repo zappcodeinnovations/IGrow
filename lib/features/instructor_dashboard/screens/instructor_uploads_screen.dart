@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -5,12 +6,15 @@ import 'package:go_router/go_router.dart';
 import '../../../core/localization/app_strings.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/app_error_state.dart';
 import '../../../core/widgets/shimmer_placeholders.dart';
 import '../../../data/models/api_models/course_models.dart';
 import '../../explore/providers/explore_provider.dart';
 import '../../home_farmer/providers/farmer_home_provider.dart';
 import '../../home_farmer/providers/student_provider.dart';
 import '../../home_instructor/providers/instructor_home_provider.dart';
+import '../../certificates/providers/certificates_provider.dart';
+import '../../../core/services/app_config_service.dart';
 
 class InstructorUploadsScreen extends ConsumerStatefulWidget {
   const InstructorUploadsScreen({super.key, this.initialTabIndex = 0});
@@ -94,17 +98,17 @@ class _CoursesTab extends ConsumerWidget {
       context: context,
       builder: (c) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Deactivate Course', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(tr(ref, 'Deactivate Course'), style: const TextStyle(fontWeight: FontWeight.bold)),
         content: Text(
-          'Are you sure you want to deactivate "${course.title}"?\n\n'
-          'The course will be moved to Draft status and hidden from the public marketplace. You can review and manage it anytime.',
+          '${tr(ref, 'Are you sure you want to deactivate')} "${course.title}"?\n\n'
+          '${tr(ref, 'The course will be moved to Draft status and hidden from the public marketplace. You can review and manage it anytime.')}',
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(c, false), child: Text(tr(ref, 'Cancel'))),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: const Color(0xFFF59E0B)),
             onPressed: () => Navigator.pop(c, true),
-            child: const Text('Deactivate'),
+            child: Text(tr(ref, 'Deactivate')),
           ),
         ],
       ),
@@ -112,22 +116,28 @@ class _CoursesTab extends ConsumerWidget {
 
     if (confirm == true) {
       try {
-        await ref.read(instructorRepositoryProvider).updateCourse(course.id, {
-          'status': 'DRAFT',
-        });
+        debugPrint('📤 [DEACTIVATE] Deactivating course: ${course.id}');
+        await ref.read(instructorRepositoryProvider).archiveCourse(course.id);
+        await ref.read(deactivatedCoursesProvider.notifier).markDeactivated(course.id);
+        debugPrint('✅ [DEACTIVATE] Successfully deactivated course: ${course.id}');
         if (context.mounted) {
           final messenger = ScaffoldMessenger.of(context);
           messenger.clearSnackBars();
           messenger.showSnackBar(
-            const SnackBar(
-              content: Text('Course deactivated and moved to Drafts'),
+            SnackBar(
+              content: Text(tr(ref, 'Course deactivated and archived')),
               backgroundColor: AppColors.primaryGreen,
             ),
           );
           ref.invalidate(instructorCoursesProvider);
+          ref.invalidate(instructorCourseDetailProvider(course.id));
+          unawaited(ref.refresh(instructorCoursesProvider((search: '', ordering: '')).future));
           ref.invalidate(studentCatalogProvider);
           ref.invalidate(featuredCoursesProvider);
           ref.invalidate(exploreCoursesProvider);
+          ref.invalidate(studentEnrollmentsProvider);
+          ref.invalidate(myCertificatesProvider);
+          ref.invalidate(certificateEnrollmentsProvider);
         }
       } catch (e) {
         if (context.mounted) {
@@ -135,7 +145,133 @@ class _CoursesTab extends ConsumerWidget {
           messenger.clearSnackBars();
           messenger.showSnackBar(
             SnackBar(
-              content: Text('Failed to deactivate course: $e'),
+              content: Text('${tr(ref, 'Failed to deactivate course:')} $e'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _reactivateCourse(
+    BuildContext context,
+    WidgetRef ref,
+    ApiCourseList course,
+  ) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(tr(ref, 'Reactivate Course'), style: const TextStyle(fontWeight: FontWeight.bold)),
+        content: Text(
+          '${tr(ref, 'Are you sure you want to reactivate')} "${course.title}"?\n\n'
+          '${tr(ref, 'The course will be restored back to live status on the marketplace.')}',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: Text(tr(ref, 'Cancel'))),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.primaryGreen),
+            onPressed: () => Navigator.pop(c, true),
+            child: Text(tr(ref, 'Reactivate')),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        debugPrint('📤 [REACTIVATE] Reactivating course: ${course.id}');
+        await ref.read(instructorRepositoryProvider).unarchiveCourse(course.id);
+        await ref.read(deactivatedCoursesProvider.notifier).markReactivated(course.id);
+        debugPrint('✅ [REACTIVATE] Successfully reactivated course: ${course.id}');
+        if (context.mounted) {
+          final messenger = ScaffoldMessenger.of(context);
+          messenger.clearSnackBars();
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text(tr(ref, 'Course reactivated and is now live!')),
+              backgroundColor: AppColors.primaryGreen,
+            ),
+          );
+          ref.invalidate(instructorCoursesProvider);
+          ref.invalidate(instructorCourseDetailProvider(course.id));
+          unawaited(ref.refresh(instructorCoursesProvider((search: '', ordering: '')).future));
+          ref.invalidate(studentCatalogProvider);
+          ref.invalidate(featuredCoursesProvider);
+          ref.invalidate(exploreCoursesProvider);
+          ref.invalidate(studentEnrollmentsProvider);
+          ref.invalidate(myCertificatesProvider);
+          ref.invalidate(certificateEnrollmentsProvider);
+        }
+      } catch (e) {
+        if (context.mounted) {
+          final messenger = ScaffoldMessenger.of(context);
+          messenger.clearSnackBars();
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text('${tr(ref, 'Failed to reactivate course:')} $e'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _deleteCourse(
+    BuildContext context,
+    WidgetRef ref,
+    ApiCourseList course,
+  ) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: Text(tr(ref, 'Delete Course')),
+        content: Text('${tr(ref, 'Are you sure you want to permanently delete')} "${course.title}"? ${tr(ref, 'This action cannot be undone.')}'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(c, false),
+            child: Text(tr(ref, 'Cancel')),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+            onPressed: () => Navigator.pop(c, true),
+            child: Text(tr(ref, 'Delete')),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await ref.read(instructorRepositoryProvider).deleteCourse(course.id);
+        if (context.mounted) {
+          final messenger = ScaffoldMessenger.of(context);
+          messenger.clearSnackBars();
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text(tr(ref, 'Course deleted successfully')),
+              backgroundColor: AppColors.primaryGreen,
+            ),
+          );
+          ref.invalidate(instructorCoursesProvider);
+          ref.invalidate(instructorCourseDetailProvider(course.id));
+          unawaited(ref.refresh(instructorCoursesProvider((search: '', ordering: '')).future));
+          ref.invalidate(studentCatalogProvider);
+          ref.invalidate(featuredCoursesProvider);
+          ref.invalidate(exploreCoursesProvider);
+          ref.invalidate(studentEnrollmentsProvider);
+          ref.invalidate(myCertificatesProvider);
+          ref.invalidate(certificateEnrollmentsProvider);
+        }
+      } catch (e) {
+        if (context.mounted) {
+          final messenger = ScaffoldMessenger.of(context);
+          messenger.clearSnackBars();
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text(e.toString().replaceAll('Exception: ', '')),
               backgroundColor: AppColors.error,
             ),
           );
@@ -151,15 +287,28 @@ class _CoursesTab extends ConsumerWidget {
       instructorCoursesProvider((search: '', ordering: '')),
     );
 
-    return coursesAsync.when(
-      data: (courses) {
-        if (courses.isEmpty) {
-          return const Center(child: Text('No courses uploaded yet.'));
-        }
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: courses.length,
-          itemBuilder: (context, index) {
+    return RefreshIndicator(
+      color: AppColors.primaryGreen,
+      onRefresh: () async {
+        ref.invalidate(instructorCoursesProvider);
+        await ref.read(instructorCoursesProvider((search: '', ordering: '')).future);
+      },
+      child: coursesAsync.when(
+        data: (courses) {
+          if (courses.isEmpty) {
+            return ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: const [
+                SizedBox(height: 120),
+                Center(child: Text('No courses uploaded yet.')),
+              ],
+            );
+          }
+          return ListView.builder(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(16),
+            itemCount: courses.length,
+            itemBuilder: (context, index) {
             final course = courses[index];
             final cStatus = (course.status ?? 'DRAFT').toUpperCase();
             final isLive = cStatus == 'APPROVED' ||
@@ -167,32 +316,45 @@ class _CoursesTab extends ConsumerWidget {
                 cStatus == 'PUBLISHED' ||
                 cStatus == 'ACTIVE';
 
+            final isDeactivated = ref.watch(deactivatedCoursesProvider).contains(course.id);
+            final effectiveLive = isLive && !isDeactivated;
+
+            // Only new made courses still in draft / review period can be deleted.
+            // Approved and subsequently deactivated courses must NOT show a delete button.
+            final canDelete = !effectiveLive && !isDeactivated && (cStatus == 'DRAFT' || cStatus == 'PROCESSING' || cStatus == 'REVIEW' || cStatus == 'REJECTED');
+
             Color cBadgeBg;
             Color cBadgeText;
             String cBadgeLabel;
 
-            if (isLive) {
+            if (isDeactivated) {
+              cBadgeBg = isDark
+                  ? Colors.amber.withValues(alpha: 0.2)
+                  : Colors.amber.shade50;
+              cBadgeText = isDark ? Colors.amberAccent : Colors.amber.shade900;
+              cBadgeLabel = tr(ref, 'Deactivated');
+            } else if (effectiveLive) {
               cBadgeBg = isDark
                   ? Colors.green.withValues(alpha: 0.2)
                   : Colors.green.shade50;
               cBadgeText = isDark ? Colors.greenAccent : Colors.green.shade700;
-              cBadgeLabel = 'Live';
+              cBadgeLabel = tr(ref, 'Live');
             } else if (cStatus == 'PROCESSING' || cStatus == 'REVIEW') {
               cBadgeBg = isDark
                   ? Colors.amber.withValues(alpha: 0.2)
                   : Colors.amber.shade50;
               cBadgeText = isDark ? Colors.amberAccent : Colors.amber.shade900;
-              cBadgeLabel = 'Under Review';
+              cBadgeLabel = tr(ref, 'Under Review');
             } else if (cStatus == 'REJECTED') {
               cBadgeBg = isDark
                   ? Colors.red.withValues(alpha: 0.2)
                   : Colors.red.shade50;
               cBadgeText = isDark ? Colors.redAccent : Colors.red.shade800;
-              cBadgeLabel = 'Rejected';
+              cBadgeLabel = tr(ref, 'Rejected');
             } else {
               cBadgeBg = isDark ? Colors.white12 : Colors.grey.shade100;
               cBadgeText = isDark ? Colors.grey.shade300 : Colors.grey.shade800;
-              cBadgeLabel = 'Draft';
+              cBadgeLabel = tr(ref, 'Draft');
             }
 
             final hasThumbnail = course.thumbnail != null &&
@@ -307,11 +469,23 @@ class _CoursesTab extends ConsumerWidget {
                           tooltip: 'Manage Content',
                           onPressed: () => context.push('/instructor/manage-course/${course.id}'),
                         ),
-                        if (isLive)
+                        if (effectiveLive)
                           IconButton(
                             icon: const Icon(Icons.pause_circle_outline, color: Color(0xFFD97706)),
                             tooltip: 'Deactivate Course',
                             onPressed: () => _deactivateCourse(context, ref, course),
+                          ),
+                        if (isDeactivated)
+                          IconButton(
+                            icon: const Icon(Icons.play_circle_outline, color: AppColors.primaryGreen),
+                            tooltip: 'Reactivate Course',
+                            onPressed: () => _reactivateCourse(context, ref, course),
+                          ),
+                        if (canDelete)
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFFEF4444)),
+                            tooltip: 'Delete Course',
+                            onPressed: () => _deleteCourse(context, ref, course),
                           ),
                       ],
                     ),
@@ -337,7 +511,7 @@ class _CoursesTab extends ConsumerWidget {
               const Icon(Icons.wifi_off_rounded, size: 48, color: Colors.orange),
               const SizedBox(height: 12),
               Text(
-                tr(ref, 'Unable to load courses at this time. Please check your connection.'),
+                tr(ref, getUserFriendlyErrorMessage(err)),
                 textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 14, color: AppColors.inkSoft),
               ),
@@ -350,6 +524,7 @@ class _CoursesTab extends ConsumerWidget {
             ],
           ),
         ),
+      ),
       ),
     );
   }
@@ -378,72 +553,106 @@ class _EBooksTab extends ConsumerWidget {
     final currentPrice = (ebook.price ?? '0').toString().replaceAll('₹', '').trim();
     final priceController = TextEditingController(text: currentPrice == '0.00' ? '0' : currentPrice);
 
+    final config = ref.read(appConfigProvider);
+    final allowsCustomPrice = config.allowsCustomCoursePrice;
+    String selectedTier = const ['0', '249', '499', '999', '1499'].contains(currentPrice)
+        ? currentPrice
+        : '0';
+
     final newPrice = await showDialog<String>(
       context: context,
-      builder: (dialogCtx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppColors.primaryGreen.withValues(alpha: 0.12),
-                shape: BoxShape.circle,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryGreen.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.currency_rupee, color: AppColors.primaryGreen, size: 20),
               ),
-              child: const Icon(Icons.currency_rupee, color: AppColors.primaryGreen, size: 20),
-            ),
-            const SizedBox(width: 10),
-            const Expanded(
-              child: Text(
-                'Set E-Book Price',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Set pricing for "${ebook.title ?? 'E-Book'}". Enter 0 to offer this e-book for free to learners.',
-              style: const TextStyle(fontSize: 13, color: AppColors.inkSoft),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: priceController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              autofocus: true,
-              decoration: InputDecoration(
-                labelText: 'Price (₹ INR)',
-                hintText: 'e.g. 199 or 0',
-                prefixIcon: const Icon(Icons.currency_rupee, size: 18),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: AppColors.primaryGreen, width: 2),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text(
+                  'Set E-Book Price',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Set pricing for "${ebook.title ?? 'E-Book'}". Enter 0 to offer this e-book for free to learners.',
+                style: const TextStyle(fontSize: 13, color: AppColors.inkSoft),
+              ),
+              const SizedBox(height: 16),
+              if (allowsCustomPrice)
+                TextField(
+                  controller: priceController,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    labelText: 'Price (₹ INR)',
+                    hintText: 'e.g. 199 or 0',
+                    prefixIcon: const Icon(Icons.currency_rupee, size: 18),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppColors.primaryGreen, width: 2),
+                    ),
+                  ),
+                )
+              else
+                DropdownButtonFormField<String>(
+                  initialValue: selectedTier,
+                  decoration: InputDecoration(
+                    labelText: tr(ref, 'E-Book Price Tier *'),
+                    helperText: tr(ref, 'Select one of the standard price tiers.'),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  ),
+                  items: [
+                    DropdownMenuItem(value: '0', child: Text(tr(ref, 'Free (₹0)'))),
+                    DropdownMenuItem(value: '249', child: Text('₹249 — ${tr(ref, 'Tier 1')}')),
+                    DropdownMenuItem(value: '499', child: Text('₹499 — ${tr(ref, 'Tier 1.5')}')),
+                    DropdownMenuItem(value: '999', child: Text('₹999 — ${tr(ref, 'Tier 2')}')),
+                    DropdownMenuItem(value: '1499', child: Text('₹1,499 — ${tr(ref, 'Tier 3')}')),
+                  ],
+                  onChanged: (val) {
+                    if (val != null) {
+                      setDialogState(() {
+                        selectedTier = val;
+                        priceController.text = val;
+                      });
+                    }
+                  },
+                ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primaryGreen,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: () {
+                final val = allowsCustomPrice ? priceController.text.trim() : selectedTier;
+                Navigator.pop(dialogCtx, val);
+              },
+              child: const Text('Save Price'),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogCtx),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.primaryGreen,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-            onPressed: () {
-              final val = priceController.text.trim();
-              Navigator.pop(dialogCtx, val);
-            },
-            child: const Text('Save Price'),
-          ),
-        ],
       ),
     );
 
@@ -489,6 +698,66 @@ class _EBooksTab extends ConsumerWidget {
             ),
           );
         }
+      }
+    }
+  }
+
+  Future<void> _deleteDraftEBook(
+    BuildContext context,
+    WidgetRef ref,
+    String? ebookId,
+    String? title,
+  ) async {
+    if (ebookId == null || ebookId.isEmpty) return;
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('Delete Draft E-Book'),
+        content: Text(
+          'Are you sure you want to permanently delete "${title ?? 'this draft e-book'}"? This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(c, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.error,
+            ),
+            onPressed: () => Navigator.pop(c, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      await ref.read(instructorRepositoryProvider).deleteEBook(ebookId);
+      ref.invalidate(instructorEbooksProvider);
+      ref.invalidate(studentEbooksProvider);
+      if (context.mounted) {
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.clearSnackBars();
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('Draft e-book deleted successfully'),
+            backgroundColor: AppColors.primaryGreen,
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.clearSnackBars();
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text('Failed to delete draft e-book: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
       }
     }
   }
@@ -754,77 +1023,6 @@ class _EBooksTab extends ConsumerWidget {
                           tooltip: 'Edit Price',
                           onPressed: () => _editEBookPrice(context, ref, ebook),
                         ),
-                        // Delete Button
-                        IconButton(
-                          icon: const Icon(
-                            Icons.delete_outline,
-                            color: AppColors.error,
-                          ),
-                          tooltip: 'Delete E-Book',
-                          onPressed: () async {
-                            final confirm = await showDialog<bool>(
-                              context: context,
-                              builder: (c) => AlertDialog(
-                                title: const Text('Delete E-Book'),
-                                content: Text(
-                                  'Are you sure you want to delete "${ebook.title ?? 'this e-book'}"?',
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(c, false),
-                                    child: const Text('Cancel'),
-                                  ),
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(c, true),
-                                    child: const Text(
-                                      'Delete',
-                                      style: TextStyle(color: AppColors.error),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                            if (confirm == true) {
-                              try {
-                                await ref
-                                    .read(instructorRepositoryProvider)
-                                    .deleteEBook(ebook.id!);
-                                ref.invalidate(instructorEbooksProvider);
-                                if (context.mounted) {
-                                  final messenger = ScaffoldMessenger.of(context);
-                                  messenger.clearSnackBars();
-                                  messenger.showSnackBar(
-                                    const SnackBar(
-                                      content: Text('E-Book deleted successfully.'),
-                                      backgroundColor: AppColors.primaryGreen,
-                                      duration: Duration(seconds: 2),
-                                    ),
-                                  );
-                                }
-                              } catch (e) {
-                                if (context.mounted) {
-                                  String cleanError = e.toString();
-                                  if (cleanError.startsWith('Exception: ')) {
-                                    cleanError = cleanError.substring('Exception: '.length);
-                                  }
-                                  if (cleanError.toLowerCase().contains('not permitted') ||
-                                      cleanError.toLowerCase().contains('only platform administrators')) {
-                                    cleanError = 'You do not have permission to delete e-books. Please contact an administrator.';
-                                  }
-                                  final messenger = ScaffoldMessenger.of(context);
-                                  messenger.clearSnackBars();
-                                  messenger.showSnackBar(
-                                    SnackBar(
-                                      content: Text(cleanError),
-                                      backgroundColor: AppColors.error,
-                                      duration: const Duration(seconds: 3),
-                                    ),
-                                  );
-                                }
-                              }
-                            }
-                          },
-                        ),
                       ],
                     ),
 
@@ -859,6 +1057,37 @@ class _EBooksTab extends ConsumerWidget {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
+                          OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.error,
+                              side: const BorderSide(
+                                color: AppColors.error,
+                                width: 1.2,
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            icon: const Icon(Icons.delete_outline_rounded, size: 16),
+                            label: Text(
+                              tr(ref, 'Delete'),
+                              style: const TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            onPressed: () => _deleteDraftEBook(
+                              context,
+                              ref,
+                              ebook.id,
+                              ebook.title,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
                           OutlinedButton.icon(
                             style: OutlinedButton.styleFrom(
                               foregroundColor: AppColors.primaryGreen,
@@ -980,7 +1209,7 @@ class _EBooksTab extends ConsumerWidget {
               const Icon(Icons.wifi_off_rounded, size: 48, color: Colors.orange),
               const SizedBox(height: 12),
               Text(
-                tr(ref, 'Unable to load e-books at this time. Please check your connection.'),
+                tr(ref, getUserFriendlyErrorMessage(err)),
                 textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 14, color: AppColors.inkSoft),
               ),

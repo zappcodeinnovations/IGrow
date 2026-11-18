@@ -124,7 +124,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
   Future<void> _pickDateTime() async {
     final pickedDate = await showDatePicker(
       context: context,
-      initialDate: _selectedEventDate ?? DateTime.now().add(const Duration(days: 1)),
+      initialDate: _selectedEventDate ?? DateTime.now(),
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 365)),
     );
@@ -132,7 +132,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
     if (pickedDate != null && mounted) {
       final pickedTime = await showAppTimePicker(
         context: context,
-        initialTime: _selectedEventTime ?? const TimeOfDay(hour: 10, minute: 0),
+        initialTime: _selectedEventTime ?? TimeOfDay.now(),
       );
 
       if (pickedTime != null && mounted) {

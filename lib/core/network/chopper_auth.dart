@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:chopper/chopper.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'token_storage.dart';
 
@@ -12,14 +13,19 @@ class TokenInterceptor implements Interceptor {
   @override
   FutureOr<Response<BodyType>> intercept<BodyType>(Chain<BodyType> chain) async {
     final token = await tokenStorage.getAccessToken();
-    if (token != null && token.isNotEmpty) {
-      final request = chain.request.copyWith(headers: {
-        ...chain.request.headers,
-        'Authorization': 'Bearer $token',
-      });
-      return chain.proceed(request);
-    }
-    return chain.proceed(chain.request);
+    String lang = 'en';
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      lang = prefs.getString('app_user_language_code') ?? 'en';
+    } catch (_) {}
+
+    final headers = <String, String>{
+      ...chain.request.headers,
+      'Accept-Language': lang,
+      if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+    };
+    final request = chain.request.copyWith(headers: headers);
+    return chain.proceed(request);
   }
 }
 
@@ -39,6 +45,14 @@ class TokenAuthenticator extends Authenticator {
   @override
   FutureOr<Request?> authenticate(Request request, Response response, [Request? originalRequest]) async {
     if (response.statusCode == 401) {
+      final path = request.url.path;
+      final isAuthEndpoint = path.contains('/auth/login') ||
+          path.contains('/auth/register') ||
+          path.contains('/auth/refresh') ||
+          path.contains('/auth/forgot-password') ||
+          path.contains('/auth/verify-reset-otp') ||
+          path.contains('/auth/reset-password');
+
       final refreshed = await _tryRefreshToken();
       if (refreshed) {
         final token = await tokenStorage.getAccessToken();
@@ -48,6 +62,8 @@ class TokenAuthenticator extends Authenticator {
             'Authorization': 'Bearer $token',
           });
         }
+      } else if (!isAuthEndpoint) {
+        TokenStorage.notifySessionExpired();
       }
     }
     return null;
@@ -93,6 +109,7 @@ class TokenAuthenticator extends Authenticator {
       } else if (response.statusCode >= 400 && response.statusCode < 500) {
         // Only clear tokens if the refresh token is actually rejected (e.g., 401)
         await tokenStorage.clearTokens();
+        TokenStorage.notifySessionExpired();
       }
 
       _refreshCompleter!.complete(false);

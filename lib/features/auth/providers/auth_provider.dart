@@ -79,10 +79,15 @@ class AuthState {
 // ─── Auth Notifier ─────────────────────────────────────────────────
 
 class AuthNotifier extends StateNotifier<AuthState> {
-  AuthNotifier(this._repo) : super(const AuthState());
+  AuthNotifier(this._repo) : super(const AuthState()) {
+    _sessionExpiredSub = TokenStorage.onSessionExpired.listen((reason) {
+      forceLogout(reason);
+    });
+  }
 
   final AuthRepository _repo;
   Timer? _profileSyncTimer;
+  StreamSubscription<String?>? _sessionExpiredSub;
 
   void _startPeriodicSync() {
     _profileSyncTimer?.cancel();
@@ -103,7 +108,22 @@ class AuthNotifier extends StateNotifier<AuthState> {
   @override
   void dispose() {
     _stopPeriodicSync();
+    _sessionExpiredSub?.cancel();
     super.dispose();
+  }
+
+  /// Forcibly logs out the user when session is invalidated/expired (e.g. account deleted by admin).
+  Future<void> forceLogout([String? reason]) async {
+    if (state.status != AuthStatus.authenticated) return;
+    debugPrint('🔒 [AUTH PROVIDER] forceLogout executed: $reason');
+    _stopPeriodicSync();
+    try {
+      await _repo.logout();
+    } catch (_) {}
+    state = AuthState(
+      status: AuthStatus.unauthenticated,
+      error: reason ?? 'Your session has expired. Please log in again.',
+    );
   }
 
   /// Silently refresh the current user from backend without full-screen loading spinner.
@@ -120,6 +140,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
       return null;
     } catch (e) {
       debugPrint('⚠️ [AUTH PROVIDER] refreshUserSilent skipped: $e');
+      if (e is ApiException && e.isUnauthorized) {
+        forceLogout();
+      }
       return null;
     }
   }
@@ -164,9 +187,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
       state = AuthState(status: AuthStatus.authenticated, user: user);
       _startPeriodicSync();
     } on ApiException catch (e) {
-      state = AuthState(status: AuthStatus.error, error: e.message);
+      state = AuthState(status: AuthStatus.error, error: ApiException.userFriendlyMessage(e));
     } catch (e) {
-      state = AuthState(status: AuthStatus.error, error: e.toString());
+      state = AuthState(status: AuthStatus.error, error: ApiException.userFriendlyMessage(e));
     }
   }
 
@@ -191,10 +214,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
       _startPeriodicSync();
       return true;
     } on ApiException catch (e) {
-      state = AuthState(status: AuthStatus.error, error: e.message);
+      state = AuthState(status: AuthStatus.error, error: ApiException.userFriendlyMessage(e));
       return false;
     } catch (e) {
-      state = AuthState(status: AuthStatus.error, error: e.toString());
+      state = AuthState(status: AuthStatus.error, error: ApiException.userFriendlyMessage(e));
       return false;
     }
   }
@@ -221,9 +244,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
       // Registration successful. Keep status as unauthenticated so user can login manually.
       state = const AuthState(status: AuthStatus.unauthenticated);
     } on ApiException catch (e) {
-      state = AuthState(status: AuthStatus.error, error: e.message);
+      state = AuthState(status: AuthStatus.error, error: ApiException.userFriendlyMessage(e));
     } catch (e) {
-      state = AuthState(status: AuthStatus.error, error: e.toString());
+      state = AuthState(status: AuthStatus.error, error: ApiException.userFriendlyMessage(e));
     }
   }
 
@@ -233,10 +256,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
       await _repo.forgotPassword(email: email);
       return true;
     } on ApiException catch (e) {
-      state = state.copyWith(error: e.message);
+      state = state.copyWith(error: ApiException.userFriendlyMessage(e));
       return false;
     } catch (e) {
-      state = state.copyWith(error: e.toString());
+      state = state.copyWith(error: ApiException.userFriendlyMessage(e));
       return false;
     }
   }
@@ -250,10 +273,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final token = await _repo.verifyResetOtp(email: email, otp: otp);
       return token;
     } on ApiException catch (e) {
-      state = state.copyWith(error: e.message);
+      state = state.copyWith(error: ApiException.userFriendlyMessage(e));
       return null;
     } catch (e) {
-      state = state.copyWith(error: e.toString());
+      state = state.copyWith(error: ApiException.userFriendlyMessage(e));
       return null;
     }
   }
@@ -272,10 +295,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
       );
       return true;
     } on ApiException catch (e) {
-      state = state.copyWith(error: e.message);
+      state = state.copyWith(error: ApiException.userFriendlyMessage(e));
       return false;
     } catch (e) {
-      state = state.copyWith(error: e.toString());
+      state = state.copyWith(error: ApiException.userFriendlyMessage(e));
       return false;
     }
   }
@@ -286,10 +309,32 @@ class AuthNotifier extends StateNotifier<AuthState> {
       await _repo.resendOtp(email: email);
       return true;
     } on ApiException catch (e) {
-      state = state.copyWith(error: e.message);
+      state = state.copyWith(error: ApiException.userFriendlyMessage(e));
       return false;
     } catch (e) {
-      state = state.copyWith(error: e.toString());
+      state = state.copyWith(error: ApiException.userFriendlyMessage(e));
+      return false;
+    }
+  }
+
+  /// Change password while authenticated.
+  Future<bool> changePassword({
+    required String oldPassword,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    try {
+      await _repo.changePassword(
+        oldPassword: oldPassword,
+        newPassword: newPassword,
+        confirmPassword: confirmPassword,
+      );
+      return true;
+    } on ApiException catch (e) {
+      state = state.copyWith(error: ApiException.userFriendlyMessage(e));
+      return false;
+    } catch (e) {
+      state = state.copyWith(error: ApiException.userFriendlyMessage(e));
       return false;
     }
   }
@@ -301,7 +346,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final user = await _repo.switchRole(newRole);
       state = AuthState(status: AuthStatus.authenticated, user: user);
     } catch (e) {
-      state = state.copyWith(status: AuthStatus.authenticated, error: e.toString());
+      state = state.copyWith(status: AuthStatus.authenticated, error: ApiException.userFriendlyMessage(e));
     }
   }
 
@@ -330,7 +375,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final user = await _repo.updateProfile(request);
       state = AuthState(status: AuthStatus.authenticated, user: user);
     } catch (e) {
-      state = state.copyWith(status: AuthStatus.authenticated, error: e.toString());
+      state = state.copyWith(status: AuthStatus.authenticated, error: ApiException.userFriendlyMessage(e));
       rethrow;
     }
   }
@@ -342,7 +387,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final user = await _repo.updateInstructorProfile(request);
       state = AuthState(status: AuthStatus.authenticated, user: user);
     } catch (e) {
-      state = state.copyWith(status: AuthStatus.authenticated, error: e.toString());
+      state = state.copyWith(status: AuthStatus.authenticated, error: ApiException.userFriendlyMessage(e));
       rethrow;
     }
   }
@@ -373,7 +418,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       state = AuthState(status: AuthStatus.authenticated, user: user);
     } catch (e) {
       print('❌ [AUTH PROVIDER] submitKycProfile failed: $e');
-      state = state.copyWith(status: AuthStatus.authenticated, error: e.toString());
+      state = state.copyWith(status: AuthStatus.authenticated, error: ApiException.userFriendlyMessage(e));
       rethrow;
     }
   }
@@ -389,7 +434,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         state = AuthState(status: AuthStatus.authenticated, user: user);
       }
     } catch (e) {
-      state = state.copyWith(status: AuthStatus.authenticated, error: e.toString());
+      state = state.copyWith(status: AuthStatus.authenticated, error: ApiException.userFriendlyMessage(e));
       rethrow;
     }
   }
@@ -405,7 +450,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         state = AuthState(status: AuthStatus.authenticated, user: user);
       }
     } catch (e) {
-      state = state.copyWith(status: AuthStatus.authenticated, error: e.toString());
+      state = state.copyWith(status: AuthStatus.authenticated, error: ApiException.userFriendlyMessage(e));
       rethrow;
     }
   }

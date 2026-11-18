@@ -6,6 +6,7 @@ import 'package:krushi_siksha/data/models/support_ticket_model.dart';
 import 'package:krushi_siksha/features/auth/providers/auth_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../core/localization/app_strings.dart';
 import '../../../core/theme/app_colors.dart';
 
 class SupportCategoryItem {
@@ -37,6 +38,53 @@ const List<SupportCategoryItem> kSupportCategories = [
   ),
 ];
 
+class SupportPriorityOption {
+  final String value;
+  final String label;
+  final String subtitle;
+  final IconData icon;
+  final Color color;
+
+  const SupportPriorityOption({
+    required this.value,
+    required this.label,
+    required this.subtitle,
+    required this.icon,
+    required this.color,
+  });
+}
+
+const List<SupportPriorityOption> kSupportPriorities = [
+  SupportPriorityOption(
+    value: 'LOW',
+    label: 'Low (General guidance)',
+    subtitle: 'General inquiries or non-urgent assistance',
+    icon: Icons.arrow_downward_rounded,
+    color: Color(0xFF0284C7),
+  ),
+  SupportPriorityOption(
+    value: 'MEDIUM',
+    label: 'Medium (Standard query)',
+    subtitle: 'Standard queries and general account requests',
+    icon: Icons.remove_rounded,
+    color: Color(0xFFD97706),
+  ),
+  SupportPriorityOption(
+    value: 'HIGH',
+    label: 'High (Urgent action needed)',
+    subtitle: 'Payment issues, account access, or course errors',
+    icon: Icons.arrow_upward_rounded,
+    color: Color(0xFFEA580C),
+  ),
+  SupportPriorityOption(
+    value: 'URGENT',
+    label: 'Urgent (Critical blocker / crash)',
+    subtitle: 'App crashes, webinar blockers, critical failures',
+    icon: Icons.priority_high_rounded,
+    color: Color(0xFFDC2626),
+  ),
+];
+
 class SupportScreen extends ConsumerStatefulWidget {
   final int initialTabIndex;
 
@@ -58,6 +106,7 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
   final _subjectController = TextEditingController();
   final _messageController = TextEditingController();
   String _selectedCategory = 'General Query';
+  String _selectedPriority = 'MEDIUM';
   bool _isSubmitting = false;
 
   // ── Tickets List State ──
@@ -253,6 +302,7 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
     final subject = _subjectController.text.trim();
     final message = _messageController.text.trim();
     final category = _selectedCategory;
+    final priority = _selectedPriority;
 
     setState(() => _isSubmitting = true);
 
@@ -267,6 +317,7 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
       category: category,
       subject: subject,
       message: message,
+      priority: priority,
       status: 'OPEN',
       createdAt: now,
       updatedAt: now,
@@ -294,6 +345,8 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
         'query_type': category,
         'type': category,
         'ticket_type': category,
+        'priority': priority,
+        'priority_level': priority,
         'subject': subject,
         'title': subject,
         'message': message,
@@ -388,6 +441,7 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
         _messageController.clear();
         setState(() {
           _selectedCategory = 'General Query';
+          _selectedPriority = 'MEDIUM';
         });
         _tabController.animateTo(1);
         _fetchTickets();
@@ -411,6 +465,10 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
         // Safe fallback: ticket was already persisted locally
         _subjectController.clear();
         _messageController.clear();
+        setState(() {
+          _selectedCategory = 'General Query';
+          _selectedPriority = 'MEDIUM';
+        });
         _tabController.animateTo(1);
       }
     } finally {
@@ -453,9 +511,9 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
     return Scaffold(
       backgroundColor: isDark ? AppColors.bgDark : const Color(0xFFF8FAF7),
       appBar: AppBar(
-        title: const Text(
-          'Help & Support',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        title: Text(
+          tr(ref, 'Help & Support'),
+          style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         elevation: 0,
         bottom: PreferredSize(
@@ -477,14 +535,14 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
               unselectedLabelColor: isDark ? Colors.white60 : AppColors.inkSoft,
               labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
               unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
-              tabs: const [
+              tabs: [
                 Tab(
-                  icon: Icon(Icons.add_circle_outline_rounded, size: 18),
-                  text: 'Raise Ticket',
+                  icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
+                  text: tr(ref, 'Raise Ticket'),
                 ),
                 Tab(
-                  icon: Icon(Icons.confirmation_number_outlined, size: 18),
-                  text: 'My Tickets',
+                  icon: const Icon(Icons.confirmation_number_outlined, size: 18),
+                  text: tr(ref, 'My Tickets'),
                 ),
               ],
             ),
@@ -553,7 +611,7 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Create Support Ticket',
+                            tr(ref, 'Create Support Ticket'),
                             style: Theme.of(context).textTheme.titleMedium?.copyWith(
                                   fontWeight: FontWeight.bold,
                                   color: isDark ? Colors.white : AppColors.inkDark,
@@ -561,7 +619,7 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'Choose an issue category and explain your query. Our agri specialists and technical team will assist you.',
+                            tr(ref, 'Choose an issue category and explain your query. Our agri specialists and technical team will assist you.'),
                             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                   color: isDark ? Colors.white70 : AppColors.inkSoft,
                                   height: 1.4,
@@ -578,7 +636,7 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
 
               // Category Dropdown Field
               Text(
-                'Issue Category *',
+                tr(ref, 'Issue Category *'),
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.bold,
@@ -629,7 +687,7 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
-                            cat.label,
+                            tr(ref, cat.label),
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(fontWeight: FontWeight.w500),
                           ),
@@ -647,9 +705,87 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
 
               const SizedBox(height: 18),
 
+              // Priority Dropdown Field
+              Text(
+                tr(ref, 'Priority *'),
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : AppColors.inkDark,
+                ),
+              ),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(
+                initialValue: _selectedPriority,
+                isExpanded: true,
+                dropdownColor: isDark ? AppColors.cardDark : Colors.white,
+                style: TextStyle(
+                  color: isDark ? Colors.white : AppColors.inkDark,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: isDark ? AppColors.cardDark : Colors.white,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: isDark ? AppColors.lineDark : const Color(0xFFCBD5E1),
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: isDark ? AppColors.lineDark : const Color(0xFFCBD5E1),
+                      width: 1.2,
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(
+                      color: AppColors.primaryGreen,
+                      width: 1.8,
+                    ),
+                  ),
+                ),
+                items: kSupportPriorities.map((priority) {
+                  return DropdownMenuItem<String>(
+                    value: priority.value,
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: priority.color.withValues(alpha: 0.15),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(priority.icon, size: 14, color: priority.color),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            tr(ref, priority.label),
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontWeight: FontWeight.w500),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+                onChanged: (val) {
+                  if (val != null) {
+                    setState(() => _selectedPriority = val);
+                  }
+                },
+              ),
+
+              const SizedBox(height: 18),
+
               // Subject Field
               Text(
-                'Subject *',
+                tr(ref, 'Subject *'),
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.bold,
@@ -661,16 +797,16 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
                 controller: _subjectController,
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return 'Please enter a subject';
+                    return tr(ref, 'Please enter a subject');
                   }
                   if (value.trim().length < 3) {
-                    return 'Subject must be at least 3 characters';
+                    return tr(ref, 'Subject must be at least 3 characters');
                   }
                   return null;
                 },
                 style: TextStyle(color: isDark ? Colors.white : AppColors.inkDark),
                 decoration: InputDecoration(
-                  hintText: 'e.g. Video player error in module 2',
+                  hintText: tr(ref, 'e.g. Video player error in module 2'),
                   hintStyle: TextStyle(
                     color: isDark ? Colors.white38 : Colors.grey.shade400,
                     fontSize: 14,
@@ -705,7 +841,7 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
 
               // Message Field
               Text(
-                'Description / Details *',
+                tr(ref, 'Description / Details *'),
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.bold,
@@ -718,16 +854,16 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
                 maxLines: 5,
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return 'Please describe your issue';
+                    return tr(ref, 'Please describe your issue');
                   }
                   if (value.trim().length < 8) {
-                    return 'Please provide more details (at least 8 characters)';
+                    return tr(ref, 'Please provide more details (at least 8 characters)');
                   }
                   return null;
                 },
                 style: TextStyle(color: isDark ? Colors.white : AppColors.inkDark),
                 decoration: InputDecoration(
-                  hintText: 'Describe what happened, error message, or steps to reproduce...',
+                  hintText: tr(ref, 'Describe what happened, error message, or steps to reproduce...'),
                   hintStyle: TextStyle(
                     color: isDark ? Colors.white38 : Colors.grey.shade400,
                     fontSize: 14,
@@ -787,9 +923,9 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
                             strokeWidth: 2.2,
                           ),
                         )
-                      : const Text(
-                          'Submit Support Ticket',
-                          style: TextStyle(
+                      : Text(
+                          tr(ref, 'Submit Support Ticket'),
+                          style: const TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.bold,
                           ),
@@ -802,7 +938,7 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
               // Direct Email Hint
               Center(
                 child: Text(
-                  'Need urgent help? Reach us at support@iagrow.zappcode.in',
+                  tr(ref, 'Need urgent help? Reach us at support@agrilearn.com'),
                   style: TextStyle(
                     fontSize: 12,
                     color: isDark ? Colors.white54 : AppColors.inkSoft,
@@ -828,7 +964,7 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
             const CircularProgressIndicator(color: AppColors.primaryGreen, strokeWidth: 2.5),
             const SizedBox(height: 16),
             Text(
-              'Loading your tickets...',
+              tr(ref, 'Loading your tickets...'),
               style: TextStyle(
                 color: isDark ? Colors.white70 : AppColors.inkSoft,
                 fontWeight: FontWeight.w500,
@@ -871,7 +1007,7 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
                   foregroundColor: Colors.white,
                 ),
                 icon: const Icon(Icons.refresh_rounded, size: 18),
-                label: const Text('Try Again'),
+                label: Text(tr(ref, 'Try Again')),
               ),
             ],
           ),
@@ -904,7 +1040,7 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
             ),
             const SizedBox(height: 20),
             Text(
-              'No Support Tickets Yet',
+              tr(ref, 'No Support Tickets Yet'),
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 18,
@@ -914,7 +1050,7 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
             ),
             const SizedBox(height: 8),
             Text(
-              'When you submit an inquiry, technical issue, or payment query, you can track the status and view admin replies here.',
+              tr(ref, 'When you submit an inquiry, technical issue, or payment query, you can track the status and view admin replies here.'),
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 13,
@@ -935,9 +1071,9 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
                   ),
                 ),
                 icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
-                label: const Text(
-                  'Raise New Ticket',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                label: Text(
+                  tr(ref, 'Raise New Ticket'),
+                  style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
             ),
@@ -967,15 +1103,15 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
                 children: [
                   const Icon(Icons.cloud_off_rounded, color: Colors.amber, size: 18),
                   const SizedBox(width: 10),
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      'Showing saved tickets (offline). Pull down to refresh.',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                      tr(ref, 'Showing saved tickets (offline). Pull down to refresh.'),
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
                     ),
                   ),
                   TextButton(
                     onPressed: _fetchTickets,
-                    child: const Text('Retry', style: TextStyle(fontSize: 12)),
+                    child: Text(tr(ref, 'Retry'), style: const TextStyle(fontSize: 12)),
                   ),
                 ],
               ),
@@ -1053,7 +1189,7 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
                         const SizedBox(width: 5),
                         Flexible(
                           child: Text(
-                            ticket.category,
+                            tr(ref, ticket.category),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
@@ -1069,40 +1205,83 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
                 ),
                 const SizedBox(width: 8),
 
-                // Status Badge
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? ticket.statusBgColor.withValues(alpha: 0.18)
-                        : ticket.statusBgColor,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: isDark
-                          ? ticket.statusBorderColor.withValues(alpha: 0.4)
-                          : ticket.statusBorderColor,
-                      width: 1,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        ticket.statusIcon,
-                        size: 12,
-                        color: ticket.statusTextColor,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        ticket.statusDisplay,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: ticket.statusTextColor,
+                // Badges: Priority + Status
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Priority Badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3.5),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? ticket.priorityBgColor.withValues(alpha: 0.18)
+                            : ticket.priorityBgColor,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: isDark
+                              ? ticket.priorityBorderColor.withValues(alpha: 0.4)
+                              : ticket.priorityBorderColor,
+                          width: 1,
                         ),
                       ),
-                    ],
-                  ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            ticket.priorityIcon,
+                            size: 11,
+                            color: ticket.priorityTextColor,
+                          ),
+                          const SizedBox(width: 3),
+                          Text(
+                            tr(ref, ticket.priorityDisplay),
+                            style: TextStyle(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.bold,
+                              color: ticket.priorityTextColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+
+                    // Status Badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? ticket.statusBgColor.withValues(alpha: 0.18)
+                            : ticket.statusBgColor,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: isDark
+                              ? ticket.statusBorderColor.withValues(alpha: 0.4)
+                              : ticket.statusBorderColor,
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            ticket.statusIcon,
+                            size: 12,
+                            color: ticket.statusTextColor,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            tr(ref, ticket.statusDisplay),
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: ticket.statusTextColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -1201,9 +1380,9 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
                           ),
                         ),
                         const SizedBox(width: 8),
-                        const Text(
-                          'Admin Response',
-                          style: TextStyle(
+                        Text(
+                          tr(ref, 'Admin Response'),
+                          style: const TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
                             color: AppColors.primaryGreen,
@@ -1254,7 +1433,7 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
-                        'Awaiting response from support team',
+                        tr(ref, 'Awaiting response from support team'),
                         style: TextStyle(
                           fontSize: 12,
                           fontStyle: FontStyle.italic,

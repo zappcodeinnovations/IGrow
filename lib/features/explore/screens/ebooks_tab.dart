@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/localization/app_strings.dart';
+import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/app_toast.dart';
+import '../../../core/widgets/app_error_state.dart';
 import '../../cart/providers/cart_provider.dart';
 import '../../home_farmer/providers/student_provider.dart';
 import '../../../core/widgets/shimmer_placeholders.dart';
@@ -13,6 +16,8 @@ class EbooksTab extends ConsumerWidget {
     this.searchQuery = '',
     this.category,
     this.instructorId,
+    this.minPrice,
+    this.maxPrice,
     this.shrinkWrap = false,
     this.physics,
   });
@@ -20,6 +25,8 @@ class EbooksTab extends ConsumerWidget {
   final String searchQuery;
   final String? category;
   final String? instructorId;
+  final num? minPrice;
+  final num? maxPrice;
   final bool shrinkWrap;
   final ScrollPhysics? physics;
 
@@ -30,6 +37,8 @@ class EbooksTab extends ConsumerWidget {
       search: searchQuery.trim().isEmpty ? null : searchQuery.trim(),
       category: category,
       instructorId: instructorId,
+      minPrice: minPrice,
+      maxPrice: maxPrice,
     );
     
     return RefreshIndicator(
@@ -42,7 +51,9 @@ class EbooksTab extends ConsumerWidget {
           if (ebooks.isEmpty) {
             final isFiltering = searchQuery.trim().isNotEmpty ||
                 (category != null && category!.isNotEmpty && category != 'all') ||
-                (instructorId != null && instructorId!.isNotEmpty);
+                (instructorId != null && instructorId!.isNotEmpty) ||
+                minPrice != null ||
+                maxPrice != null;
 
             return ListView(
               shrinkWrap: shrinkWrap,
@@ -91,7 +102,12 @@ class EbooksTab extends ConsumerWidget {
             final rawPrice = ebook.price ?? '0.00';
             final parsedPrice = double.tryParse(rawPrice) ?? 0.0;
             final isFree = parsedPrice <= 0.0;
-            final isPurchased = ebook.isPurchased == true;
+            final ebookId = ebook.id ?? '';
+            final ebookSlug = ebook.slug ?? '';
+            final isPurchased = ebook.isPurchased == true ||
+                (ebookId.isNotEmpty && ref.watch(isEbookPurchasedProvider(ebookId))) ||
+                (ebookSlug.isNotEmpty && ref.watch(isEbookPurchasedProvider(ebookSlug))) ||
+                ref.watch(isEbookPurchasedProvider(ebook.title));
             final identifier = (ebook.slug != null && ebook.slug!.isNotEmpty)
                 ? ebook.slug!
                 : (ebook.id ?? '');
@@ -111,11 +127,13 @@ class EbooksTab extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   InkWell(
-                    onTap: () {
-                      if (identifier.isNotEmpty) {
-                        context.push('/farmer/ebook/$identifier');
-                      }
-                    },
+                    onTap: (isPurchased || isFree)
+                        ? () {
+                            if (identifier.isNotEmpty) {
+                              context.push('/farmer/ebook/$identifier');
+                            }
+                          }
+                        : null,
                     borderRadius: BorderRadius.circular(12),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -243,16 +261,31 @@ class EbooksTab extends ConsumerWidget {
                             Consumer(
                               builder: (context, ref, _) {
                                 final cart = ref.watch(cartProvider).valueOrNull;
-                                final isInCart = cart?.items.any((it) =>
-                                        it.id == ebook.id ||
-                                        it.course == ebook.id ||
-                                        it.id == ebook.slug ||
-                                        it.course == ebook.slug) ??
-                                    false;
+                                final eId = ebook.id?.trim();
+                                final eSlug = ebook.slug?.trim();
+                                final validEId = (eId != null && eId.isNotEmpty) ? eId : null;
+                                final validESlug = (eSlug != null && eSlug.isNotEmpty) ? eSlug : null;
+
+                                final isInCart = cart?.items.any((it) {
+                                  if (!it.isEbook) return false;
+                                  final matchesId = validEId != null && (
+                                    it.ebook == validEId ||
+                                    it.id == validEId ||
+                                    it.effectiveId == validEId ||
+                                    it.ebookDetail?['id']?.toString() == validEId
+                                  );
+                                  final matchesSlug = validESlug != null && (
+                                    it.ebook == validESlug ||
+                                    it.effectiveId == validESlug ||
+                                    it.ebookDetail?['slug']?.toString() == validESlug
+                                  );
+                                  return matchesId || matchesSlug;
+                                }) ?? false;
 
                                 return OutlinedButton(
                                   style: OutlinedButton.styleFrom(
-                                    foregroundColor: AppColors.primaryGreen,
+                                    backgroundColor: isInCart ? AppColors.primaryGreen : Colors.transparent,
+                                    foregroundColor: isInCart ? Colors.white : AppColors.primaryGreen,
                                     side: const BorderSide(color: AppColors.primaryGreen, width: 1.2),
                                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -261,39 +294,88 @@ class EbooksTab extends ConsumerWidget {
                                   ),
                                   onPressed: () async {
                                     if (isInCart) {
-                                      context.push('/cart');
+                                      AppToast.showWarning(
+                                        context,
+                                        tr(ref, 'E-Book is already in your cart. 🛒'),
+                                        duration: const Duration(seconds: 3),
+                                        action: SnackBarAction(
+                                          label: tr(ref, 'View Cart'),
+                                          textColor: Colors.white,
+                                          onPressed: () => context.push(RouteNames.cart),
+                                        ),
+                                      );
                                       return;
                                     }
+                                    final targetId = (ebook.id != null && ebook.id!.isNotEmpty)
+                                        ? ebook.id!
+                                        : identifier;
                                     try {
-                                      final targetId = ebook.id ?? identifier;
                                       await ref.read(cartProvider.notifier).addToCart('', ebookId: targetId);
                                       if (context.mounted) {
-                                        final messenger = ScaffoldMessenger.of(context);
-                                        messenger.clearSnackBars();
-                                        messenger.showSnackBar(
-                                          const SnackBar(
-                                            content: Text('E-Book added to cart! 🛒'),
-                                            backgroundColor: AppColors.primaryGreen,
-                                            duration: Duration(seconds: 2),
+                                        AppToast.showSuccess(
+                                          context,
+                                          tr(ref, 'E-Book added to cart! 🛒'),
+                                          duration: const Duration(seconds: 2),
+                                          action: SnackBarAction(
+                                            label: tr(ref, 'View Cart'),
+                                            textColor: Colors.white,
+                                            onPressed: () => context.push(RouteNames.cart),
                                           ),
                                         );
                                       }
                                     } catch (e) {
                                       if (context.mounted) {
-                                        final messenger = ScaffoldMessenger.of(context);
-                                        messenger.clearSnackBars();
-                                        messenger.showSnackBar(
-                                          SnackBar(
-                                            content: Text('Failed to add to cart: $e'),
-                                            backgroundColor: AppColors.error,
-                                          ),
-                                        );
+                                        final cleanMsg = getUserFriendlyErrorMessage(e);
+                                        final lower = cleanMsg.toLowerCase();
+
+                                        if (lower.contains('already in cart') ||
+                                            lower.contains('already added') ||
+                                            lower.contains('item already')) {
+                                          // Refresh cart provider so UI icon updates to shopping_cart
+                                          ref.invalidate(cartProvider);
+                                          AppToast.showWarning(
+                                            context,
+                                            tr(ref, 'E-Book is already in your cart. 🛒'),
+                                            duration: const Duration(seconds: 3),
+                                            action: SnackBarAction(
+                                              label: tr(ref, 'View Cart'),
+                                              textColor: Colors.white,
+                                              onPressed: () => context.push(RouteNames.cart),
+                                            ),
+                                          );
+                                        } else if (lower.contains('already enrolled') ||
+                                            lower.contains('already purchased') ||
+                                            lower.contains('already own')) {
+                                          ref.invalidate(studentPurchasedEbooksProvider);
+                                          AppToast.showSuccess(
+                                            context,
+                                            tr(ref, 'You already own this E-Book! 📚'),
+                                            duration: const Duration(seconds: 3),
+                                            action: SnackBarAction(
+                                              label: tr(ref, 'Read Now'),
+                                              textColor: Colors.white,
+                                              onPressed: () {
+                                                final idOrSlug = (ebook.id != null && ebook.id!.isNotEmpty)
+                                                    ? ebook.id!
+                                                    : identifier;
+                                                context.push('/farmer/ebook/$idOrSlug');
+                                              },
+                                            ),
+                                          );
+                                        } else {
+                                          AppToast.showFriendlyError(
+                                            context,
+                                            e,
+                                            prefix: 'Failed to add to cart',
+                                          );
+                                        }
                                       }
                                     }
                                   },
                                   child: Icon(
-                                    isInCart ? Icons.shopping_cart : Icons.add_shopping_cart,
+                                    isInCart ? Icons.shopping_cart_rounded : Icons.add_shopping_cart_rounded,
                                     size: 16,
+                                    color: isInCart ? Colors.white : AppColors.primaryGreen,
                                   ),
                                 );
                               },
@@ -345,7 +427,7 @@ class EbooksTab extends ConsumerWidget {
               const Icon(Icons.wifi_off_rounded, size: 48, color: Colors.orange),
               const SizedBox(height: 12),
               Text(
-                tr(ref, 'Unable to load e-books at this time. Please check your connection.'),
+                tr(ref, getUserFriendlyErrorMessage(err)),
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: AppColors.inkSoft, fontSize: 14),
               ),

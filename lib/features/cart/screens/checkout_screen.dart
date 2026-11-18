@@ -10,6 +10,7 @@ import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/app_toast.dart';
 import '../../../core/services/apple_iap_service.dart';
+import '../../../core/services/course_progress_service.dart';
 import '../../../data/models/api_models/course_models.dart';
 import '../../../data/models/api_models/order_models.dart';
 import '../../../core/services/app_config_service.dart';
@@ -118,9 +119,16 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
             signature: signature,
           );
 
-      // Invalidate enrollments, orders, and clear cart if checking out cart
+      // Invalidate enrollments, orders, ebooks, and clear cart if checking out cart
+      if (widget.directCourseId != null) {
+        await CourseProgressService.instance.resetCourseProgress(widget.directCourseId!);
+        ref.invalidate(courseProgressStateProvider(widget.directCourseId!));
+        ref.invalidate(coursePercentageProvider(widget.directCourseId!));
+      }
       ref.invalidate(studentEnrollmentsProvider);
       ref.invalidate(ordersProvider);
+      ref.invalidate(studentPurchasedEbooksProvider);
+      ref.invalidate(studentEbooksProvider);
       if (widget.directCourseId != null) {
         ref.invalidate(courseDetailProvider(widget.directCourseId!));
       } else {
@@ -204,8 +212,16 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     _lastItemsSnapshot = List<dynamic>.from(items);
     _lastCouponCode = ref.read(appliedCouponProvider)?.code;
 
+    // Check if Razorpay is disabled on iOS for Apple App Store IAP (Guideline 3.1.1)
+    final canShowRazorpay = ref.read(appConfigProvider).canShowPaymentGateway;
+    if (!canShowRazorpay && !kIsWeb && Platform.isIOS && finalTotal > 0) {
+      // Direct immediately to Apple StoreKit without creating unwanted Razorpay pending orders!
+      await _startAppleIapFlow(items: items, finalTotal: finalTotal);
+      return;
+    }
+
     try {
-      // Step 1: Create Order via Backend
+      // Step 1: Create Order via Backend (for Android, Web, or Free Orders)
       final orderData = await ref.read(cartProvider.notifier).createRazorpayOrder(
             couponCode: _lastCouponCode,
             courseId: widget.directCourseId,
@@ -220,6 +236,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       if (status == 'FREE_ENROLLED') {
         ref.invalidate(studentEnrollmentsProvider);
         ref.invalidate(ordersProvider);
+        ref.invalidate(studentPurchasedEbooksProvider);
+        ref.invalidate(studentEbooksProvider);
         if (widget.directCourseId == null) {
           await ref.read(cartProvider.notifier).clearCart();
         }
@@ -268,14 +286,6 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
         'retry': {'enabled': true, 'max_count': 2},
       };
 
-      // Check if Razorpay is enabled for this platform/config
-      final canShowRazorpay = ref.read(appConfigProvider).canShowPaymentGateway;
-      if (!canShowRazorpay && !kIsWeb && Platform.isIOS) {
-        // Razorpay is disabled on iOS for App Store review. Execute Apple In-App Purchase flow!
-        await _startAppleIapFlow(items: items, finalTotal: finalTotal);
-        return;
-      }
-
       debugPrint('🚀 [Razorpay] Launching native checkout UI...');
       _razorpay.open(options);
 
@@ -303,19 +313,24 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     try {
       debugPrint('🍏 [CheckoutScreen] Starting Apple IAP flow for total: ₹$finalTotal...');
       String targetCourseId = '';
-      if (widget.directCourseId != null && widget.directCourseId!.isNotEmpty) {
+      String targetEbookId = '';
+
+      if (widget.directEbookId != null && widget.directEbookId!.isNotEmpty) {
+        targetEbookId = widget.directEbookId!;
+      } else if (widget.directCourseId != null && widget.directCourseId!.isNotEmpty) {
         targetCourseId = widget.directCourseId!;
       } else if (items.isNotEmpty) {
         targetCourseId = _getItemCourseId(items.first);
+        targetEbookId = _getItemEbookId(items.first);
       }
 
-      if (targetCourseId.isEmpty) {
-        throw Exception('No course selected for purchase.');
+      if (targetCourseId.isEmpty && targetEbookId.isEmpty) {
+        throw Exception('No item selected for purchase.');
       }
 
-      // Map dynamic course price to Apple Consumable Tier
+      // Map dynamic item price to Apple Consumable Tier
       final String productId = AppleIapService.getProductIdForPrice(finalTotal);
-      debugPrint('🍏 [CheckoutScreen] Mapped total ₹$finalTotal to Apple Product ID: $productId');
+      debugPrint('🍏 [CheckoutScreen] Mapped total ₹$finalTotal to Apple Product ID: $productId (course: "$targetCourseId", ebook: "$targetEbookId")');
 
       // 1. Launch StoreKit In-App Purchase sheet
       final purchaseDetails = await AppleIapService.instance.buyProduct(productId: productId);
@@ -326,7 +341,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
 
       // 2. Post receipt & transaction to backend
       final result = await ref.read(cartProvider.notifier).processIosAppleTransaction(
-            courseId: targetCourseId,
+            courseId: targetCourseId.isNotEmpty ? targetCourseId : null,
+            ebookId: targetEbookId.isNotEmpty ? targetEbookId : null,
             productId: productId,
             transactionId: transactionId,
             receiptData: receiptData,
@@ -340,12 +356,14 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
         throw Exception('This Apple In-App Purchase transaction has already been redeemed.');
       }
 
-      // Immediately invalidate enrollment and order caches so user sees course in My Learning
+      // Immediately invalidate enrollment and order caches so user sees item in My Learning
       ref.invalidate(studentEnrollmentsProvider);
       ref.invalidate(ordersProvider);
+      ref.invalidate(studentPurchasedEbooksProvider);
+      ref.invalidate(studentEbooksProvider);
 
       // 3. Clear cart if cart checkout
-      if (widget.directCourseId == null) {
+      if (widget.directCourseId == null && widget.directEbookId == null) {
         await ref.read(cartProvider.notifier).clearCart();
       }
 
@@ -363,12 +381,21 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       if (mounted) {
         setState(() => _isProcessing = false);
         final errText = e.toString().replaceAll('Exception: ', '').replaceAll('UnsupportedError: ', '');
-        AppToast.show(
-          context,
-          'Apple Purchase error: $errText',
-          isError: true,
-          duration: const Duration(seconds: 4),
-        );
+        final isCancelled = errText.toLowerCase().contains('cancel');
+        if (isCancelled) {
+          AppToast.show(
+            context,
+            'Payment was cancelled. You can retry whenever ready.',
+            isError: false,
+          );
+        } else {
+          AppToast.show(
+            context,
+            'Apple Purchase error: $errText',
+            isError: true,
+            duration: const Duration(seconds: 4),
+          );
+        }
       }
     }
   }
@@ -570,11 +597,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   String _getItemTitle(dynamic item) {
     if (item is ApiCourseDetail) return item.title;
     if (item is EBook) return item.title;
-    if (item is ApiCartItem) {
-      return item.courseDetail?['title']?.toString() ??
-          item.courseDetail?['name']?.toString() ??
-          'Course';
-    }
+    if (item is ApiCartItem) return item.title;
     if (item is Map) return item['title']?.toString() ?? 'Item';
     return 'Course';
   }
@@ -585,11 +608,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       final json = item.toJson();
       return json['price']?.toString() ?? json['discount_price']?.toString() ?? '0.00';
     }
-    if (item is ApiCartItem) {
-      return item.courseDetail?['price']?.toString() ??
-          item.courseDetail?['discount_price']?.toString() ??
-          '0.00';
-    }
+    if (item is ApiCartItem) return item.price;
     if (item is Map) return item['price']?.toString() ?? '0.00';
     return '0.00';
   }
@@ -597,9 +616,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   String _getItemInstructor(dynamic item) {
     if (item is ApiCourseDetail) return item.instructorName ?? 'iAgrow Faculty';
     if (item is EBook) return item.instructorName ?? item.authorName;
-    if (item is ApiCartItem) {
-      return item.courseDetail?['instructor_name']?.toString() ?? 'iAgrow Faculty';
-    }
+    if (item is ApiCartItem) return item.instructorOrAuthor;
     if (item is Map) return item['instructor_name']?.toString() ?? item['author_name']?.toString() ?? 'iAgrow Faculty';
     return 'iAgrow Faculty';
   }
@@ -609,11 +626,31 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       return widget.directCourseId!;
     }
     if (item is ApiCourseDetail) return item.id;
-    if (item is ApiCartItem) return item.course;
+    if (item is ApiCartItem) return item.isEbook ? '' : item.course;
+    if (item is EBook) return '';
     if (item is Map) {
+      if (item['item_type']?.toString().toLowerCase() == 'ebook' || item['ebook_id'] != null) {
+        return '';
+      }
       return item['course_id']?.toString() ??
           item['course']?.toString() ??
           item['id']?.toString() ??
+          '';
+    }
+    return '';
+  }
+
+  String _getItemEbookId(dynamic item) {
+    if (widget.directEbookId != null && widget.directEbookId!.isNotEmpty) {
+      return widget.directEbookId!;
+    }
+    if (item is EBook) return item.id ?? item.slug ?? '';
+    if (item is ApiCartItem) {
+      return item.isEbook ? item.effectiveId : '';
+    }
+    if (item is Map) {
+      return item['ebook_id']?.toString() ??
+          item['ebook']?.toString() ??
           '';
     }
     return '';
@@ -626,6 +663,74 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final appliedCoupon = ref.watch(appliedCouponProvider);
     final isDirectBuy = widget.directCourseId != null && widget.directCourseId!.isNotEmpty;
+
+    return PopScope(
+      canPop: !_isProcessing,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop && _isProcessing) {
+          AppToast.show(
+            context,
+            'Please wait, verifying your payment and securing your enrollment...',
+            isError: false,
+          );
+        }
+      },
+      child: Stack(
+        children: [
+          _buildScaffold(context, isDark, appliedCoupon, isDirectBuy),
+          if (_isProcessing)
+            Container(
+              color: Colors.black54,
+              child: Center(
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 32),
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF1E2E23) : Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: const [
+                      BoxShadow(color: Colors.black26, blurRadius: 16, offset: Offset(0, 4)),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const CircularProgressIndicator(color: AppColors.primaryGreen),
+                      const SizedBox(height: 20),
+                      Text(
+                        'Securing Your Enrollment...',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? Colors.white : AppColors.inkDark,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Please do not exit or close the app while we finalize your course access.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: isDark ? Colors.white70 : AppColors.inkSoft,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildScaffold(
+    BuildContext context,
+    bool isDark,
+    dynamic appliedCoupon,
+    bool isDirectBuy,
+  ) {
 
     // Direct single course buy
     if (isDirectBuy) {
@@ -1755,48 +1860,54 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
             const SizedBox(width: 12),
             Flexible(
               flex: 6,
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryGreen,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+              child: SizedBox(
+                height: 48,
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryGreen,
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor: AppColors.primaryGreen,
+                    disabledForegroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 2,
                   ),
-                  elevation: 2,
-                ),
-                icon: _isProcessing
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
+                  icon: _isProcessing
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Icon(
+                          is100PercentFree ? Icons.check_circle_outline_rounded : Icons.lock_rounded,
                           color: Colors.white,
+                          size: 18,
                         ),
-                      )
-                    : Icon(
-                        is100PercentFree ? Icons.check_circle_outline_rounded : Icons.lock_rounded,
-                        color: Colors.white,
-                        size: 18,
-                      ),
-                label: Text(
-                  buttonLabel,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                  label: Text(
+                    buttonLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
+                  onPressed: _isProcessing
+                      ? null
+                      : () => _startPaymentFlow(
+                            originalTotal: originalTotal,
+                            finalTotal: finalTotal,
+                            discountAmount: discountAmount,
+                            items: items,
+                          ),
                 ),
-                onPressed: _isProcessing
-                    ? null
-                    : () => _startPaymentFlow(
-                          originalTotal: originalTotal,
-                          finalTotal: finalTotal,
-                          discountAmount: discountAmount,
-                          items: items,
-                        ),
               ),
             ),
           ],

@@ -41,17 +41,26 @@ class OrganicBackground extends StatelessWidget {
       value: systemOverlay,
       child: Scaffold(
         backgroundColor: isDark ? AppColors.bgDark : AppColors.organicCanvasLight,
+        resizeToAvoidBottomInset: true,
         body: Stack(
+          fit: StackFit.expand,
           children: [
-            Positioned.fill(
-              child: CustomPaint(
-                size: Size(screenSize.width, screenSize.height),
-                painter: OrganicBackgroundPainter(
-                  isDark: isDark,
-                  showTopBlobs: showTopBlobs,
-                  showBottomBlobs: showBottomBlobs,
-                  showLeaves: showLeaves,
-                  showSparks: showSparks,
+            Positioned(
+              left: 0,
+              top: 0,
+              width: screenSize.width,
+              height: screenSize.height,
+              child: RepaintBoundary(
+                child: CustomPaint(
+                  size: screenSize,
+                  painter: OrganicBackgroundPainter(
+                    isDark: isDark,
+                    showTopBlobs: showTopBlobs,
+                    showBottomBlobs: showBottomBlobs,
+                    showLeaves: showLeaves,
+                    showSparks: showSparks,
+                    fixedSize: screenSize,
+                  ),
                 ),
               ),
             ),
@@ -70,6 +79,7 @@ class OrganicBackgroundPainter extends CustomPainter {
   final bool showBottomBlobs;
   final bool showLeaves;
   final bool showSparks;
+  final Size? fixedSize;
 
   const OrganicBackgroundPainter({
     this.isDark = false,
@@ -77,12 +87,18 @@ class OrganicBackgroundPainter extends CustomPainter {
     this.showBottomBlobs = true,
     this.showLeaves = true,
     this.showSparks = true,
+    this.fixedSize,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
+    // Lock background layout to fixed physical screen dimensions so wallpaper
+    // elements (watercolor waves, leaves, sparkles) never get compressed/squished
+    // when software keyboards open or view insets change.
+    final effectiveSize = fixedSize ?? size;
+
     // 1. Base Canvas
-    final bgRect = Rect.fromLTWH(0, 0, size.width, size.height);
+    final bgRect = Rect.fromLTWH(0, 0, effectiveSize.width, effectiveSize.height);
     final bgPaint = Paint()
       ..shader = LinearGradient(
         begin: Alignment.topCenter,
@@ -105,16 +121,16 @@ class OrganicBackgroundPainter extends CustomPainter {
     if (showTopBlobs) {
       // Layer 1: Warm biscuit/amber wash
       final trBeigePath = Path()
-        ..moveTo(size.width * 0.62, 0)
+        ..moveTo(effectiveSize.width * 0.62, 0)
         ..cubicTo(
-          size.width * 0.72,
-          size.height * 0.15,
-          size.width * 0.78,
-          size.height * 0.32,
-          size.width,
-          size.height * 0.45,
+          effectiveSize.width * 0.72,
+          effectiveSize.height * 0.15,
+          effectiveSize.width * 0.78,
+          effectiveSize.height * 0.32,
+          effectiveSize.width,
+          effectiveSize.height * 0.45,
         )
-        ..lineTo(size.width, 0)
+        ..lineTo(effectiveSize.width, 0)
         ..close();
       canvas.drawPath(
         trBeigePath,
@@ -125,24 +141,24 @@ class OrganicBackgroundPainter extends CustomPainter {
 
       // Layer 2: Translucent broad sage watercolor wave
       final trSagePath = Path()
-        ..moveTo(size.width * 0.46, 0)
+        ..moveTo(effectiveSize.width * 0.46, 0)
         ..cubicTo(
-          size.width * 0.58,
-          size.height * 0.08,
-          size.width * 0.68,
-          size.height * 0.10,
-          size.width * 0.84,
-          size.height * 0.18,
+          effectiveSize.width * 0.58,
+          effectiveSize.height * 0.08,
+          effectiveSize.width * 0.68,
+          effectiveSize.height * 0.10,
+          effectiveSize.width * 0.84,
+          effectiveSize.height * 0.18,
         )
         ..cubicTo(
-          size.width * 0.92,
-          size.height * 0.22,
-          size.width * 0.98,
-          size.height * 0.25,
-          size.width,
-          size.height * 0.28,
+          effectiveSize.width * 0.92,
+          effectiveSize.height * 0.22,
+          effectiveSize.width * 0.98,
+          effectiveSize.height * 0.25,
+          effectiveSize.width,
+          effectiveSize.height * 0.28,
         )
-        ..lineTo(size.width, 0)
+        ..lineTo(effectiveSize.width, 0)
         ..close();
 
       final trSageShader = LinearGradient(
@@ -152,10 +168,10 @@ class OrganicBackgroundPainter extends CustomPainter {
             ? const [Color(0x353B6E44), Color(0x20244F2C)]
             : const [Color(0x999EC19B), Color(0x667AA678)],
       ).createShader(Rect.fromLTWH(
-        size.width * 0.46,
+        effectiveSize.width * 0.46,
         0,
-        size.width * 0.54,
-        size.height * 0.28,
+        effectiveSize.width * 0.54,
+        effectiveSize.height * 0.28,
       ));
 
       canvas.drawPath(
@@ -167,24 +183,24 @@ class OrganicBackgroundPainter extends CustomPainter {
 
       // Layer 3: Lush watercolor sage fluid wave
       final trGreenPath = Path()
-        ..moveTo(size.width * 0.54, 0)
+        ..moveTo(effectiveSize.width * 0.54, 0)
         ..cubicTo(
-          size.width * 0.64,
-          size.height * 0.04,
-          size.width * 0.74,
-          size.height * 0.08,
-          size.width * 0.88,
-          size.height * 0.09,
+          effectiveSize.width * 0.64,
+          effectiveSize.height * 0.04,
+          effectiveSize.width * 0.74,
+          effectiveSize.height * 0.08,
+          effectiveSize.width * 0.88,
+          effectiveSize.height * 0.09,
         )
         ..cubicTo(
-          size.width * 0.94,
-          size.height * 0.10,
-          size.width * 0.98,
-          size.height * 0.14,
-          size.width,
-          size.height * 0.18,
+          effectiveSize.width * 0.94,
+          effectiveSize.height * 0.10,
+          effectiveSize.width * 0.98,
+          effectiveSize.height * 0.14,
+          effectiveSize.width,
+          effectiveSize.height * 0.18,
         )
-        ..lineTo(size.width, 0)
+        ..lineTo(effectiveSize.width, 0)
         ..close();
 
       final trGreenShader = LinearGradient(
@@ -194,10 +210,10 @@ class OrganicBackgroundPainter extends CustomPainter {
             ? const [Color(0x55285731), Color(0x40366D3E), Color(0x2B4B8055)]
             : const [Color(0xE65B8C61), Color(0xCC72A478), Color(0xB38EB894)],
       ).createShader(Rect.fromLTWH(
-        size.width * 0.54,
+        effectiveSize.width * 0.54,
         0,
-        size.width * 0.46,
-        size.height * 0.18,
+        effectiveSize.width * 0.46,
+        effectiveSize.height * 0.18,
       ));
 
       canvas.drawPath(
@@ -212,16 +228,16 @@ class OrganicBackgroundPainter extends CustomPainter {
     if (showBottomBlobs) {
       // Layer 1: Warm sand/khaki underlayer
       final blBeigePath = Path()
-        ..moveTo(0, size.height * 0.56)
+        ..moveTo(0, effectiveSize.height * 0.56)
         ..cubicTo(
-          size.width * 0.18,
-          size.height * 0.58,
-          size.width * 0.42,
-          size.height * 0.74,
-          size.width * 0.46,
-          size.height,
+          effectiveSize.width * 0.18,
+          effectiveSize.height * 0.58,
+          effectiveSize.width * 0.42,
+          effectiveSize.height * 0.74,
+          effectiveSize.width * 0.46,
+          effectiveSize.height,
         )
-        ..lineTo(0, size.height)
+        ..lineTo(0, effectiveSize.height)
         ..close();
 
       canvas.drawPath(
@@ -233,24 +249,24 @@ class OrganicBackgroundPainter extends CustomPainter {
 
       // Layer 2: Soft olive/sage fluid blob
       final blSagePath = Path()
-        ..moveTo(0, size.height * 0.60)
+        ..moveTo(0, effectiveSize.height * 0.60)
         ..cubicTo(
-          size.width * 0.16,
-          size.height * 0.62,
-          size.width * 0.28,
-          size.height * 0.68,
-          size.width * 0.30,
-          size.height * 0.82,
+          effectiveSize.width * 0.16,
+          effectiveSize.height * 0.62,
+          effectiveSize.width * 0.28,
+          effectiveSize.height * 0.68,
+          effectiveSize.width * 0.30,
+          effectiveSize.height * 0.82,
         )
         ..cubicTo(
-          size.width * 0.31,
-          size.height * 0.90,
-          size.width * 0.34,
-          size.height * 0.96,
-          size.width * 0.38,
-          size.height,
+          effectiveSize.width * 0.31,
+          effectiveSize.height * 0.90,
+          effectiveSize.width * 0.34,
+          effectiveSize.height * 0.96,
+          effectiveSize.width * 0.38,
+          effectiveSize.height,
         )
-        ..lineTo(0, size.height)
+        ..lineTo(0, effectiveSize.height)
         ..close();
 
       final blSageShader = LinearGradient(
@@ -261,9 +277,9 @@ class OrganicBackgroundPainter extends CustomPainter {
             : const [Color(0xD983A580), Color(0xCCA2BE9E)],
       ).createShader(Rect.fromLTWH(
         0,
-        size.height * 0.60,
-        size.width * 0.38,
-        size.height * 0.40,
+        effectiveSize.height * 0.60,
+        effectiveSize.width * 0.38,
+        effectiveSize.height * 0.40,
       ));
 
       canvas.drawPath(
@@ -278,7 +294,7 @@ class OrganicBackgroundPainter extends CustomPainter {
     if (showLeaves) {
       _drawLeaf(
         canvas,
-        center: Offset(size.width * 0.81, size.height * 0.19),
+        center: Offset(effectiveSize.width * 0.81, effectiveSize.height * 0.19),
         width: 20,
         length: 34,
         rotationAngle: -0.65,
@@ -287,7 +303,7 @@ class OrganicBackgroundPainter extends CustomPainter {
 
       _drawLeaf(
         canvas,
-        center: Offset(size.width * 0.865, size.height * 0.205),
+        center: Offset(effectiveSize.width * 0.865, effectiveSize.height * 0.205),
         width: 14,
         length: 24,
         rotationAngle: -0.28,
@@ -296,7 +312,7 @@ class OrganicBackgroundPainter extends CustomPainter {
 
       _drawLeaf(
         canvas,
-        center: Offset(size.width * 0.36, size.height * 0.715),
+        center: Offset(effectiveSize.width * 0.36, effectiveSize.height * 0.715),
         width: 16,
         length: 28,
         rotationAngle: 0.75,
@@ -307,7 +323,7 @@ class OrganicBackgroundPainter extends CustomPainter {
     // 5. Floating Soft Orbs & Celebration Sparks
     if (showSparks) {
       canvas.drawCircle(
-        Offset(size.width * 0.615, size.height * 0.138),
+        Offset(effectiveSize.width * 0.615, effectiveSize.height * 0.138),
         7.5,
         Paint()
           ..color = isDark ? const Color(0x8075C31A) : const Color(0xFF5C895A)
@@ -315,7 +331,7 @@ class OrganicBackgroundPainter extends CustomPainter {
       );
 
       canvas.drawCircle(
-        Offset(size.width * 0.485, size.height * 0.058),
+        Offset(effectiveSize.width * 0.485, effectiveSize.height * 0.058),
         5.0,
         Paint()
           ..color = isDark ? const Color(0x709BD955) : const Color(0xFF7D9F7B)
@@ -323,7 +339,7 @@ class OrganicBackgroundPainter extends CustomPainter {
       );
 
       canvas.drawCircle(
-        Offset(size.width * 0.33, size.height * 0.645),
+        Offset(effectiveSize.width * 0.33, effectiveSize.height * 0.645),
         5.5,
         Paint()
           ..color = isDark ? const Color(0x60F59500) : const Color(0xFFD8CCA8)
@@ -332,7 +348,7 @@ class OrganicBackgroundPainter extends CustomPainter {
 
       _drawStarburst(
         canvas,
-        center: Offset(size.width * 0.905, size.height * 0.082),
+        center: Offset(effectiveSize.width * 0.905, effectiveSize.height * 0.082),
         innerRadius: 4.5,
         outerRadius: 10.5,
         strokeWidth: 2.2,
@@ -341,7 +357,7 @@ class OrganicBackgroundPainter extends CustomPainter {
 
       _drawStarburst(
         canvas,
-        center: Offset(size.width * 0.905, size.height * 0.292),
+        center: Offset(effectiveSize.width * 0.905, effectiveSize.height * 0.292),
         innerRadius: 4.5,
         outerRadius: 10.5,
         strokeWidth: 2.2,
@@ -413,7 +429,8 @@ class OrganicBackgroundPainter extends CustomPainter {
       oldDelegate.showTopBlobs != showTopBlobs ||
       oldDelegate.showBottomBlobs != showBottomBlobs ||
       oldDelegate.showLeaves != showLeaves ||
-      oldDelegate.showSparks != showSparks;
+      oldDelegate.showSparks != showSparks ||
+      oldDelegate.fixedSize != fixedSize;
 }
 
 /// Celebration Sparkles around Clapping Emoji (👏)

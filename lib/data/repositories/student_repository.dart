@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../../core/network/api_client.dart';
+import '../../core/network/api_exception.dart';
 import '../../core/network/token_storage.dart';
 import '../../core/services/quiz_service.dart';
 import '../models/api_models/instructor_model.dart';
@@ -39,14 +40,9 @@ class StudentRepository {
         throw Exception('Failed to load courses catalog: ${response.error}');
       }
       return response.body!;
-    } on Exception catch (e) {
-      final errStr = e.toString().toLowerCase();
-      if (errStr.contains('socket') ||
-          errStr.contains('handshake') ||
-          errStr.contains('network') ||
-          errStr.contains('connection') ||
-          errStr.contains('clientexception')) {
-        throw Exception('Unable to load courses at this time. Please check your connection.');
+    } catch (e) {
+      if (ApiException.from(e).isNetwork) {
+        throw ApiException.network();
       }
       rethrow;
     }
@@ -91,18 +87,59 @@ class StudentRepository {
       }
     } catch (e) {
       debugPrint('⚠️ [StudentRepository] Direct HTTP ebooks query failed: $e');
+      if (ApiException.from(e).isNetwork) {
+        throw ApiException.network();
+      }
     }
 
     // 2. Fallback to Swagger client
-    final response = await appApi.apiV1EbooksGet(
-      page: page,
-      search: search,
-      category: category,
-    );
-    if (!response.isSuccessful) {
-      throw Exception('Failed to load ebooks catalog: ${response.error}');
+    try {
+      final response = await appApi.apiV1EbooksGet(
+        page: page,
+        search: search,
+        category: category,
+      );
+      if (!response.isSuccessful) {
+        throw Exception('Failed to load ebooks catalog: ${response.error}');
+      }
+      return response.body!;
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException.from(e);
     }
-    return response.body!;
+  }
+
+  /// Fetch ebooks purchased by current student from /api/v1/ebooks/purchased/
+  Future<List<EBook>> getPurchasedEbooks() async {
+    try {
+      final token = await tokenStorage.getAccessToken();
+      final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/ebooks/purchased/');
+      final response = await http.get(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final decoded = jsonDecode(response.body);
+        final list = <dynamic>[];
+        if (decoded is List) {
+          list.addAll(decoded);
+        } else if (decoded is Map && decoded['results'] is List) {
+          list.addAll(decoded['results'] as List);
+        }
+        return list
+            .whereType<Map<String, dynamic>>()
+            .map((e) => EBook.fromJson(e))
+            .toList();
+      }
+    } catch (e) {
+      debugPrint('⚠️ [StudentRepository] getPurchasedEbooks error: $e');
+    }
+    return [];
   }
 
   /// Fetch specific ebook details (with live PDF stream URL).
@@ -149,9 +186,35 @@ class StudentRepository {
       }
     } catch (e) {
       debugPrint('❌ [StudentRepository] getEbookDetail direct HTTP error: $e');
+      if (ApiException.from(e).isNetwork) {
+        throw ApiException.network();
+      }
     }
 
-    throw Exception('Failed to load E-Book. Please check your connection.');
+    // 4. Fallback to instructor endpoint if the user is an instructor previewing their draft/review e-book
+    try {
+      final token = await tokenStorage.getAccessToken();
+      if (token != null) {
+        final instructorUri = Uri.parse('https://iagrow.zappcode.in/api/v1/instructor/ebooks/$slugOrId/');
+        final instructorRes = await http.get(
+          instructorUri,
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+        );
+        if (instructorRes.statusCode >= 200 && instructorRes.statusCode < 300) {
+          final data = jsonDecode(instructorRes.body) as Map<String, dynamic>;
+          debugPrint('✅ [StudentRepository] getEbookDetail instructor endpoint SUCCESS: ${data['title']} (status: ${data['status']})');
+          return EBook.fromJson(data);
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ [StudentRepository] getEbookDetail instructor fallback error: $e');
+    }
+
+    throw ApiException.network();
   }
 
   /// Fetch categories.
@@ -273,20 +336,26 @@ class StudentRepository {
 
     debugPrint('📤 [StudentRepository] addToCart: sending $body');
 
-    final response = await http.post(
-      uri,
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode(body),
-    );
+    try {
+      final response = await http.post(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(body),
+      ).timeout(const Duration(seconds: 15));
 
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      debugPrint('✅ [StudentRepository] addToCart SUCCESS');
-    } else {
-      debugPrint('❌ [StudentRepository] addToCart ERROR (${response.statusCode}): ${response.body}');
-      throw Exception('Failed to add to cart: ${response.body}');
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        debugPrint('✅ [StudentRepository] addToCart SUCCESS');
+      } else {
+        debugPrint('❌ [StudentRepository] addToCart ERROR (${response.statusCode}): ${response.body}');
+        TokenStorage.checkResponse(response.statusCode, response.body);
+        throw Exception('Failed to add to cart: ${response.body}');
+      }
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException.from(e);
     }
   }
 
@@ -319,7 +388,7 @@ class StudentRepository {
         },
       );
       if (response.statusCode >= 200 && response.statusCode < 300) {
-        debugPrint('✅ [StudentRepository] getCourseProgress SUCCESS (${response.statusCode})');
+        debugPrint('✅ [StudentRepository] getCourseProgress SUCCESS (${response.statusCode}): ${response.body}');
         final decoded = jsonDecode(response.body);
         if (decoded is Map<String, dynamic>) return decoded;
         if (decoded is List) return {'lectures': decoded};
@@ -367,6 +436,7 @@ class StudentRepository {
       return {'completed': completed};
     } else {
       debugPrint('❌ [StudentRepository] updateLectureProgress ERROR (${response.statusCode}): ${response.body}');
+      TokenStorage.checkResponse(response.statusCode, response.body);
       throw Exception('Failed to update lecture progress (${response.statusCode}): ${response.body}');
     }
   }
@@ -432,20 +502,26 @@ class StudentRepository {
     final token = await tokenStorage.getAccessToken();
     final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/progress/course/$cleanSlug/qa/');
     
-    final response = await http.post(
-      uri,
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode({
-        'question_text': question,
-        'question': question,
-        if (lectureId != null && lectureId.isNotEmpty) 'lecture_id': lectureId,
-      }),
-    );
-    if (response.statusCode >= 300) {
-      throw Exception('Failed to post question: ${response.body}');
+    try {
+      final response = await http.post(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'question_text': question,
+          'question': question,
+          if (lectureId != null && lectureId.isNotEmpty) 'lecture_id': lectureId,
+        }),
+      ).timeout(const Duration(seconds: 15));
+      if (response.statusCode >= 300) {
+        TokenStorage.checkResponse(response.statusCode, response.body);
+        throw Exception('Failed to post question: ${response.body}');
+      }
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException.from(e);
     }
   }
 
@@ -455,6 +531,30 @@ class StudentRepository {
     if (!response.isSuccessful) {
       throw Exception('Failed to delete question: ${response.error}');
     }
+  }
+
+  /// Reply to a course Q&A question (peers & instructor).
+  Future<Map<String, dynamic>> replyQaQuestion(String questionId, String answerText) async {
+    final token = await tokenStorage.getAccessToken();
+    final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/progress/qa/$questionId/reply/');
+    final response = await http.post(
+      uri,
+      headers: {
+        if (token != null) 'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'answer_text': answerText,
+      }),
+    );
+    if (response.statusCode >= 300) {
+      throw Exception('Failed to reply to question: ${response.body}');
+    }
+    try {
+      final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+      if (decoded is Map<String, dynamic>) return decoded;
+    } catch (_) {}
+    return {};
   }
 
   // ── Notes ───────────────────────────────────────────────────────
@@ -489,21 +589,26 @@ class StudentRepository {
     final token = await tokenStorage.getAccessToken();
     final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/progress/course/$cleanSlug/notes/');
     
-    final response = await http.post(
-      uri,
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode({
-        'content': text,
-        'note_text': text,
-        'timestamp': timestampSeconds,
-        'timestamp_seconds': timestampSeconds,
-      }),
-    );
-    if (response.statusCode >= 300) {
-      throw Exception('Failed to post note: ${response.body}');
+    try {
+      final response = await http.post(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'content': text,
+          'note_text': text,
+          'timestamp': timestampSeconds,
+          'timestamp_seconds': timestampSeconds,
+        }),
+      ).timeout(const Duration(seconds: 15));
+      if (response.statusCode >= 300) {
+        throw Exception('Failed to post note: ${response.body}');
+      }
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException.from(e);
     }
   }
 
@@ -643,6 +748,8 @@ class StudentRepository {
             'is_passed': passed,
           };
         }
+      } else {
+        TokenStorage.checkResponse(response.statusCode, response.body);
       }
     } catch (_) {}
 
@@ -665,6 +772,15 @@ class StudentRepository {
               ? options[correctOptionIndex].trim().toLowerCase()
               : (q['correct_answer']?.toString().trim().toLowerCase() ?? '');
           isCorrect = selectedAnswer.trim().toLowerCase() == correctAnswer;
+        }
+
+        // Fallback: If user index equals correctOptionIndex or string matches
+        if (!isCorrect && selectedAnswer is int && options.isNotEmpty && selectedAnswer < options.length) {
+          final chosenText = options[selectedAnswer].trim().toLowerCase();
+          final ansText = q['correct_answer']?.toString().trim().toLowerCase();
+          if (ansText != null && ansText.isNotEmpty && (chosenText == ansText || chosenText.contains(ansText) || ansText.contains(chosenText))) {
+            isCorrect = true;
+          }
         }
 
         if (isCorrect) {
@@ -739,5 +855,33 @@ class StudentRepository {
     }
 
     return ApiTopInstructor.fallbacks;
+  }
+
+  /// Fetch detailed public profile of an instructor including their active courses.
+  Future<ApiPublicInstructorDetail?> getInstructorDetail(String instructorId) async {
+    debugPrint('👨‍🏫 [StudentRepository] getInstructorDetail: id=$instructorId');
+    try {
+      final token = await tokenStorage.getAccessToken();
+      final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/instructors/$instructorId/');
+      final response = await http.get(
+        uri,
+        headers: {
+          if (token != null) 'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      );
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map<String, dynamic>) {
+          debugPrint('✅ [StudentRepository] getInstructorDetail SUCCESS: ${decoded['full_name']}');
+          return ApiPublicInstructorDetail.fromJson(decoded);
+        }
+      }
+      debugPrint('⚠️ [StudentRepository] getInstructorDetail returned HTTP ${response.statusCode}');
+    } catch (e) {
+      debugPrint('❌ [StudentRepository] getInstructorDetail error: $e');
+    }
+    return null;
   }
 }

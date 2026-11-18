@@ -2,14 +2,12 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 
 import '../../../core/localization/app_strings.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_exception.dart';
-import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/app_toast.dart';
 import '../../../core/widgets/app_gradient_button.dart';
@@ -136,9 +134,11 @@ class _CompleteSocialProfileDialogState
     extends ConsumerState<CompleteSocialProfileDialog> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _phoneController;
+  final FocusNode _phoneFocusNode = FocusNode();
   String? _selectedState;
   String? _selectedDistrict;
   bool _isSaving = false;
+  bool _isSheetOpen = false;
 
   @override
   void initState() {
@@ -157,16 +157,8 @@ class _CompleteSocialProfileDialogState
   @override
   void dispose() {
     _phoneController.dispose();
+    _phoneFocusNode.dispose();
     super.dispose();
-  }
-
-  void _navigateToProfile() {
-    if (!mounted) return;
-    Navigator.of(context, rootNavigator: true).pop();
-    final destination = widget.user.isFarmer
-        ? RouteNames.farmerProfile
-        : RouteNames.instructorProfile;
-    context.push(destination);
   }
 
   void _dismissDialog() {
@@ -196,7 +188,7 @@ class _CompleteSocialProfileDialogState
 
       if (mounted) {
         AppToast.show(context, tr(ref, 'Profile updated successfully!'));
-        _navigateToProfile();
+        _dismissDialog();
       }
     } catch (e) {
       if (mounted) {
@@ -227,81 +219,91 @@ class _CompleteSocialProfileDialogState
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final keyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
+    // Only treat keyboard as active for this dialog if phone field is focused AND no modal sheet is open
+    final keyboardOpen = !_isSheetOpen && _phoneFocusNode.hasFocus && MediaQuery.of(context).viewInsets.bottom > 0;
+    final keyboardInset = keyboardOpen ? MediaQuery.of(context).viewInsets.bottom : 0.0;
 
-    return GestureDetector(
-      onTap: () => FocusScope.of(context).unfocus(),
-      behavior: HitTestBehavior.translucent,
-      child: Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: EdgeInsets.symmetric(
-          horizontal: 20,
-          vertical: keyboardOpen ? 12 : 24,
+    // Isolate the dialog from external viewInsets (e.g. when bottom sheet opens keyboard)
+    // by overriding the MediaQuery viewInsets provided to the Dialog.
+    return MediaQuery(
+      data: MediaQuery.of(context).copyWith(
+        viewInsets: EdgeInsets.only(
+          bottom: keyboardInset,
         ),
-        child: GestureDetector(
-          onTap: () => FocusScope.of(context).unfocus(),
-          behavior: HitTestBehavior.opaque,
-          child: Container(
-            constraints: BoxConstraints(
-              maxWidth: 420,
-              maxHeight: MediaQuery.of(context).size.height -
-                  MediaQuery.of(context).viewInsets.bottom -
-                  (keyboardOpen ? 32 : 64),
-            ),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1E2822) : Colors.white,
-              borderRadius: BorderRadius.circular(28),
-              border: Border.all(
-                color: isDark ? AppColors.lineDark : AppColors.organicBorderLight,
-                width: 1.5,
+      ),
+      child: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        behavior: HitTestBehavior.translucent,
+        child: Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: keyboardOpen ? 12 : 24,
+          ),
+          child: GestureDetector(
+            onTap: () => FocusScope.of(context).unfocus(),
+            behavior: HitTestBehavior.opaque,
+            child: Container(
+              constraints: BoxConstraints(
+                maxWidth: 420,
+                maxHeight: MediaQuery.of(context).size.height -
+                    keyboardInset -
+                    (keyboardOpen ? 32 : 64),
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.18),
-                  blurRadius: 30,
-                  offset: const Offset(0, 12),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1E2822) : Colors.white,
+                borderRadius: BorderRadius.circular(28),
+                border: Border.all(
+                  color: isDark ? AppColors.lineDark : AppColors.organicBorderLight,
+                  width: 1.5,
                 ),
-              ],
-            ),
-            child: SingleChildScrollView(
-              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-              padding: const EdgeInsets.all(24),
-              child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Top organic icon badge
-                Center(
-                  child: Container(
-                    width: 60,
-                    height: 60,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: LinearGradient(
-                        colors: [
-                          AppColors.primaryGreen,
-                          AppColors.primaryGreen.withOpacity(0.75),
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.primaryGreen.withOpacity(0.3),
-                          blurRadius: 14,
-                          offset: const Offset(0, 6),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.18),
+                    blurRadius: 30,
+                    offset: const Offset(0, 12),
+                  ),
+                ],
+              ),
+              child: SingleChildScrollView(
+                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                padding: const EdgeInsets.all(24),
+                child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Top organic icon badge
+                  Center(
+                    child: Container(
+                      width: 60,
+                      height: 60,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          colors: [
+                            AppColors.primaryGreen,
+                            AppColors.primaryGreen.withOpacity(0.75),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
                         ),
-                      ],
-                    ),
-                    child: const Icon(
-                      Icons.person_pin_circle_rounded,
-                      color: Colors.white,
-                      size: 30,
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primaryGreen.withOpacity(0.3),
+                            blurRadius: 14,
+                            offset: const Offset(0, 6),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.person_pin_circle_rounded,
+                        color: Colors.white,
+                        size: 30,
+                      ),
                     ),
                   ),
-                ),
                 const SizedBox(height: 18),
 
                 // Title
@@ -337,6 +339,7 @@ class _CompleteSocialProfileDialogState
                 // Phone Field
                 AppPillTextField(
                   controller: _phoneController,
+                  focusNode: _phoneFocusNode,
                   hintText: tr(ref, 'Phone Number (10 digits)'),
                   prefixIcon: Icons.phone_android_rounded,
                   keyboardType: TextInputType.phone,
@@ -506,6 +509,7 @@ class _CompleteSocialProfileDialogState
       ),
     ),
   ),
+  ),
   );
   }
 
@@ -519,88 +523,414 @@ class _CompleteSocialProfileDialogState
     ValueChanged<String?>? onChanged,
     bool isEnabled = true,
   }) {
-    return Container(
-      height: 56,
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.organicCardDark : AppColors.organicCardLight,
+    final hasValue = value != null && value.isNotEmpty;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: isEnabled && items.isNotEmpty
+            ? () => _showLocationSelectionSheet(
+                  context: context,
+                  isDark: isDark,
+                  title: hintText,
+                  icon: icon,
+                  items: items,
+                  selectedValue: value,
+                  onSelected: (val) {
+                    if (onChanged != null) onChanged(val);
+                  },
+                )
+            : null,
         borderRadius: BorderRadius.circular(28),
-        border: Border.all(
-          color: isDark ? AppColors.organicBorderDark : AppColors.organicBorderLight,
-          width: 1.2,
-        ),
-        boxShadow: AppColors.organicCardShadow(isDark: isDark),
-      ),
-      child: Row(
-        children: [
-          const SizedBox(width: 9),
-          // Circular Badge for Leading Icon
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: isDark ? AppColors.organicBadgeDark : AppColors.organicBadgeLight,
-              shape: BoxShape.circle,
+        child: Container(
+          height: 56,
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.organicCardDark : AppColors.organicCardLight,
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(
+              color: isDark ? AppColors.organicBorderDark : AppColors.organicBorderLight,
+              width: 1.2,
             ),
-            child: Center(
-              child: Icon(
-                icon,
-                size: 19,
-                color: isEnabled
-                    ? (isDark ? AppColors.organicIconDark : AppColors.organicIconLight)
-                    : Colors.grey.shade400,
-              ),
-            ),
+            boxShadow: AppColors.organicCardShadow(isDark: isDark),
           ),
-          const SizedBox(width: 14),
-          // Dropdown
-          Expanded(
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                value: value,
-                isExpanded: true,
-                dropdownColor: isDark ? AppColors.cardDark : Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                icon: Padding(
-                  padding: const EdgeInsets.only(right: 14),
+          child: Row(
+            children: [
+              const SizedBox(width: 9),
+              // Circular Badge for Leading Icon
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.organicBadgeDark : AppColors.organicBadgeLight,
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
                   child: Icon(
-                    Icons.arrow_drop_down_rounded,
-                    color: isDark ? Colors.grey.shade400 : AppColors.organicIconLight,
-                    size: 26,
+                    icon,
+                    size: 19,
+                    color: isEnabled
+                        ? (isDark ? AppColors.organicIconDark : AppColors.organicIconLight)
+                        : Colors.grey.shade400,
                   ),
                 ),
-                hint: Text(
-                  hintText,
+              ),
+              const SizedBox(width: 14),
+              // Label / Selected Text
+              Expanded(
+                child: Text(
+                  hasValue ? tr(ref, value) : hintText,
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 15,
-                    fontWeight: FontWeight.w400,
-                    color: isDark ? AppColors.organicHintDark : AppColors.organicHintLight,
+                    fontWeight: hasValue ? FontWeight.w600 : FontWeight.w400,
+                    color: hasValue
+                        ? (isDark ? Colors.white : const Color(0xFF1B331F))
+                        : (isDark ? AppColors.organicHintDark : AppColors.organicHintLight),
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
-                  color: isDark ? Colors.white : const Color(0xFF1B331F),
-                ),
-                items: items.map((item) {
-                  return DropdownMenuItem<String>(
-                    value: item,
-                    child: Text(
-                      item,
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: isDark ? Colors.white : const Color(0xFF1B331F),
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  );
-                }).toList(),
-                onChanged: isEnabled ? onChanged : null,
               ),
-            ),
+              // Trailing chevron indicator
+              Padding(
+                padding: const EdgeInsets.only(right: 16),
+                child: Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: isEnabled
+                      ? (isDark ? Colors.grey.shade400 : AppColors.organicIconLight)
+                      : Colors.grey.shade400,
+                  size: 22,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showLocationSelectionSheet({
+    required BuildContext context,
+    required bool isDark,
+    required String title,
+    required IconData icon,
+    required List<String> items,
+    required String? selectedValue,
+    required ValueChanged<String> onSelected,
+  }) async {
+    // Unfocus phone input before opening sheet
+    _phoneFocusNode.unfocus();
+    FocusScope.of(context).unfocus();
+
+    setState(() {
+      _isSheetOpen = true;
+    });
+
+    try {
+      await showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (sheetContext) {
+          return _LocationPickerBottomSheet(
+            isDark: isDark,
+            title: title,
+            icon: icon,
+            items: items,
+            selectedValue: selectedValue,
+            onSelected: onSelected,
+          );
+        },
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSheetOpen = false;
+        });
+      }
+    }
+  }
+}
+
+class _LocationPickerBottomSheet extends StatefulWidget {
+  const _LocationPickerBottomSheet({
+    required this.isDark,
+    required this.title,
+    required this.icon,
+    required this.items,
+    required this.selectedValue,
+    required this.onSelected,
+  });
+
+  final bool isDark;
+  final String title;
+  final IconData icon;
+  final List<String> items;
+  final String? selectedValue;
+  final ValueChanged<String> onSelected;
+
+  @override
+  State<_LocationPickerBottomSheet> createState() => _LocationPickerBottomSheetState();
+}
+
+class _LocationPickerBottomSheetState extends State<_LocationPickerBottomSheet> {
+  late final TextEditingController _searchController;
+  String _query = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final filtered = widget.items.where((it) {
+      return it.toLowerCase().contains(_query.toLowerCase().trim()) ||
+          AppStrings.tr(it, languageCode: 'en').toLowerCase().contains(_query.toLowerCase().trim()) ||
+          AppStrings.tr(it, languageCode: 'hi').toLowerCase().contains(_query.toLowerCase().trim()) ||
+          AppStrings.tr(it, languageCode: 'mr').toLowerCase().contains(_query.toLowerCase().trim());
+    }).toList();
+
+    return Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.78,
+      ),
+      decoration: BoxDecoration(
+        color: widget.isDark ? const Color(0xFF1E2822) : Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: widget.isDark ? 0.5 : 0.12),
+            blurRadius: 24,
+            offset: const Offset(0, -4),
           ),
         ],
+      ),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+      ),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Pull Handle Indicator
+            Center(
+              child: Container(
+                margin: const EdgeInsets.only(top: 12, bottom: 8),
+                width: 44,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: widget.isDark ? Colors.white24 : Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ),
+            ),
+
+            // Sheet Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 12, 10),
+              child: Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: widget.isDark ? AppColors.organicBadgeDark : AppColors.organicBadgeLight,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      widget.icon,
+                      size: 18,
+                      color: widget.isDark ? AppColors.organicIconDark : AppColors.organicIconLight,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      widget.title,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                        color: widget.isDark ? Colors.white : AppColors.inkDark,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(
+                      Icons.close_rounded,
+                      size: 22,
+                      color: widget.isDark ? Colors.white70 : AppColors.inkSoft,
+                    ),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+            ),
+
+            // Single Clean Search Input Field (No nested cards/boxes)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
+              child: Consumer(
+                builder: (context, searchRef, _) => TextField(
+                  controller: _searchController,
+                  autofocus: false,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w500,
+                    color: widget.isDark ? Colors.white : AppColors.inkDark,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: tr(searchRef, 'Search...'),
+                    hintStyle: GoogleFonts.plusJakartaSans(
+                      fontSize: 14,
+                      color: widget.isDark ? Colors.white38 : AppColors.inkSoft,
+                    ),
+                    prefixIcon: Icon(
+                      Icons.search_rounded,
+                      size: 20,
+                      color: widget.isDark ? Colors.grey.shade400 : AppColors.organicIconLight,
+                    ),
+                    suffixIcon: _query.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.close_rounded, size: 18),
+                            color: widget.isDark ? Colors.white60 : Colors.grey.shade600,
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() => _query = '');
+                            },
+                          )
+                        : null,
+                    filled: true,
+                    fillColor: widget.isDark ? Colors.white.withValues(alpha: 0.06) : const Color(0xFFF3F7F3),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24),
+                      borderSide: BorderSide(
+                        color: widget.isDark ? AppColors.lineDark : const Color(0xFFE2EBE0),
+                        width: 1.2,
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24),
+                      borderSide: BorderSide(
+                        color: widget.isDark ? AppColors.lineDark : const Color(0xFFE2EBE0),
+                        width: 1.2,
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24),
+                      borderSide: const BorderSide(
+                        color: AppColors.primaryGreen,
+                        width: 1.6,
+                      ),
+                    ),
+                  ),
+                  onChanged: (val) {
+                    setState(() => _query = val);
+                  },
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 10),
+            Divider(
+              height: 1,
+              thickness: 1,
+              color: widget.isDark ? AppColors.lineDark : const Color(0xFFF0F4F0),
+            ),
+
+            // Scrollable List of Options
+            Flexible(
+              child: filtered.isEmpty
+                  ? Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 36),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.location_off_outlined,
+                            size: 38,
+                            color: widget.isDark ? Colors.white24 : Colors.grey.shade400,
+                          ),
+                          const SizedBox(height: 8),
+                          Consumer(
+                            builder: (context, emptyRef, _) => Text(
+                              tr(emptyRef, 'No matches found'),
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: widget.isDark ? Colors.white38 : AppColors.inkSoft,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : ListView.builder(
+                      shrinkWrap: true,
+                      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                      itemCount: filtered.length,
+                      itemBuilder: (itemCtx, index) {
+                        final item = filtered[index];
+                        final isSelected = item == widget.selectedValue;
+
+                        return Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () {
+                              Navigator.pop(context);
+                              widget.onSelected(item);
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 13,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? (widget.isDark
+                                        ? AppColors.primaryGreen.withValues(alpha: 0.15)
+                                        : const Color(0xFFE8F5E9))
+                                    : Colors.transparent,
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Consumer(
+                                      builder: (context, itemRef, _) => Text(
+                                        tr(itemRef, item),
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 14.5,
+                                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                                          color: isSelected
+                                              ? (widget.isDark ? const Color(0xFF4ADE80) : AppColors.primaryGreen)
+                                              : (widget.isDark ? Colors.white : AppColors.inkDark),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  if (isSelected)
+                                    Icon(
+                                      Icons.check_circle_rounded,
+                                      size: 19,
+                                      color: widget.isDark ? const Color(0xFF4ADE80) : AppColors.primaryGreen,
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }

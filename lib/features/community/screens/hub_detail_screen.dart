@@ -1,12 +1,17 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
+import '../../../core/localization/app_strings.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/app_toast.dart';
+import '../../../core/widgets/app_error_state.dart';
 import '../../../data/models/api_models/community_models.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../providers/community_provider.dart';
 import '../widgets/create_post_sheets.dart';
+import '../widgets/hub_members_sheet.dart';
 import '../widgets/rich_post_card.dart';
 
 class HubDetailScreen extends ConsumerStatefulWidget {
@@ -19,6 +24,23 @@ class HubDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
+  Timer? _silentPollTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    // Silent polling every 15 seconds to update like counts, reactions, view counts, and comments in real-time
+    _silentPollTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      if (!mounted) return;
+      ref.read(communityHubPostsProvider(widget.hubId).notifier).fetchPosts(silent: true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _silentPollTimer?.cancel();
+    super.dispose();
+  }
   void _confirmLeave(BuildContext context, CommunityHub hub) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     showDialog(
@@ -37,13 +59,13 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
               child: const Icon(Icons.exit_to_app_rounded, color: Colors.red, size: 20),
             ),
             const SizedBox(width: 10),
-            const Expanded(
-              child: Text('Leave Community?', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+            Expanded(
+              child: Text(tr(ref, 'Leave Community?'), style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
             ),
           ],
         ),
         content: Text(
-          'Are you sure you want to leave "${hub.name}"? You will no longer receive announcements and updates from this instructor.',
+          '${tr(ref, "Are you sure you want to leave")} "${hub.name}"? ${tr(ref, "You will no longer receive announcements and updates from this instructor.")}',
           style: TextStyle(
             fontSize: 13.5,
             color: isDark ? Colors.white70 : AppColors.inkSoft,
@@ -53,7 +75,7 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text('Cancel', style: TextStyle(color: isDark ? Colors.white60 : Colors.grey, fontWeight: FontWeight.w600)),
+            child: Text(tr(ref, 'Cancel'), style: TextStyle(color: isDark ? Colors.white60 : Colors.grey, fontWeight: FontWeight.w600)),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
@@ -73,17 +95,24 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Left "${hub.name}"'),
+                      content: Text('${tr(ref, "Left")} "${hub.name}"'),
                       action: SnackBarAction(
-                        label: 'Undo',
+                        label: tr(ref, 'Undo'),
+                        textColor: const Color(0xFF4ADE80),
                         onPressed: () async {
-                          await ref.read(communityHubsProvider.notifier).toggleJoin(
-                                hub.id,
-                                currentIsMember: false,
-                                currentMemberCount: hub.memberCount > 0 ? hub.memberCount - 1 : 0,
-                              );
-                          ref.invalidate(suggestedHubsProvider);
-                          ref.invalidate(hubDetailsProvider(hub.id));
+                          try {
+                            await ref.read(communityHubsProvider.notifier).toggleJoin(
+                                  hub.id,
+                                  currentIsMember: false,
+                                  currentMemberCount: hub.memberCount > 0 ? hub.memberCount - 1 : 0,
+                                );
+                            ref.invalidate(suggestedHubsProvider);
+                            ref.invalidate(hubDetailsProvider(hub.id));
+                          } catch (e) {
+                            if (context.mounted) {
+                              AppToast.showFriendlyError(context, e, prefix: tr(ref, 'Failed to join'));
+                            }
+                          }
                         },
                       ),
                     ),
@@ -91,13 +120,11 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                 }
               } catch (e) {
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Failed to leave: $e')),
-                  );
+                  AppToast.showFriendlyError(context, e, prefix: tr(ref, 'Failed to leave'));
                 }
               }
             },
-            child: const Text('Leave', style: TextStyle(fontWeight: FontWeight.bold)),
+            child: Text(tr(ref, 'Leave'), style: const TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -234,7 +261,8 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
       body: hubAsync.when(
         data: (hub) {
           final isAuthorOrInstructor = (currentUser?.isInstructor == true || currentUser?.isAdmin == true) &&
-              (hub.instructorId.isNotEmpty && currentUser?.id == hub.instructorId);
+              ((hub.instructorId.isNotEmpty && currentUser?.id == hub.instructorId) ||
+               (hub.instructorName.trim().isNotEmpty && currentUser?.fullName.trim().toLowerCase() == hub.instructorName.trim().toLowerCase()));
 
           return RefreshIndicator(
             color: AppColors.primaryGreen,
@@ -249,7 +277,8 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                 SliverAppBar(
                   expandedHeight: 200,
                   pinned: true,
-                  backgroundColor: AppColors.primaryGreen,
+                  backgroundColor: isDark ? const Color(0xFF131F16) : Colors.white,
+                  surfaceTintColor: Colors.transparent,
                   leading: IconButton(
                     icon: Container(
                       padding: const EdgeInsets.all(7),
@@ -362,6 +391,67 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                   ),
                 ),
 
+                // ─── Inactive Hub Warning Banner ───────────────────
+                if (!hub.isActive)
+                  SliverToBoxAdapter(
+                    child: Container(
+                      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withValues(alpha: isDark ? 0.15 : 0.08),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Colors.redAccent.withValues(alpha: isDark ? 0.4 : 0.3),
+                          width: 1.2,
+                        ),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Colors.redAccent.withValues(alpha: 0.2),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.info_outline_rounded,
+                              color: Colors.redAccent,
+                              size: 20,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'This Community is no longer active',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                    color: isDark ? Colors.red.shade200 : Colors.red.shade800,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  hub.disabledReason.isNotEmpty
+                                      ? hub.disabledReason
+                                      : 'This community hub has been paused or deactivated by administration. Interactions and replies are currently unavailable.',
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    height: 1.35,
+                                    color: isDark ? Colors.white70 : AppColors.inkSoft,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
                 // ─── Header Stats & Instructor Profile Bar ─────────
                 SliverToBoxAdapter(
                   child: Container(
@@ -416,51 +506,155 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                                 ],
                               ),
                               const SizedBox(height: 2),
-                              Text(
-                                '👥 ${hub.memberCount} Members',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.primaryGreen,
+                              InkWell(
+                                borderRadius: BorderRadius.circular(8),
+                                onTap: () => HubMembersSheet.show(context, hub),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 2),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        '👥 ${hub.memberCount} Members',
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.primaryGreen,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      const Icon(
+                                        Icons.arrow_forward_ios_rounded,
+                                        size: 9,
+                                        color: AppColors.primaryGreen,
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ],
                           ),
                         ),
-                        // Join / Leave Button (For learners)
-                        if (!isAuthorOrInstructor)
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: hub.isMember
-                                  ? (isDark ? const Color(0xFF24242A) : AppColors.editorialSurfaceContainerLow)
-                                  : AppColors.editorialSecondary,
-                              foregroundColor: hub.isMember
-                                  ? (isDark ? Colors.white70 : AppColors.editorialOnSurface)
-                                  : Colors.white,
-                              elevation: hub.isMember ? 0 : 1,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                            ),
-                            onPressed: () async {
-                              if (hub.isMember) {
-                                _confirmLeave(context, hub);
-                              } else {
-                                await ref.read(communityHubsProvider.notifier).toggleJoin(
-                                      hub.id,
-                                      currentIsMember: false,
-                                      currentMemberCount: hub.memberCount,
-                                    );
-                              }
-                            },
-                            child: Text(
-                              hub.isMember ? 'Joined ✓' : '+ Join',
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                            ),
+                        // Join / Leave Button (For learners) or Delete Hub (For instructor)
+                        if (!isAuthorOrInstructor && hub.isActive)
+                          SizedBox(
+                            height: 34,
+                            child: hub.isMember
+                                ? OutlinedButton.icon(
+                                    style: OutlinedButton.styleFrom(
+                                      side: BorderSide(
+                                        color: isDark ? AppColors.lineDark : AppColors.editorialOutlineVariant.withValues(alpha: 0.4),
+                                      ),
+                                      backgroundColor: isDark ? const Color(0xFF24242A) : AppColors.editorialSurfaceContainerLow,
+                                      foregroundColor: isDark ? Colors.white70 : AppColors.editorialOnSurface,
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                                      minimumSize: Size.zero,
+                                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                    onPressed: () => _confirmLeave(context, hub),
+                                    icon: const Icon(Icons.check_circle_rounded, size: 14, color: AppColors.editorialSecondaryFixedDim),
+                                    label: Text(
+                                      tr(ref, 'Joined ✓'),
+                                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+                                    ),
+                                  )
+                                : OutlinedButton(
+                                    style: OutlinedButton.styleFrom(
+                                      side: BorderSide(
+                                        color: isDark
+                                            ? AppColors.primaryGreen.withValues(alpha: 0.6)
+                                            : AppColors.primaryGreen,
+                                        width: 1.2,
+                                      ),
+                                      backgroundColor: isDark
+                                          ? AppColors.primaryGreen.withValues(alpha: 0.15)
+                                          : AppColors.primaryGreen.withValues(alpha: 0.08),
+                                      foregroundColor: isDark
+                                          ? const Color(0xFF86EFAC)
+                                          : AppColors.primaryGreen,
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                                      minimumSize: Size.zero,
+                                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                    onPressed: () async {
+                                      try {
+                                        await ref.read(communityHubsProvider.notifier).toggleJoin(
+                                              hub.id,
+                                              currentIsMember: false,
+                                              currentMemberCount: hub.memberCount,
+                                            );
+                                      } catch (e) {
+                                        if (context.mounted) {
+                                          AppToast.showFriendlyError(context, e, prefix: 'Failed to join');
+                                        }
+                                      }
+                                    },
+                                    child: Text(
+                                      tr(ref, '+ Join'),
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12.5,
+                                        letterSpacing: 0.2,
+                                      ),
+                                    ),
+                                  ),
                           ),
                       ],
                     ),
                   ),
                 ),
+
+                // ─── Community Description Banner ─────────────────
+                if (hub.description.trim().isNotEmpty)
+                  SliverToBoxAdapter(
+                    child: Container(
+                      margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF18261E) : Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isDark ? const Color(0xFF2C3E32) : const Color(0xFFE2EBE0),
+                          width: 1.2,
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.info_outline_rounded,
+                                size: 16,
+                                color: isDark ? const Color(0xFF86EFAC) : AppColors.primaryGreen,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                tr(ref, 'About Community'),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.3,
+                                  color: isDark ? const Color(0xFF86EFAC) : AppColors.primaryGreen,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            hub.description.trim(),
+                            style: TextStyle(
+                              fontSize: 13,
+                              height: 1.45,
+                              color: isDark ? Colors.white70 : AppColors.inkDark,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
 
                 // ─── If Instructor, Quick Post Bar ─────────────────
                 if (isAuthorOrInstructor)
@@ -586,6 +780,7 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                             post: post,
                             hubId: hub.id,
                             isInstructorView: isAuthorOrInstructor,
+                            isHubActive: hub.isActive,
                           );
                         },
                         childCount: posts.length,
@@ -602,7 +797,10 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                     child: Center(
                       child: Padding(
                         padding: const EdgeInsets.all(20),
-                        child: Text('Error loading feed: $e'),
+                        child: Text(
+                          getUserFriendlyErrorMessage(e, fallback: 'Error loading feed'),
+                          textAlign: TextAlign.center,
+                        ),
                       ),
                     ),
                   ),
@@ -617,7 +815,13 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
           child: CircularProgressIndicator(color: AppColors.primaryGreen),
         ),
         error: (e, _) => Center(
-          child: Text('Failed to load community hub: $e'),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(
+              getUserFriendlyErrorMessage(e, fallback: 'Failed to load community hub'),
+              textAlign: TextAlign.center,
+            ),
+          ),
         ),
       ),
     );

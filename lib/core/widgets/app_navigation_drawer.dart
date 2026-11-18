@@ -8,6 +8,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/widgets/logout_dialog.dart';
 import '../../data/models/user_role.dart';
 import '../../features/auth/providers/auth_provider.dart';
+import '../../features/cart/providers/cart_provider.dart';
 
 /// Editorial EdTech Drawer navigation sidebar matching Stitch design specifications
 class AppNavigationDrawer extends ConsumerWidget {
@@ -97,6 +98,17 @@ class AppNavigationDrawer extends ConsumerWidget {
                   ),
                   _buildDrawerItem(
                     context: context,
+                    icon: Icons.workspace_premium_rounded,
+                    title: tr(ref, 'My Certificates'),
+                    iconColor: const Color(0xFFD97706),
+                    isDark: isDark,
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      context.push(RouteNames.certificates);
+                    },
+                  ),
+                  _buildDrawerItem(
+                    context: context,
                     icon: Icons.favorite_rounded,
                     title: tr(ref, 'Wishlist'),
                     iconColor: Colors.redAccent,
@@ -104,6 +116,27 @@ class AppNavigationDrawer extends ConsumerWidget {
                     onTap: () {
                       Navigator.of(context).pop();
                       context.push(RouteNames.wishlist);
+                    },
+                  ),
+                  Builder(
+                    builder: (context) {
+                      final cartAsync = ref.watch(cartProvider);
+                      final count = cartAsync.maybeWhen(
+                        data: (cart) => cart.items.length,
+                        orElse: () => 0,
+                      );
+                      return _buildDrawerItem(
+                        context: context,
+                        icon: Icons.shopping_cart_rounded,
+                        title: tr(ref, 'Cart'),
+                        subtitle: count > 0 ? '$count ${count == 1 ? "item" : "items"}' : null,
+                        iconColor: const Color(0xFF10B981),
+                        isDark: isDark,
+                        onTap: () {
+                          Navigator.of(context).pop();
+                          context.push(RouteNames.cart);
+                        },
+                      );
                     },
                   ),
                   _buildDrawerItem(

@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../data/models/api_models/course_models.dart';
 import '../../../data/repositories/instructor_repository.dart';
@@ -23,10 +24,18 @@ final instructorTransactionsProvider = FutureProvider<List<Map<String, dynamic>>
   return await repo.getTransactions();
 });
 
-/// Provider for fetching the instructor's pending Q&A questions.
+typedef InstructorQaQuery = ({String status, String courseId});
+
+/// Provider for fetching the instructor's Q&A questions with filters.
+final instructorQaFilteredProvider = FutureProvider.autoDispose.family<List<Map<String, dynamic>>, InstructorQaQuery>((ref, query) async {
+  final repo = ref.watch(instructorRepositoryProvider);
+  return await repo.getQuestions(status: query.status, courseId: query.courseId);
+});
+
+/// Backward-compatible provider for fetching the instructor's pending Q&A questions.
 final instructorQaProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
   final repo = ref.watch(instructorRepositoryProvider);
-  return await repo.getQuestions();
+  return await repo.getQuestions(status: 'ALL');
 });
 
 typedef InstructorCoursesQuery = ({String search, String ordering});
@@ -75,5 +84,50 @@ final instructorCourseCertificatesProvider = FutureProvider.family<List<dynamic>
 final instructorReviewsProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
   final repo = ref.watch(instructorRepositoryProvider);
   return await repo.getInstructorReviews();
+});
+
+/// Provider for tracking courses deactivated/archived by the instructor
+/// Persisted locally via SharedPreferences so deactivated courses never show a delete button.
+class DeactivatedCoursesNotifier extends StateNotifier<Set<String>> {
+  DeactivatedCoursesNotifier() : super(<String>{}) {
+    _load();
+  }
+
+  static const _key = 'instructor_deactivated_course_ids';
+
+  Future<void> _load() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final list = prefs.getStringList(_key) ?? [];
+      state = list.toSet();
+    } catch (_) {}
+  }
+
+  Future<void> markDeactivated(String courseId) async {
+    if (courseId.isEmpty) return;
+    final next = {...state, courseId};
+    state = next;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList(_key, next.toList());
+    } catch (_) {}
+  }
+
+  Future<void> markReactivated(String courseId) async {
+    if (courseId.isEmpty) return;
+    final next = {...state}..remove(courseId);
+    state = next;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList(_key, next.toList());
+    } catch (_) {}
+  }
+
+  bool isDeactivated(String courseId) => state.contains(courseId);
+}
+
+final deactivatedCoursesProvider =
+    StateNotifierProvider<DeactivatedCoursesNotifier, Set<String>>((ref) {
+  return DeactivatedCoursesNotifier();
 });
 

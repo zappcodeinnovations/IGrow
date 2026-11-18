@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:chopper/chopper.dart' as chopper;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/network/api_client.dart';
+import '../../core/network/swagger_generated/app_api.enums.swagger.dart' as enums;
 import '../../core/network/api_exception.dart';
 import '../../core/network/token_storage.dart';
 import '../../core/services/notification_service.dart';
@@ -99,6 +100,13 @@ class ApiAuthRepository implements AuthRepository {
       }
 
       if (response.statusCode == 401) {
+        final path = response.base.request?.url.path ?? '';
+        final isAuthPath = path.contains('/auth/login') ||
+            path.contains('/auth/register') ||
+            path.contains('/auth/refresh');
+        if (!isAuthPath) {
+          TokenStorage.notifySessionExpired();
+        }
         if (errorData != null && errorData.containsKey('detail')) {
           throw ApiException.unauthorized(errorData['detail'].toString());
         }
@@ -144,6 +152,7 @@ class ApiAuthRepository implements AuthRepository {
       print('❌ [AUTH REPO] getCurrentUser ApiException: ${e.message} (status: ${e.statusCode})');
       if (e.isUnauthorized) {
         await tokenStorage.clearTokens();
+        TokenStorage.notifySessionExpired();
         return null;
       }
       rethrow;
@@ -245,7 +254,8 @@ class ApiAuthRepository implements AuthRepository {
       body['fcm_token'] = fcmToken.trim();
     }
     if (expectedRole != null && expectedRole.trim().isNotEmpty) {
-      body['role'] = expectedRole.trim().toUpperCase();
+      final roleUpper = expectedRole.trim().toUpperCase();
+      body['role'] = (roleUpper == 'FARMER' || roleUpper == 'STUDENT') ? 'STUDENT' : 'INSTRUCTOR';
     }
 
     print('\n🌐 [AUTH_REPO] POST /api/v1/auth/social-login/ with provider: $provider');
@@ -374,34 +384,47 @@ class ApiAuthRepository implements AuthRepository {
     };
     body.removeWhere((key, value) => value == null);
 
-    final response = await http.post(
-      uri,
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: jsonEncode(body),
-    );
+    try {
+      final response = await http.post(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode(body),
+      );
 
-    if (response.statusCode >= 400) {
-      String errorMessage = 'Registration failed (${response.statusCode})';
-      try {
-        final errorData = jsonDecode(response.body);
-        if (response.statusCode == 400) {
-          throw ApiException.validation(errorData);
+      if (response.statusCode >= 400) {
+        String errorMessage = 'Registration failed (${response.statusCode})';
+        try {
+          final errorData = jsonDecode(response.body);
+          if (response.statusCode == 400) {
+            throw ApiException.validation(errorData);
+          }
+          if (errorData is Map && errorData.containsKey('detail')) {
+            errorMessage = errorData['detail'].toString();
+          } else if (errorData is Map && errorData.containsKey('non_field_errors')) {
+            final nfe = errorData['non_field_errors'];
+            errorMessage = nfe is List ? nfe.first.toString() : nfe.toString();
+          } else {
+            errorMessage = errorData.toString();
+          }
+        } catch (e) {
+          if (e is ApiException) rethrow;
         }
-        if (errorData is Map && errorData.containsKey('detail')) {
-          errorMessage = errorData['detail'].toString();
-        } else if (errorData is Map && errorData.containsKey('non_field_errors')) {
-          final nfe = errorData['non_field_errors'];
-          errorMessage = nfe is List ? nfe.first.toString() : nfe.toString();
-        } else {
-          errorMessage = errorData.toString();
-        }
-      } catch (e) {
-        if (e is ApiException) rethrow;
+        throw ApiException(statusCode: response.statusCode, message: errorMessage);
       }
-      throw ApiException(statusCode: response.statusCode, message: errorMessage);
+    } on SocketException catch (_) {
+      throw ApiException.network();
+    } on TimeoutException catch (_) {
+      throw ApiException.network(
+        'Connection timed out. Please check your internet connection and try again.',
+      );
+    } on http.ClientException catch (e) {
+      throw ApiException.from(e);
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException.from(e);
     }
   }
 
@@ -435,13 +458,19 @@ class ApiAuthRepository implements AuthRepository {
       String errorMessage = 'Failed to verify OTP (${response.statusCode})';
       try {
         final errorData = jsonDecode(response.body);
-        if (errorData is Map && errorData.containsKey('detail')) {
-          errorMessage = errorData['detail'].toString();
-        } else if (errorData is Map && errorData.containsKey('non_field_errors')) {
-          final nfe = errorData['non_field_errors'];
-          errorMessage = nfe is List ? nfe.first.toString() : nfe.toString();
-        } else {
-          errorMessage = errorData.toString();
+        if (errorData is Map) {
+          if (errorData.containsKey('detail')) {
+            errorMessage = errorData['detail'].toString();
+          } else if (errorData.containsKey('error')) {
+            errorMessage = errorData['error'].toString();
+          } else if (errorData.containsKey('message')) {
+            errorMessage = errorData['message'].toString();
+          } else if (errorData.containsKey('non_field_errors')) {
+            final nfe = errorData['non_field_errors'];
+            errorMessage = nfe is List ? nfe.first.toString() : nfe.toString();
+          } else {
+            errorMessage = errorData.toString();
+          }
         }
       } catch (_) {}
       throw ApiException(statusCode: response.statusCode, message: errorMessage);
@@ -518,7 +547,10 @@ class ApiAuthRepository implements AuthRepository {
   @override
   Future<void> resendOtp({required String email}) async {
     final response = await appApi.apiV1AuthResendOtpPost(
-      body: ResendOTPRequest(email: email.trim()),
+      body: ResendOTPRequest(
+        email: email.trim(),
+        purpose: enums.PurposeEnum.passwordReset,
+      ),
     );
     _handleError(response);
   }
@@ -529,14 +561,55 @@ class ApiAuthRepository implements AuthRepository {
     required String newPassword,
     required String confirmPassword,
   }) async {
-    final response = await appApi.apiV1AuthChangePasswordPost(
-      body: ChangePasswordRequest(
-        oldPassword: oldPassword,
-        newPassword: newPassword,
-        confirmPassword: confirmPassword,
-      ),
+    final token = await tokenStorage.getAccessToken();
+    final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/auth/change-password/');
+    final response = await http.post(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        if (token != null) 'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({
+        'old_password': oldPassword,
+        'new_password': newPassword,
+        'confirm_password': confirmPassword,
+      }),
     );
-    _handleError(response);
+
+    if (response.statusCode >= 400) {
+      String errorMessage = 'Failed to change password (${response.statusCode})';
+      Map<String, dynamic>? errorData;
+      try {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map<String, dynamic>) {
+          errorData = decoded;
+        }
+      } catch (_) {}
+
+      if (errorData != null) {
+        if (errorData.containsKey('error') && errorData['error'] != null) {
+          errorMessage = errorData['error'].toString();
+        } else if (errorData.containsKey('detail') && errorData['detail'] != null) {
+          errorMessage = errorData['detail'].toString();
+        } else if (errorData.containsKey('message') && errorData['message'] != null) {
+          errorMessage = errorData['message'].toString();
+        } else if (errorData.containsKey('non_field_errors') && errorData['non_field_errors'] != null) {
+          final nfe = errorData['non_field_errors'];
+          errorMessage = nfe is List ? nfe.first.toString() : nfe.toString();
+        } else {
+          final entries = errorData.entries.where((e) => e.value != null).toList();
+          if (entries.isNotEmpty) {
+            final firstEntry = entries.first;
+            final val = firstEntry.value;
+            final raw = val is List ? val.first.toString() : val.toString();
+            errorMessage = '${firstEntry.key}: $raw';
+          }
+        }
+      }
+
+      throw ApiException(statusCode: response.statusCode, message: errorMessage);
+    }
   }
 
   @override
@@ -705,14 +778,23 @@ class ApiAuthRepository implements AuthRepository {
       body['areas_of_interest'] = request.areasOfInterest;
     }
 
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final currentLang = prefs.getString('app_user_language_code') ?? 'en';
+      body['preferred_language'] = currentLang;
+    } catch (_) {}
+
     final http.Response response;
     try {
+      final prefs = await SharedPreferences.getInstance();
+      final lang = prefs.getString('app_user_language_code') ?? 'en';
       response = await http.patch(
         uri,
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
           'Accept': 'application/json',
+          'Accept-Language': lang,
         },
         body: jsonEncode(body),
       );
@@ -796,6 +878,7 @@ class ApiAuthRepository implements AuthRepository {
     }
 
     if (response.statusCode >= 400) {
+      TokenStorage.checkResponse(response.statusCode, response.body);
       Map<String, dynamic>? errorData;
       try {
         errorData = jsonDecode(response.body) as Map<String, dynamic>;
@@ -919,6 +1002,7 @@ class ApiAuthRepository implements AuthRepository {
     print('📦 [KYC REPO] Response Body: ${response.body}');
 
     if (response.statusCode >= 400) {
+      TokenStorage.checkResponse(response.statusCode, response.body);
       Map<String, dynamic>? errorData;
       try {
         errorData = jsonDecode(response.body) as Map<String, dynamic>;

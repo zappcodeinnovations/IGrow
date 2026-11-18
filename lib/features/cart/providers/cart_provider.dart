@@ -77,10 +77,28 @@ final isCourseInCartProvider = Provider.family<bool, String>((ref, courseIdOrSlu
   final cartAsync = ref.watch(cartProvider);
   return cartAsync.maybeWhen(
     data: (cart) => cart.items.any((item) {
+      if (item.isEbook) return false;
       final matchesCourseId = item.course == target || item.id == target;
       final matchesDetailId = item.courseDetail?['id']?.toString() == target;
       final matchesDetailSlug = item.courseDetail?['slug']?.toString() == target;
       return matchesCourseId || matchesDetailId || matchesDetailSlug;
+    }),
+    orElse: () => false,
+  );
+});
+
+/// Helper family provider to check if a specific ebook is currently in the cart.
+final isEbookInCartProvider = Provider.family<bool, String>((ref, ebookIdOrSlug) {
+  final target = ebookIdOrSlug.trim();
+  if (target.isEmpty) return false;
+  final cartAsync = ref.watch(cartProvider);
+  return cartAsync.maybeWhen(
+    data: (cart) => cart.items.any((item) {
+      if (!item.isEbook) return false;
+      final matchesEbookId = item.ebook == target || item.id == target || item.effectiveId == target;
+      final matchesDetailId = item.ebookDetail?['id']?.toString() == target;
+      final matchesDetailSlug = item.ebookDetail?['slug']?.toString() == target;
+      return matchesEbookId || matchesDetailId || matchesDetailSlug;
     }),
     orElse: () => false,
   );
@@ -112,8 +130,18 @@ class CartNotifier extends AsyncNotifier<ApiCart> {
     try {
       await _repository.addToCart(courseId, ebookId: ebookId);
     } catch (e) {
-      // POST failed! Revert state to previous cart so UI state is NOT desynced or wiped.
-      state = previousState;
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('already in cart') || errStr.contains('already added')) {
+        try {
+          final updatedCart = await _repository.getCart();
+          state = AsyncData(updatedCart);
+        } catch (_) {
+          state = previousState;
+        }
+      } else {
+        // POST failed! Revert state to previous cart so UI state is NOT desynced or wiped.
+        state = previousState;
+      }
       rethrow;
     }
 
@@ -132,11 +160,21 @@ class CartNotifier extends AsyncNotifier<ApiCart> {
         // Since the item WAS successfully added to the server cart,
         // synthesize/preserve the cart state so UI reflects it accurately without throwing a false error!
         final itemId = (ebookId != null && ebookId.isNotEmpty) ? ebookId : courseId;
+        final isEbook = ebookId != null && ebookId.isNotEmpty;
         if (previousState.hasValue) {
           final existing = previousState.value!;
-          final alreadyPresent = existing.items.any((it) => it.course == itemId || it.id == itemId);
+          final alreadyPresent = existing.items.any((it) =>
+              it.effectiveId == itemId ||
+              it.id == itemId ||
+              it.course == itemId ||
+              it.ebook == itemId);
           if (!alreadyPresent) {
-            final optimisticItem = ApiCartItem(id: itemId, course: courseId);
+            final optimisticItem = ApiCartItem(
+              id: itemId,
+              course: isEbook ? '' : courseId,
+              ebook: isEbook ? ebookId : null,
+              itemType: isEbook ? 'ebook' : 'course',
+            );
             final updatedItems = [...existing.items, optimisticItem];
             state = AsyncData(ApiCart(
               id: existing.id,
@@ -150,7 +188,14 @@ class CartNotifier extends AsyncNotifier<ApiCart> {
         } else {
           state = AsyncData(ApiCart(
             id: '',
-            items: [ApiCartItem(id: itemId, course: courseId)],
+            items: [
+              ApiCartItem(
+                id: itemId,
+                course: isEbook ? '' : courseId,
+                ebook: isEbook ? ebookId : null,
+                itemType: isEbook ? 'ebook' : 'course',
+              ),
+            ],
             itemCount: '1',
           ));
         }
@@ -158,22 +203,66 @@ class CartNotifier extends AsyncNotifier<ApiCart> {
     }
   }
 
-  /// Remove a course from the cart.
-  Future<void> removeFromCart(String courseId) async {
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
-      await _repository.removeFromCart(courseId);
-      return _fetchCart();
-    });
+  /// Remove a course or ebook from the cart optimistically.
+  Future<void> removeFromCart(String itemId, {String? ebookId}) async {
+    final previousState = state;
+
+    // 1. Optimistic local removal: update state immediately so UI card disappears without reloading screen
+    if (state.hasValue) {
+      final currentCart = state.value!;
+      final updatedItems = currentCart.items.where((it) {
+        if (ebookId != null && ebookId.isNotEmpty && it.isEbook) {
+          return it.ebook != ebookId && it.effectiveId != itemId && it.id != itemId;
+        }
+        return it.effectiveId != itemId && it.id != itemId && it.course != itemId;
+      }).toList();
+
+      // Recalculate estimated total locally
+      double newTotal = 0.0;
+      for (final it in updatedItems) {
+        final p = double.tryParse(it.price.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0.0;
+        newTotal += p;
+      }
+
+      state = AsyncData(ApiCart(
+        id: currentCart.id,
+        items: updatedItems,
+        itemCount: updatedItems.length.toString(),
+        total: newTotal > 0 ? newTotal.toStringAsFixed(2) : '0.00',
+      ));
+    }
+
+    // 2. Perform backend removal in background
+    try {
+      await _repository.removeFromCart(itemId, ebookId: ebookId);
+      final freshCart = await _repository.getCart();
+      state = AsyncData(freshCart);
+    } catch (e) {
+      debugPrint('⚠️ [CartNotifier] removeFromCart error: $e');
+      state = previousState;
+      rethrow;
+    }
   }
 
-  /// Clear all items from the cart.
+  /// Clear all items from the cart optimistically.
   Future<void> clearCart() async {
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
+    final previousState = state;
+    if (state.hasValue) {
+      state = AsyncData(ApiCart(
+        id: state.value!.id,
+        items: const [],
+        itemCount: '0',
+        total: '0.00',
+      ));
+    }
+    try {
       await _repository.clearCart();
-      return _fetchCart();
-    });
+      final freshCart = await _repository.getCart();
+      state = AsyncData(freshCart);
+    } catch (e) {
+      state = previousState;
+      rethrow;
+    }
   }
 
   /// Step 1: Create Razorpay Order
@@ -219,7 +308,8 @@ class CartNotifier extends AsyncNotifier<ApiCart> {
 
   /// Step 4: Process Apple In-App Purchase & fulfill enrollment
   Future<Map<String, dynamic>> processIosAppleTransaction({
-    required String courseId,
+    String? courseId,
+    String? ebookId,
     required String productId,
     required String transactionId,
     required String receiptData,
@@ -228,6 +318,7 @@ class CartNotifier extends AsyncNotifier<ApiCart> {
     try {
       final result = await _repository.processIosAppleTransaction(
         courseId: courseId,
+        ebookId: ebookId,
         productId: productId,
         transactionId: transactionId,
         receiptData: receiptData,
@@ -239,6 +330,7 @@ class CartNotifier extends AsyncNotifier<ApiCart> {
       // Invalidate student enrollments & orders so course activates instantly!
       ref.invalidate(studentEnrollmentsProvider);
       ref.invalidate(ordersProvider);
+      ref.invalidate(studentEbooksProvider);
 
       return result;
     } catch (e) {

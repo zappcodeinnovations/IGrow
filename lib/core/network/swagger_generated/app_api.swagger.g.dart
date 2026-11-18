@@ -170,7 +170,7 @@ Map<String, dynamic> _$CartToJson(Cart instance) => <String, dynamic>{
 
 CartItem _$CartItemFromJson(Map<String, dynamic> json) => CartItem(
   id: json['id'] as String?,
-  course: json['course'] as String,
+  course: json['course'] as String?,
   courseDetail: json['course_detail'] == null
       ? null
       : CourseList.fromJson(json['course_detail'] as Map<String, dynamic>),

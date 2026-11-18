@@ -22,9 +22,7 @@ class TimeoutClient extends http.BaseClient {
     try {
       return await _inner.send(request).timeout(timeout);
     } on SocketException catch (_) {
-      throw ApiException.network(
-        'No internet connection. Please check your network and try again.',
-      );
+      throw ApiException.network();
     } on TimeoutException catch (_) {
       throw ApiException.network(
         'Connection timed out. Please check your internet connection and try again.',
@@ -36,9 +34,7 @@ class TimeoutClient extends http.BaseClient {
           s.contains('connection') ||
           s.contains('handshake') ||
           s.contains('host lookup')) {
-        throw ApiException.network(
-          'No internet connection. Please check your network and try again.',
-        );
+        throw ApiException.network();
       }
       rethrow;
     }
@@ -58,9 +54,7 @@ class NetworkErrorInterceptor implements Interceptor {
     try {
       return await chain.proceed(chain.request);
     } on SocketException catch (_) {
-      throw ApiException.network(
-        'No internet connection. Please check your network and try again.',
-      );
+      throw ApiException.network();
     } on TimeoutException catch (_) {
       throw ApiException.network(
         'Connection timed out. Please check your internet connection and try again.',
@@ -72,9 +66,7 @@ class NetworkErrorInterceptor implements Interceptor {
           s.contains('connection') ||
           s.contains('handshake') ||
           s.contains('host lookup')) {
-        throw ApiException.network(
-          'No internet connection. Please check your network and try again.',
-        );
+        throw ApiException.network();
       }
       rethrow;
     }
@@ -181,6 +173,26 @@ class SafeJsonConverter implements Converter {
   }
 }
 
+/// Intercepts responses to catch 401 unauthorized or invalid token responses and trigger session expiration.
+class SessionExpirationInterceptor implements Interceptor {
+  @override
+  FutureOr<Response<BodyType>> intercept<BodyType>(Chain<BodyType> chain) async {
+    final response = await chain.proceed(chain.request);
+    final path = chain.request.url.path;
+    final isAuthEndpoint = path.contains('/auth/login') ||
+        path.contains('/auth/register') ||
+        path.contains('/auth/refresh') ||
+        path.contains('/auth/forgot-password') ||
+        path.contains('/auth/verify-reset-otp') ||
+        path.contains('/auth/reset-password');
+
+    if (!isAuthEndpoint) {
+      TokenStorage.checkResponse(response.statusCode, response.bodyString, path);
+    }
+    return response;
+  }
+}
+
 /// Creates the Swagger-generated AppApi Chopper Client.
 AppApi buildAppApi(TokenStorage tokenStorage) {
   return AppApi.create(
@@ -191,6 +203,7 @@ AppApi buildAppApi(TokenStorage tokenStorage) {
     converter: SafeJsonConverter($JsonSerializableConverter()),
     interceptors: [
       NetworkErrorInterceptor(),
+      SessionExpirationInterceptor(),
       TokenInterceptor(tokenStorage),
       DebugLoggingInterceptor(),
       HttpLoggingInterceptor(),

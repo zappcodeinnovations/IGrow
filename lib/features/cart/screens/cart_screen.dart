@@ -3,10 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/network/api_exception.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_button.dart';
+import '../../../core/widgets/app_error_state.dart';
+import '../../../data/models/api_models/order_models.dart';
 import '../../wishlist/providers/wishlist_provider.dart';
 import '../providers/cart_provider.dart';
 
@@ -20,6 +21,16 @@ class CartScreen extends ConsumerStatefulWidget {
 class _CartScreenState extends ConsumerState<CartScreen> {
   // 0: Bag, 1: Wishlist
   int _activeTab = 0;
+  final Set<String> _removingItemIds = {};
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.invalidate(cartProvider);
+      ref.read(wishlistProvider.notifier).loadWishlist();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -273,15 +284,25 @@ class _CartScreenState extends ConsumerState<CartScreen> {
   }
 
   Widget _buildCartView(BuildContext context, AsyncValue<dynamic> cartState, bool isDark) {
-    return cartState.when(
-      data: (cart) {
+    return RefreshIndicator(
+      color: isDark ? AppColors.editorialSecondaryFixedDim : AppColors.editorialSecondary,
+      onRefresh: () async {
+        ref.invalidate(cartProvider);
+        await ref.read(cartProvider.future).catchError((_) => const ApiCart(id: ''));
+      },
+      child: cartState.when(
+        skipLoadingOnReload: true,
+        skipLoadingOnRefresh: true,
+        data: (cart) {
         if (cart.items.isEmpty) {
-          return SingleChildScrollView(
+          return ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(20),
-            child: Center(
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 36),
+            children: [
+              Center(
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 36),
                 decoration: BoxDecoration(
                   color: isDark ? AppColors.cardDark : AppColors.editorialSurfaceContainerLowest,
                   borderRadius: BorderRadius.circular(24),
@@ -377,8 +398,9 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                 ),
               ),
             ),
-          );
-        }
+          ],
+        );
+      }
 
         final itemCount = cart.items.length;
 
@@ -417,16 +439,26 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                 itemCount: cart.items.length,
                 itemBuilder: (context, index) {
                   final item = cart.items[index];
-                  final courseTitle = item.courseDetail?['title']?.toString() ??
-                      item.courseDetail?['name']?.toString() ??
-                      'Agriculture Course';
-                  final coursePrice = item.courseDetail?['price']?.toString() ?? '0.00';
-                  final instructor =
-                      item.courseDetail?['instructor_name']?.toString() ?? 'iAgrow Specialist';
-                  final thumbnail = item.courseDetail?['thumbnail']?.toString();
+                  final itemTitle = item.title;
+                  final itemPrice = item.price;
+                  final instructor = item.instructorOrAuthor;
+                  final thumbnail = item.thumbnail;
+                  final isEbook = item.isEbook;
+                  final itemKey = item.effectiveId.isNotEmpty ? item.effectiveId : (item.id.isNotEmpty ? item.id : 'item_$index');
+                  final isRemoving = _removingItemIds.contains(itemKey);
 
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 12),
+                  return AnimatedSize(
+                    key: ValueKey(itemKey),
+                    duration: const Duration(milliseconds: 260),
+                    curve: Curves.easeInOutCubic,
+                    child: AnimatedOpacity(
+                      duration: const Duration(milliseconds: 180),
+                      curve: Curves.easeOut,
+                      opacity: isRemoving ? 0.0 : 1.0,
+                      child: isRemoving
+                          ? const SizedBox(width: double.infinity, height: 0)
+                          : Container(
+                              margin: const EdgeInsets.only(bottom: 12),
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: isDark ? AppColors.cardDark : AppColors.editorialSurfaceContainerLowest,
@@ -463,12 +495,16 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                                         color: AppColors.editorialPrimary,
                                       ),
                                     ),
-                                    errorWidget: (_, __, ___) => const Icon(
-                                      Icons.menu_book,
+                                    errorWidget: (_, __, ___) => Icon(
+                                      isEbook ? Icons.menu_book_rounded : Icons.play_lesson_rounded,
                                       color: AppColors.editorialSecondary,
                                     ),
                                   )
-                                : const Icon(Icons.menu_book, color: AppColors.editorialSecondary, size: 28),
+                                : Icon(
+                                    isEbook ? Icons.menu_book_rounded : Icons.play_lesson_rounded,
+                                    color: AppColors.editorialSecondary,
+                                    size: 28,
+                                  ),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -478,8 +514,27 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              Container(
+                                margin: const EdgeInsets.only(bottom: 4),
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: isEbook
+                                      ? Colors.orange.withValues(alpha: 0.15)
+                                      : AppColors.primaryGreen.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  isEbook ? 'E-BOOK' : 'COURSE',
+                                  style: TextStyle(
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 0.5,
+                                    color: isEbook ? Colors.orange.shade800 : AppColors.primaryGreen,
+                                  ),
+                                ),
+                              ),
                               Text(
-                                courseTitle,
+                                itemTitle,
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
@@ -500,7 +555,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                '₹$coursePrice',
+                                '₹$itemPrice',
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w900,
@@ -515,14 +570,34 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                         IconButton(
                           icon: const Icon(Icons.close, size: 18, color: Colors.redAccent),
                           tooltip: 'Remove',
-                          onPressed: () {
-                            ref.read(cartProvider.notifier).removeFromCart(item.course);
-                          },
+                          onPressed: isRemoving
+                              ? null
+                              : () async {
+                                  setState(() => _removingItemIds.add(itemKey));
+                                  await Future.delayed(const Duration(milliseconds: 160));
+                                  if (!mounted) return;
+                                  try {
+                                    await ref.read(cartProvider.notifier).removeFromCart(item.effectiveId, ebookId: item.ebook);
+                                  } catch (_) {
+                                    if (!mounted) return;
+                                    setState(() => _removingItemIds.remove(itemKey));
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Failed to remove item from bag.'),
+                                          backgroundColor: AppColors.error,
+                                        ),
+                                      );
+                                    }
+                                  }
+                                },
                         ),
                       ],
                     ),
-                  );
-                },
+                  ),
+                ),
+              );
+            },
               ),
             ),
 
@@ -605,36 +680,47 @@ class _CartScreenState extends ConsumerState<CartScreen> {
         child: CircularProgressIndicator(color: AppColors.editorialPrimary),
       ),
       error: (error, _) {
-        String displayError = 'Unable to load cart. Please check your internet connection.';
-        if (error is ApiException) {
-          displayError = error.message;
-        }
-        return Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  displayError,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.titleMedium,
+        final displayError = getUserFriendlyErrorMessage(error);
+        return ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            SizedBox(
+              height: MediaQuery.of(context).size.height * 0.5,
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        displayError,
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 16),
+                      AppButton(
+                        label: 'Retry',
+                        onPressed: () => ref.refresh(cartProvider),
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 16),
-                AppButton(
-                  label: 'Retry',
-                  onPressed: () => ref.refresh(cartProvider),
-                ),
-              ],
+              ),
             ),
-          ),
+          ],
         );
       },
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildWishlistView(BuildContext context, AsyncValue<dynamic> wishlistAsync, bool isDark) {
-    return wishlistAsync.when(
+    return RefreshIndicator(
+      color: isDark ? AppColors.editorialSecondaryFixedDim : AppColors.editorialSecondary,
+      onRefresh: () async {
+        await ref.read(wishlistProvider.notifier).loadWishlist();
+      },
+      child: wishlistAsync.when(
       data: (items) {
         final list = items as List;
         if (list.isEmpty) {
@@ -729,76 +815,99 @@ class _CartScreenState extends ConsumerState<CartScreen> {
             final price = item.price != null ? '₹${item.price}' : 'Free';
             final instructor = item.instructorName ?? 'iAgrow Specialist';
 
-            return Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: isDark ? AppColors.cardDark : AppColors.editorialSurfaceContainerLowest,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(
-                  color: isDark ? AppColors.lineDark : AppColors.editorialOutlineVariant.withValues(alpha: 0.25),
-                  width: 1,
+            return Dismissible(
+              key: Key(item.id.isNotEmpty ? item.id : 'wishlist_${item.targetId}_$index'),
+              direction: DismissDirection.endToStart,
+              background: Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                alignment: Alignment.centerRight,
+                padding: const EdgeInsets.only(right: 20),
+                decoration: BoxDecoration(
+                  color: Colors.redAccent,
+                  borderRadius: BorderRadius.circular(18),
                 ),
+                child: const Icon(Icons.delete_outline, color: Colors.white, size: 22),
               ),
-              child: Row(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Container(
-                      width: 70,
-                      height: 70,
-                      color: isDark ? AppColors.lineDark : AppColors.editorialSurfaceContainerLow,
-                      child: item.thumbnail != null && item.thumbnail.isNotEmpty
-                          ? CachedNetworkImage(
-                              imageUrl: item.thumbnail,
-                              fit: BoxFit.cover,
-                              errorWidget: (_, __, ___) => const Icon(Icons.bookmark_border),
-                            )
-                          : const Icon(Icons.bookmark_border),
+              onDismissed: (_) {
+                ref.read(wishlistProvider.notifier).removeItem(
+                  item.id.isNotEmpty ? item.id : item.targetId,
+                );
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeInOut,
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.cardDark : AppColors.editorialSurfaceContainerLowest,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(
+                    color: isDark ? AppColors.lineDark : AppColors.editorialOutlineVariant.withValues(alpha: 0.25),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        width: 70,
+                        height: 70,
+                        color: isDark ? AppColors.lineDark : AppColors.editorialSurfaceContainerLow,
+                        child: item.thumbnail != null && item.thumbnail.isNotEmpty
+                            ? CachedNetworkImage(
+                                imageUrl: item.thumbnail,
+                                fit: BoxFit.cover,
+                                errorWidget: (_, __, ___) => const Icon(Icons.bookmark_border),
+                              )
+                            : const Icon(Icons.bookmark_border),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                            color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                              color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          'By $instructor',
-                          style: TextStyle(
-                            fontSize: 11.5,
-                            color: isDark ? Colors.white70 : AppColors.editorialOnSurfaceVariant,
+                          const SizedBox(height: 3),
+                          Text(
+                            'By $instructor',
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              color: isDark ? Colors.white70 : AppColors.editorialOnSurfaceVariant,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          price,
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
-                            color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                          const SizedBox(height: 6),
+                          Text(
+                            price,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                              color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
-                    onPressed: () {
-                      ref.read(wishlistProvider.notifier).removeItem(item.id);
-                    },
-                  ),
-                ],
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
+                      onPressed: () {
+                        ref.read(wishlistProvider.notifier).removeItem(
+                          item.id.isNotEmpty ? item.id : item.targetId,
+                        );
+                      },
+                    ),
+                  ],
+                ),
               ),
             );
           },
@@ -807,12 +916,14 @@ class _CartScreenState extends ConsumerState<CartScreen> {
       loading: () => const Center(
         child: CircularProgressIndicator(color: AppColors.editorialPrimary),
       ),
-      error: (_, __) => Center(
+      error: (err, _) => Center(
         child: Text(
-          'Unable to load wishlist',
+          getUserFriendlyErrorMessage(err, fallback: 'Unable to load wishlist'),
+          textAlign: TextAlign.center,
           style: TextStyle(color: isDark ? Colors.white70 : AppColors.editorialOnSurfaceVariant),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

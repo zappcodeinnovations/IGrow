@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../localization/app_strings.dart';
 import '../theme/app_colors.dart';
+import '../utils/app_toast.dart';
 import '../../features/auth/providers/auth_provider.dart';
 
 /// Shows a comprehensive, Apple-compliant confirmation dialog before permanently
@@ -60,7 +62,6 @@ class _DeleteAccountConfirmationDialogState
     setState(() => _isLoading = true);
 
     final nav = Navigator.of(context);
-    final messenger = ScaffoldMessenger.of(context);
 
     try {
       await widget.ref.read(authProvider.notifier).deleteAccount();
@@ -69,30 +70,24 @@ class _DeleteAccountConfirmationDialogState
         nav.pop();
       }
 
-      messenger.clearSnackBars();
-      messenger.showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Your account and associated data have been permanently deleted.',
-          ),
-          duration: Duration(milliseconds: 3000),
-          backgroundColor: AppColors.inkDark,
-        ),
+      if (!mounted) return;
+      AppToast.show(
+        context,
+        tr(widget.ref, 'Your account and associated data have been permanently deleted.'),
+        severity: ToastSeverity.info,
+        duration: const Duration(milliseconds: 3000),
       );
 
-      if (!mounted) return;
       context.go('/login');
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
+        AppToast.show(
+          context,
+          '${tr(widget.ref, 'Account deletion error: ')}$e',
+          severity: ToastSeverity.error,
+        );
       }
-      messenger.clearSnackBars();
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text('Account deletion error: $e'),
-          backgroundColor: AppColors.error,
-        ),
-      );
     }
   }
 
@@ -128,7 +123,7 @@ class _DeleteAccountConfirmationDialogState
             const SizedBox(height: 16),
             Center(
               child: Text(
-                'Delete Account',
+                tr(widget.ref, 'Delete Account'),
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.bold,
                       color: AppColors.error,
@@ -137,7 +132,7 @@ class _DeleteAccountConfirmationDialogState
             ),
             const SizedBox(height: 12),
             Text(
-              'Are you sure you want to permanently delete your account? This action cannot be undone.',
+              tr(widget.ref, 'Are you sure you want to permanently delete your account? This action cannot be undone.'),
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w600,
                     height: 1.4,
@@ -157,7 +152,7 @@ class _DeleteAccountConfirmationDialogState
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'The following will be permanently erased:',
+                    tr(widget.ref, 'The following will be permanently erased:'),
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
@@ -165,16 +160,16 @@ class _DeleteAccountConfirmationDialogState
                     ),
                   ),
                   const SizedBox(height: 6),
-                  _bulletPoint('Personal profile and contact information'),
-                  _bulletPoint('Course enrollments, progress & certificates'),
-                  _bulletPoint('Instructor media, uploads & earnings history'),
-                  _bulletPoint('All stored session tokens and credentials'),
+                  _bulletPoint(tr(widget.ref, 'Personal profile and contact information')),
+                  _bulletPoint(tr(widget.ref, 'Course enrollments, progress & certificates')),
+                  _bulletPoint(tr(widget.ref, 'Instructor media, uploads & earnings history')),
+                  _bulletPoint(tr(widget.ref, 'All stored session tokens and credentials')),
                 ],
               ),
             ),
             const SizedBox(height: 16),
             Text(
-              'Type "DELETE" below to confirm:',
+              tr(widget.ref, 'Type "DELETE" below to confirm:'),
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: isDark ? Colors.white70 : AppColors.inkSoft,
                   ),
@@ -224,7 +219,7 @@ class _DeleteAccountConfirmationDialogState
                   ),
                 ),
                 child: Text(
-                  'Cancel',
+                  tr(widget.ref, 'Cancel'),
                   style: TextStyle(
                     color: isDark ? AppColors.white : AppColors.inkDark,
                     fontWeight: FontWeight.w600,
@@ -255,9 +250,9 @@ class _DeleteAccountConfirmationDialogState
                           color: Colors.white,
                         ),
                       )
-                    : const Text(
-                        'Delete Account',
-                        style: TextStyle(
+                    : Text(
+                        tr(widget.ref, 'Delete Account'),
+                        style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
                         ),

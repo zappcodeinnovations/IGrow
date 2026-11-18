@@ -6,14 +6,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../../core/localization/app_strings.dart';
 import '../../../core/network/api_exception.dart';
+import '../../../core/router/app_router.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/app_toast.dart';
+import '../../../core/widgets/app_error_state.dart';
 import '../../../data/models/api_models/course_models.dart';
 import '../../../data/models/api_models/wishlist_model.dart';
 import '../../../data/models/user_role.dart';
@@ -23,6 +24,7 @@ import '../../home_farmer/providers/student_provider.dart';
 import '../../wishlist/providers/wishlist_provider.dart';
 import '../providers/explore_provider.dart';
 import '../widgets/course_review_modal.dart';
+import 'course_player_screen.dart' show resolveQualityStreamUrl;
 
 /// Agrilearn Live Course View (Public Landing & Details Screen)
 /// Matches Agrilearn website layout:
@@ -66,7 +68,12 @@ class CourseDetailsScreen extends ConsumerStatefulWidget {
           : '/$normalizedUrl';
       normalizedUrl = 'https://iagrow.zappcode.in$clean';
     }
-    normalizedUrl = Uri.encodeFull(normalizedUrl);
+    // Safely encode URL without double-encoding already percent-encoded UTF-8 components (e.g. Marathi chars)
+    try {
+      normalizedUrl = Uri.encodeFull(Uri.decodeFull(normalizedUrl));
+    } catch (_) {
+      normalizedUrl = Uri.encodeFull(normalizedUrl);
+    }
 
     // 1. Direct media files (e.g. uploaded .mp4 or Django media) that are not embed pages
     final isEmbed =
@@ -204,20 +211,69 @@ class CourseDetailsScreen extends ConsumerStatefulWidget {
       _CourseDetailsScreenState();
 }
 
-class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
+class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen>
+    with WidgetsBindingObserver, RouteAware {
   VideoPlayerController? _videoPlayerController;
   ChewieController? _chewieController;
   String? _activeVideoUrl;
   bool _isPlayingVideo = false;
   bool _isLoadingVideo = false;
+  bool _mainPreviewLimitReached = false;
+  bool _isMainReplaying = false;
+  Duration? _activePreviewLimit;
   bool _isAddingToCart = false;
   bool _isTogglingWishlist = false;
+  String _selectedQuality = 'Auto';
+  String? _activeBaseStreamUrl;
 
   // Track expanded state for sections
   final Map<String, bool> _sectionExpanded = {};
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final modalRoute = ModalRoute.of(context);
+    if (modalRoute != null) {
+      appRouteObserver.subscribe(this, modalRoute);
+    }
+  }
+
+  @override
+  void didPushNext() {
+    // When navigating to Cart, Wishlist, Player or other screens, pause preview playback
+    _pauseVideoPlayback();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.detached) {
+      _pauseVideoPlayback();
+    }
+  }
+
+  void _pauseVideoPlayback() {
+    if (_videoPlayerController != null && _videoPlayerController!.value.isPlaying) {
+      _videoPlayerController!.pause();
+      if (mounted) {
+        setState(() => _isPlayingVideo = false);
+      }
+    }
+  }
+
+  @override
   void dispose() {
+    appRouteObserver.unsubscribe(this);
+    WidgetsBinding.instance.removeObserver(this);
+    _videoPlayerController?.removeListener(_onMainVideoPlayerTick);
+    _videoPlayerController?.pause();
     _chewieController?.dispose();
     _videoPlayerController?.dispose();
     super.dispose();
@@ -290,11 +346,62 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
     return '$hours hr $remainingMinutes mins';
   }
 
+
+  void _onMainVideoPlayerTick() {
+    if (_videoPlayerController == null || !_videoPlayerController!.value.isInitialized) return;
+    if (_isMainReplaying) return;
+    final limit = _activePreviewLimit;
+    if (limit == null) return;
+    final currentPos = _videoPlayerController!.value.position;
+    final totalDuration = _videoPlayerController!.value.duration;
+
+    if (totalDuration > limit && currentPos >= limit) {
+      if (_videoPlayerController!.value.isPlaying) {
+        _videoPlayerController!.pause();
+      }
+      if (!_mainPreviewLimitReached) {
+        _videoPlayerController!.seekTo(limit);
+        if (_chewieController != null && _chewieController!.isFullScreen) {
+          _chewieController!.exitFullScreen();
+        }
+        if (mounted) {
+          setState(() {
+            _mainPreviewLimitReached = true;
+          });
+        }
+      }
+    } else if (_mainPreviewLimitReached && currentPos < limit) {
+      if (mounted) {
+        setState(() {
+          _mainPreviewLimitReached = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _replayMainSample() async {
+    if (_videoPlayerController == null) return;
+    _isMainReplaying = true;
+    setState(() => _mainPreviewLimitReached = false);
+    try {
+      await _videoPlayerController!.pause();
+      await _videoPlayerController!.seekTo(Duration.zero);
+      await _videoPlayerController!.play();
+    } catch (e) {
+      debugPrint('⚠️ [MainPreview] Replay failed: ');
+    } finally {
+      _isMainReplaying = false;
+    }
+  }
+
   Future<void> _initializePlayer(
     String videoUrl, {
     bool autoPlay = false,
     String? bunnyId,
+    Duration? previewLimit,
   }) async {
+    _activePreviewLimit = previewLimit;
+    _mainPreviewLimitReached = false;
     if (_activeVideoUrl == videoUrl && _videoPlayerController != null) {
       if (autoPlay && !_videoPlayerController!.value.isPlaying) {
         _videoPlayerController!.play();
@@ -311,6 +418,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
 
     final oldChewie = _chewieController;
     final oldPlayer = _videoPlayerController;
+    oldPlayer?.removeListener(_onMainVideoPlayerTick);
     _chewieController = null;
     _videoPlayerController = null;
     oldChewie?.dispose();
@@ -324,13 +432,15 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
           bunnyId: bunnyId,
           authToken: token,
         );
+        _activeBaseStreamUrl = resolved.primaryUrl;
+        final effectiveUrl = resolveQualityStreamUrl(resolved.primaryUrl, _selectedQuality);
 
         bool initialized = false;
 
         // Attempt 1: Primary Stream URL with headers
         try {
           _videoPlayerController = VideoPlayerController.networkUrl(
-            Uri.parse(resolved.primaryUrl),
+            Uri.parse(effectiveUrl),
             httpHeaders: resolved.headers,
           );
           await _videoPlayerController!.initialize().timeout(
@@ -388,6 +498,8 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
 
       if (!mounted) return;
 
+      _videoPlayerController!.addListener(_onMainVideoPlayerTick);
+
       _chewieController = ChewieController(
         videoPlayerController: _videoPlayerController!,
         autoPlay: autoPlay,
@@ -395,6 +507,23 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
         allowFullScreen: true,
         allowMuting: true,
         showControls: true,
+        showOptions: true,
+        additionalOptions: (context) {
+          if (_activeBaseStreamUrl == null || !_activeBaseStreamUrl!.startsWith('http')) {
+            return [];
+          }
+          return [
+            OptionItem(
+              onTap: (ctx) {
+                Navigator.of(ctx).pop();
+                _showMainQualitySelectionSheet(context);
+              },
+              iconData: Icons.tune_rounded,
+              title: 'Quality',
+              subtitle: _selectedQuality,
+            ),
+          ];
+        },
         materialProgressColors: ChewieProgressColors(
           playedColor: AppColors.primaryGreen,
           handleColor: AppColors.primaryGreen,
@@ -458,6 +587,289 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
             ),
             backgroundColor: Colors.red.shade700,
             duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
+  void _showMainQualitySelectionSheet(BuildContext sheetContext) {
+    final isDark = Theme.of(sheetContext).brightness == Brightness.dark;
+
+    final qualities = [
+      {
+        'value': 'Auto',
+        'title': 'Auto (Recommended)',
+        'desc': 'Adjusts resolution dynamically based on network',
+        'icon': Icons.auto_awesome_rounded,
+      },
+      {
+        'value': '480p',
+        'title': '480p (High)',
+        'desc': 'Clear picture quality, best on Wi-Fi',
+        'icon': Icons.hd_outlined,
+      },
+      {
+        'value': '360p',
+        'title': '360p (Standard)',
+        'desc': 'Balanced video quality & data usage',
+        'icon': Icons.smart_display_outlined,
+      },
+      {
+        'value': '240p',
+        'title': '240p (Data Saver)',
+        'desc': 'Lowest data usage, suitable for weak cellular',
+        'icon': Icons.data_saver_on_outlined,
+      },
+    ];
+
+    showModalBottomSheet(
+      context: sheetContext,
+      useRootNavigator: true,
+      backgroundColor: isDark ? AppColors.cardDark : AppColors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.tune_rounded,
+                            color: AppColors.primaryGreen, size: 22),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Video Playback Quality',
+                          style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
+                      ],
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded, size: 20),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                ...qualities.map((item) {
+                  final value = item['value'] as String;
+                  final isSelected = _selectedQuality == value;
+                  return InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      if (!isSelected) {
+                        _changeMainVideoQuality(value);
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 12, horizontal: 12),
+                      margin: const EdgeInsets.symmetric(vertical: 4),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? AppColors.primaryGreen.withValues(alpha: 0.1)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(12),
+                        border: isSelected
+                            ? Border.all(
+                                color: AppColors.primaryGreen
+                                    .withValues(alpha: 0.3))
+                            : null,
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            item['icon'] as IconData,
+                            size: 20,
+                            color: isSelected
+                                ? AppColors.primaryGreen
+                                : AppColors.inkSoft,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  item['title'] as String,
+                                  style: Theme.of(ctx)
+                                      .textTheme
+                                      .bodyMedium
+                                      ?.copyWith(
+                                        fontWeight: isSelected
+                                            ? FontWeight.bold
+                                            : FontWeight.w500,
+                                        color: isSelected
+                                            ? AppColors.primaryGreen
+                                            : null,
+                                      ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  item['desc'] as String,
+                                  style: Theme.of(ctx)
+                                      .textTheme
+                                      .bodySmall
+                                      ?.copyWith(
+                                        color: isDark
+                                            ? Colors.white60
+                                            : AppColors.inkSoft,
+                                      ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (isSelected)
+                            const Icon(
+                              Icons.check_circle_rounded,
+                              color: AppColors.primaryGreen,
+                              size: 20,
+                            ),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _changeMainVideoQuality(String newQuality) async {
+    if (_videoPlayerController == null || _activeBaseStreamUrl == null) return;
+    final previousQuality = _selectedQuality;
+    final currentPosition = _videoPlayerController!.value.position;
+    final wasPlaying = _videoPlayerController!.value.isPlaying;
+
+    setState(() {
+      _selectedQuality = newQuality;
+      _isLoadingVideo = true;
+    });
+
+    try {
+      final targetUrl = resolveQualityStreamUrl(_activeBaseStreamUrl!, newQuality);
+      final token = await ref.read(tokenStorageProvider).getAccessToken();
+      final isBunny = targetUrl.contains('b-cdn.net') ||
+          targetUrl.contains('bunny') ||
+          targetUrl.contains('mediadelivery.net');
+      Map<String, String> headers = {};
+      final isBackendHost = targetUrl.contains('iagrow.zappcode.in') ||
+          targetUrl.contains('localhost') ||
+          targetUrl.contains('127.0.0.1') ||
+          targetUrl.contains('10.0.2.2');
+      if (token != null && isBackendHost) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+      if (isBunny) {
+        headers['Referer'] = 'https://iframe.mediadelivery.net/';
+        headers['User-Agent'] =
+            'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36';
+      }
+
+      VideoPlayerController newController = VideoPlayerController.networkUrl(
+        Uri.parse(targetUrl),
+        httpHeaders: headers,
+      );
+
+      try {
+        await newController.initialize().timeout(
+          const Duration(seconds: 12),
+          onTimeout: () => throw Exception('Quality switch timed out'),
+        );
+      } catch (err) {
+        debugPrint('⚠️ [CourseDetails] Quality stream failed with headers, retrying without: $err');
+        await newController.dispose();
+        newController = VideoPlayerController.networkUrl(Uri.parse(targetUrl));
+        await newController.initialize().timeout(
+          const Duration(seconds: 12),
+          onTimeout: () => throw Exception('Quality switch timed out on retry'),
+        );
+      }
+
+      _videoPlayerController?.removeListener(_onMainVideoPlayerTick);
+      final oldPlayer = _videoPlayerController;
+      final oldChewie = _chewieController;
+
+      _videoPlayerController = newController;
+      if (currentPosition > Duration.zero) {
+        await _videoPlayerController!.seekTo(currentPosition);
+      }
+      _videoPlayerController!.addListener(_onMainVideoPlayerTick);
+
+      _chewieController = ChewieController(
+        videoPlayerController: _videoPlayerController!,
+        autoPlay: wasPlaying,
+        looping: false,
+        allowFullScreen: true,
+        allowMuting: true,
+        showControls: true,
+        showOptions: true,
+        additionalOptions: (context) {
+          return [
+            OptionItem(
+              onTap: (ctx) {
+                Navigator.of(ctx).pop();
+                _showMainQualitySelectionSheet(context);
+              },
+              iconData: Icons.tune_rounded,
+              title: 'Quality',
+              subtitle: _selectedQuality,
+            ),
+          ];
+        },
+        materialProgressColors: ChewieProgressColors(
+          playedColor: AppColors.primaryGreen,
+          handleColor: AppColors.primaryGreen,
+          backgroundColor: AppColors.lineLight,
+          bufferedColor: AppColors.canopyStart,
+        ),
+      );
+
+      oldChewie?.dispose();
+      await oldPlayer?.dispose();
+
+      if (wasPlaying) {
+        await _videoPlayerController!.play();
+      }
+
+      if (mounted) {
+        setState(() {
+          _isLoadingVideo = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Video quality changed to $newQuality'),
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('❌ [CourseDetails] Failed to change video quality: $e');
+      if (mounted) {
+        setState(() {
+          _selectedQuality = previousQuality;
+          _isLoadingVideo = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not switch quality ($e)'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
           ),
         );
       }
@@ -651,11 +1063,14 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
             lower.contains('item already')) {
           // If already in cart on backend, refresh cart provider so UI updates to "Go to Cart"
           ref.invalidate(cartProvider);
-          messenger.showSnackBar(
-            const SnackBar(
-              content: Text('Course is already in your cart. 🛒'),
-              backgroundColor: Color(0xFFC88528),
-              duration: Duration(seconds: 2),
+          AppToast.showWarning(
+            context,
+            tr(ref, 'Course is already in your cart. 🛒'),
+            duration: const Duration(seconds: 3),
+            action: SnackBarAction(
+              label: tr(ref, 'View Cart'),
+              textColor: Colors.white,
+              onPressed: () => context.push(RouteNames.cart),
             ),
           );
         } else if (lower.contains('only student') ||
@@ -794,20 +1209,23 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
           ),
           actions: [
             courseAsync.maybeWhen(
-              data: (course) => IconButton(
-                icon: Icon(
-                  Icons.share_outlined,
-                  color: isDark ? Colors.white : AppColors.inkDark,
-                ),
-                tooltip: 'Share Course',
-                onPressed: () {
-                  final title = course.title;
-                  final slug = course.slug ?? widget.courseId;
-                  final text = 'Check out "$title" on IGrow: https://iagrow.org/courses/$slug';
-                  // ignore: deprecated_member_use
-                  Share.share(text, subject: title);
-                },
-              ),
+              data: (course) {
+                if (isInstructor) return const SizedBox.shrink();
+                final isSaved = ref.watch(isWishlistedProvider(course.id)) ||
+                    (course.slug != null &&
+                        course.slug!.isNotEmpty &&
+                        ref.watch(isWishlistedProvider(course.slug!))) ||
+                    ref.watch(isWishlistedProvider(widget.courseId));
+
+                return IconButton(
+                  icon: Icon(
+                    isSaved ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                    color: isSaved ? Colors.redAccent : (isDark ? Colors.white : AppColors.inkDark),
+                  ),
+                  tooltip: isSaved ? 'Remove from Wishlist' : 'Add to Wishlist',
+                  onPressed: _isTogglingWishlist ? null : () => _toggleWishlist(course),
+                );
+              },
               orElse: () => const SizedBox.shrink(),
             ),
             if (!isInstructor)
@@ -937,6 +1355,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                             isEnrolled,
                             previewVideoUrl: videoUrl,
                             previewBunnyId: previewLecture?.bunnyVideoId,
+                            previewLecture: previewLecture,
                             isInstructor: isInstructor,
                           ),
                         ),
@@ -967,6 +1386,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                         totalLectures,
                         previewVideoUrl: videoUrl,
                         previewBunnyId: previewLecture?.bunnyVideoId,
+                        previewLecture: previewLecture,
                         isInstructor: isInstructor,
                       ),
                       Padding(
@@ -1031,18 +1451,22 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
             ],
           ),
           error: (err, _) {
+            final isOffline = isOfflineOrNetworkError(err);
             final cleanErr = err.toString().replaceFirst('Exception: ', '');
             final errLower = cleanErr.toLowerCase();
-            final isOffline = errLower.contains('socket') ||
-                errLower.contains('connection') ||
-                errLower.contains('network') ||
-                errLower.contains('offline') ||
-                errLower.contains('clientexception') ||
-                errLower.contains('host lookup');
             final isNotApproved = !isOffline && (
                 errLower.contains('not approved') ||
                 errLower.contains('not published') ||
-                errLower.contains('not found'));
+                errLower.contains('not found') ||
+                errLower.contains('deleted') ||
+                errLower.contains('does not exist') ||
+                errLower.contains('404'));
+            final isDeletedOrNotFound = !isOffline && (
+                errLower.contains('not found') ||
+                errLower.contains('deleted') ||
+                errLower.contains('does not exist') ||
+                errLower.contains('404'));
+
             return Center(
               child: Padding(
                 padding: const EdgeInsets.all(28),
@@ -1062,24 +1486,30 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                       child: Icon(
                         isOffline
                             ? Icons.wifi_off_rounded
-                            : (isNotApproved
-                                ? Icons.hourglass_empty_rounded
-                                : Icons.error_outline_rounded),
+                            : (isDeletedOrNotFound
+                                ? Icons.remove_circle_outline_rounded
+                                : (isNotApproved
+                                    ? Icons.hourglass_empty_rounded
+                                    : Icons.error_outline_rounded)),
                         size: 48,
                         color: isOffline
                             ? Colors.orange
-                            : (isNotApproved
-                                ? Colors.amber[800]
-                                : AppColors.error),
+                            : (isDeletedOrNotFound
+                                ? Colors.grey.shade600
+                                : (isNotApproved
+                                    ? Colors.amber[800]
+                                    : AppColors.error)),
                       ),
                     ),
                     const SizedBox(height: 16),
                     Text(
                       isOffline
                           ? tr(ref, 'Unable to load course')
-                          : (isNotApproved
-                              ? tr(ref, 'Course Not Available Yet')
-                              : tr(ref, 'Unable to Load Course')),
+                          : (isDeletedOrNotFound
+                              ? tr(ref, 'Course No Longer Available')
+                              : (isNotApproved
+                                  ? tr(ref, 'Course Not Available Yet')
+                                  : tr(ref, 'Unable to Load Course'))),
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -1089,10 +1519,12 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                     const SizedBox(height: 8),
                     Text(
                       isOffline
-                          ? tr(ref, 'Unable to load course details at this time. Please check your connection.')
-                          : (isNotApproved
-                              ? tr(ref, 'This course has been announced by the instructor but is currently under draft review or awaiting admin approval.')
-                              : cleanErr),
+                          ? tr(ref, 'No internet connection. Please try again later.')
+                          : (isDeletedOrNotFound
+                              ? tr(ref, 'This course has been unpublished or removed by the instructor.')
+                              : (isNotApproved
+                                  ? tr(ref, 'This course has been announced by the instructor but is currently under draft review or awaiting admin approval.')
+                                  : cleanErr)),
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         fontSize: 13,
@@ -1152,8 +1584,10 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
   // ── Hero Header ─────────────────────────────────────────────────────────────
 
   Widget _buildHeroHeader(ApiCourseDetail course, int totalLectures) {
-    final categoryText =
-        course.categoryDisplay ?? course.category ?? 'AGRIBUSINESS';
+    final categoryText = course.categoryDisplay ??
+        course.resolvedCategoryName ??
+        CourseCategory.fromValue(course.category)?.display ??
+        'AGRIBUSINESS';
     final instructor = course.instructorName ?? 'Instructor';
 
     return Container(
@@ -1290,52 +1724,75 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
           const SizedBox(height: 18),
 
           // Instructor Attribution
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 18,
-                backgroundColor: AppColors.primaryGreen,
-                backgroundImage:
-                    course.instructorAvatar != null &&
-                        course.instructorAvatar!.isNotEmpty
-                    ? NetworkImage(course.instructorAvatar!)
-                    : null,
-                child:
-                    course.instructorAvatar == null ||
-                        course.instructorAvatar!.isEmpty
-                    ? Text(
-                        instructor.isNotEmpty
-                            ? instructor[0].toUpperCase()
-                            : 'I',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      )
-                    : null,
-              ),
-              const SizedBox(width: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+          InkWell(
+            onTap: () {
+              if (instructor.isNotEmpty && instructor != 'Instructor') {
+                context.push('${RouteNames.explore}?search=${Uri.encodeComponent(instructor)}');
+              }
+            },
+            borderRadius: BorderRadius.circular(10),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    'Created by',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.white.withValues(alpha: 0.6),
-                    ),
+                  CircleAvatar(
+                    radius: 18,
+                    backgroundColor: AppColors.primaryGreen,
+                    backgroundImage:
+                        course.instructorAvatar != null &&
+                            course.instructorAvatar!.isNotEmpty
+                        ? NetworkImage(course.instructorAvatar!)
+                        : null,
+                    child:
+                        course.instructorAvatar == null ||
+                            course.instructorAvatar!.isEmpty
+                        ? Text(
+                            instructor.isNotEmpty
+                                ? instructor[0].toUpperCase()
+                                : 'I',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          )
+                        : null,
                   ),
-                  Text(
-                    instructor,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
+                  const SizedBox(width: 10),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Created by',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.white.withValues(alpha: 0.6),
+                        ),
+                      ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            instructor,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Icon(
+                            Icons.chevron_right_rounded,
+                            size: 16,
+                            color: Colors.white.withValues(alpha: 0.7),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
+            ),
           ),
         ],
       ),
@@ -1349,8 +1806,14 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
     ApiCourseDetail course, {
     String? previewVideoUrl,
     String? previewBunnyId,
+    ApiLecture? previewLecture,
+    bool isEnrolled = false,
     BorderRadius? borderRadius,
   }) {
+    final categoryText = course.categoryDisplay ??
+        course.resolvedCategoryName ??
+        CourseCategory.fromValue(course.category)?.display;
+
     return ClipRRect(
       borderRadius: borderRadius ?? BorderRadius.zero,
       child: AspectRatio(
@@ -1358,7 +1821,95 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
         child: _isPlayingVideo &&
                 _chewieController != null &&
                 _chewieController!.videoPlayerController.value.isInitialized
-            ? Chewie(controller: _chewieController!)
+            ? Stack(
+                fit: StackFit.expand,
+                children: [
+                  Chewie(controller: _chewieController!),
+                  if (_mainPreviewLimitReached)
+                    Positioned.fill(
+                      child: Container(
+                        color: Colors.black.withValues(alpha: 0.88),
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: AppColors.primaryGreen.withValues(alpha: 0.2),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.lock_outline_rounded,
+                                color: AppColors.primaryGreen,
+                                size: 26,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            const Text(
+                              'Preview Time Limit Reached',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'Enroll now to unlock full course and complete video access.',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 11,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 10),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 6,
+                              alignment: WrapAlignment.center,
+                              children: [
+                                OutlinedButton.icon(
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: Colors.white70,
+                                    side: const BorderSide(color: Colors.white38),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 4,
+                                    ),
+                                  ),
+                                  onPressed: _replayMainSample,
+                                  icon: const Icon(Icons.replay_rounded, size: 14),
+                                  label: const Text(
+                                    'Replay Sample',
+                                    style: TextStyle(fontSize: 11),
+                                  ),
+                                ),
+                                ElevatedButton.icon(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.primaryGreen,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 4,
+                                    ),
+                                  ),
+                                  onPressed: () => _handleBuyNow(context, course),
+                                  icon: const Icon(Icons.shopping_bag_outlined, size: 14),
+                                  label: const Text(
+                                    'Enroll Now',
+                                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              )
             : Stack(
                 fit: StackFit.expand,
                 children: [
@@ -1397,6 +1948,50 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                       ),
                     ),
                   ),
+                  // Top-Left Category Badge Overlay (Matches Web Catalog View)
+                  if (categoryText != null && categoryText.trim().isNotEmpty && !_isPlayingVideo)
+                    Positioned(
+                      top: 14,
+                      left: 14,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.65),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.35),
+                            width: 1,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.3),
+                              blurRadius: 4,
+                              offset: const Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.eco_rounded,
+                              size: 13,
+                              color: Color(0xFF86EFAC),
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              categoryText.trim(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   // Loading indicator or "Preview this course" Play Button Overlay
                   if (_isLoadingVideo)
                     Container(
@@ -1429,10 +2024,12 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                           onTap: () {
                             if (previewVideoUrl != null &&
                                 previewVideoUrl.isNotEmpty) {
+                              final limitSec = previewLecture?.previewDuration ?? course.previewDuration ?? 30;
                               _initializePlayer(
                                 previewVideoUrl,
                                 autoPlay: true,
                                 bunnyId: previewBunnyId,
+                                previewLimit: isEnrolled ? null : Duration(seconds: limitSec),
                               );
                             } else {
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -1507,6 +2104,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
     int totalLectures, {
     String? previewVideoUrl,
     String? previewBunnyId,
+    ApiLecture? previewLecture,
     bool isInstructor = false,
   }) {
     final inCart = (course.id.isNotEmpty && ref.watch(isCourseInCartProvider(course.id))) ||
@@ -1525,6 +2123,11 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
         ? (course.language![0].toUpperCase() + course.language!.substring(1).toLowerCase())
         : 'हिंदी';
 
+    // Category display
+    final categoryText = course.categoryDisplay ??
+        course.resolvedCategoryName ??
+        CourseCategory.fromValue(course.category)?.display;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1534,6 +2137,8 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
           course,
           previewVideoUrl: previewVideoUrl,
           previewBunnyId: previewBunnyId,
+          previewLecture: previewLecture,
+          isEnrolled: isEnrolled,
         ),
 
         // 2. Course Details Body Matching Mockup
@@ -1542,22 +2147,57 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // "BESTSELLER" Tag Pill
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFEF3C7),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: const Text(
-                  'BESTSELLER',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFFB45309),
-                    letterSpacing: 0.5,
+              // Badges Row: Category Badge & "BESTSELLER" Tag Pill
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  // Category Badge (Matches Web Catalog: "Organic Farming", "Soil Science", etc.)
+                  if (categoryText != null && categoryText.trim().isNotEmpty)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? AppColors.primaryGreen.withValues(alpha: 0.2)
+                            : const Color(0xFFE8F5E9),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: isDark
+                              ? AppColors.primaryGreen.withValues(alpha: 0.5)
+                              : const Color(0xFFA5D6A7),
+                          width: 1,
+                        ),
+                      ),
+                      child: Text(
+                        categoryText.trim(),
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: isDark ? const Color(0xFF86EFAC) : const Color(0xFF1B5E20),
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                    ),
+
+                  // "BESTSELLER" Tag Pill
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFEF3C7),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Text(
+                      'BESTSELLER',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFFB45309),
+                        letterSpacing: 0.5,
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
               const SizedBox(height: 12),
 
@@ -1683,29 +2323,6 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                     ),
                   ),
                 ),
-              ] else if (inCart) ...[
-                SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: FilledButton.icon(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF1B4D2E),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    onPressed: () => context.push('/cart'),
-                    icon: const Icon(Icons.shopping_cart_outlined, color: Colors.white),
-                    label: const Text(
-                      'Go to Cart',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
               ] else ...[
                 SizedBox(
                   width: double.infinity,
@@ -1731,46 +2348,119 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
               ],
               const SizedBox(height: 10),
 
-              // Button 2: "Preview free lesson"
-              SizedBox(
-                width: double.infinity,
-                height: 46,
-                child: FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: isDark
-                        ? AppColors.surfaceContainerHighDark
-                        : const Color(0xFFE8F3EB),
-                    foregroundColor: const Color(0xFF1B4D2E),
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  onPressed: () {
-                    if (previewVideoUrl != null && previewVideoUrl.isNotEmpty) {
-                      _initializePlayer(
-                        previewVideoUrl,
-                        autoPlay: true,
-                        bunnyId: previewBunnyId,
-                      );
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('No preview video available for this course.'),
+              // Button 2: "Add to Cart" or "Go to Cart" (repurposed from preview)
+              if (!isEnrolled && !isInstructor)
+                SizedBox(
+                  width: double.infinity,
+                  height: 46,
+                  child: inCart
+                      ? OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(
+                              color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF1B4D2E),
+                              width: 1.5,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          onPressed: () => context.push('/cart'),
+                          icon: Icon(
+                            Icons.shopping_cart_checkout_rounded,
+                            size: 18,
+                            color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF1B4D2E),
+                          ),
+                          label: Text(
+                            tr(ref, 'Go to Cart'),
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                              color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF1B4D2E),
+                            ),
+                          ),
+                        )
+                      : FilledButton.icon(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: isDark
+                                ? const Color(0xFF243629)
+                                : const Color(0xFFE8F3EB),
+                            foregroundColor: isDark
+                                ? const Color(0xFF4ADE80)
+                                : const Color(0xFF1B4D2E),
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          onPressed: _isAddingToCart ? null : () => _handleAddToCart(context, course),
+                          icon: _isAddingToCart
+                              ? SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF1B4D2E),
+                                  ),
+                                )
+                              : Icon(
+                                  Icons.add_shopping_cart_rounded,
+                                  size: 18,
+                                  color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF1B4D2E),
+                                ),
+                          label: Text(
+                            tr(ref, 'Add to Cart'),
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                              color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF1B4D2E),
+                            ),
+                          ),
                         ),
-                      );
-                    }
-                  },
-                  child: const Text(
-                    'Preview free lesson',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                      color: Color(0xFF1B4D2E),
+                )
+              else if (isInstructor || isEnrolled)
+                SizedBox(
+                  width: double.infinity,
+                  height: 46,
+                  child: FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: isDark
+                          ? const Color(0xFF243629)
+                          : const Color(0xFFE8F3EB),
+                      foregroundColor: isDark
+                          ? const Color(0xFF4ADE80)
+                          : const Color(0xFF1B4D2E),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onPressed: () {
+                      if (previewVideoUrl != null && previewVideoUrl.isNotEmpty) {
+                        final limitSec = previewLecture?.previewDuration ?? course.previewDuration ?? 30;
+                        _initializePlayer(
+                          previewVideoUrl,
+                          autoPlay: true,
+                          bunnyId: previewBunnyId,
+                          previewLimit: isEnrolled ? null : Duration(seconds: limitSec),
+                        );
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('No preview video available for this course.'),
+                          ),
+                        );
+                      }
+                    },
+                    child: Text(
+                      'Preview free lesson',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF1B4D2E),
+                      ),
                     ),
                   ),
                 ),
-              ),
             ],
           ),
         ),
@@ -1787,6 +2477,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
     bool isEnrolled, {
     String? previewVideoUrl,
     String? previewBunnyId,
+    ApiLecture? previewLecture,
     bool isInstructor = false,
   }) {
     final priceText =
@@ -1831,6 +2522,8 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
             course,
             previewVideoUrl: previewVideoUrl,
             previewBunnyId: previewBunnyId,
+            previewLecture: previewLecture,
+            isEnrolled: isEnrolled,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
           ),
 
@@ -2116,37 +2809,13 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              tr(ref, "What you will learn"),
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: isDark ? Colors.white : const Color(0xFF132A13),
-              ),
-            ),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  tr(ref, 'See all'),
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1B4D2E),
-                  ),
-                ),
-                const SizedBox(width: 2),
-                const Icon(
-                  Icons.arrow_forward_rounded,
-                  size: 14,
-                  color: Color(0xFF1B4D2E),
-                ),
-              ],
-            ),
-          ],
+        Text(
+          tr(ref, "What you will learn"),
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: isDark ? Colors.white : const Color(0xFF132A13),
+          ),
         ),
         const SizedBox(height: 12),
         ...outcomes.map(
@@ -2163,7 +2832,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    item,
+                    tr(ref, item),
                     style: TextStyle(
                       fontSize: 13,
                       color: isDark ? Colors.white70 : const Color(0xFF4A5568),
@@ -2189,37 +2858,13 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              tr(ref, 'Course curriculum'),
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: isDark ? Colors.white : const Color(0xFF132A13),
-              ),
-            ),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  tr(ref, 'See all'),
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1B4D2E),
-                  ),
-                ),
-                const SizedBox(width: 2),
-                const Icon(
-                  Icons.arrow_forward_rounded,
-                  size: 14,
-                  color: Color(0xFF1B4D2E),
-                ),
-              ],
-            ),
-          ],
+        Text(
+          tr(ref, 'Course curriculum'),
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: isDark ? Colors.white : const Color(0xFF132A13),
+          ),
         ),
         const SizedBox(height: 12),
 
@@ -2227,7 +2872,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 12),
             child: Text(
-              'No curriculum sections published yet.',
+              tr(ref, 'No curriculum sections published yet.'),
               style: TextStyle(
                 color: isDark ? Colors.white60 : Colors.grey.shade600,
                 fontSize: 13,
@@ -2298,7 +2943,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  '${section.lectures.length} lessons · ${durationMins > 0 ? durationMins : 24} min',
+                                  '${formatNum(ref, section.lectures.length)} ${tr(ref, "lessons")} · ${formatNum(ref, durationMins > 0 ? durationMins : 24)} ${tr(ref, "min")}',
                                   style: TextStyle(
                                     fontSize: 11,
                                     color: isDark ? Colors.white60 : const Color(0xFF718096),
@@ -2415,11 +3060,6 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                     ],
                   ),
                 ),
-                Icon(
-                  Icons.chevron_right_rounded,
-                  size: 20,
-                  color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
-                ),
               ],
             ),
           ),
@@ -2499,9 +3139,9 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
                     color: AppColors.signalYellow.withValues(alpha: 0.4),
                   ),
                 ),
-                child: const Text(
-                  'Free Preview',
-                  style: TextStyle(
+                child: Text(
+                  tr(ref, 'Free Preview'),
+                  style: const TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
                     color: Color(0xFFB28700),
@@ -2538,13 +3178,13 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen> {
     final desc =
         course.description ??
         course.shortDescription ??
-        'No description provided.';
+        tr(ref, 'No description provided.');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Description',
+          tr(ref, 'Description'),
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
@@ -2882,6 +3522,8 @@ class _FreePreviewModalSheetState extends State<_FreePreviewModalSheet> {
   String? _error;
   bool _previewLimitReached = false;
   bool _isReplaying = false;
+  String _selectedQuality = 'Auto';
+  String? _activeBaseStreamUrl;
 
   @override
   void initState() {
@@ -2960,13 +3602,15 @@ class _FreePreviewModalSheetState extends State<_FreePreviewModalSheet> {
         bunnyId: widget.lecture.bunnyVideoId,
         authToken: widget.token,
       );
+      _activeBaseStreamUrl = resolved.primaryUrl;
+      final effectiveUrl = resolveQualityStreamUrl(resolved.primaryUrl, _selectedQuality);
 
       bool initialized = false;
 
       // Attempt 1: Primary Stream URL with headers
       try {
         _controller = VideoPlayerController.networkUrl(
-          Uri.parse(resolved.primaryUrl),
+          Uri.parse(effectiveUrl),
           httpHeaders: resolved.headers,
         );
         await _controller!.initialize().timeout(const Duration(seconds: 10));
@@ -2997,7 +3641,7 @@ class _FreePreviewModalSheetState extends State<_FreePreviewModalSheet> {
         await _controller?.dispose();
         try {
           _controller = VideoPlayerController.networkUrl(
-            Uri.parse(resolved.primaryUrl),
+            Uri.parse(effectiveUrl),
           );
           await _controller!.initialize().timeout(const Duration(seconds: 10));
           initialized = true;
@@ -3021,6 +3665,23 @@ class _FreePreviewModalSheetState extends State<_FreePreviewModalSheet> {
         allowFullScreen: true,
         allowMuting: true,
         showControls: true,
+        showOptions: true,
+        additionalOptions: (context) {
+          if (_activeBaseStreamUrl == null || !_activeBaseStreamUrl!.startsWith('http')) {
+            return [];
+          }
+          return [
+            OptionItem(
+              onTap: (ctx) {
+                Navigator.of(ctx).pop();
+                _showModalQualitySelectionSheet(context);
+              },
+              iconData: Icons.tune_rounded,
+              title: 'Quality',
+              subtitle: _selectedQuality,
+            ),
+          ];
+        },
         materialProgressColors: ChewieProgressColors(
           playedColor: AppColors.primaryGreen,
           handleColor: AppColors.primaryGreen,
@@ -3037,6 +3698,286 @@ class _FreePreviewModalSheetState extends State<_FreePreviewModalSheet> {
           _error =
               'Unable to stream this preview video. Please check your internet connection.';
         });
+      }
+    }
+  }
+
+  void _showModalQualitySelectionSheet(BuildContext sheetContext) {
+    final isDark = Theme.of(sheetContext).brightness == Brightness.dark;
+
+    final qualities = [
+      {
+        'value': 'Auto',
+        'title': 'Auto (Recommended)',
+        'desc': 'Adjusts resolution dynamically based on network',
+        'icon': Icons.auto_awesome_rounded,
+      },
+      {
+        'value': '480p',
+        'title': '480p (High)',
+        'desc': 'Clear picture quality, best on Wi-Fi',
+        'icon': Icons.hd_outlined,
+      },
+      {
+        'value': '360p',
+        'title': '360p (Standard)',
+        'desc': 'Balanced video quality & data usage',
+        'icon': Icons.smart_display_outlined,
+      },
+      {
+        'value': '240p',
+        'title': '240p (Data Saver)',
+        'desc': 'Lowest data usage, suitable for weak cellular',
+        'icon': Icons.data_saver_on_outlined,
+      },
+    ];
+
+    showModalBottomSheet(
+      context: sheetContext,
+      useRootNavigator: true,
+      backgroundColor: isDark ? AppColors.cardDark : AppColors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.tune_rounded,
+                            color: AppColors.primaryGreen, size: 22),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Video Playback Quality',
+                          style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
+                      ],
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded, size: 20),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                ...qualities.map((item) {
+                  final value = item['value'] as String;
+                  final isSelected = _selectedQuality == value;
+                  return InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      if (!isSelected) {
+                        _changeModalVideoQuality(value);
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 12, horizontal: 12),
+                      margin: const EdgeInsets.symmetric(vertical: 4),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? AppColors.primaryGreen.withValues(alpha: 0.1)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(12),
+                        border: isSelected
+                            ? Border.all(
+                                color: AppColors.primaryGreen
+                                    .withValues(alpha: 0.3))
+                            : null,
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            item['icon'] as IconData,
+                            size: 20,
+                            color: isSelected
+                                ? AppColors.primaryGreen
+                                : AppColors.inkSoft,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  item['title'] as String,
+                                  style: Theme.of(ctx)
+                                      .textTheme
+                                      .bodyMedium
+                                      ?.copyWith(
+                                        fontWeight: isSelected
+                                            ? FontWeight.bold
+                                            : FontWeight.w500,
+                                        color: isSelected
+                                            ? AppColors.primaryGreen
+                                            : null,
+                                      ),
+                                ),
+                                Text(
+                                  item['desc'] as String,
+                                  style: Theme.of(ctx)
+                                      .textTheme
+                                      .bodySmall
+                                      ?.copyWith(
+                                        fontSize: 11,
+                                        color: AppColors.inkSoft,
+                                      ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (isSelected)
+                            const Icon(
+                              Icons.check_circle_rounded,
+                              color: AppColors.primaryGreen,
+                              size: 20,
+                            ),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _changeModalVideoQuality(String newQuality) async {
+    if (_controller == null || _activeBaseStreamUrl == null) return;
+    final previousQuality = _selectedQuality;
+    final currentPosition = _controller!.value.position;
+    final wasPlaying = _controller!.value.isPlaying;
+
+    setState(() {
+      _selectedQuality = newQuality;
+      _isLoading = true;
+    });
+
+    try {
+      final targetUrl = resolveQualityStreamUrl(_activeBaseStreamUrl!, newQuality);
+      final isBunny = targetUrl.contains('b-cdn.net') ||
+          targetUrl.contains('bunny') ||
+          targetUrl.contains('mediadelivery.net');
+      Map<String, String> headers = {};
+      final isBackendHost = targetUrl.contains('iagrow.zappcode.in') ||
+          targetUrl.contains('localhost') ||
+          targetUrl.contains('127.0.0.1') ||
+          targetUrl.contains('10.0.2.2');
+      if (widget.token != null && isBackendHost) {
+        headers['Authorization'] = 'Bearer ${widget.token}';
+      }
+      if (isBunny) {
+        headers['Referer'] = 'https://iframe.mediadelivery.net/';
+        headers['User-Agent'] =
+            'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36';
+      }
+
+      VideoPlayerController newController = VideoPlayerController.networkUrl(
+        Uri.parse(targetUrl),
+        httpHeaders: headers,
+      );
+
+      try {
+        await newController.initialize().timeout(
+          const Duration(seconds: 12),
+          onTimeout: () => throw Exception('Quality switch timed out'),
+        );
+      } catch (err) {
+        debugPrint('⚠️ [PreviewModal] Quality stream failed with headers, retrying without: $err');
+        await newController.dispose();
+        newController = VideoPlayerController.networkUrl(Uri.parse(targetUrl));
+        await newController.initialize().timeout(
+          const Duration(seconds: 12),
+          onTimeout: () => throw Exception('Quality switch timed out on retry'),
+        );
+      }
+
+      _controller?.removeListener(_onVideoPlayerTick);
+      final oldPlayer = _controller;
+      final oldChewie = _chewieController;
+
+      _controller = newController;
+      if (currentPosition > Duration.zero) {
+        await _controller!.seekTo(currentPosition);
+      }
+      _controller!.addListener(_onVideoPlayerTick);
+
+      _chewieController = ChewieController(
+        videoPlayerController: _controller!,
+        autoPlay: wasPlaying,
+        looping: false,
+        allowFullScreen: true,
+        allowMuting: true,
+        showControls: true,
+        showOptions: true,
+        additionalOptions: (context) {
+          return [
+            OptionItem(
+              onTap: (ctx) {
+                Navigator.of(ctx).pop();
+                _showModalQualitySelectionSheet(context);
+              },
+              iconData: Icons.tune_rounded,
+              title: 'Quality',
+              subtitle: _selectedQuality,
+            ),
+          ];
+        },
+        materialProgressColors: ChewieProgressColors(
+          playedColor: AppColors.primaryGreen,
+          handleColor: AppColors.primaryGreen,
+          backgroundColor: AppColors.lineLight,
+          bufferedColor: AppColors.canopyStart,
+        ),
+      );
+
+      oldChewie?.dispose();
+      await oldPlayer?.dispose();
+
+      if (wasPlaying) {
+        await _controller!.play();
+      }
+
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Video quality changed to $newQuality'),
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('❌ [PreviewModal] Failed to change video quality: $e');
+      if (mounted) {
+        setState(() {
+          _selectedQuality = previousQuality;
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not switch quality ($e)'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
     }
   }

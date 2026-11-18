@@ -12,6 +12,19 @@ class CourseProgressService {
   static const String _watchedRatioPrefix = 'lecture_watch_ratio_';
   static const String _watchedSecondsPrefix = 'lecture_watch_sec_';
 
+  /// Reset all stored progress for a freshly purchased or enrolled course.
+  Future<void> resetCourseProgress(String courseSlugOrId, {String? secondaryKey}) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('$_lecturesPrefix$courseSlugOrId');
+      await prefs.remove('$_percentPrefix$courseSlugOrId');
+      if (secondaryKey != null && secondaryKey.isNotEmpty && secondaryKey != courseSlugOrId) {
+        await prefs.remove('$_lecturesPrefix$secondaryKey');
+        await prefs.remove('$_percentPrefix$secondaryKey');
+      }
+    } catch (_) {}
+  }
+
   /// Save the set of completed lecture IDs for a course.
   Future<void> saveCompletedLectures(String courseSlugOrId, Set<String> lectureIds) async {
     try {
@@ -138,6 +151,8 @@ class CourseProgressService {
   }
 
   /// Updates watched progress for a lecture and computes overall granular course progress percentage.
+  /// If the course has quizzes, progress combines lectures and quizzes.
+  /// If the course has no quizzes, video lectures account for 100% of progress.
   Future<double> updateLectureWatchAndRecalculate({
     required String courseSlugOrId,
     String? secondaryKey,
@@ -145,6 +160,8 @@ class CourseProgressService {
     required double watchRatio,
     int? positionSeconds,
     required List<String> allLectureIds,
+    bool quizPassed = false,
+    bool hasQuiz = true,
   }) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -192,7 +209,14 @@ class CourseProgressService {
         }
       }
 
-      final percent = ((totalUnits / effectiveLectures.length) * 100.0).clamp(0.0, 100.0);
+      final double percent;
+      if (hasQuiz) {
+        final videoPercent = ((totalUnits / effectiveLectures.length) * 50.0).clamp(0.0, 50.0);
+        final quizPercent = quizPassed ? 50.0 : 0.0;
+        percent = (videoPercent + quizPercent).clamp(0.0, 100.0);
+      } else {
+        percent = ((totalUnits / effectiveLectures.length) * 100.0).clamp(0.0, 100.0);
+      }
       await saveCoursePercentage(courseSlugOrId, percent, secondaryKey: secondaryKey);
       return percent;
     } catch (_) {
@@ -200,16 +224,18 @@ class CourseProgressService {
     }
   }
 
-  /// Compute course progress percentage based on completed lectures and partial watch progress.
+  /// Compute course progress percentage based on completed lectures and quizzes.
   Future<double> calculateAndSaveProgress(
     String courseSlugOrId, {
     required int totalLectures,
     Set<String>? currentCompletedLectures,
     List<String>? allLectureIds,
+    bool quizPassed = false,
+    bool hasQuiz = true,
   }) async {
     final completed = currentCompletedLectures ?? await getCompletedLectures(courseSlugOrId);
 
-    double percent = 0.0;
+    double videoPercent = 0.0;
     if (allLectureIds != null && allLectureIds.isNotEmpty) {
       double totalUnits = 0.0;
       for (final id in allLectureIds) {
@@ -220,14 +246,17 @@ class CourseProgressService {
           totalUnits += r.clamp(0.0, 1.0);
         }
       }
-      percent = ((totalUnits / allLectureIds.length) * 100.0).clamp(0.0, 100.0);
+      videoPercent = ((totalUnits / allLectureIds.length) * (hasQuiz ? 50.0 : 100.0)).clamp(0.0, hasQuiz ? 50.0 : 100.0);
     } else {
       if (totalLectures <= 1) {
-        percent = completed.isNotEmpty ? 100.0 : 0.0;
+        videoPercent = completed.isNotEmpty ? (hasQuiz ? 50.0 : 100.0) : 0.0;
       } else {
-        percent = ((completed.length / totalLectures) * 100.0).clamp(0.0, 100.0);
+        videoPercent = ((completed.length / totalLectures) * (hasQuiz ? 50.0 : 100.0)).clamp(0.0, hasQuiz ? 50.0 : 100.0);
       }
     }
+
+    final quizPercent = hasQuiz ? (quizPassed ? 50.0 : 0.0) : 0.0;
+    final percent = (videoPercent + quizPercent).clamp(0.0, 100.0);
 
     await saveCoursePercentage(courseSlugOrId, percent);
     return percent;

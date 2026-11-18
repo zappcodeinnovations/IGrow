@@ -1,6 +1,7 @@
 // coverage:ignore-file
 // ignore_for_file: type=lint
 // ignore_for_file: unused_element_parameter
+// ignore_for_file: unused_import
 
 import 'package:json_annotation/json_annotation.dart';
 import 'package:json_annotation/json_annotation.dart' as json;
@@ -5038,7 +5039,7 @@ extension $CartExtension on Cart {
 class CartItem {
   const CartItem({
     this.id,
-    required this.course,
+    this.course,
     this.courseDetail,
     this.addedAt,
   });
@@ -5052,7 +5053,7 @@ class CartItem {
   @JsonKey(name: 'id')
   final String? id;
   @JsonKey(name: 'course')
-  final String course;
+  final String? course;
   @JsonKey(name: 'course_detail')
   final CourseList? courseDetail;
   @JsonKey(name: 'added_at')

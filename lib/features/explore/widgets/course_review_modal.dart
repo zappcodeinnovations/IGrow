@@ -42,6 +42,7 @@ class _CourseReviewModalState extends ConsumerState<CourseReviewModal> {
   int _selectedRating = 5;
   final _commentController = TextEditingController();
   bool _isSubmitting = false;
+  String? _errorMessage;
 
   String _getRatingLabel(int rating) {
     switch (rating) {
@@ -63,7 +64,11 @@ class _CourseReviewModalState extends ConsumerState<CourseReviewModal> {
   Future<void> _submitReview() async {
     if (_isSubmitting) return;
 
-    setState(() => _isSubmitting = true);
+    setState(() {
+      _isSubmitting = true;
+      _errorMessage = null;
+    });
+
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
 
@@ -90,13 +95,12 @@ class _CourseReviewModalState extends ConsumerState<CourseReviewModal> {
         ),
       );
     } catch (e) {
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(e.toString().replaceAll('Exception: ', '')),
-          backgroundColor: AppColors.error,
-          duration: const Duration(seconds: 3),
-        ),
-      );
+      final cleanError = e.toString().replaceAll('Exception: ', '').trim();
+      if (mounted) {
+        setState(() {
+          _errorMessage = cleanError;
+        });
+      }
     } finally {
       if (mounted) {
         setState(() => _isSubmitting = false);
@@ -226,7 +230,40 @@ class _CourseReviewModalState extends ConsumerState<CourseReviewModal> {
                 ),
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
+
+            // In-Modal Error Banner
+            if (_errorMessage != null && _errorMessage!.isNotEmpty) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.red.withValues(alpha: isDark ? 0.2 : 0.08),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Colors.redAccent.withValues(alpha: 0.4),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 20),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        _errorMessage!,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: isDark ? Colors.red.shade200 : Colors.red.shade800,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+            ] else
+              const SizedBox(height: 8),
 
             // Submit Button
             ElevatedButton(

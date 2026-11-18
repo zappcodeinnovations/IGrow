@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../data/models/user_role.dart';
+import '../services/notification_service.dart';
+import '../../data/models/api_models/instructor_model.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/auth/screens/auth_success_screen.dart';
 import '../../features/auth/screens/choose_role_screen.dart';
@@ -28,6 +30,8 @@ import '../../features/instructor_dashboard/screens/qa_management_screen.dart';
 import '../../features/instructor_dashboard/screens/manage_course_screen.dart';
 import '../../features/instructor_dashboard/screens/instructor_kyc_screen.dart';
 import '../../features/instructor_dashboard/screens/instructor_reviews_screen.dart';
+import '../../features/instructor_dashboard/screens/instructor_transactions_screen.dart';
+import '../../features/instructor_dashboard/screens/instructor_students_screen.dart';
 import '../../features/home_farmer/screens/farmer_home_screen.dart';
 import '../../features/home_instructor/screens/instructor_home_screen.dart';
 import '../../features/learning/screens/my_learning_screen.dart';
@@ -37,6 +41,7 @@ import '../../features/explore/screens/quiz_player_screen.dart';
 import '../../features/profile/screens/edit_profile_screen.dart';
 import '../../features/profile/screens/support_screen.dart';
 import '../../features/explore/screens/course_details_screen.dart';
+import '../../features/explore/screens/instructor_profile_screen.dart';
 import '../../features/explore/screens/ebook_viewer_screen.dart';
 import '../../features/upload_course/screens/upload_course_screen.dart';
 import '../../features/upload_course/screens/upload_ebook_screen.dart';
@@ -56,10 +61,12 @@ import 'route_names.dart';
 
 final rootNavigatorKey = GlobalKey<NavigatorState>();
 final shellNavigatorKey = GlobalKey<NavigatorState>();
+final RouteObserver<ModalRoute<void>> appRouteObserver = RouteObserver<ModalRoute<void>>();
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     navigatorKey: rootNavigatorKey,
+    observers: [appRouteObserver],
     initialLocation: RouteNames.splash,
     refreshListenable: GoRouterRefreshStream(ref.read(authProvider.notifier).stream),
     errorBuilder: (context, state) => NotFoundScreen(
@@ -94,6 +101,26 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         final role = authState.user?.activeRole;
         
         if (isAuthRoute || isSplash) {
+          final pendingRoute = NotificationService.pendingLaunchRoute;
+          if (pendingRoute != null && pendingRoute.isNotEmpty) {
+            NotificationService.pendingLaunchRoute = null;
+            String resolvedRoute = pendingRoute;
+            if (role == UserRole.instructor || role == UserRole.admin) {
+              if (resolvedRoute.startsWith('/farmer/community')) {
+                resolvedRoute = resolvedRoute.replaceFirst('/farmer/community', RouteNames.instructorCommunity);
+              } else if (resolvedRoute == '/community' || resolvedRoute.startsWith('/community?')) {
+                resolvedRoute = resolvedRoute.replaceFirst('/community', RouteNames.instructorCommunity);
+              } else if (resolvedRoute.startsWith('/farmer/course')) {
+                resolvedRoute = RouteNames.instructorUploads;
+              }
+            } else {
+              if (resolvedRoute.startsWith('/instructor/community')) {
+                resolvedRoute = resolvedRoute.replaceFirst('/instructor/community', RouteNames.farmerCommunity);
+              }
+            }
+            return resolvedRoute;
+          }
+
           if (role == UserRole.instructor) {
             return RouteNames.instructorHome;
           } else {
@@ -185,6 +212,31 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final id = state.pathParameters['id']!;
           return CourseDetailsScreen(courseId: id);
+        },
+      ),
+      GoRoute(
+        name: RouteNames.publicInstructorProfile,
+        path: '/farmer/instructor/:id',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          ApiTopInstructor? fallback;
+          final extra = state.extra;
+          if (extra is ApiTopInstructor) {
+            fallback = extra;
+          } else if (extra is Map<String, dynamic>) {
+            try {
+              fallback = ApiTopInstructor.fromJson(extra);
+            } catch (_) {}
+          } else if (extra is Map) {
+            try {
+              fallback = ApiTopInstructor.fromJson(Map<String, dynamic>.from(extra));
+            } catch (_) {}
+          }
+          return InstructorProfileScreen(
+            instructorId: id,
+            fallbackInstructor: fallback,
+          );
         },
       ),
       GoRoute(
@@ -374,6 +426,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const CreateHubScreen(),
       ),
       GoRoute(
+        path: '/community',
+        redirect: (context, state) {
+          final authState = ref.read(authProvider);
+          final role = authState.user?.activeRole;
+          final query = state.uri.query.isNotEmpty ? '?${state.uri.query}' : '';
+          if (role == UserRole.instructor || role == UserRole.admin) {
+            return '${RouteNames.instructorCommunity}$query';
+          }
+          return '${RouteNames.farmerCommunity}$query';
+        },
+      ),
+      GoRoute(
         path: RouteNames.notifications,
         builder: (context, state) => const NotificationsScreen(),
       ),
@@ -454,11 +518,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: RouteNames.farmerCommunity,
-            pageBuilder: (context, state) => _buildSlideRightPage(
-              context: context,
-              state: state,
-              child: const CommunityScreen(),
-            ),
+            pageBuilder: (context, state) {
+              final postId = state.uri.queryParameters['postId'] ?? state.uri.queryParameters['post_id'];
+              return _buildSlideRightPage(
+                context: context,
+                state: state,
+                child: CommunityScreen(initialPostId: postId),
+              );
+            },
           ),
           GoRoute(
             path: RouteNames.farmerProfile,
@@ -480,11 +547,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: RouteNames.instructorCommunity,
-            pageBuilder: (context, state) => _buildSlideRightPage(
-              context: context,
-              state: state,
-              child: const CommunityScreen(),
-            ),
+            pageBuilder: (context, state) {
+              final postId = state.uri.queryParameters['postId'] ?? state.uri.queryParameters['post_id'];
+              return _buildSlideRightPage(
+                context: context,
+                state: state,
+                child: CommunityScreen(initialPostId: postId),
+              );
+            },
           ),
           GoRoute(
             path: RouteNames.instructorProfile,
@@ -515,6 +585,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: RouteNames.instructorReviews,
             builder: (context, state) => const InstructorReviewsScreen(),
+          ),
+          GoRoute(
+            path: RouteNames.instructorTransactions,
+            builder: (context, state) => const InstructorTransactionsScreen(),
+          ),
+          GoRoute(
+            path: RouteNames.instructorStudents,
+            builder: (context, state) => const InstructorStudentsScreen(),
           ),
         ],
       ),

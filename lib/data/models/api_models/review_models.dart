@@ -5,6 +5,8 @@ class ApiCourseReview {
     required this.id,
     required this.studentName,
     this.studentAvatar,
+    this.studentId,
+    this.isMyReview = false,
     required this.rating,
     required this.comment,
     this.createdAt,
@@ -16,6 +18,8 @@ class ApiCourseReview {
   final String id;
   final String studentName;
   final String? studentAvatar;
+  final String? studentId;
+  final bool isMyReview;
   final int rating;
   final String comment;
   final DateTime? createdAt;
@@ -57,6 +61,8 @@ class ApiCourseReview {
       id: json['id']?.toString() ?? '',
       studentName: json['student_name']?.toString() ?? 'Anonymous Student',
       studentAvatar: json['student_avatar'] as String?,
+      studentId: json['student_id']?.toString() ?? json['user_id']?.toString() ?? json['user']?.toString(),
+      isMyReview: json['is_my_review'] == true,
       rating: parsedRating.clamp(1, 5),
       comment: json['comment']?.toString() ?? '',
       createdAt: created,

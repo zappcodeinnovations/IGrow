@@ -8,6 +8,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/responsive_layout.dart';
 import '../../../core/widgets/shimmer_placeholders.dart';
 import '../../../data/models/api_models/instructor_model.dart';
+import '../../../data/models/api_models/course_models.dart' show CourseCategory;
 import '../../auth/providers/auth_provider.dart';
 import '../../notifications/providers/notification_provider.dart';
 import '../../../core/services/quiz_service.dart';
@@ -17,6 +18,7 @@ import '../../news/widgets/home_news_carousel.dart';
 import '../../wishlist/providers/wishlist_provider.dart';
 import '../../../core/widgets/shell_scaffold.dart';
 import '../../../core/localization/app_strings.dart';
+import '../widgets/floating_offer_badge.dart';
 
 /// Upgraded Student / Farmer Dashboard Screen matching the Agrilearn Web UI & UX.
 class FarmerHomeScreen extends ConsumerStatefulWidget {
@@ -95,20 +97,21 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
     final firstName = fullName.split(' ').first;
 
     // Fetch async data providers
-    final enrollmentsAsync = ref.watch(studentEnrollmentsProvider);
     final weatherAsync = ref.watch(weatherProvider);
     final weatherData = weatherAsync.valueOrNull;
 
-    return RefreshIndicator(
-      onRefresh: _refreshDashboard,
-      color: AppColors.primaryGreen,
-      backgroundColor: isDark ? AppColors.cardDark : AppColors.white,
-      displacement: 60,
-      child: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(
-          parent: AlwaysScrollableScrollPhysics(),
-        ),
-        child: Column(
+    return Stack(
+      children: [
+        RefreshIndicator(
+          onRefresh: _refreshDashboard,
+          color: AppColors.primaryGreen,
+          backgroundColor: isDark ? AppColors.cardDark : AppColors.white,
+          displacement: 60,
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(
+              parent: AlwaysScrollableScrollPhysics(),
+            ),
+            child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // ── 1. Curved Deep Forest Green Header (Strictly matching prototype) ─────
@@ -168,7 +171,7 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                           ),
                           const SizedBox(width: 6),
                           const Text(
-                            'IAGROW ACADEMY',
+                            'IAGROW',
                             style: TextStyle(
                               fontSize: 12.5,
                               fontWeight: FontWeight.w800,
@@ -306,9 +309,9 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                   const SizedBox(height: 22),
 
                   // Greeting Title with Namaste & Waving Hand
-                  const Text(
-                    'Namaste, grow with knowledge',
-                    style: TextStyle(
+                  Text(
+                    tr(ref, 'Namaste, grow with knowledge'),
+                    style: const TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.w800,
                       color: Colors.white,
@@ -320,7 +323,7 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                   const Text('👋', style: TextStyle(fontSize: 24)),
                   const SizedBox(height: 6),
                   Text(
-                    'Learn farming from the best',
+                    tr(ref, 'Learn farming from the best'),
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w400,
@@ -333,9 +336,7 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                   Container(
                     height: 48,
                     decoration: BoxDecoration(
-                      color: isDark
-                          ? const Color(0xFF0F2618)
-                          : Colors.white,
+                      color: isDark ? const Color(0xFF0F2618) : Colors.white,
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
                         color: isDark
@@ -345,7 +346,9 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.12),
+                          color: Colors.black.withValues(
+                            alpha: isDark ? 0.3 : 0.12,
+                          ),
                           blurRadius: 10,
                           offset: const Offset(0, 3),
                         ),
@@ -363,17 +366,23 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                         hintText: tr(ref, 'Search farming courses...'),
                         hintStyle: TextStyle(
                           fontSize: 13.5,
-                          color: isDark ? Colors.white60 : const Color(0xFF888888),
+                          color: isDark
+                              ? Colors.white60
+                              : const Color(0xFF888888),
                         ),
                         prefixIcon: Icon(
                           Icons.search_rounded,
-                          color: isDark ? Colors.white70 : const Color(0xFF666666),
+                          color: isDark
+                              ? Colors.white70
+                              : const Color(0xFF666666),
                           size: 20,
                         ),
                         suffixIcon: _searchQuery.isNotEmpty
                             ? IconButton(
                                 icon: const Icon(Icons.clear_rounded, size: 18),
-                                color: isDark ? Colors.white70 : const Color(0xFF666666),
+                                color: isDark
+                                    ? Colors.white70
+                                    : const Color(0xFF666666),
                                 onPressed: () {
                                   _searchController.clear();
                                   setState(() {
@@ -392,7 +401,9 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                           vertical: 12,
                         ),
                       ),
-                      cursorColor: isDark ? Colors.white : AppColors.primaryGreen,
+                      cursorColor: isDark
+                          ? Colors.white
+                          : AppColors.primaryGreen,
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
@@ -566,17 +577,17 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                               children: [
                                 Text(
                                   tr(ref, 'See all'),
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.bold,
-                                    color: Color(0xFF1B4D2E),
+                                    color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF1B4D2E),
                                   ),
                                 ),
                                 const SizedBox(width: 2),
-                                const Icon(
+                                Icon(
                                   Icons.arrow_forward_rounded,
                                   size: 14,
-                                  color: Color(0xFF1B4D2E),
+                                  color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF1B4D2E),
                                 ),
                               ],
                             ),
@@ -755,318 +766,6 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                     const HomeNewsCarousel(),
                     const SizedBox(height: 28),
 
-                    // ── 5. Recent Module Peek (Stitch Exact Match) ────────────────
-                    enrollmentsAsync.when(
-                      data: (enrollments) {
-                        final activeEnrollment = enrollments.isNotEmpty
-                            ? enrollments.first
-                            : null;
-                        final courseTitle =
-                            activeEnrollment?.courseTitle ?? 'zhc';
-                        final progressPct =
-                            (activeEnrollment?.completionPercentage ?? 100)
-                                .round();
-                        final isComplete = progressPct >= 100;
-                        final courseTarget =
-                            (activeEnrollment?.courseSlug != null &&
-                                activeEnrollment!.courseSlug!.isNotEmpty)
-                            ? activeEnrollment.courseSlug!
-                            : (activeEnrollment?.course ?? '');
-
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  'Recent Module',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w600,
-                                    letterSpacing: -0.3,
-                                    color: isDark
-                                        ? Colors.white
-                                        : AppColors.editorialOnSurface,
-                                  ),
-                                ),
-                                InkWell(
-                                  onTap: () =>
-                                      context.go(RouteNames.farmerLearning),
-                                  borderRadius: BorderRadius.circular(6),
-                                  child: const Padding(
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: 4,
-                                      vertical: 2,
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          'My Learning',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                            color: AppColors.editorialSecondary,
-                                          ),
-                                        ),
-                                        Icon(
-                                          Icons.chevron_right,
-                                          size: 16,
-                                          color: AppColors.editorialSecondary,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-                            Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: isDark
-                                    ? AppColors.cardDark
-                                    : AppColors.editorialSurfaceContainerLowest,
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: isDark
-                                      ? AppColors.lineDark
-                                      : AppColors.editorialOutlineVariant
-                                            .withValues(alpha: 0.25),
-                                  width: 1,
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(
-                                      alpha: isDark ? 0.2 : 0.03,
-                                    ),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Container(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 8,
-                                                    vertical: 3,
-                                                  ),
-                                              decoration: BoxDecoration(
-                                                color: isComplete
-                                                    ? (isDark
-                                                          ? const Color(
-                                                              0xFF262060,
-                                                            )
-                                                          : AppColors
-                                                                .editorialSecondaryFixed)
-                                                    : (isDark
-                                                          ? const Color(
-                                                              0xFF1E3524,
-                                                            )
-                                                          : const Color(
-                                                              0xFFDCFCE7,
-                                                            )),
-                                                borderRadius:
-                                                    BorderRadius.circular(9999),
-                                              ),
-                                              child: Row(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  Icon(
-                                                    isComplete
-                                                        ? Icons
-                                                              .check_circle_rounded
-                                                        : Icons.pending_rounded,
-                                                    size: 13,
-                                                    color: isComplete
-                                                        ? (isDark
-                                                              ? AppColors
-                                                                    .editorialSecondaryFixedDim
-                                                              : AppColors
-                                                                    .editorialOnSecondaryFixed)
-                                                        : (isDark
-                                                              ? const Color(
-                                                                  0xFF86EFAC,
-                                                                )
-                                                              : const Color(
-                                                                  0xFF166534,
-                                                                )),
-                                                  ),
-                                                  const SizedBox(width: 4),
-                                                  Text(
-                                                    isComplete
-                                                        ? 'MODULE COMPLETE'
-                                                        : 'IN PROGRESS',
-                                                    style: TextStyle(
-                                                      fontSize: 10,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      letterSpacing: 0.4,
-                                                      color: isComplete
-                                                          ? (isDark
-                                                                ? AppColors
-                                                                      .editorialSecondaryFixedDim
-                                                                : AppColors
-                                                                      .editorialOnSecondaryFixed)
-                                                          : (isDark
-                                                                ? const Color(
-                                                                    0xFF86EFAC,
-                                                                  )
-                                                                : const Color(
-                                                                    0xFF166534,
-                                                                  )),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                            const SizedBox(height: 8),
-                                            Text(
-                                              courseTitle,
-                                              style: TextStyle(
-                                                fontSize: 18,
-                                                fontWeight: FontWeight.bold,
-                                                letterSpacing: -0.3,
-                                                color: isDark
-                                                    ? Colors.white
-                                                    : AppColors
-                                                          .editorialOnSurface,
-                                              ),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                            const SizedBox(height: 2),
-                                            Text(
-                                              'Advanced Zero-Tillage Horticulture • Core Course',
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                color: isDark
-                                                    ? Colors.white60
-                                                    : AppColors
-                                                          .editorialOnSurfaceVariant,
-                                              ),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      SizedBox(
-                                        height: 36,
-                                        child: ElevatedButton(
-                                          onPressed: () {
-                                            if (courseTarget.isNotEmpty) {
-                                              context.push(
-                                                '/player/$courseTarget',
-                                              );
-                                            } else {
-                                              context.push(RouteNames.explore);
-                                            }
-                                          },
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: isDark
-                                                ? Colors.white
-                                                : Colors.black,
-                                            foregroundColor: isDark
-                                                ? Colors.black
-                                                : Colors.white,
-                                            elevation: 0,
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 16,
-                                            ),
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(9999),
-                                            ),
-                                          ),
-                                          child: const Text(
-                                            'Resume',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 14),
-                                  // Linear Architectural Progress Bar
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        'Progress',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                          color: isDark
-                                              ? Colors.white60
-                                              : AppColors
-                                                    .editorialOnSurfaceVariant,
-                                        ),
-                                      ),
-                                      Text(
-                                        '$progressPct%',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold,
-                                          color: isDark
-                                              ? Colors.white
-                                              : AppColors.editorialOnSurface,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 6),
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.circular(9999),
-                                    child: Container(
-                                      height: 6,
-                                      width: double.infinity,
-                                      color: isDark
-                                          ? Colors.white12
-                                          : AppColors.editorialSurfaceContainer,
-                                      child: FractionallySizedBox(
-                                        alignment: Alignment.centerLeft,
-                                        widthFactor: (progressPct / 100).clamp(
-                                          0.0,
-                                          1.0,
-                                        ),
-                                        child: Container(
-                                          color: AppColors.editorialSecondary,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 24),
-                          ],
-                        );
-                      },
-                      loading: () => const SizedBox.shrink(),
-                      error: (_, __) => const SizedBox.shrink(),
-                    ),
-
                     // ── 7. Daily Agricultural Tip (Stitch Exact Match) ───────────
                     Container(
                       padding: const EdgeInsets.all(16),
@@ -1092,16 +791,16 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Row(
-                                children: const [
-                                  Icon(
+                                children: [
+                                  const Icon(
                                     Icons.lightbulb_outline_rounded,
                                     size: 18,
                                     color: AppColors.editorialSecondary,
                                   ),
-                                  SizedBox(width: 6),
+                                  const SizedBox(width: 6),
                                   Text(
-                                    'DAILY AGRICULTURAL TIP',
-                                    style: TextStyle(
+                                    tr(ref, 'DAILY AGRICULTURAL TIP'),
+                                    style: const TextStyle(
                                       fontSize: 10.5,
                                       fontWeight: FontWeight.bold,
                                       letterSpacing: 0.6,
@@ -1135,7 +834,7 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                               ),
                             ),
                             child: Text(
-                              '“Optimizing drip line pressure to 1.0–1.5 bar minimizes emitter clogging and ensures uniform micro-nutrient dissemination across lateral orchard rows.”',
+                              tr(ref, 'Optimizing drip line pressure to 1.0–1.5 bar minimizes emitter clogging and ensures uniform micro-nutrient dissemination across lateral orchard rows.'),
                               style: TextStyle(
                                 fontSize: 13.5,
                                 fontStyle: FontStyle.italic,
@@ -1151,7 +850,7 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
-                                'Prof. R. Deshmukh • Soil & Water Div.',
+                                tr(ref, 'Prof. R. Deshmukh • Soil & Water Div.'),
                                 style: TextStyle(
                                   fontSize: 11,
                                   color: isDark
@@ -1162,11 +861,11 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                               InkWell(
                                 onTap: () {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
+                                    SnackBar(
                                       content: Text(
-                                        'Tip saved to your agriculture notes',
+                                        tr(ref, 'Tip saved to your agriculture notes'),
                                       ),
-                                      duration: Duration(seconds: 2),
+                                      duration: const Duration(seconds: 2),
                                     ),
                                   );
                                 },
@@ -1182,7 +881,7 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                                     ),
                                     const SizedBox(width: 2),
                                     Text(
-                                      'Save',
+                                      tr(ref, 'Save'),
                                       style: TextStyle(
                                         fontSize: 11.5,
                                         fontWeight: FontWeight.w600,
@@ -1208,7 +907,10 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
           ],
         ),
       ),
-    );
+    ),
+    const FloatingOfferBadge(),
+  ],
+);
   }
 }
 
@@ -1285,9 +987,14 @@ class _CourseCard extends StatelessWidget {
         course.price == '0.00' ||
         course.price == '0.0';
     final priceText = isFree ? 'FREE' : '₹${course.price}';
-    final badgeLabel = isFree
-        ? 'Free course'
-        : (index % 2 == 0 ? 'Bestseller' : 'Popular');
+    final categoryName =
+        course.category?.name ??
+        CourseCategory.fromValue(course.category?.slug)?.display;
+    final badgeLabel = (categoryName != null && categoryName.trim().isNotEmpty)
+        ? categoryName.trim()
+        : (isFree
+              ? 'Free course'
+              : (index % 2 == 0 ? 'Bestseller' : 'Popular'));
 
     return Material(
       color: Colors.transparent,
@@ -1361,13 +1068,13 @@ class _CourseCard extends StatelessWidget {
                             vertical: 5,
                           ),
                           decoration: BoxDecoration(
-                            color: isFree
-                                ? const Color(0xFFFEF3C7)
-                                : const Color(0xFFFDE68A),
+                            color: isDark
+                                ? const Color(0xFF1E3A2F)
+                                : Colors.white.withValues(alpha: 0.95),
                             borderRadius: BorderRadius.circular(12),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.08),
+                                color: Colors.black.withValues(alpha: 0.12),
                                 blurRadius: 4,
                                 offset: const Offset(0, 1),
                               ),
@@ -1375,8 +1082,10 @@ class _CourseCard extends StatelessWidget {
                           ),
                           child: Text(
                             badgeLabel,
-                            style: const TextStyle(
-                              color: Color(0xFF92400E),
+                            style: TextStyle(
+                              color: isDark
+                                  ? const Color(0xFF86EFAC)
+                                  : const Color(0xFF132A13),
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
                             ),
@@ -1641,9 +1350,7 @@ class _InstructorCard extends StatelessWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(18),
           onTap: () {
-            context.push(
-              '/farmer/explore?instructor=${Uri.encodeComponent(inst.id.isNotEmpty ? inst.id : inst.fullName)}',
-            );
+            context.push('/farmer/instructor/${inst.id}', extra: inst);
           },
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,

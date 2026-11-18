@@ -101,156 +101,181 @@ class _UgcReportDialogState extends State<UgcReportDialog> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final itemType = widget.type == UgcReportType.post ? 'Post' : 'Comment';
 
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      backgroundColor: isDark ? const Color(0xFF1B2A1F) : Colors.white,
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.red.withValues(alpha: 0.12),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.flag_rounded, color: Colors.redAccent, size: 22),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+    final viewInsets = MediaQuery.of(context).viewInsets;
+    final isKeyboardOpen = viewInsets.bottom > 0;
+
+    return Center(
+      child: AnimatedPadding(
+        padding: EdgeInsets.only(
+          left: 20,
+          right: 20,
+          top: 24,
+          bottom: isKeyboardOpen ? viewInsets.bottom + 12 : 24,
+        ),
+        duration: const Duration(milliseconds: 150),
+        curve: Curves.easeOut,
+        child: Material(
+          type: MaterialType.transparency,
+          child: Container(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height -
+                  (isKeyboardOpen ? (viewInsets.bottom + 80) : 100),
+            ),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1B2A1F) : Colors.white,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
                     children: [
-                      Text(
-                        'Report Objectionable $itemType',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.white : AppColors.inkDark,
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withValues(alpha: 0.12),
+                          shape: BoxShape.circle,
                         ),
+                        child: const Icon(Icons.flag_rounded, color: Colors.redAccent, size: 22),
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Flag offensive content for 24-hr moderator action',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 11.5,
-                          color: isDark ? Colors.white60 : AppColors.inkSoft,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Report Objectionable $itemType',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: isDark ? Colors.white : AppColors.inkDark,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Flag offensive content for 24-hr moderator action',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 11.5,
+                                color: isDark ? Colors.white60 : AppColors.inkSoft,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            const Divider(height: 1),
-            const SizedBox(height: 14),
+                  const SizedBox(height: 16),
+                  const Divider(height: 1),
+                  const SizedBox(height: 14),
 
-            Text(
-              'Select a reason:',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: isDark ? Colors.white : AppColors.inkDark,
-              ),
-            ),
-            const SizedBox(height: 8),
+                  Text(
+                    'Select a reason:',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.white : AppColors.inkDark,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
 
-            // Radio choices
-            Container(
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF142017) : const Color(0xFFF8FAF7),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: isDark ? const Color(0xFF283B2C) : const Color(0xFFE2EBE0),
-                ),
-              ),
-              child: Column(
-                children: _reasons.map((r) {
-                  final isSelected = _selectedReason == r['value'];
-                  return InkWell(
-                    onTap: () => setState(() => _selectedReason = r['value']!),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      child: Row(
-                        children: [
-                          Icon(
-                            isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
-                            color: isSelected ? AppColors.primaryGreen : Colors.grey,
-                            size: 18,
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              r['label']!,
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 13,
-                                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                                color: isDark ? Colors.white : AppColors.inkDark,
-                              ),
-                            ),
-                          ),
-                        ],
+                  // Radio choices
+                  Container(
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF142017) : const Color(0xFFF8FAF7),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isDark ? const Color(0xFF283B2C) : const Color(0xFFE2EBE0),
                       ),
                     ),
-                  );
-                }).toList(),
-              ),
-            ),
-            const SizedBox(height: 12),
+                    child: Column(
+                      children: _reasons.map((r) {
+                        final isSelected = _selectedReason == r['value'];
+                        return InkWell(
+                          onTap: () => setState(() => _selectedReason = r['value']!),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
+                                  color: isSelected ? AppColors.primaryGreen : Colors.grey,
+                                  size: 18,
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    r['label']!,
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 13,
+                                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                                      color: isDark ? Colors.white : AppColors.inkDark,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
 
-            // Optional explanation
-            TextField(
-              controller: _detailsController,
-              maxLines: 2,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 13,
-                color: isDark ? Colors.white : AppColors.inkDark,
-              ),
-              decoration: InputDecoration(
-                hintText: 'Additional details (optional)...',
-                hintStyle: GoogleFonts.plusJakartaSans(fontSize: 12, color: Colors.grey),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                filled: true,
-                fillColor: isDark ? const Color(0xFF142017) : const Color(0xFFF8FAF7),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide(
-                    color: isDark ? const Color(0xFF283B2C) : const Color(0xFFE2EBE0),
+                  // Optional explanation
+                  TextField(
+                    controller: _detailsController,
+                    maxLines: 2,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13,
+                      color: isDark ? Colors.white : AppColors.inkDark,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: 'Additional details (optional)...',
+                      hintStyle: GoogleFonts.plusJakartaSans(fontSize: 12, color: Colors.grey),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      filled: true,
+                      fillColor: isDark ? const Color(0xFF142017) : const Color(0xFFF8FAF7),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(
+                          color: isDark ? const Color(0xFF283B2C) : const Color(0xFFE2EBE0),
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 18),
+                  const SizedBox(height: 18),
 
-            // Buttons
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(false),
-                  child: Text(
-                    'Cancel',
-                    style: TextStyle(color: isDark ? Colors.white70 : AppColors.inkSoft),
+                  // Buttons
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(false),
+                        child: Text(
+                          'Cancel',
+                          style: TextStyle(color: isDark ? Colors.white70 : AppColors.inkSoft),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Colors.redAccent.shade700,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        icon: const Icon(Icons.flag, size: 16),
+                        label: const Text('Submit Report'),
+                        onPressed: _submit,
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(width: 8),
-                FilledButton.icon(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Colors.redAccent.shade700,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  icon: const Icon(Icons.flag, size: 16),
-                  label: const Text('Submit Report'),
-                  onPressed: _submit,
-                ),
-              ],
+                ],
+              ),
             ),
-          ],
+          ),
         ),
       ),
     );

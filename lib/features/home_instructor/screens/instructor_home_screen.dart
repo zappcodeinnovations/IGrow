@@ -1,9 +1,10 @@
+import 'dart:async';
+import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 
 import '../../../core/localization/app_strings.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/growth_ring_progress.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../data/models/api_models/course_models.dart';
 import '../providers/instructor_home_provider.dart';
@@ -15,9 +16,11 @@ import '../../auth/providers/auth_provider.dart';
 import '../../explore/providers/explore_provider.dart';
 import '../../home_farmer/providers/farmer_home_provider.dart';
 import '../../home_farmer/providers/student_provider.dart';
+import '../../certificates/providers/certificates_provider.dart';
 import '../../notifications/providers/notification_provider.dart';
-import '../../../core/widgets/logout_dialog.dart';
 import '../../../core/widgets/shimmer_placeholders.dart';
+import '../../instructor_dashboard/widgets/my_students_sheet.dart';
+import '../../../core/services/app_config_service.dart';
 
 class InstructorHomeScreen extends ConsumerStatefulWidget {
   const InstructorHomeScreen({super.key});
@@ -46,231 +49,45 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
     super.dispose();
   }
 
-  void _showFilterBottomSheet() {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Sort By', style: Theme.of(context).textTheme.titleLarge),
-                const SizedBox(height: 16),
-                ListTile(
-                  title: const Text('Newest'),
-                  trailing: _ordering == '-created_at' ? const Icon(Icons.check, color: AppColors.primaryGreen) : null,
-                  onTap: () {
-                    setState(() => _ordering = '-created_at');
-                    Navigator.pop(context);
-                  },
-                ),
-                ListTile(
-                  title: const Text('Oldest'),
-                  trailing: _ordering == 'created_at' ? const Icon(Icons.check, color: AppColors.primaryGreen) : null,
-                  onTap: () {
-                    setState(() => _ordering = 'created_at');
-                    Navigator.pop(context);
-                  },
-                ),
-                ListTile(
-                  title: const Text('Title (A-Z)'),
-                  trailing: _ordering == 'title' ? const Icon(Icons.check, color: AppColors.primaryGreen) : null,
-                  onTap: () {
-                    setState(() => _ordering = 'title');
-                    Navigator.pop(context);
-                  },
-                ),
-                ListTile(
-                  title: const Text('Title (Z-A)'),
-                  trailing: _ordering == '-title' ? const Icon(Icons.check, color: AppColors.primaryGreen) : null,
-                  onTap: () {
-                    setState(() => _ordering = '-title');
-                    Navigator.pop(context);
-                  },
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      setState(() => _ordering = '');
-                      Navigator.pop(context);
-                    },
-                    child: const Text('Clear Filter'),
-                  ),
-                )
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
   void _showStudentsBottomSheet(BuildContext context, Map<String, dynamic> stats) {
     final transactionsAsync = ref.read(instructorTransactionsProvider);
-    final totalStudents = stats['total_students'] ?? 0;
-    final totalEnrollments = stats['total_enrollments'] ?? totalStudents;
+    final txs = transactionsAsync.value ?? [];
+    final distinctProfiles = InstructorStudentProfile.groupTransactions(txs);
+    final totalStudents = distinctProfiles.isNotEmpty
+        ? distinctProfiles.length
+        : (stats['total_students'] ?? 0);
+    final totalEnrollments = txs.isNotEmpty
+        ? txs.length
+        : (stats['total_enrollments'] ?? totalStudents);
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (sheetContext) {
-        final isDark = Theme.of(sheetContext).brightness == Brightness.dark;
         return DraggableScrollableSheet(
-          initialChildSize: 0.65,
-          minChildSize: 0.4,
-          maxChildSize: 0.9,
+          initialChildSize: 0.72,
+          minChildSize: 0.45,
+          maxChildSize: 0.95,
           expand: false,
           builder: (_, scrollController) {
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              child: ListView(
-                controller: scrollController,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade300,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: AppColors.skyBlue.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: const Icon(Icons.people_alt_rounded, color: AppColors.skyBlue, size: 22),
-                          ),
-                          const SizedBox(width: 12),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'My Students',
-                                style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-                              ),
-                              Text(
-                                '$totalStudents total students • $totalEnrollments enrollments',
-                                style: const TextStyle(fontSize: 12, color: AppColors.inkSoft),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close_rounded),
-                        onPressed: () => Navigator.pop(sheetContext),
-                      ),
-                    ],
-                  ),
-                  const Divider(height: 24),
-                  Text(
-                    'Recent Student Enrollments',
-                    style: Theme.of(sheetContext).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: 12),
-                  transactionsAsync.when(
-                    data: (txs) {
-                      if (txs.isEmpty) {
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 32),
-                          child: Center(
-                            child: Column(
-                              children: [
-                                Icon(Icons.school_outlined, size: 48, color: Colors.grey.shade400),
-                                const SizedBox(height: 10),
-                                const Text('No students enrolled yet', style: TextStyle(fontWeight: FontWeight.bold)),
-                                const SizedBox(height: 4),
-                                const Text(
-                                  'When students enroll in your courses, their names and course details will appear here.',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(fontSize: 12, color: AppColors.inkSoft),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      }
-                      return Column(
-                        children: txs.take(10).map((tx) {
-                          final buyer = tx['buyer']?.toString() ?? 'Student';
-                          final course = tx['course_title']?.toString() ?? 'Enrolled Course';
-                          final date = tx['date']?.toString() ?? 'Recent';
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 10),
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: isDark ? AppColors.cardDark : AppColors.bgLight,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Row(
-                              children: [
-                                CircleAvatar(
-                                  backgroundColor: AppColors.skyBlue.withValues(alpha: 0.15),
-                                  foregroundColor: AppColors.skyBlue,
-                                  radius: 20,
-                                  child: Text(
-                                    buyer.isNotEmpty ? buyer[0].toUpperCase() : 'S',
-                                    style: const TextStyle(fontWeight: FontWeight.bold),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(buyer, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                                      const SizedBox(height: 2),
-                                      Text(course, style: const TextStyle(fontSize: 12, color: AppColors.inkSoft), maxLines: 1, overflow: TextOverflow.ellipsis),
-                                    ],
-                                  ),
-                                ),
-                                Text(date, style: const TextStyle(fontSize: 11, color: AppColors.inkSoft)),
-                              ],
-                            ),
-                          );
-                        }).toList(),
-                      );
-                    },
-                    loading: () => const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator())),
-                    error: (_, __) => const Center(child: Text('Unable to load student enrollments')),
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryGreen,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                    ),
-                    icon: const Icon(Icons.receipt_long_rounded, size: 18),
-                    label: const Text('View Full Financial & Payout Ledger'),
-                    onPressed: () {
-                      Navigator.pop(sheetContext);
-                      context.push(RouteNames.instructorAnalytics);
-                    },
-                  ),
-                ],
+            return Container(
+              decoration: BoxDecoration(
+                color: Theme.of(sheetContext).scaffoldBackgroundColor,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: MyStudentsSheet(
+                transactions: txs,
+                totalStudents: totalStudents,
+                totalEnrollments: totalEnrollments,
+                scrollController: scrollController,
+                onOpenLedger: () {
+                  Navigator.pop(sheetContext);
+                  context.push(RouteNames.instructorAnalytics);
+                },
               ),
             );
           },
@@ -319,31 +136,39 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: AppColors.signalYellow.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(10),
+                      Expanded(
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: AppColors.signalYellow.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Icon(Icons.star_rounded, color: AppColors.signalYellow, size: 24),
                             ),
-                            child: const Icon(Icons.star_rounded, color: AppColors.signalYellow, size: 24),
-                          ),
-                          const SizedBox(width: 12),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Student Reviews & Ratings',
-                                style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    tr(ref, 'Student Reviews & Ratings'),
+                                    style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  Text(
+                                    '⭐ ${formatNum(ref, avgRating.toStringAsFixed(1))} ${tr(ref, 'average rating')} • ${formatNum(ref, totalReviews)} ${tr(ref, 'student reviews')}',
+                                    style: const TextStyle(fontSize: 12, color: AppColors.inkSoft),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
                               ),
-                              Text(
-                                '⭐ ${avgRating.toStringAsFixed(1)} average rating • $totalReviews student reviews',
-                                style: const TextStyle(fontSize: 12, color: AppColors.inkSoft),
-                              ),
-                            ],
-                          ),
-                        ],
+                            ),
+                          ],
+                        ),
                       ),
                       IconButton(
                         icon: const Icon(Icons.close_rounded),
@@ -361,7 +186,7 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                     child: Row(
                       children: [
                         Text(
-                          avgRating.toStringAsFixed(1),
+                          formatNum(ref, avgRating.toStringAsFixed(1)),
                           style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: AppColors.primaryGreen),
                         ),
                         const SizedBox(width: 16),
@@ -381,7 +206,7 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                'Based on $totalReviews verified enrolled student ratings',
+                                '${tr(ref, 'Based on')} ${formatNum(ref, totalReviews)} ${tr(ref, 'verified enrolled student ratings')}',
                                 style: const TextStyle(fontSize: 12, color: AppColors.inkSoft),
                               ),
                             ],
@@ -401,8 +226,8 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                       ),
                       child: const Icon(Icons.rate_review_outlined, color: AppColors.signalYellow, size: 20),
                     ),
-                    title: const Text('Manage Reviews & Replies', style: TextStyle(fontWeight: FontWeight.bold)),
-                    subtitle: Text('See all $totalReviews ratings and reply to students', style: const TextStyle(fontSize: 12)),
+                    title: Text(tr(ref, 'Manage Reviews & Replies'), style: const TextStyle(fontWeight: FontWeight.bold)),
+                    subtitle: Text('${tr(ref, 'See all')} ${formatNum(ref, totalReviews)} ${tr(ref, 'ratings and reply to students')}', style: const TextStyle(fontSize: 12)),
                     trailing: const Icon(Icons.chevron_right_rounded),
                     onTap: () {
                       Navigator.pop(sheetContext);
@@ -420,8 +245,8 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                       ),
                       child: const Icon(Icons.question_answer_outlined, color: AppColors.primaryGreen, size: 20),
                     ),
-                    title: const Text('Student Q&A & Inquiries', style: TextStyle(fontWeight: FontWeight.bold)),
-                    subtitle: const Text('Manage student discussions and doubts', style: TextStyle(fontSize: 12)),
+                    title: Text(tr(ref, 'Student Q&A & Inquiries'), style: const TextStyle(fontWeight: FontWeight.bold)),
+                    subtitle: Text(tr(ref, 'Manage student discussions and doubts'), style: const TextStyle(fontSize: 12)),
                     trailing: const Icon(Icons.chevron_right_rounded),
                     onTap: () {
                       Navigator.pop(sheetContext);
@@ -494,7 +319,7 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Transaction Receipt',
+                              tr(ref, 'Transaction Receipt'),
                               style: Theme.of(sheetCtx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                             ),
                             Text(
@@ -530,9 +355,9 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Amount Credited', style: TextStyle(fontSize: 13, color: AppColors.inkSoft)),
+                          Text(tr(ref, 'Amount Credited'), style: const TextStyle(fontSize: 13, color: AppColors.inkSoft)),
                           Text(
-                            amount,
+                            formatNum(ref, amount),
                             style: const TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
@@ -545,7 +370,7 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Status', style: TextStyle(fontSize: 13, color: AppColors.inkSoft)),
+                          Text(tr(ref, 'Status'), style: const TextStyle(fontSize: 13, color: AppColors.inkSoft)),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(
@@ -555,7 +380,7 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
-                              status,
+                              tr(ref, status),
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,
@@ -569,7 +394,7 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Item / Course', style: TextStyle(fontSize: 13, color: AppColors.inkSoft)),
+                          Text(tr(ref, 'Item / Course'), style: const TextStyle(fontSize: 13, color: AppColors.inkSoft)),
                           Flexible(
                             child: Text(
                               item,
@@ -585,7 +410,7 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Enrolled Student', style: TextStyle(fontSize: 13, color: AppColors.inkSoft)),
+                          Text(tr(ref, 'Enrolled Student'), style: const TextStyle(fontSize: 13, color: AppColors.inkSoft)),
                           Text(buyer, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                         ],
                       ),
@@ -593,16 +418,16 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Date & Time', style: TextStyle(fontSize: 13, color: AppColors.inkSoft)),
-                          Text(date, style: const TextStyle(fontSize: 12, color: AppColors.inkSoft)),
+                          Text(tr(ref, 'Date & Time'), style: const TextStyle(fontSize: 13, color: AppColors.inkSoft)),
+                          Text(formatNum(ref, date), style: const TextStyle(fontSize: 12, color: AppColors.inkSoft)),
                         ],
                       ),
                       const SizedBox(height: 12),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Payment Method', style: TextStyle(fontSize: 13, color: AppColors.inkSoft)),
-                          Text(paymentMethod, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+                          Text(tr(ref, 'Payment Method'), style: const TextStyle(fontSize: 13, color: AppColors.inkSoft)),
+                          Text(tr(ref, paymentMethod), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
                         ],
                       ),
                     ],
@@ -619,7 +444,7 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                     icon: const Icon(Icons.analytics_outlined, size: 18),
-                    label: const Text('View Full Financial Ledger', style: TextStyle(fontWeight: FontWeight.bold)),
+                    label: Text(tr(ref, 'View Full Financial Ledger'), style: const TextStyle(fontWeight: FontWeight.bold)),
                     onPressed: () {
                       Navigator.pop(sheetCtx);
                       context.push(RouteNames.instructorAnalytics);
@@ -640,17 +465,17 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
       context: context,
       builder: (c) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Deactivate Course', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(tr(ref, 'Deactivate Course'), style: const TextStyle(fontWeight: FontWeight.bold)),
         content: Text(
-          'Are you sure you want to deactivate "${course.title}"?\n\n'
-          'The course will be moved to Draft status and hidden from the public marketplace. You can review and manage it anytime.',
+          '${tr(ref, 'Are you sure you want to deactivate')} "${course.title}"?\n\n'
+          '${tr(ref, 'The course will be moved to Draft status and hidden from the public marketplace. You can review and manage it anytime.')}',
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(c, false), child: Text(tr(ref, 'Cancel'))),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: const Color(0xFFF59E0B)),
             onPressed: () => Navigator.pop(c, true),
-            child: const Text('Deactivate'),
+            child: Text(tr(ref, 'Deactivate')),
           ),
         ],
       ),
@@ -658,29 +483,483 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
 
     if (confirm == true) {
       try {
-        await ref.read(instructorRepositoryProvider).updateCourse(course.id, {
-          'status': 'DRAFT',
-        });
+        debugPrint('📤 [DEACTIVATE] Deactivating course: ${course.id}');
+        await ref.read(instructorRepositoryProvider).archiveCourse(course.id);
+        await ref.read(deactivatedCoursesProvider.notifier).markDeactivated(course.id);
+        debugPrint('✅ [DEACTIVATE] Successfully deactivated course: ${course.id}');
         if (!mounted) return;
         final messenger = ScaffoldMessenger.of(context);
         messenger.clearSnackBars();
         messenger.showSnackBar(
-          const SnackBar(
-            content: Text('Course deactivated and moved to Drafts'),
+          SnackBar(
+            content: Text(tr(ref, 'Course deactivated and archived')),
             backgroundColor: AppColors.primaryGreen,
           ),
         );
         ref.invalidate(instructorCoursesProvider);
+        ref.invalidate(instructorCourseDetailProvider(course.id));
+        unawaited(ref.refresh(instructorCoursesProvider((search: _searchQuery, ordering: _ordering)).future));
         ref.invalidate(studentCatalogProvider);
         ref.invalidate(featuredCoursesProvider);
         ref.invalidate(exploreCoursesProvider);
+        ref.invalidate(studentEnrollmentsProvider);
+        ref.invalidate(myCertificatesProvider);
+        ref.invalidate(certificateEnrollmentsProvider);
       } catch (e) {
         if (!mounted) return;
         final messenger = ScaffoldMessenger.of(context);
         messenger.clearSnackBars();
         messenger.showSnackBar(
           SnackBar(
-            content: Text('Failed to deactivate course: $e'),
+            content: Text('${tr(ref, 'Failed to deactivate course:')} $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _reactivateCourse(ApiCourseList course) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(tr(ref, 'Reactivate Course'), style: const TextStyle(fontWeight: FontWeight.bold)),
+        content: Text(
+          '${tr(ref, 'Are you sure you want to reactivate')} "${course.title}"?\n\n'
+          '${tr(ref, 'The course will be restored back to live status on the marketplace.')}',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: Text(tr(ref, 'Cancel'))),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.primaryGreen),
+            onPressed: () => Navigator.pop(c, true),
+            child: Text(tr(ref, 'Reactivate')),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        debugPrint('📤 [REACTIVATE] Reactivating course: ${course.id}');
+        await ref.read(instructorRepositoryProvider).unarchiveCourse(course.id);
+        await ref.read(deactivatedCoursesProvider.notifier).markReactivated(course.id);
+        debugPrint('✅ [REACTIVATE] Successfully reactivated course: ${course.id}');
+        if (!mounted) return;
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.clearSnackBars();
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(tr(ref, 'Course reactivated and is now live!')),
+            backgroundColor: AppColors.primaryGreen,
+          ),
+        );
+        ref.invalidate(instructorCoursesProvider);
+        ref.invalidate(instructorCourseDetailProvider(course.id));
+        unawaited(ref.refresh(instructorCoursesProvider((search: _searchQuery, ordering: _ordering)).future));
+        ref.invalidate(studentCatalogProvider);
+        ref.invalidate(featuredCoursesProvider);
+        ref.invalidate(exploreCoursesProvider);
+        ref.invalidate(studentEnrollmentsProvider);
+        ref.invalidate(myCertificatesProvider);
+        ref.invalidate(certificateEnrollmentsProvider);
+      } catch (e) {
+        if (!mounted) return;
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.clearSnackBars();
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text('${tr(ref, 'Failed to reactivate course:')} $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _deleteCourse(ApiCourseList course) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: Text(tr(ref, 'Delete Course')),
+        content: Text('${tr(ref, 'Are you sure you want to permanently delete')} "${course.title}"? ${tr(ref, 'This action cannot be undone.')}'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(c, false),
+            child: Text(tr(ref, 'Cancel')),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+            onPressed: () => Navigator.pop(c, true),
+            child: Text(tr(ref, 'Delete')),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await ref.read(instructorRepositoryProvider).deleteCourse(course.id);
+        if (!mounted) return;
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.clearSnackBars();
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(tr(ref, 'Course deleted successfully')),
+            backgroundColor: AppColors.primaryGreen,
+          ),
+        );
+        ref.invalidate(instructorCoursesProvider);
+        ref.invalidate(instructorCourseDetailProvider(course.id));
+        unawaited(ref.refresh(instructorCoursesProvider((search: _searchQuery, ordering: _ordering)).future));
+        ref.invalidate(studentCatalogProvider);
+        ref.invalidate(featuredCoursesProvider);
+        ref.invalidate(exploreCoursesProvider);
+        ref.invalidate(studentEnrollmentsProvider);
+        ref.invalidate(myCertificatesProvider);
+        ref.invalidate(certificateEnrollmentsProvider);
+      } catch (e) {
+        if (!mounted) return;
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.clearSnackBars();
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _submitCourseForReview(ApiCourseList course) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.rocket_launch, color: AppColors.primaryGreen),
+            const SizedBox(width: 10),
+            Text(tr(ref, 'Submit for Review'), style: const TextStyle(fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Text(
+          '${tr(ref, 'Are you sure you want to submit')} "${course.title}" ${tr(ref, 'for automated AI safety review and administrator verification? Editing will be temporarily locked until the review completes.')}',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: Text(tr(ref, 'Cancel'))),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.primaryGreen),
+            onPressed: () => Navigator.pop(c, true),
+            child: Text(tr(ref, 'Submit for Review')),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        final res = await ref.read(instructorRepositoryProvider).publishCourse(course.id);
+        if (!mounted) return;
+        final message = res['message']?.toString() ?? tr(ref, 'Course submitted for review successfully');
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.clearSnackBars();
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(message),
+            backgroundColor: AppColors.primaryGreen,
+          ),
+        );
+        ref.invalidate(instructorCoursesProvider);
+        ref.invalidate(instructorCourseDetailProvider(course.id));
+        unawaited(ref.refresh(instructorCoursesProvider((search: _searchQuery, ordering: _ordering)).future));
+        ref.invalidate(instructorStatsProvider);
+      } catch (e) {
+        if (!mounted) return;
+        String errorMsg = e.toString().replaceAll('Exception: ', '').trim();
+        if (errorMsg.contains('{') && errorMsg.contains('}')) {
+          try {
+            final jsonPart = errorMsg.substring(errorMsg.indexOf('{'), errorMsg.lastIndexOf('}') + 1);
+            final decoded = jsonDecode(jsonPart);
+            if (decoded is Map) {
+              errorMsg = decoded['error']?.toString() ??
+                  decoded['detail']?.toString() ??
+                  decoded.values.map((v) => v is List ? v.join(' ') : v.toString()).join(' ');
+            }
+          } catch (_) {}
+        }
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.clearSnackBars();
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(errorMsg),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _submitEBookForReview(dynamic ebook) async {
+    final ebookId = ebook.id?.toString();
+    final ebookTitle = ebook.title?.toString() ?? 'this draft e-book';
+    if (ebookId == null || ebookId.isEmpty) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: Text(tr(ref, 'Send for Review')),
+        content: Text(
+          '${tr(ref, 'Are you sure you want to submit')} "$ebookTitle" ${tr(ref, 'for admin review? Once approved, it will be published and visible to all students.')}',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(c, false),
+            child: Text(tr(ref, 'Cancel')),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.primaryGreen),
+            onPressed: () => Navigator.pop(c, true),
+            child: Text(tr(ref, 'Send for Review')),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await ref.read(instructorRepositoryProvider).submitEBook(ebookId);
+        if (!mounted) return;
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.clearSnackBars();
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(tr(ref, 'E-book submitted for review successfully')),
+            backgroundColor: AppColors.primaryGreen,
+          ),
+        );
+        ref.invalidate(instructorEbooksProvider);
+        ref.invalidate(studentEbooksProvider);
+        ref.invalidate(instructorStatsProvider);
+      } catch (e) {
+        if (!mounted) return;
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.clearSnackBars();
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _editEBookPrice(dynamic ebook) async {
+    final ebookId = ebook.id?.toString();
+    if (ebookId == null || ebookId.isEmpty) return;
+
+    final currentPrice = (ebook.price ?? '0').toString().replaceAll('₹', '').trim();
+    final priceController = TextEditingController(text: currentPrice == '0.00' ? '0' : currentPrice);
+
+    final config = ref.read(appConfigProvider);
+    final allowsCustomPrice = config.allowsCustomCoursePrice;
+    String selectedTier = const ['0', '249', '499', '999', '1499'].contains(currentPrice)
+        ? currentPrice
+        : '0';
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final newPrice = await showDialog<String>(
+      context: context,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryGreen.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.currency_rupee, color: AppColors.primaryGreen, size: 20),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text(
+                  'Edit E-Book Price',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Set pricing for "${ebook.title ?? 'E-Book'}". Enter 0 to offer this e-book for free to learners.',
+                style: const TextStyle(fontSize: 13, color: AppColors.inkSoft),
+              ),
+              const SizedBox(height: 16),
+              if (allowsCustomPrice)
+                TextField(
+                  controller: priceController,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    prefixIcon: const Icon(Icons.currency_rupee, size: 18),
+                    labelText: 'Price (₹)',
+                    hintText: 'e.g. 299',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                )
+              else
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: ['0', '249', '499', '999', '1499'].map((tier) {
+                    final isSel = selectedTier == tier;
+                    return ChoiceChip(
+                      label: Text(tier == '0' ? 'FREE' : '₹$tier'),
+                      selected: isSel,
+                      selectedColor: isDark ? const Color(0xFFD4FF80) : AppColors.primaryGreen,
+                      backgroundColor: isDark ? const Color(0xFF2A2D32) : Colors.grey.shade100,
+                      side: BorderSide(
+                        color: isSel
+                            ? (isDark ? const Color(0xFFD4FF80) : AppColors.primaryGreen)
+                            : (isDark ? Colors.white24 : AppColors.lineLight),
+                      ),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      showCheckmark: false,
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      labelStyle: TextStyle(
+                        color: isSel
+                            ? (isDark ? Colors.black : Colors.white)
+                            : (isDark ? Colors.white : AppColors.inkDark),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                      onSelected: (_) => setDialogState(() => selectedTier = tier),
+                    );
+                  }).toList(),
+                ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx),
+              child: Text(tr(ref, 'Cancel')),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primaryGreen,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: () {
+                final val = allowsCustomPrice ? priceController.text.trim() : selectedTier;
+                Navigator.pop(dialogCtx, val);
+              },
+              child: Text(tr(ref, 'Save Price')),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (newPrice != null) {
+      final parsed = double.tryParse(newPrice);
+      if (parsed == null || parsed < 0) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Please enter a valid price (>= 0)'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+        return;
+      }
+
+      try {
+        final formatted = parsed.toStringAsFixed(2);
+        await ref.read(instructorRepositoryProvider).updateEBook(ebookId, {
+          'price': formatted,
+        });
+        ref.invalidate(instructorEbooksProvider);
+        ref.invalidate(studentEbooksProvider);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Price updated to ₹$formatted'),
+              backgroundColor: AppColors.primaryGreen,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(e.toString().replaceAll('Exception: ', '')),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _deleteEBook(dynamic ebook) async {
+    final ebookId = ebook.id?.toString();
+    final ebookTitle = ebook.title?.toString() ?? 'this draft e-book';
+    if (ebookId == null || ebookId.isEmpty) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: Text(tr(ref, 'Delete Draft E-Book')),
+        content: Text(
+          '${tr(ref, 'Are you sure you want to permanently delete')} "$ebookTitle"? ${tr(ref, 'This action cannot be undone.')}',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(c, false),
+            child: Text(tr(ref, 'Cancel')),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+            onPressed: () => Navigator.pop(c, true),
+            child: Text(tr(ref, 'Delete')),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await ref.read(instructorRepositoryProvider).deleteEBook(ebookId);
+        if (!mounted) return;
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.clearSnackBars();
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(tr(ref, 'Draft e-book deleted successfully')),
+            backgroundColor: AppColors.primaryGreen,
+          ),
+        );
+        ref.invalidate(instructorEbooksProvider);
+        ref.invalidate(studentEbooksProvider);
+        ref.invalidate(instructorStatsProvider);
+      } catch (e) {
+        if (!mounted) return;
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.clearSnackBars();
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
             backgroundColor: AppColors.error,
           ),
         );
@@ -699,61 +978,86 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.transparent,
-        title: Container(
-          height: 44,
-          decoration: BoxDecoration(
-            color: isDark ? AppColors.cardDark : AppColors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: isDark ? AppColors.lineDark : AppColors.lineLight,
-            ),
-          ),
-          child: Row(
-            children: [
-              const SizedBox(width: 12),
-              Icon(Icons.search_rounded, color: AppColors.inkSoft, size: 20),
-              const SizedBox(width: 8),
-              Expanded(
-                child: TextField(
-                  controller: _searchController,
-                  onSubmitted: (value) {
-                    setState(() {
-                      _searchQuery = value;
-                    });
-                  },
-                  style: Theme.of(context).textTheme.bodyMedium,
-                  decoration: InputDecoration(
-                    hintText: tr(ref, 'Search courses...'),
-                    hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.inkSoft),
-                    filled: false,
-                    isDense: true,
-                    border: InputBorder.none,
-                    enabledBorder: InputBorder.none,
-                    focusedBorder: InputBorder.none,
-                    errorBorder: InputBorder.none,
-                    focusedErrorBorder: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 10),
+        automaticallyImplyLeading: false,
+        titleSpacing: 20,
+        toolbarHeight: 70,
+        title: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    '${tr(ref, 'Welcome')} 👨‍🏫',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: AppColors.inkSoft,
+                        ),
                   ),
-                ),
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      Text(
+                        userName,
+                        style: Theme.of(context).textTheme.displaySmall,
+                      ),
+                      if (user?.isKycVerified == true) ...[
+                        const SizedBox(width: 6),
+                        const Icon(
+                          Icons.verified_rounded,
+                          color: AppColors.primaryGreen,
+                          size: 22,
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+            Builder(
+              builder: (context) {
+                final unreadCount = ref.watch(unreadNotificationsCountProvider);
+                return InkWell(
+                  borderRadius: BorderRadius.circular(16),
+                  onTap: () => context.push(RouteNames.notifications),
+                  child: Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: isDark ? AppColors.cardDark : AppColors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isDark ? AppColors.lineDark : AppColors.lineLight,
+                      ),
+                    ),
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Icon(
+                          Icons.notifications_outlined,
+                          color: isDark ? AppColors.white : AppColors.inkDark,
+                        ),
+                        if (unreadCount > 0)
+                          Positioned(
+                            top: 8,
+                            right: 8,
+                            child: Container(
+                              width: 8,
+                              height: 8,
+                              decoration: const BoxDecoration(
+                                color: AppColors.accentOrange,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.tune),
-            color: AppColors.primaryGreen,
-            tooltip: tr(ref, 'Filter'),
-            onPressed: _showFilterBottomSheet,
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout_rounded),
-            color: AppColors.error,
-            tooltip: tr(ref, 'Logout'),
-            onPressed: () => showLogoutConfirmationDialog(context, ref),
-          ),
-          const SizedBox(width: 8),
-        ],
       ),
       body: SafeArea(
         child: RefreshIndicator(
@@ -772,82 +1076,6 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
             child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 16),
-              // Greeting
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${tr(ref, 'Welcome Back')} 👨‍🏫',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.inkSoft,),
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Text(
-                              userName,
-                              style: Theme.of(context).textTheme.displaySmall,
-                            ),
-                            if (user?.isKycVerified == true) ...[
-                              const SizedBox(width: 6),
-                              const Icon(
-                                Icons.verified_rounded,
-                                color: AppColors.primaryGreen,
-                                size: 22,
-                              ),
-                            ],
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  Builder(
-                    builder: (context) {
-                      final unreadCount = ref.watch(unreadNotificationsCountProvider);
-                      return InkWell(
-                        borderRadius: BorderRadius.circular(16),
-                        onTap: () => context.push(RouteNames.notifications),
-                        child: Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: isDark ? AppColors.cardDark : AppColors.white,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: isDark ? AppColors.lineDark : AppColors.lineLight,
-                            ),
-                          ),
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              Icon(
-                                Icons.notifications_outlined,
-                                color: isDark ? AppColors.white : AppColors.inkDark,
-                              ),
-                              if (unreadCount > 0)
-                                Positioned(
-                                  top: 10,
-                                  right: 10,
-                                  child: Container(
-                                    width: 8,
-                                    height: 8,
-                                    decoration: const BoxDecoration(
-                                      color: AppColors.accentOrange,
-                                      shape: BoxShape.circle,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
               const SizedBox(height: 8),
               Text(
                 tr(ref, 'Manage your courses, revenue, and AI moderation status.'),
@@ -908,13 +1136,20 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
               // Stats Row
               ref.watch(instructorStatsProvider).when(
                 data: (stats) {
+                  final transactionsAsync = ref.watch(instructorTransactionsProvider);
+                  final txs = transactionsAsync.value ?? [];
+                  final distinctProfiles = InstructorStudentProfile.groupTransactions(txs);
+                  final distinctStudentCount = distinctProfiles.isNotEmpty
+                      ? distinctProfiles.length
+                      : (stats['total_students'] ?? 0);
+
                   return Row(
                     children: [
                       Expanded(
                         child: _StatCard(
                           icon: Icons.people_alt_rounded,
                           label: tr(ref, 'Students'),
-                          value: '${stats['total_students'] ?? 0}',
+                          value: formatNum(ref, distinctStudentCount),
                           color: AppColors.skyBlue,
                           onTap: () => _showStudentsBottomSheet(context, stats),
                         ),
@@ -924,7 +1159,7 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                         child: _StatCard(
                           icon: Icons.play_lesson_rounded,
                           label: tr(ref, 'Courses'),
-                          value: '${stats['total_courses'] ?? 0}',
+                          value: formatNum(ref, stats['total_courses'] ?? 0),
                           color: AppColors.primaryGreen,
                           onTap: () => context.push(RouteNames.instructorUploads),
                         ),
@@ -940,7 +1175,7 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                             return _StatCard(
                               icon: Icons.menu_book_rounded,
                               label: tr(ref, 'E-Books'),
-                              value: '$totalEbooks',
+                              value: formatNum(ref, totalEbooks),
                               color: AppColors.accentOrange,
                               onTap: () => context.push('${RouteNames.instructorUploads}?tab=1'),
                             );
@@ -961,7 +1196,7 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                             return _StatCard(
                               icon: Icons.star_rounded,
                               label: tr(ref, 'Reviews'),
-                              value: '$totalReviewsCount',
+                              value: formatNum(ref, totalReviewsCount),
                               color: AppColors.signalYellow,
                               onTap: () => _showReviewsBottomSheet(context, stats),
                             );
@@ -1143,7 +1378,13 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                       final tabParam = _selectedDashboardTab == 1 ? '?tab=1' : '';
                       context.push('${RouteNames.instructorUploads}$tabParam');
                     },
-                    child: Text(tr(ref, 'See All')),
+                    style: TextButton.styleFrom(
+                      foregroundColor: isDark ? const Color(0xFF4ADE80) : AppColors.primaryGreen,
+                    ),
+                    child: Text(
+                      tr(ref, 'See All'),
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
                   ),
                 ],
               ),
@@ -1152,22 +1393,50 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
               if (_selectedDashboardTab == 0)
                 ref.watch(instructorCoursesProvider((search: _searchQuery, ordering: _ordering))).when(
                   data: (courses) {
+                    final isSearching = _searchQuery.trim().isNotEmpty;
                     if (courses.isEmpty) {
                       return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 20),
+                        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
                         child: Center(
                           child: Column(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.video_library_outlined, size: 48, color: Colors.grey.shade400),
-                              const SizedBox(height: 10),
-                              Text(tr(ref, 'No courses created yet.')),
-                              const SizedBox(height: 10),
-                              FilledButton.icon(
-                                style: FilledButton.styleFrom(backgroundColor: AppColors.accentOrange),
-                                onPressed: () => context.push(RouteNames.uploadCourse),
-                                icon: const Icon(Icons.add, size: 18),
-                                label: Text(tr(ref, 'Create First Course')),
+                              Icon(
+                                isSearching ? Icons.search_off_rounded : Icons.video_library_outlined,
+                                size: 48,
+                                color: Colors.grey.shade400,
                               ),
+                              const SizedBox(height: 12),
+                              Text(
+                                isSearching
+                                    ? '${tr(ref, 'No courses found matching')} "$_searchQuery"'
+                                    : tr(ref, 'No courses created yet.'),
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              if (isSearching)
+                                TextButton.icon(
+                                  onPressed: () {
+                                    setState(() {
+                                      _searchController.clear();
+                                      _searchQuery = '';
+                                    });
+                                  },
+                                  icon: const Icon(Icons.clear_rounded, size: 16),
+                                  label: Text(tr(ref, 'Clear Search')),
+                                )
+                              else
+                                FilledButton.icon(
+                                  style: FilledButton.styleFrom(backgroundColor: AppColors.accentOrange),
+                                  onPressed: () => context.push(RouteNames.uploadCourse),
+                                  icon: const Icon(Icons.add, size: 18),
+                                  label: Text(tr(ref, 'Create First Course')),
+                                ),
                             ],
                           ),
                         ),
@@ -1180,6 +1449,7 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                           child: _AgriLearnCourseCard(
                             course: course,
                             onManage: () => context.push('/instructor/manage-course/${course.id}'),
+                            onSubmitForReview: () => _submitCourseForReview(course),
                             onViewLive: () {
                               final target = (course.slug != null && course.slug!.isNotEmpty) ? course.slug! : course.id;
                               if (target.isNotEmpty) {
@@ -1187,6 +1457,8 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                               }
                             },
                             onDeactivate: () => _deactivateCourse(course),
+                            onReactivate: () => _reactivateCourse(course),
+                            onDelete: () => _deleteCourse(course),
                           ),
                         );
                       }).toList(),
@@ -1230,29 +1502,66 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
               else
                 ref.watch(instructorEbooksProvider).when(
                   data: (ebooks) {
-                    if (ebooks.isEmpty) {
+                    final isSearching = _searchQuery.trim().isNotEmpty;
+                    final filteredEbooks = isSearching
+                        ? ebooks.where((e) {
+                            final title = (e.title ?? e['title'] ?? '').toString().toLowerCase();
+                            final desc = (e.description ?? e['description'] ?? '').toString().toLowerCase();
+                            final q = _searchQuery.trim().toLowerCase();
+                            return title.contains(q) || desc.contains(q);
+                          }).toList()
+                        : ebooks;
+
+                    if (filteredEbooks.isEmpty) {
                       return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 20),
+                        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
                         child: Center(
                           child: Column(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.menu_book_rounded, size: 48, color: Colors.grey.shade400),
-                              const SizedBox(height: 10),
-                              Text(tr(ref, 'No e-books uploaded yet.')),
-                              const SizedBox(height: 10),
-                              FilledButton.icon(
-                                style: FilledButton.styleFrom(backgroundColor: const Color(0xFF9333EA)),
-                                onPressed: () => context.push(RouteNames.uploadEbook),
-                                icon: const Icon(Icons.add, size: 18),
-                                label: Text(tr(ref, 'Create First E-Book')),
+                              Icon(
+                                isSearching ? Icons.search_off_rounded : Icons.menu_book_rounded,
+                                size: 48,
+                                color: Colors.grey.shade400,
                               ),
+                              const SizedBox(height: 12),
+                              Text(
+                                isSearching
+                                    ? '${tr(ref, 'No e-books found matching')} "$_searchQuery"'
+                                    : tr(ref, 'No e-books uploaded yet.'),
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              if (isSearching)
+                                TextButton.icon(
+                                  onPressed: () {
+                                    setState(() {
+                                      _searchController.clear();
+                                      _searchQuery = '';
+                                    });
+                                  },
+                                  icon: const Icon(Icons.clear_rounded, size: 16),
+                                  label: Text(tr(ref, 'Clear Search')),
+                                )
+                              else
+                                FilledButton.icon(
+                                  style: FilledButton.styleFrom(backgroundColor: const Color(0xFF9333EA)),
+                                  onPressed: () => context.push(RouteNames.uploadEbook),
+                                  icon: const Icon(Icons.add, size: 18),
+                                  label: Text(tr(ref, 'Create First E-Book')),
+                                ),
                             ],
                           ),
                         ),
                       );
                     }
                     return Column(
-                      children: ebooks.take(5).map((ebook) {
+                      children: filteredEbooks.take(5).map((ebook) {
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 12),
                           child: _AgriLearnEbookCard(
@@ -1269,6 +1578,9 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                                 context.push('/farmer/ebook/${ebook.id}');
                               }
                             },
+                            onEdit: () => _editEBookPrice(ebook),
+                            onSubmitForReview: () => _submitEBookForReview(ebook),
+                            onDelete: () => _deleteEBook(ebook),
                           ),
                         );
                       }).toList(),
@@ -1312,7 +1624,32 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
               const SizedBox(height: 28),
 
               // Recent Activity (Transactions)
-              Text(tr(ref, 'Recent Transactions'), style: Theme.of(context).textTheme.headlineSmall),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(tr(ref, 'Recent Transactions'), style: Theme.of(context).textTheme.headlineSmall),
+                  TextButton.icon(
+                    onPressed: () => context.push(RouteNames.instructorTransactions),
+                    icon: Icon(
+                      Icons.arrow_forward_rounded,
+                      size: 16,
+                      color: isDark ? const Color(0xFF4ADE80) : AppColors.primaryGreen,
+                    ),
+                    label: Text(
+                      tr(ref, 'View All'),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? const Color(0xFF4ADE80) : AppColors.primaryGreen,
+                      ),
+                    ),
+                    style: TextButton.styleFrom(
+                      foregroundColor: isDark ? const Color(0xFF4ADE80) : AppColors.primaryGreen,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: 14),
               ref.watch(instructorTransactionsProvider).when(
                 data: (transactions) {
@@ -1323,22 +1660,51 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                     );
                   }
                   return Column(
-                    children: transactions.take(5).map((txn) {
-                      final amount = txn['amount'] ?? '0';
-                      final desc = txn['description'] ?? txn['item'] ?? txn['course_title'] ?? 'Transaction';
-                      final date = txn['date'] ?? 'Recently';
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: _ActivityItem(
-                          icon: Icons.payment_rounded,
-                          color: AppColors.primaryGreen,
-                          title: '₹$amount',
-                          subtitle: desc,
-                          time: date,
-                          onTap: () => _showTransactionDetailsModal(context, txn),
+                    children: [
+                      ...transactions.take(5).map((txn) {
+                        final amount = txn['amount'] ?? '0';
+                        final desc = txn['description'] ?? txn['item'] ?? txn['course_title'] ?? 'Transaction';
+                        final date = txn['date'] ?? 'Recently';
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: _ActivityItem(
+                            icon: Icons.payment_rounded,
+                            color: AppColors.primaryGreen,
+                            title: '₹$amount',
+                            subtitle: desc,
+                            time: date,
+                            onTap: () => _showTransactionDetailsModal(context, txn),
+                          ),
+                        );
+                      }),
+                      if (transactions.length > 5) ...[
+                        const SizedBox(height: 4),
+                        Center(
+                          child: OutlinedButton.icon(
+                            onPressed: () => context.push(RouteNames.instructorTransactions),
+                            icon: Icon(
+                              Icons.receipt_long_rounded,
+                              size: 16,
+                              color: isDark ? const Color(0xFF4ADE80) : AppColors.primaryGreen,
+                            ),
+                            label: Text(
+                              'View All ${transactions.length} Transactions',
+                              style: TextStyle(
+                                color: isDark ? const Color(0xFF4ADE80) : AppColors.primaryGreen,
+                              ),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: isDark ? const Color(0xFF4ADE80) : AppColors.primaryGreen,
+                              side: BorderSide(
+                                color: isDark ? const Color(0xFF4ADE80) : AppColors.primaryGreen,
+                              ),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              visualDensity: VisualDensity.compact,
+                            ),
+                          ),
                         ),
-                      );
-                    }).toList(),
+                      ],
+                    ],
                   );
                 },
                 loading: () => Column(
@@ -1447,30 +1813,48 @@ class AgriLearnCourseCard extends ConsumerWidget {
     super.key,
     required this.course,
     required this.onManage,
+    this.onSubmitForReview,
     this.onViewLive,
     this.onDeactivate,
+    this.onReactivate,
+    this.onDelete,
   });
 
   final ApiCourseList course;
   final VoidCallback onManage;
+  final VoidCallback? onSubmitForReview;
   final VoidCallback? onViewLive;
   final VoidCallback? onDeactivate;
+  final VoidCallback? onReactivate;
+  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final status = (course.status ?? 'DRAFT').toUpperCase();
+    final isDeactivated = ref.watch(deactivatedCoursesProvider).contains(course.id) ||
+        status == 'ARCHIVED' ||
+        status == 'INACTIVE';
 
     Color badgeBg;
     Color badgeText;
     String badgeLabel;
 
-    final isLive = status == 'APPROVED' ||
-        status == 'LIVE' ||
-        status == 'PUBLISHED' ||
-        status == 'ACTIVE';
+    final isLive = (status == 'APPROVED' ||
+            status == 'LIVE' ||
+            status == 'PUBLISHED' ||
+            status == 'ACTIVE') &&
+        !isDeactivated;
 
-    if (isLive) {
+    // Only new made courses still in draft / review period can be deleted.
+    // Approved and subsequently deactivated courses must NOT show a delete button.
+    final canDelete = !isLive && !isDeactivated && (status == 'DRAFT' || status == 'PROCESSING' || status == 'REVIEW' || status == 'REJECTED');
+
+    if (isDeactivated) {
+      badgeBg = isDark ? Colors.amber.withValues(alpha: 0.2) : Colors.amber.shade50;
+      badgeText = isDark ? Colors.amberAccent : Colors.amber.shade900;
+      badgeLabel = tr(ref, '• Deactivated');
+    } else if (isLive) {
       badgeBg = Colors.green.shade50;
       badgeText = Colors.green.shade700;
       badgeLabel = tr(ref, '• Live');
@@ -1572,7 +1956,12 @@ class AgriLearnCourseCard extends ConsumerWidget {
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         Text(
-                          '₹',
+                          (course.price == null ||
+                                  course.price == '0' ||
+                                  course.price == '0.00' ||
+                                  course.price == '0.0')
+                              ? 'Free'
+                              : '₹${course.price}',
                           style: const TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
@@ -1587,7 +1976,7 @@ class AgriLearnCourseCard extends ConsumerWidget {
                           ),
                         ),
                         Text(
-                          ' Students',
+                          '${course.enrollmentCount ?? 0} ${tr(ref, 'Students')}',
                           style: TextStyle(
                             fontSize: 11,
                             color: isDark ? Colors.grey.shade400 : AppColors.inkSoft,
@@ -1628,6 +2017,27 @@ class AgriLearnCourseCard extends ConsumerWidget {
                         ),
                       ),
                     ),
+                    if ((status == 'DRAFT' || status == 'REJECTED') && onSubmitForReview != null)
+                      FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFF009688),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          elevation: 0,
+                        ),
+                        onPressed: onSubmitForReview,
+                        icon: const Icon(Icons.send_rounded, size: 13, color: Colors.white),
+                        label: Text(
+                          tr(ref, 'Submit for Review'),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
                     if (isLive && onViewLive != null)
                       OutlinedButton.icon(
                         style: OutlinedButton.styleFrom(
@@ -1666,6 +2076,44 @@ class AgriLearnCourseCard extends ConsumerWidget {
                           ),
                         ),
                       ),
+                    if (isDeactivated && onReactivate != null)
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          side: const BorderSide(color: AppColors.primaryGreen),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        onPressed: onReactivate,
+                        icon: const Icon(Icons.play_circle_outline, size: 14, color: AppColors.primaryGreen),
+                        label: Text(
+                          tr(ref, 'Reactivate'),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primaryGreen,
+                          ),
+                        ),
+                      ),
+                    if (canDelete && onDelete != null)
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          side: const BorderSide(color: Color(0xFFEF4444)),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        onPressed: onDelete,
+                        icon: const Icon(Icons.delete_outline_rounded, size: 14, color: Color(0xFFEF4444)),
+                        label: Text(
+                          tr(ref, 'Delete'),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFFEF4444),
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -1682,11 +2130,17 @@ class _AgriLearnEbookCard extends ConsumerWidget {
     required this.ebook,
     this.onTap,
     this.onViewLive,
+    this.onEdit,
+    this.onSubmitForReview,
+    this.onDelete,
   });
 
   final dynamic ebook;
   final VoidCallback? onTap;
   final VoidCallback? onViewLive;
+  final VoidCallback? onEdit;
+  final VoidCallback? onSubmitForReview;
+  final VoidCallback? onDelete;
 
   String _resolveStatus(dynamic statusObj) {
     if (statusObj == null) return 'DRAFT';
@@ -1703,6 +2157,8 @@ class _AgriLearnEbookCard extends ConsumerWidget {
     final hasCover = ebook.coverImage != null && ebook.coverImage.toString().trim().isNotEmpty;
     final status = _resolveStatus(ebook.status);
     final isLive = status == 'APPROVED';
+    final isDraft = status == 'DRAFT';
+    final isReview = status == 'REVIEW';
 
     Color badgeBg;
     Color badgeText;
@@ -1861,26 +2317,93 @@ class _AgriLearnEbookCard extends ConsumerWidget {
             ],
           ),
 
-          // Action Button: [View in Library]
-          if (isLive && onViewLive != null) ...[
+          // Action Buttons:
+          // Draft: [Edit] [Send for Review] [Delete]
+          // Under Review: [Delete] (Send for Review hidden)
+          // Live: [View in Library]
+          if (isLive || isDraft || isReview || onDelete != null) ...[
             const SizedBox(height: 12),
-            OutlinedButton.icon(
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                side: BorderSide(color: Colors.teal.shade400),
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-              onPressed: onViewLive,
-              icon: Icon(Icons.visibility_outlined, size: 14, color: Colors.teal.shade700),
-              label: Text(
-                tr(ref, 'View in Library'),
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.teal.shade700,
-                ),
-              ),
+            Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              children: [
+                if (isLive && onViewLive != null)
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      side: BorderSide(color: Colors.teal.shade400),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    onPressed: onViewLive,
+                    icon: Icon(Icons.visibility_outlined, size: 14, color: Colors.teal.shade700),
+                    label: Text(
+                      tr(ref, 'View in Library'),
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.teal.shade700,
+                      ),
+                    ),
+                  ),
+                if (!isLive && onEdit != null)
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      side: const BorderSide(color: AppColors.primaryGreen),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    onPressed: onEdit,
+                    icon: const Icon(Icons.edit_outlined, size: 14, color: AppColors.primaryGreen),
+                    label: Text(
+                      tr(ref, 'Edit'),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primaryGreen,
+                      ),
+                    ),
+                  ),
+                if (isDraft && onSubmitForReview != null)
+                  FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primaryGreen,
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    onPressed: onSubmitForReview,
+                    icon: const Icon(Icons.send_rounded, size: 13, color: Colors.white),
+                    label: Text(
+                      tr(ref, 'Send for Review'),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                if (!isLive && onDelete != null)
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      side: const BorderSide(color: Color(0xFFEF4444)),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    onPressed: onDelete,
+                    icon: const Icon(Icons.delete_outline_rounded, size: 14, color: Color(0xFFEF4444)),
+                    label: Text(
+                      tr(ref, 'Delete'),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFFEF4444),
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ],
         ],
@@ -1948,7 +2471,7 @@ class _ActivityItem extends StatelessWidget {
   }
 }
 
-class _KycPromptBanner extends StatelessWidget {
+class _KycPromptBanner extends ConsumerWidget {
   const _KycPromptBanner({
     required this.isPending,
     required this.onTap,
@@ -1958,7 +2481,7 @@ class _KycPromptBanner extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return AppCard(
       onTap: onTap,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -1983,7 +2506,9 @@ class _KycPromptBanner extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  isPending ? 'KYC Verification Under Review' : 'Complete KYC & Payout Profile',
+                  isPending
+                      ? tr(ref, 'KYC Verification Under Review')
+                      : tr(ref, 'Complete KYC & Payout Profile'),
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
@@ -1991,8 +2516,8 @@ class _KycPromptBanner extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   isPending
-                      ? 'Admin is reviewing your documents (24-48 hrs)'
-                      : 'Required to receive earnings & publish courses',
+                      ? tr(ref, 'Admin is reviewing your documents (24-48 hrs)')
+                      : tr(ref, 'Required to receive earnings & publish courses'),
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: AppColors.inkSoft,
                       ),
@@ -2012,7 +2537,7 @@ class _KycPromptBanner extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
-                isPending ? 'Status' : 'Verify',
+                isPending ? tr(ref, 'Status') : tr(ref, 'Verify'),
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       color: isPending ? AppColors.accentOrange : AppColors.primaryGreen,
                       fontWeight: FontWeight.bold,

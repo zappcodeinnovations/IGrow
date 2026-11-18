@@ -4,12 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/localization/app_strings.dart';
 import '../../../core/router/route_names.dart';
 
 import '../../../core/network/api_exception.dart';
 import '../../../core/network/swagger_generated/app_api.swagger.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/delete_account_dialog.dart';
+import '../../../core/widgets/image_crop_rotate_screen.dart';
 import '../../../data/models/user_role.dart';
 import '../../../data/models/user_model.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -343,13 +345,106 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     super.dispose();
   }
 
-  Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
-      setState(() {
-        _selectedImage = File(pickedFile.path);
-      });
+  Future<void> _pickImage([ImageSource? preferredSource]) async {
+    ImageSource source = preferredSource ?? ImageSource.gallery;
+    if (preferredSource == null) {
+      final selected = await showModalBottomSheet<ImageSource>(
+        context: context,
+        backgroundColor: Colors.transparent,
+        builder: (ctx) {
+          final isDark = Theme.of(ctx).brightness == Brightness.dark;
+          return Container(
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.cardDark : Colors.white,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: SafeArea(
+              top: false,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Profile Photo',
+                    style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ),
+                  const SizedBox(height: 16),
+                  ListTile(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryGreen.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.photo_camera_rounded, color: AppColors.primaryGreen),
+                    ),
+                    title: const Text('Take a Photo', style: TextStyle(fontWeight: FontWeight.w600)),
+                    onTap: () => Navigator.pop(ctx, ImageSource.camera),
+                  ),
+                  const SizedBox(height: 6),
+                  ListTile(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.skyBlue.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.photo_library_rounded, color: AppColors.skyBlue),
+                    ),
+                    title: const Text('Choose from Gallery', style: TextStyle(fontWeight: FontWeight.w600)),
+                    onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+                  ),
+                  const SizedBox(height: 8),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+      if (selected == null) return;
+      source = selected;
+    }
+
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(
+        source: source,
+        maxWidth: 2400,
+        maxHeight: 2400,
+        imageQuality: 92,
+      );
+      if (pickedFile != null && mounted) {
+        final original = File(pickedFile.path);
+        final edited = await ImageCropRotateScreen.cropAndRotate(
+          context,
+          imageFile: original,
+          title: 'Crop & Rotate Profile Photo',
+          initialAspectRatio: 1.0,
+          allowFreeCrop: true,
+        );
+        if (edited != null && mounted) {
+          setState(() {
+            _selectedImage = edited;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error picking profile image: $e');
     }
   }
 
@@ -359,14 +454,14 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       messenger.clearSnackBars();
       messenger.showSnackBar(
         SnackBar(
-          content: const Row(
+          content: Row(
             children: [
-              Icon(Icons.info_outline, color: Colors.white),
-              SizedBox(width: 12),
+              const Icon(Icons.info_outline, color: Colors.white),
+              const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'Please fill in all required fields marked with *',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+                  tr(ref, 'Please fill in all required fields marked with *'),
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
                 ),
               ),
             ],
@@ -431,10 +526,10 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       final messenger = ScaffoldMessenger.of(context);
       messenger.clearSnackBars();
       messenger.showSnackBar(
-        const SnackBar(
-          content: Text('Profile updated successfully!'),
+        SnackBar(
+          content: Text(tr(ref, 'Profile updated successfully!')),
           backgroundColor: AppColors.primaryGreen,
-          duration: Duration(milliseconds: 1800),
+          duration: const Duration(milliseconds: 1800),
         ),
       );
 
@@ -482,6 +577,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     String? hintText,
     String? Function(String?)? validator,
   }) {
+    final translatedLabel = tr(ref, label);
+    final translatedHint = hintText != null ? tr(ref, hintText) : null;
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: TextFormField(
@@ -490,8 +587,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         keyboardType: keyboardType,
         validator: validator,
         decoration: InputDecoration(
-          labelText: label,
-          hintText: hintText,
+          labelText: translatedLabel,
+          hintText: translatedHint,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
           ),
@@ -507,6 +604,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     List<String> suggestions,
   ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final translatedLabel = tr(ref, label);
+    final searchInputController = TextEditingController();
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -514,24 +614,36 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       builder: (bottomSheetContext) {
         String searchQuery = '';
         return StatefulBuilder(
-          builder: (context, setModalState) {
+          builder: (modalContext, setModalState) {
             final filteredSuggestions = suggestions.where((item) {
-              return item.toLowerCase().contains(searchQuery.toLowerCase().trim());
+              final query = searchQuery.toLowerCase().trim();
+              if (query.isEmpty) return true;
+              return item.toLowerCase().contains(query) ||
+                  AppStrings.tr(item, languageCode: 'hi').toLowerCase().contains(query) ||
+                  AppStrings.tr(item, languageCode: 'mr').toLowerCase().contains(query);
             }).toList();
 
             final hasCustomQuery = searchQuery.trim().isNotEmpty &&
                 !suggestions.any((s) => s.toLowerCase() == searchQuery.trim().toLowerCase());
 
+            void selectAndClose(String selectedValue) {
+              FocusScope.of(modalContext).unfocus();
+              setState(() {
+                controller.text = selectedValue;
+              });
+              Navigator.of(bottomSheetContext).pop();
+            }
+
             return Container(
               constraints: BoxConstraints(
-                maxHeight: MediaQuery.of(context).size.height * 0.75,
+                maxHeight: MediaQuery.of(modalContext).size.height * 0.75,
               ),
               decoration: BoxDecoration(
                 color: isDark ? const Color(0xFF1E2620) : Colors.white,
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
               ),
               padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+                bottom: MediaQuery.of(modalContext).viewInsets.bottom + 16,
               ),
               child: SafeArea(
                 top: false,
@@ -556,7 +668,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            'Select $label',
+                            '${tr(ref, 'Select')} $translatedLabel',
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
@@ -565,7 +677,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                           ),
                           IconButton(
                             icon: const Icon(Icons.close, size: 20),
-                            onPressed: () => Navigator.pop(context),
+                            onPressed: () => Navigator.of(bottomSheetContext).pop(),
                           ),
                         ],
                       ),
@@ -575,14 +687,16 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                       child: TextField(
+                        controller: searchInputController,
                         autofocus: false,
                         decoration: InputDecoration(
-                          hintText: 'Search $label...',
+                          hintText: '${tr(ref, 'Search...')} ($translatedLabel)',
                           prefixIcon: const Icon(Icons.search, size: 20),
                           suffixIcon: searchQuery.isNotEmpty
                               ? IconButton(
                                   icon: const Icon(Icons.clear, size: 18),
                                   onPressed: () {
+                                    searchInputController.clear();
                                     setModalState(() {
                                       searchQuery = '';
                                     });
@@ -611,26 +725,22 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                     Flexible(
                       child: ListView(
                         shrinkWrap: true,
+                        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                         children: [
                           if (hasCustomQuery)
                             ListTile(
                               leading: const Icon(Icons.add_circle_outline, color: AppColors.editorialSecondary),
                               title: Text(
-                                'Use "$searchQuery"',
+                                '${tr(ref, 'Use')} "${searchQuery.trim()}"',
                                 style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.editorialSecondary),
                               ),
-                              onTap: () {
-                                setState(() {
-                                  controller.text = searchQuery.trim();
-                                });
-                                Navigator.pop(context);
-                              },
+                              onTap: () => selectAndClose(searchQuery.trim()),
                             ),
                           if (filteredSuggestions.isEmpty && !hasCustomQuery)
-                            const Padding(
-                              padding: EdgeInsets.all(24.0),
+                            Padding(
+                              padding: const EdgeInsets.all(24.0),
                               child: Center(
-                                child: Text('No matching options found'),
+                                child: Text(tr(ref, 'No matching options found')),
                               ),
                             )
                           else
@@ -638,7 +748,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                               final isSelected = controller.text.trim().toLowerCase() == item.toLowerCase();
                               return ListTile(
                                 title: Text(
-                                  item,
+                                  tr(ref, item),
                                   style: TextStyle(
                                     fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                                     color: isSelected
@@ -649,12 +759,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                 trailing: isSelected
                                     ? const Icon(Icons.check_circle, color: AppColors.editorialSecondary, size: 20)
                                     : null,
-                                onTap: () {
-                                  setState(() {
-                                    controller.text = item;
-                                  });
-                                  Navigator.pop(context);
-                                },
+                                onTap: () => selectAndClose(item),
                               );
                             }),
                         ],
@@ -676,6 +781,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     List<String> suggestions, {
     String? hintText,
   }) {
+    final translatedLabel = tr(ref, label);
+    final translatedHint = hintText != null ? tr(ref, hintText) : null;
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: InkWell(
@@ -683,10 +790,11 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         borderRadius: BorderRadius.circular(12),
         child: IgnorePointer(
           child: TextFormField(
+            key: ValueKey('${controller.text}_${ref.watch(languageProvider)}'),
             controller: controller,
             decoration: InputDecoration(
-              labelText: label,
-              hintText: hintText,
+              labelText: translatedLabel,
+              hintText: translatedHint,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -706,11 +814,11 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         controller: _emailController,
         readOnly: true,
         decoration: InputDecoration(
-          labelText: 'Email Address (Registered Login ID)',
+          labelText: tr(ref, 'Email Address (Registered Login ID)'),
           prefixIcon: const Icon(Icons.email_outlined),
-          suffixIcon: const Tooltip(
-            message: 'Email cannot be changed (primary login identifier)',
-            child: Icon(Icons.lock_outline, size: 20, color: Colors.grey),
+          suffixIcon: Tooltip(
+            message: tr(ref, 'Email cannot be changed (primary login identifier)'),
+            child: const Icon(Icons.lock_outline, size: 20, color: Colors.grey),
           ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
@@ -762,13 +870,13 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  isInstructor ? 'Instructor Account' : 'Student / Farmer Account',
+                  isInstructor ? tr(ref, 'Instructor Account') : tr(ref, 'Student / Farmer Account'),
                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                 ),
                 const SizedBox(height: 2),
                 if (isInstructor)
                   Text(
-                    isVerified ? '✓ Verified Instructor' : '⏳ Verification Status: Pending Review',
+                    isVerified ? tr(ref, '✓ Verified Instructor') : tr(ref, '⏳ Verification Status: Pending Review'),
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
@@ -779,7 +887,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   Text(
                     user?.location != null && user!.location!.isNotEmpty
                         ? '📍 ${user.location}'
-                        : '🌱 AgriLearn Farmer Community',
+                        : '🌱 ${tr(ref, 'AgriLearn Farmer Community')}',
                     style: TextStyle(
                       fontSize: 12,
                       color: isDark ? Colors.white70 : AppColors.inkSoft,
@@ -800,9 +908,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Farming Experience Level',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+          Text(
+            tr(ref, 'Farming Experience Level'),
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 8),
           Wrap(
@@ -810,7 +918,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             children: _experienceOptions.map((exp) {
               final isSelected = _experienceController.text.trim().toLowerCase() == exp.toLowerCase();
               return ChoiceChip(
-                label: Text(exp),
+                label: Text(tr(ref, exp)),
                 selected: isSelected,
                 selectedColor: AppColors.primaryGreen,
                 backgroundColor: isDark ? AppColors.cardDark : Colors.grey.shade100,
@@ -853,13 +961,13 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Areas of Interest',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+          Text(
+            tr(ref, 'Areas of Interest'),
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 4),
           Text(
-            'Tap tags to add/remove or type custom topics below:',
+            tr(ref, 'Tap tags to add/remove or type custom topics below:'),
             style: TextStyle(
               fontSize: 12,
               color: isDark ? Colors.white.withValues(alpha: 0.6) : AppColors.inkSoft,
@@ -873,7 +981,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               final isSelected = currentList.any((e) => e.toLowerCase() == tag.toLowerCase());
               return FilterChip(
                 label: Text(
-                  tag,
+                  tr(ref, tag),
                   style: TextStyle(
                     fontSize: 12,
                     color: isSelected
@@ -909,7 +1017,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             controller: _areasController,
             maxLines: 2,
             decoration: InputDecoration(
-              labelText: 'Selected Interests (comma-separated)',
+              labelText: tr(ref, 'Selected Interests (comma-separated)'),
               hintText: 'e.g. Organic Farming, Drip Irrigation, Crop Protection',
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -929,7 +1037,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Edit Profile'),
+        title: Text(tr(ref, 'Edit Profile')),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
           onPressed: _navigateBack,
@@ -1018,16 +1126,16 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                   await ref.read(authProvider.notifier).deleteAvatar();
                                   messenger.clearSnackBars();
                                   messenger.showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Avatar removed.'),
-                                      duration: Duration(milliseconds: 1800),
+                                    SnackBar(
+                                      content: Text(tr(ref, 'Avatar removed.')),
+                                      duration: const Duration(milliseconds: 1800),
                                     ),
                                   );
                                 } catch (e) {
                                   messenger.clearSnackBars();
                                   messenger.showSnackBar(
                                     SnackBar(
-                                      content: Text('Error removing avatar: $e'),
+                                      content: Text('${tr(ref, 'Error removing avatar')}: $e'),
                                       backgroundColor: AppColors.error,
                                       duration: const Duration(milliseconds: 1800),
                                     ),
@@ -1037,9 +1145,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                 }
                               }
                             },
-                            child: const Text(
-                              'Remove Photo',
-                              style: TextStyle(color: AppColors.error),
+                            child: Text(
+                              tr(ref, 'Remove Photo'),
+                              style: const TextStyle(color: AppColors.error),
                             ),
                           ),
                       ],
@@ -1051,14 +1159,14 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   _buildRoleBadge(user),
 
                   // Section 1: Basic & Personal Info
-                  Text('Basic Information', style: Theme.of(context).textTheme.titleLarge),
+                  Text(tr(ref, 'Basic Information'), style: Theme.of(context).textTheme.titleLarge),
                   const SizedBox(height: 16),
                   _buildTextField(
                     'Full Name *', 
                     _nameController,
                     validator: (val) {
                       if (val == null || val.trim().isEmpty) {
-                        return 'Please enter your full name';
+                        return tr(ref, 'Please enter your full name');
                       }
                       return null;
                     },
@@ -1073,7 +1181,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                       if (val != null && val.trim().isNotEmpty) {
                         final digits = val.trim().replaceAll(RegExp(r'[^\d]'), '');
                         if (digits.length != 10 && !(digits.startsWith('91') && digits.length == 12)) {
-                          return 'Mobile number must be exactly 10 digits';
+                          return tr(ref, 'Mobile number must be exactly 10 digits');
                         }
                       }
                       return null;
@@ -1085,7 +1193,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   // Section 2: Student Specific Fields
                   if (!isInstructor) ...[
                     const SizedBox(height: 16),
-                    Text('Farming Profile', style: Theme.of(context).textTheme.titleLarge),
+                    Text(tr(ref, 'Farming Profile'), style: Theme.of(context).textTheme.titleLarge),
                     const SizedBox(height: 16),
                     _buildExperienceSelector(),
                     _buildAreasOfInterestSelector(),
@@ -1094,7 +1202,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   // Section 3: Instructor Specific Fields
                   if (isInstructor) ...[
                     const SizedBox(height: 20),
-                    Text('Instructor Professional Details', style: Theme.of(context).textTheme.titleLarge),
+                    Text(tr(ref, 'Instructor Professional Details'), style: Theme.of(context).textTheme.titleLarge),
                     const SizedBox(height: 16),
                     _buildTextField(
                       'Bio / About Me *', 
@@ -1103,7 +1211,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                       hintText: 'Tell students about your practical background, passion, and teaching focus...',
                       validator: (val) {
                         if (val == null || val.trim().isEmpty) {
-                          return 'Please enter a short bio about yourself';
+                          return tr(ref, 'Please enter a short bio about yourself');
                         }
                         return null;
                       },
@@ -1126,7 +1234,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                       validator: (val) {
                         if (val != null && val.trim().isNotEmpty) {
                           if (int.tryParse(val.trim()) == null) {
-                            return 'Please enter a valid number of years';
+                            return tr(ref, 'Please enter a valid number of years');
                           }
                         }
                         return null;
@@ -1151,7 +1259,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                         if (val != null && val.trim().isNotEmpty) {
                           final text = val.trim();
                           if (!text.contains('.') || text.length < 4) {
-                            return 'Please enter a valid website link (e.g. https://example.com)';
+                            return tr(ref, 'Please enter a valid website link');
                           }
                         }
                         return null;
@@ -1166,7 +1274,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                         if (val != null && val.trim().isNotEmpty) {
                           final text = val.trim();
                           if (!text.contains('.') || text.length < 4) {
-                            return 'Please enter a valid social link (e.g. https://instagram.com/yourname)';
+                            return tr(ref, 'Please enter a valid social link');
                           }
                         }
                         return null;
@@ -1196,7 +1304,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                 color: Colors.white,
                               ),
                             )
-                          : const Text('Save Profile', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                          : Text(tr(ref, 'Save Profile'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -1204,9 +1312,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                     child: TextButton.icon(
                       onPressed: () => showDeleteAccountConfirmationDialog(context, ref),
                       icon: const Icon(Icons.delete_forever_outlined, color: AppColors.error, size: 18),
-                      label: const Text(
-                        'Delete Account',
-                        style: TextStyle(
+                      label: Text(
+                        tr(ref, 'Delete Account'),
+                        style: const TextStyle(
                           color: AppColors.error,
                           fontWeight: FontWeight.w600,
                         ),
@@ -1218,15 +1326,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               ),
             ),
           ),
-          if (_isLoading)
-            Positioned.fill(
-              child: Container(
-                color: Colors.black.withValues(alpha: 0.2),
-                child: const Center(
-                  child: CircularProgressIndicator(color: AppColors.editorialSecondary),
-                ),
-              ),
-            ),
         ],
       ),
     );

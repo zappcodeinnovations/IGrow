@@ -10,6 +10,7 @@ import 'package:printing/printing.dart';
 import '../../../core/localization/app_strings.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/pdf_theme_helper.dart';
 import '../../../data/models/api_models/order_models.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../providers/cart_provider.dart';
@@ -24,6 +25,15 @@ class OrdersScreen extends ConsumerStatefulWidget {
 class _OrdersScreenState extends ConsumerState<OrdersScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+
+  @override
+  void initState() {
+    super.initState();
+    // Auto-refresh orders whenever the screen opens so newly completed purchases appear immediately
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.invalidate(ordersProvider);
+    });
+  }
 
   @override
   void dispose() {
@@ -151,123 +161,146 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
             ),
           ];
         },
-        body: ordersAsync.when(
-        data: (orders) {
-          if (orders.isEmpty) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(32),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      width: 90,
-                      height: 90,
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? AppColors.editorialSecondary.withValues(alpha: 0.2)
-                            : AppColors.editorialSecondaryFixed,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.receipt_long_outlined,
-                        size: 44,
-                        color: isDark ? AppColors.editorialSecondaryFixedDim : AppColors.editorialSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Text(
-                      tr(ref, 'No Orders Found'),
-                      style: TextStyle(
-                        fontSize: 20, 
-                        fontWeight: FontWeight.bold,
-                        color: isDark ? Colors.white : AppColors.editorialOnSurface,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      tr(ref, 'You haven\'t purchased any courses yet. Once you enroll, your purchase history and invoices will appear here.'),
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: isDark ? Colors.white70 : AppColors.inkSoft,
-                        height: 1.4,
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    TextButton(
-                      onPressed: () => context.go(RouteNames.explore),
-                      child: Text(
-                        tr(ref, 'Browse Courses'),
-                        style: TextStyle(
-                          color: isDark ? AppColors.editorialSecondaryFixedDim : AppColors.editorialSecondary,
-                          fontWeight: FontWeight.bold,
+        body: RefreshIndicator(
+          color: isDark ? AppColors.editorialSecondaryFixedDim : AppColors.editorialSecondary,
+          onRefresh: () async {
+            ref.invalidate(ordersProvider);
+            await ref.read(ordersProvider.future).catchError((_) => <ApiOrder>[]);
+          },
+          child: ordersAsync.when(
+          data: (orders) {
+            if (orders.isEmpty) {
+              return ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [
+                  SizedBox(
+                    height: MediaQuery.of(context).size.height * 0.6,
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(32),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 90,
+                              height: 90,
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? AppColors.editorialSecondary.withValues(alpha: 0.2)
+                                    : AppColors.editorialSecondaryFixed,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.receipt_long_outlined,
+                                size: 44,
+                                color: isDark ? AppColors.editorialSecondaryFixedDim : AppColors.editorialSecondary,
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            Text(
+                              tr(ref, 'No Orders Found'),
+                              style: TextStyle(
+                                fontSize: 20, 
+                                fontWeight: FontWeight.bold,
+                                color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              tr(ref, 'You haven\'t purchased any courses yet. Once you enroll, your purchase history and invoices will appear here.'),
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: isDark ? Colors.white70 : AppColors.inkSoft,
+                                height: 1.4,
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            TextButton(
+                              onPressed: () => context.go(RouteNames.explore),
+                              child: Text(
+                                tr(ref, 'Browse Courses'),
+                                style: TextStyle(
+                                  color: isDark ? AppColors.editorialSecondaryFixedDim : AppColors.editorialSecondary,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
-                  ],
-                ),
-              ),
-            );
-          }
+                  ),
+                ],
+              );
+            }
 
-          final filteredOrders = _searchQuery.isEmpty
-              ? orders
-              : orders.where((order) {
-                  final refId = (order.gatewayReference ?? order.id).toLowerCase();
-                  final status = (order.status ?? '').toLowerCase();
-                  final dateFormatted = order.createdAt != null
-                      ? DateFormat('MMMM dd, yyyy • hh:mm a').format(order.createdAt!.toLocal()).toLowerCase()
-                      : '';
-                  final itemsMatch = order.items.any((it) {
-                    final title = (it.courseTitle ?? '').toLowerCase();
-                    final slug = (it.courseSlug ?? '').toLowerCase();
-                    return title.contains(_searchQuery) || slug.contains(_searchQuery);
-                  });
-                  return refId.contains(_searchQuery) ||
-                      status.contains(_searchQuery) ||
-                      dateFormatted.contains(_searchQuery) ||
-                      itemsMatch;
-                }).toList();
+            final filteredOrders = _searchQuery.isEmpty
+                ? orders
+                : orders.where((order) {
+                    final refId = (order.gatewayReference ?? order.id).toLowerCase();
+                    final status = (order.status ?? '').toLowerCase();
+                    final dateFormatted = order.createdAt != null
+                        ? DateFormat('MMMM dd, yyyy • hh:mm a').format(order.createdAt!.toLocal()).toLowerCase()
+                        : '';
+                    final itemsMatch = order.items.any((it) {
+                      final title = (it.courseTitle ?? '').toLowerCase();
+                      final slug = (it.courseSlug ?? '').toLowerCase();
+                      return title.contains(_searchQuery) || slug.contains(_searchQuery);
+                    });
+                    return refId.contains(_searchQuery) ||
+                        status.contains(_searchQuery) ||
+                        dateFormatted.contains(_searchQuery) ||
+                        itemsMatch;
+                  }).toList();
 
-          if (filteredOrders.isEmpty) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(32),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.search_off_rounded,
-                      size: 56,
-                      color: isDark ? Colors.white38 : AppColors.inkSoft,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      tr(ref, 'No matching orders found'),
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: isDark ? Colors.white : AppColors.editorialOnSurface,
+            if (filteredOrders.isEmpty) {
+              return ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [
+                  SizedBox(
+                    height: MediaQuery.of(context).size.height * 0.6,
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(32),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.search_off_rounded,
+                              size: 56,
+                              color: isDark ? Colors.white38 : AppColors.inkSoft,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              tr(ref, 'No matching orders found'),
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              '${tr(ref, 'No results for')} "$_searchQuery"',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: isDark ? Colors.white70 : AppColors.inkSoft,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '${tr(ref, 'No results for')} "$_searchQuery"',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: isDark ? Colors.white70 : AppColors.inkSoft,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }
+                  ),
+                ],
+              );
+            }
 
-          return ListView.builder(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+            return ListView.builder(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
             itemCount: filteredOrders.length,
             itemBuilder: (context, index) {
               final order = filteredOrders[index];
@@ -514,46 +547,55 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
               ? 'No internet connection.\nPlease check your network and try again.'
               : 'Unable to load orders right now.\nPlease try again in a few moments.';
 
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    isOffline ? Icons.wifi_off_rounded : Icons.receipt_long_outlined,
-                    size: 54,
-                    color: isDark ? Colors.white38 : AppColors.inkSoft,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    displayMsg,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                      color: isDark ? Colors.white70 : AppColors.inkDark,
-                      height: 1.4,
+          return ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            children: [
+              SizedBox(
+                height: MediaQuery.of(context).size.height * 0.6,
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          isOffline ? Icons.wifi_off_rounded : Icons.receipt_long_outlined,
+                          size: 54,
+                          color: isDark ? Colors.white38 : AppColors.inkSoft,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          displayMsg,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                            color: isDark ? Colors.white70 : AppColors.inkDark,
+                            height: 1.4,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.editorialSecondary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                          icon: const Icon(Icons.refresh_rounded, size: 18),
+                          onPressed: () => ref.refresh(ordersProvider),
+                          label: const Text('Retry', style: TextStyle(fontWeight: FontWeight.w600)),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 20),
-                  ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.editorialSecondary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    ),
-                    icon: const Icon(Icons.refresh_rounded, size: 18),
-                    onPressed: () => ref.refresh(ordersProvider),
-                    label: const Text('Retry', style: TextStyle(fontWeight: FontWeight.w600)),
-                  ),
-                ],
+                ),
               ),
-            ),
+            ],
           );
         },
       ),
+    ),
     ),
   );
   }
@@ -899,7 +941,8 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
     required double discount,
     required double totalPaid,
   }) async {
-    final pdf = pw.Document();
+    final theme = await PdfThemeHelper.getInvoiceTheme();
+    final pdf = pw.Document(theme: theme);
     pdf.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.a4,
@@ -916,18 +959,25 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
                       pw.Text(
-                        'iAGROW EDUCATION',
+                        'iAgrow',
                         style: pw.TextStyle(
-                          fontSize: 18,
+                          fontSize: 22,
                           fontWeight: pw.FontWeight.bold,
-                          color: PdfColors.green800,
+                          color: PdfColors.green900,
                         ),
                       ),
                       pw.Text(
-                        'Kisan Ki Digital Pathshala',
+                        'Agricultural E-Learning Platform',
                         style: const pw.TextStyle(
-                          fontSize: 11,
-                          color: PdfColors.grey,
+                          fontSize: 10,
+                          color: PdfColors.grey700,
+                        ),
+                      ),
+                      pw.Text(
+                        'support@iagrow.zappcode.in',
+                        style: const pw.TextStyle(
+                          fontSize: 9,
+                          color: PdfColors.grey600,
                         ),
                       ),
                     ],
@@ -935,7 +985,8 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                   pw.Container(
                     padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: pw.BoxDecoration(
-                      color: PdfColors.green100,
+                      color: PdfColors.green50,
+                      border: pw.Border.all(color: PdfColors.green700, width: 0.8),
                       borderRadius: pw.BorderRadius.circular(6),
                     ),
                     child: pw.Text(
@@ -943,13 +994,14 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                       style: pw.TextStyle(
                         fontSize: 11,
                         fontWeight: pw.FontWeight.bold,
-                        color: PdfColors.green800,
+                        color: PdfColors.green900,
                       ),
                     ),
                   ),
                 ],
               ),
-              pw.Divider(color: PdfColors.grey300),
+              pw.Divider(color: PdfColors.green900, thickness: 1.2),
+              pw.SizedBox(height: 8),
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -957,20 +1009,24 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                   pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
-                      pw.Text('Billed To:', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey)),
-                      pw.Text(studentName, style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                      pw.Text(studentEmail, style: const pw.TextStyle(fontSize: 10)),
+                      pw.Text('BILLED TO:', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: PdfColors.grey600)),
+                      pw.Text(PdfThemeHelper.sanitizePdfText(studentName), style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
+                      pw.Text(PdfThemeHelper.sanitizePdfText(studentEmail), style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700)),
                     ],
                   ),
                   pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.end,
                     children: [
-                      pw.Text('Invoice No:', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey)),
+                      pw.Text('PAYMENT DETAILS:', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: PdfColors.grey600)),
                       pw.Text('INV-$safeShortId',
-                          style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                          style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11)),
                       pw.Text(
                         dateStr.replaceAll('•', '-').replaceAll('  ', ' ').trim(),
-                        style: const pw.TextStyle(fontSize: 10),
+                        style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700),
+                      ),
+                      pw.Text(
+                        'Status: PAID & VERIFIED',
+                        style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.green800),
                       ),
                     ],
                   ),
@@ -978,24 +1034,32 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
               ),
               pw.SizedBox(height: 16),
               pw.TableHelper.fromTextArray(
-                headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11),
-                headerDecoration: const pw.BoxDecoration(color: PdfColors.green50),
-                cellStyle: const pw.TextStyle(fontSize: 11),
-                headers: ['Course / Description', 'SAC', 'Amount'],
-                data: order.items
-                    .map((item) => [
-                          item.courseTitle ?? 'Agriculture Course',
-                          '998311',
-                          'Rs. ${item.priceAtPurchase}',
-                        ])
-                    .toList(),
+                headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10, color: PdfColors.white),
+                headerDecoration: const pw.BoxDecoration(color: PdfColors.green900),
+                cellStyle: const pw.TextStyle(fontSize: 10),
+                headers: ['#', 'Item / Course Description', 'Type', 'Amount'],
+                data: List<List<String>>.generate(
+                  order.items.length,
+                  (index) {
+                    final item = order.items[index];
+                    final itemType = (item.ebook != null || (item.courseTitle?.toLowerCase().contains('ebook') ?? false))
+                        ? 'E-BOOK'
+                        : 'COURSE';
+                    return [
+                      '${index + 1}',
+                      PdfThemeHelper.sanitizePdfText(item.courseTitle ?? 'Agriculture Course'),
+                      itemType,
+                      '₹${item.priceAtPurchase}',
+                    ];
+                  },
+                ),
               ),
               pw.Divider(color: PdfColors.grey300),
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
                   pw.Text('Subtotal:', style: const pw.TextStyle(fontSize: 11)),
-                  pw.Text('Rs. ${subtotal.toStringAsFixed(2)}', style: const pw.TextStyle(fontSize: 11)),
+                  pw.Text('₹${subtotal.toStringAsFixed(2)}', style: const pw.TextStyle(fontSize: 11)),
                 ],
               ),
               if (discount > 0) ...[
@@ -1005,7 +1069,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                   children: [
                     pw.Text('Discount / Coupon Applied:',
                         style: pw.TextStyle(fontSize: 11, color: PdfColors.green800)),
-                    pw.Text('-Rs. ${discount.toStringAsFixed(2)}',
+                    pw.Text('-₹${discount.toStringAsFixed(2)}',
                         style: pw.TextStyle(
                           fontSize: 11,
                           fontWeight: pw.FontWeight.bold,
@@ -1018,49 +1082,37 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
-                  pw.Text('CGST (0%):', style: const pw.TextStyle(fontSize: 11)),
-                  pw.Text('Rs. 0.00', style: const pw.TextStyle(fontSize: 11)),
+                  pw.Text('CGST (0%):', style: const pw.TextStyle(fontSize: 11, color: PdfColors.grey700)),
+                  pw.Text('₹0.00', style: const pw.TextStyle(fontSize: 11, color: PdfColors.grey700)),
                 ],
               ),
               pw.SizedBox(height: 4),
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
-                  pw.Text('SGST (0%):', style: const pw.TextStyle(fontSize: 11)),
-                  pw.Text('Rs. 0.00', style: const pw.TextStyle(fontSize: 11)),
+                  pw.Text('SGST (0%):', style: const pw.TextStyle(fontSize: 11, color: PdfColors.grey700)),
+                  pw.Text('₹0.00', style: const pw.TextStyle(fontSize: 11, color: PdfColors.grey700)),
                 ],
               ),
-              pw.SizedBox(height: 8),
+              pw.Divider(thickness: 1, color: PdfColors.grey400),
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
                   pw.Text('Grand Total Paid:',
                       style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 13)),
-                  pw.Text('Rs. ${totalPaid.toStringAsFixed(2)}',
+                  pw.Text('₹${totalPaid.toStringAsFixed(2)}',
                       style: pw.TextStyle(
                         fontWeight: pw.FontWeight.bold,
                         fontSize: 15,
-                        color: PdfColors.green800,
+                        color: PdfColors.green900,
                       )),
                 ],
               ),
-              pw.SizedBox(height: 24),
+              pw.Spacer(),
               pw.Center(
-                child: pw.Container(
-                  padding: const pw.EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: pw.BoxDecoration(
-                    border: pw.Border.all(color: PdfColors.green800, width: 2),
-                    borderRadius: pw.BorderRadius.circular(8),
-                  ),
-                  child: pw.Text(
-                    'PAID & VERIFIED  |  iAGROW',
-                    style: pw.TextStyle(
-                      fontWeight: pw.FontWeight.bold,
-                      color: PdfColors.green800,
-                      fontSize: 11,
-                      letterSpacing: 1.5,
-                    ),
-                  ),
+                child: pw.Text(
+                  'This is an electronically generated invoice issued by iAgrow. No signature required.',
+                  style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey600),
                 ),
               ),
             ],

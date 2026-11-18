@@ -5,8 +5,10 @@ import 'package:go_router/go_router.dart';
 import '../../../core/localization/app_strings.dart';
 import '../../../core/network/swagger_generated/app_api.swagger.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/app_error_state.dart';
 import '../../../core/widgets/shell_scaffold.dart';
 import '../../../core/widgets/shimmer_placeholders.dart';
+import '../../../data/models/api_models/course_models.dart' show CourseCategory;
 import '../../home_farmer/providers/student_provider.dart';
 import 'ebooks_tab.dart';
 
@@ -36,12 +38,19 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
   String _selectedCategory = 'all';
   String? _selectedInstructorId;
   String _selectedLevel = '';
+  String _selectedLanguage = '';
   String _selectedOrdering = '';
   String _selectedPricePreset = 'all';
   String _selectedQuickFilter = 'All';
   num? _minPrice;
   num? _maxPrice;
   double? _minRating;
+
+  // E-Books specific filters
+  String _selectedEbookPricePreset = 'all';
+  num? _ebookMinPrice;
+  num? _ebookMaxPrice;
+
   final _searchController = TextEditingController();
 
   /// Returns true when user is browsing the category grid (Screen 12)
@@ -54,8 +63,15 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
       (_selectedInstructorId == null || _selectedInstructorId!.isEmpty);
 
   int get _activeFilterCount {
+    if (_selectedTab == 1) {
+      int count = 0;
+      if (_selectedEbookPricePreset != 'all') count++;
+      if (_selectedInstructorId != null && _selectedInstructorId!.isNotEmpty) count++;
+      return count;
+    }
     int count = 0;
     if (_selectedLevel.isNotEmpty) count++;
+    if (_selectedLanguage.isNotEmpty) count++;
     if (_selectedOrdering.isNotEmpty && _selectedOrdering != '-created_at') count++;
     if (_selectedPricePreset != 'all') count++;
     if (_minRating != null && _minRating! > 0) count++;
@@ -66,6 +82,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
   @override
   void initState() {
     super.initState();
+    shellCustomBackHandler = _handleBackPress;
     _selectedTab = widget.initialTab.clamp(0, 1);
     if (widget.initialCategory != null && widget.initialCategory!.isNotEmpty) {
       _selectedCategory = widget.initialCategory!;
@@ -79,9 +96,18 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
     }
   }
 
+  bool _handleBackPress() {
+    if (!_isCategoriesView) {
+      _clearSearchAndFilters();
+      return true; // handled internally, do not navigate back to Home
+    }
+    return false; // already in categories view, let shell handle it
+  }
+
   @override
   void didUpdateWidget(covariant ExploreScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
+    shellCustomBackHandler = _handleBackPress;
     if (widget.initialTab != oldWidget.initialTab) {
       setState(() {
         _selectedTab = widget.initialTab.clamp(0, 1);
@@ -109,6 +135,9 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
 
   @override
   void dispose() {
+    if (shellCustomBackHandler == _handleBackPress) {
+      shellCustomBackHandler = null;
+    }
     _searchController.dispose();
     super.dispose();
   }
@@ -121,34 +150,55 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
       _selectedCategory = 'all';
       _selectedQuickFilter = 'All';
       _selectedLevel = '';
+      _selectedLanguage = '';
       _selectedOrdering = '';
       _selectedPricePreset = 'all';
       _minPrice = null;
       _maxPrice = null;
       _minRating = null;
+      _selectedEbookPricePreset = 'all';
+      _ebookMinPrice = null;
+      _ebookMaxPrice = null;
       _selectedInstructorId = null;
     });
   }
 
   void _showFilterBottomSheet() {
+    final isEbooksTab = _selectedTab == 1;
+
+    // Course temp states
     String tempLevel = _selectedLevel;
+    String tempLanguage = _selectedLanguage;
     String tempOrdering = _selectedOrdering;
     String tempPricePreset = _selectedPricePreset;
     num? tempMinPrice = _minPrice;
     num? tempMaxPrice = _maxPrice;
     double? tempMinRating = _minRating;
 
+    // E-Book temp states
+    String tempEbookPricePreset = _selectedEbookPricePreset;
+    num? tempEbookMinPrice = _ebookMinPrice;
+    num? tempEbookMaxPrice = _ebookMaxPrice;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      enableDrag: true,
+      showDragHandle: false,
       backgroundColor: Colors.transparent,
       builder: (context) {
         final isDark = Theme.of(context).brightness == Brightness.dark;
         return StatefulBuilder(
           builder: (context, setModalState) {
             int getTempCount() {
+              if (isEbooksTab) {
+                int count = 0;
+                if (tempEbookPricePreset != 'all') count++;
+                return count;
+              }
               int count = 0;
               if (tempLevel.isNotEmpty) count++;
+              if (tempLanguage.isNotEmpty) count++;
               if (tempOrdering.isNotEmpty && tempOrdering != '-created_at') count++;
               if (tempPricePreset != 'all') count++;
               if (tempMinRating != null && tempMinRating! > 0) count++;
@@ -157,321 +207,628 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
 
             final tempCount = getTempCount();
 
-            return Container(
-              constraints: BoxConstraints(
-                maxHeight: MediaQuery.of(context).size.height * 0.85,
-              ),
-              decoration: BoxDecoration(
-                color: isDark ? AppColors.cardDark : Colors.white,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-              ),
-              child: SafeArea(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Center(
-                        child: Container(
-                          width: 40,
-                          height: 4,
-                          margin: const EdgeInsets.only(bottom: 16),
-                          decoration: BoxDecoration(
-                            color: isDark ? AppColors.lineDark : Colors.grey.shade300,
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        ),
+            return DraggableScrollableSheet(
+              initialChildSize: 0.85,
+              minChildSize: 0.35,
+              maxChildSize: 0.95,
+              expand: false,
+              builder: (sheetContext, scrollController) {
+                return Container(
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF141E16) : Colors.white,
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                    border: Border(
+                      top: BorderSide(
+                        color: isDark ? const Color(0xFF263B2B) : const Color(0xFFE2E8F0),
+                        width: 1,
                       ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    ),
+                  ),
+                  child: SafeArea(
+                    top: false,
+                    child: SingleChildScrollView(
+                      controller: scrollController,
+                      physics: const ClampingScrollPhysics(),
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          Center(
+                            child: Container(
+                              width: 44,
+                              height: 5,
+                              margin: const EdgeInsets.only(top: 4, bottom: 16),
+                              decoration: BoxDecoration(
+                                color: isDark ? Colors.white30 : Colors.grey.shade400,
+                                borderRadius: BorderRadius.circular(3),
+                              ),
+                            ),
+                          ),
+                          // ── Header Row ──
                           Row(
                             children: [
                               Container(
-                                padding: const EdgeInsets.all(8),
+                                padding: const EdgeInsets.all(9),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF1B4D2E).withValues(alpha: 0.12),
-                                  borderRadius: BorderRadius.circular(10),
+                                  color: const Color(0xFF1B4D2E).withValues(alpha: 0.14),
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
-                                child: const Icon(Icons.tune_rounded, color: Color(0xFF1B4D2E), size: 20),
+                                child: Icon(
+                                  isEbooksTab ? Icons.auto_stories_rounded : Icons.tune_rounded,
+                                  color: const Color(0xFF1B4D2E),
+                                  size: 22,
+                                ),
                               ),
                               const SizedBox(width: 10),
-                              Text(
-                                tr(ref, 'Filter & Sort Courses'),
-                                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              Expanded(
+                                child: Text(
+                                  isEbooksTab
+                                      ? tr(ref, 'Filter & Sort E-Books')
+                                      : tr(ref, 'Filter & Sort Courses'),
+                                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 17,
+                                        letterSpacing: -0.3,
+                                      ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              if (tempCount > 0) ...[
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF1B4D2E),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    '$tempCount ${tr(ref, 'active')}',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 11,
                                       fontWeight: FontWeight.bold,
-                                      fontSize: 18,
                                     ),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                              ],
+                              IconButton(
+                                visualDensity: VisualDensity.compact,
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                                icon: const Icon(Icons.close_rounded, size: 24),
+                                color: isDark ? Colors.white70 : Colors.grey.shade700,
+                                tooltip: tr(ref, 'Close'),
+                                onPressed: () => Navigator.pop(sheetContext),
                               ),
                             ],
                           ),
-                          if (tempCount > 0)
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF1B4D2E),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                '$tempCount active',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
+                          const SizedBox(height: 22),
 
-                      // Rating Filter
-                      Row(
-                        children: [
-                          const Icon(Icons.star_rounded, size: 18, color: Colors.amber),
-                          const SizedBox(width: 6),
-                          Text('Minimum Rating', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, fontSize: 14)),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          ChoiceChip(
-                            label: const Text('All Ratings'),
-                            selected: tempMinRating == null,
-                            selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
-                            labelStyle: TextStyle(
-                              color: tempMinRating == null ? const Color(0xFF1B4D2E) : null,
-                              fontWeight: tempMinRating == null ? FontWeight.bold : FontWeight.normal,
+                      // ═════════════════════════════════════════════════════════════
+                      // E-BOOKS TAB SPECIFIC FILTERS
+                      // ═════════════════════════════════════════════════════════════
+                      if (isEbooksTab) ...[
+                        Row(
+                          children: [
+                            const Icon(Icons.payments_outlined, size: 20, color: Color(0xFF1B4D2E)),
+                            const SizedBox(width: 8),
+                            Text(
+                              tr(ref, 'Price Filter'),
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
                             ),
-                            onSelected: (val) {
-                              if (val) {
-                                setModalState(() => tempMinRating = null);
-                              }
-                            },
-                          ),
-                          ...[4.5, 4.0, 3.5, 3.0].map((rating) {
-                            final isSelected = tempMinRating == rating;
-                            return ChoiceChip(
-                              label: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(Icons.star_rounded, size: 14, color: Colors.amber),
-                                  const SizedBox(width: 4),
-                                  Text('$rating & up'),
-                                ],
-                              ),
-                              selected: isSelected,
-                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 12,
+                          runSpacing: 12,
+                          children: [
+                            ChoiceChip(
+                              label: Text(tr(ref, 'All Prices')),
+                              selected: tempEbookPricePreset == 'all',
+                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.18),
                               labelStyle: TextStyle(
-                                color: isSelected ? const Color(0xFF1B4D2E) : null,
-                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                color: tempEbookPricePreset == 'all' ? const Color(0xFF1B4D2E) : null,
+                                fontWeight: tempEbookPricePreset == 'all' ? FontWeight.bold : FontWeight.w600,
+                                fontSize: 15,
                               ),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                               onSelected: (val) {
-                                setModalState(() => tempMinRating = val ? rating : null);
+                                if (val) {
+                                  setModalState(() {
+                                    tempEbookPricePreset = 'all';
+                                    tempEbookMinPrice = null;
+                                    tempEbookMaxPrice = null;
+                                  });
+                                }
                               },
-                            );
-                          }),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
+                            ),
+                            ChoiceChip(
+                              label: Text(tr(ref, 'Free E-Books')),
+                              selected: tempEbookPricePreset == 'free',
+                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.18),
+                              labelStyle: TextStyle(
+                                color: tempEbookPricePreset == 'free' ? const Color(0xFF1B4D2E) : null,
+                                fontWeight: tempEbookPricePreset == 'free' ? FontWeight.bold : FontWeight.w600,
+                                fontSize: 15,
+                              ),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              onSelected: (val) {
+                                if (val) {
+                                  setModalState(() {
+                                    tempEbookPricePreset = 'free';
+                                    tempEbookMinPrice = 0;
+                                    tempEbookMaxPrice = 0;
+                                  });
+                                }
+                              },
+                            ),
+                            ChoiceChip(
+                              label: Text(tr(ref, 'Paid E-Books')),
+                              selected: tempEbookPricePreset == 'paid',
+                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.18),
+                              labelStyle: TextStyle(
+                                color: tempEbookPricePreset == 'paid' ? const Color(0xFF1B4D2E) : null,
+                                fontWeight: tempEbookPricePreset == 'paid' ? FontWeight.bold : FontWeight.w600,
+                                fontSize: 15,
+                              ),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              onSelected: (val) {
+                                if (val) {
+                                  setModalState(() {
+                                    tempEbookPricePreset = 'paid';
+                                    tempEbookMinPrice = 1;
+                                    tempEbookMaxPrice = null;
+                                  });
+                                }
+                              },
+                            ),
+                            ChoiceChip(
+                              label: Text(tr(ref, 'Under ₹200')),
+                              selected: tempEbookPricePreset == 'under_200',
+                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.18),
+                              labelStyle: TextStyle(
+                                color: tempEbookPricePreset == 'under_200' ? const Color(0xFF1B4D2E) : null,
+                                fontWeight: tempEbookPricePreset == 'under_200' ? FontWeight.bold : FontWeight.w600,
+                                fontSize: 15,
+                              ),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              onSelected: (val) {
+                                if (val) {
+                                  setModalState(() {
+                                    tempEbookPricePreset = 'under_200';
+                                    tempEbookMinPrice = 1;
+                                    tempEbookMaxPrice = 200;
+                                  });
+                                }
+                              },
+                            ),
+                            ChoiceChip(
+                              label: Text(tr(ref, 'Under ₹500')),
+                              selected: tempEbookPricePreset == 'under_500',
+                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.18),
+                              labelStyle: TextStyle(
+                                color: tempEbookPricePreset == 'under_500' ? const Color(0xFF1B4D2E) : null,
+                                fontWeight: tempEbookPricePreset == 'under_500' ? FontWeight.bold : FontWeight.w600,
+                                fontSize: 15,
+                              ),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              onSelected: (val) {
+                                if (val) {
+                                  setModalState(() {
+                                    tempEbookPricePreset = 'under_500';
+                                    tempEbookMinPrice = 1;
+                                    tempEbookMaxPrice = 500;
+                                  });
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+                      ] else ...[
+                        // ═════════════════════════════════════════════════════════════
+                        // COURSES TAB SPECIFIC FILTERS
+                        // ═════════════════════════════════════════════════════════════
+                        // Rating Filter
+                        Row(
+                          children: [
+                            const Icon(Icons.star_rounded, size: 20, color: Colors.amber),
+                            const SizedBox(width: 8),
+                            Text(
+                              tr(ref, 'Minimum Rating'),
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 12,
+                          runSpacing: 12,
+                          children: [
+                            ChoiceChip(
+                              label: Text(tr(ref, 'All Ratings')),
+                              selected: tempMinRating == null,
+                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.18),
+                              labelStyle: TextStyle(
+                                color: tempMinRating == null ? const Color(0xFF1B4D2E) : null,
+                                fontWeight: tempMinRating == null ? FontWeight.bold : FontWeight.w600,
+                                fontSize: 15,
+                              ),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              onSelected: (val) {
+                                if (val) {
+                                  setModalState(() => tempMinRating = null);
+                                }
+                              },
+                            ),
+                            ...[4.5, 4.0, 3.5, 3.0].map((rating) {
+                              final isSelected = tempMinRating == rating;
+                              return ChoiceChip(
+                                label: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.star_rounded, size: 18, color: Colors.amber),
+                                    const SizedBox(width: 5),
+                                    Text('${formatNum(ref, rating)} ${tr(ref, '& up')}'),
+                                  ],
+                                ),
+                                selected: isSelected,
+                                selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.18),
+                                labelStyle: TextStyle(
+                                  color: isSelected ? const Color(0xFF1B4D2E) : null,
+                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                                  fontSize: 15,
+                                ),
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                onSelected: (val) {
+                                  setModalState(() => tempMinRating = val ? rating : null);
+                                },
+                              );
+                            }),
+                          ],
+                        ),
+                        const SizedBox(height: 22),
 
-                      // Price Preset Filter
-                      Row(
-                        children: [
-                          const Icon(Icons.payments_outlined, size: 18, color: Color(0xFF1B4D2E)),
-                          const SizedBox(width: 6),
-                          Text('Price Filter', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, fontSize: 14)),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          ChoiceChip(
-                            label: const Text('All Prices'),
-                            selected: tempPricePreset == 'all',
-                            selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
-                            labelStyle: TextStyle(
-                              color: tempPricePreset == 'all' ? const Color(0xFF1B4D2E) : null,
-                              fontWeight: tempPricePreset == 'all' ? FontWeight.bold : FontWeight.normal,
+                        // Price Preset Filter
+                        Row(
+                          children: [
+                            const Icon(Icons.payments_outlined, size: 20, color: Color(0xFF1B4D2E)),
+                            const SizedBox(width: 8),
+                            Text(
+                              tr(ref, 'Price Filter'),
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
                             ),
-                            onSelected: (val) {
-                              if (val) {
-                                setModalState(() {
-                                  tempPricePreset = 'all';
-                                  tempMinPrice = null;
-                                  tempMaxPrice = null;
-                                });
-                              }
-                            },
-                          ),
-                          ChoiceChip(
-                            label: const Text('Free Courses'),
-                            selected: tempPricePreset == 'free',
-                            selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
-                            labelStyle: TextStyle(
-                              color: tempPricePreset == 'free' ? const Color(0xFF1B4D2E) : null,
-                              fontWeight: tempPricePreset == 'free' ? FontWeight.bold : FontWeight.normal,
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 12,
+                          runSpacing: 12,
+                          children: [
+                            ChoiceChip(
+                              label: Text(tr(ref, 'All Prices')),
+                              selected: tempPricePreset == 'all',
+                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.18),
+                              labelStyle: TextStyle(
+                                color: tempPricePreset == 'all' ? const Color(0xFF1B4D2E) : null,
+                                fontWeight: tempPricePreset == 'all' ? FontWeight.bold : FontWeight.w600,
+                                fontSize: 15,
+                              ),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              onSelected: (val) {
+                                if (val) {
+                                  setModalState(() {
+                                    tempPricePreset = 'all';
+                                    tempMinPrice = null;
+                                    tempMaxPrice = null;
+                                  });
+                                }
+                              },
                             ),
-                            onSelected: (val) {
-                              if (val) {
-                                setModalState(() {
-                                  tempPricePreset = 'free';
-                                  tempMinPrice = 0;
-                                  tempMaxPrice = 0;
-                                });
-                              }
-                            },
-                          ),
-                          ChoiceChip(
-                            label: const Text('Paid Courses'),
-                            selected: tempPricePreset == 'paid',
-                            selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
-                            labelStyle: TextStyle(
-                              color: tempPricePreset == 'paid' ? const Color(0xFF1B4D2E) : null,
-                              fontWeight: tempPricePreset == 'paid' ? FontWeight.bold : FontWeight.normal,
+                            ChoiceChip(
+                              label: Text(tr(ref, 'Free Courses')),
+                              selected: tempPricePreset == 'free',
+                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.18),
+                              labelStyle: TextStyle(
+                                color: tempPricePreset == 'free' ? const Color(0xFF1B4D2E) : null,
+                                fontWeight: tempPricePreset == 'free' ? FontWeight.bold : FontWeight.w600,
+                                fontSize: 15,
+                              ),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              onSelected: (val) {
+                                if (val) {
+                                  setModalState(() {
+                                    tempPricePreset = 'free';
+                                    tempMinPrice = 0;
+                                    tempMaxPrice = 0;
+                                  });
+                                }
+                              },
                             ),
-                            onSelected: (val) {
-                              if (val) {
-                                setModalState(() {
-                                  tempPricePreset = 'paid';
-                                  tempMinPrice = 1;
-                                  tempMaxPrice = null;
-                                });
-                              }
-                            },
-                          ),
-                          ChoiceChip(
-                            label: const Text('Under ₹500'),
-                            selected: tempPricePreset == 'under_500',
-                            selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
-                            labelStyle: TextStyle(
-                              color: tempPricePreset == 'under_500' ? const Color(0xFF1B4D2E) : null,
-                              fontWeight: tempPricePreset == 'under_500' ? FontWeight.bold : FontWeight.normal,
+                            ChoiceChip(
+                              label: Text(tr(ref, 'Paid Courses')),
+                              selected: tempPricePreset == 'paid',
+                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.18),
+                              labelStyle: TextStyle(
+                                color: tempPricePreset == 'paid' ? const Color(0xFF1B4D2E) : null,
+                                fontWeight: tempPricePreset == 'paid' ? FontWeight.bold : FontWeight.w600,
+                                fontSize: 15,
+                              ),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              onSelected: (val) {
+                                if (val) {
+                                  setModalState(() {
+                                    tempPricePreset = 'paid';
+                                    tempMinPrice = 1;
+                                    tempMaxPrice = null;
+                                  });
+                                }
+                              },
                             ),
-                            onSelected: (val) {
-                              if (val) {
-                                setModalState(() {
-                                  tempPricePreset = 'under_500';
-                                  tempMinPrice = 1;
-                                  tempMaxPrice = 500;
-                                });
-                              }
-                            },
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
+                            ChoiceChip(
+                              label: Text(tr(ref, 'Under ₹500')),
+                              selected: tempPricePreset == 'under_500',
+                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.18),
+                              labelStyle: TextStyle(
+                                color: tempPricePreset == 'under_500' ? const Color(0xFF1B4D2E) : null,
+                                fontWeight: tempPricePreset == 'under_500' ? FontWeight.bold : FontWeight.w600,
+                                fontSize: 15,
+                              ),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              onSelected: (val) {
+                                if (val) {
+                                  setModalState(() {
+                                    tempPricePreset = 'under_500';
+                                    tempMinPrice = 1;
+                                    tempMaxPrice = 500;
+                                  });
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 22),
 
-                      // Skill Level
-                      Row(
-                        children: [
-                          const Icon(Icons.signal_cellular_alt_rounded, size: 18, color: Color(0xFF1B4D2E)),
-                          const SizedBox(width: 6),
-                          Text('Skill Level', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, fontSize: 14)),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          ChoiceChip(
-                            label: const Text('All Levels'),
-                            selected: tempLevel.isEmpty,
-                            selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
-                            labelStyle: TextStyle(
-                              color: tempLevel.isEmpty ? const Color(0xFF1B4D2E) : null,
-                              fontWeight: tempLevel.isEmpty ? FontWeight.bold : FontWeight.normal,
+                        // Skill Level
+                        Row(
+                          children: [
+                            const Icon(Icons.signal_cellular_alt_rounded, size: 20, color: Color(0xFF1B4D2E)),
+                            const SizedBox(width: 8),
+                            Text(
+                              tr(ref, 'Skill Level'),
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
                             ),
-                            onSelected: (val) {
-                              if (val) setModalState(() => tempLevel = '');
-                            },
-                          ),
-                          ChoiceChip(
-                            label: const Text('Beginner'),
-                            selected: tempLevel == 'beginner',
-                            selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
-                            labelStyle: TextStyle(
-                              color: tempLevel == 'beginner' ? const Color(0xFF1B4D2E) : null,
-                              fontWeight: tempLevel == 'beginner' ? FontWeight.bold : FontWeight.normal,
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 12,
+                          runSpacing: 12,
+                          children: [
+                            ChoiceChip(
+                              label: Text(tr(ref, 'All Levels')),
+                              selected: tempLevel.isEmpty,
+                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.18),
+                              labelStyle: TextStyle(
+                                color: tempLevel.isEmpty ? const Color(0xFF1B4D2E) : null,
+                                fontWeight: tempLevel.isEmpty ? FontWeight.bold : FontWeight.w600,
+                                fontSize: 15,
+                              ),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              onSelected: (val) {
+                                if (val) setModalState(() => tempLevel = '');
+                              },
                             ),
-                            onSelected: (val) {
-                              setModalState(() => tempLevel = val ? 'beginner' : '');
-                            },
-                          ),
-                          ChoiceChip(
-                            label: const Text('Intermediate'),
-                            selected: tempLevel == 'intermediate',
-                            selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
-                            labelStyle: TextStyle(
-                              color: tempLevel == 'intermediate' ? const Color(0xFF1B4D2E) : null,
-                              fontWeight: tempLevel == 'intermediate' ? FontWeight.bold : FontWeight.normal,
+                            ChoiceChip(
+                              label: Text(tr(ref, 'Beginner')),
+                              selected: tempLevel == 'beginner',
+                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.18),
+                              labelStyle: TextStyle(
+                                color: tempLevel == 'beginner' ? const Color(0xFF1B4D2E) : null,
+                                fontWeight: tempLevel == 'beginner' ? FontWeight.bold : FontWeight.w600,
+                                fontSize: 15,
+                              ),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              onSelected: (val) {
+                                setModalState(() => tempLevel = val ? 'beginner' : '');
+                              },
                             ),
-                            onSelected: (val) {
-                              setModalState(() => tempLevel = val ? 'intermediate' : '');
-                            },
-                          ),
-                          ChoiceChip(
-                            label: const Text('Advanced'),
-                            selected: tempLevel == 'advanced',
-                            selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
-                            labelStyle: TextStyle(
-                              color: tempLevel == 'advanced' ? const Color(0xFF1B4D2E) : null,
-                              fontWeight: tempLevel == 'advanced' ? FontWeight.bold : FontWeight.normal,
+                            ChoiceChip(
+                              label: Text(tr(ref, 'Intermediate')),
+                              selected: tempLevel == 'intermediate',
+                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.18),
+                              labelStyle: TextStyle(
+                                color: tempLevel == 'intermediate' ? const Color(0xFF1B4D2E) : null,
+                                fontWeight: tempLevel == 'intermediate' ? FontWeight.bold : FontWeight.w600,
+                                fontSize: 15,
+                              ),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              onSelected: (val) {
+                                setModalState(() => tempLevel = val ? 'intermediate' : '');
+                              },
                             ),
-                            onSelected: (val) {
-                              setModalState(() => tempLevel = val ? 'advanced' : '');
-                            },
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
+                            ChoiceChip(
+                              label: Text(tr(ref, 'Advanced')),
+                              selected: tempLevel == 'advanced',
+                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.18),
+                              labelStyle: TextStyle(
+                                color: tempLevel == 'advanced' ? const Color(0xFF1B4D2E) : null,
+                                fontWeight: tempLevel == 'advanced' ? FontWeight.bold : FontWeight.w600,
+                                fontSize: 15,
+                              ),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              onSelected: (val) {
+                                setModalState(() => tempLevel = val ? 'advanced' : '');
+                              },
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 22),
 
-                      // Sort By
-                      Row(
-                        children: [
-                          const Icon(Icons.sort_rounded, size: 18, color: Color(0xFF1B4D2E)),
-                          const SizedBox(width: 6),
-                          Text('Sort by', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, fontSize: 14)),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          ChoiceChip(
-                            label: const Text('Newest'),
-                            selected: tempOrdering == '-created_at' || tempOrdering == '',
-                            selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
-                            labelStyle: TextStyle(
-                              color: (tempOrdering == '-created_at' || tempOrdering == '') ? const Color(0xFF1B4D2E) : null,
-                              fontWeight: (tempOrdering == '-created_at' || tempOrdering == '') ? FontWeight.bold : FontWeight.normal,
+                        // Language Filter
+                        Row(
+                          children: [
+                            const Icon(Icons.language_rounded, size: 20, color: Color(0xFF1B4D2E)),
+                            const SizedBox(width: 8),
+                            Text(
+                              tr(ref, 'Language Filter'),
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
                             ),
-                            onSelected: (val) {
-                              if (val) setModalState(() => tempOrdering = '-created_at');
-                            },
-                          ),
-                          ChoiceChip(
-                            label: const Text('Most Popular'),
-                            selected: tempOrdering == '-views_count',
-                            selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.15),
-                            labelStyle: TextStyle(
-                              color: tempOrdering == '-views_count' ? const Color(0xFF1B4D2E) : null,
-                              fontWeight: tempOrdering == '-views_count' ? FontWeight.bold : FontWeight.normal,
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 12,
+                          runSpacing: 12,
+                          children: [
+                            ChoiceChip(
+                              label: Text(tr(ref, 'All Languages')),
+                              selected: tempLanguage.isEmpty,
+                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.18),
+                              labelStyle: TextStyle(
+                                color: tempLanguage.isEmpty ? const Color(0xFF1B4D2E) : null,
+                                fontWeight: tempLanguage.isEmpty ? FontWeight.bold : FontWeight.w600,
+                                fontSize: 15,
+                              ),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              onSelected: (val) {
+                                if (val) setModalState(() => tempLanguage = '');
+                              },
                             ),
-                            onSelected: (val) {
-                              if (val) setModalState(() => tempOrdering = '-views_count');
-                            },
-                          ),
-                        ],
-                      ),
+                            ChoiceChip(
+                              label: Text(tr(ref, 'English')),
+                              selected: tempLanguage == 'English',
+                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.18),
+                              labelStyle: TextStyle(
+                                color: tempLanguage == 'English' ? const Color(0xFF1B4D2E) : null,
+                                fontWeight: tempLanguage == 'English' ? FontWeight.bold : FontWeight.w600,
+                                fontSize: 15,
+                              ),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              onSelected: (val) {
+                                setModalState(() => tempLanguage = val ? 'English' : '');
+                              },
+                            ),
+                            ChoiceChip(
+                              label: Text(tr(ref, 'Hindi')),
+                              selected: tempLanguage == 'Hindi',
+                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.18),
+                              labelStyle: TextStyle(
+                                color: tempLanguage == 'Hindi' ? const Color(0xFF1B4D2E) : null,
+                                fontWeight: tempLanguage == 'Hindi' ? FontWeight.bold : FontWeight.w600,
+                                fontSize: 15,
+                              ),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              onSelected: (val) {
+                                setModalState(() => tempLanguage = val ? 'Hindi' : '');
+                              },
+                            ),
+                            ChoiceChip(
+                              label: Text(tr(ref, 'Marathi')),
+                              selected: tempLanguage == 'Marathi',
+                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.18),
+                              labelStyle: TextStyle(
+                                color: tempLanguage == 'Marathi' ? const Color(0xFF1B4D2E) : null,
+                                fontWeight: tempLanguage == 'Marathi' ? FontWeight.bold : FontWeight.w600,
+                                fontSize: 15,
+                              ),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              onSelected: (val) {
+                                setModalState(() => tempLanguage = val ? 'Marathi' : '');
+                              },
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 22),
+
+                        // Sort By
+                        Row(
+                          children: [
+                            const Icon(Icons.sort_rounded, size: 20, color: Color(0xFF1B4D2E)),
+                            const SizedBox(width: 8),
+                            Text(
+                              tr(ref, 'Sort by'),
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 12,
+                          runSpacing: 12,
+                          children: [
+                            ChoiceChip(
+                              label: Text(tr(ref, 'Newest')),
+                              selected: tempOrdering == '-created_at' || tempOrdering == '',
+                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.18),
+                              labelStyle: TextStyle(
+                                color: (tempOrdering == '-created_at' || tempOrdering == '') ? const Color(0xFF1B4D2E) : null,
+                                fontWeight: (tempOrdering == '-created_at' || tempOrdering == '') ? FontWeight.bold : FontWeight.w600,
+                                fontSize: 15,
+                              ),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              onSelected: (val) {
+                                if (val) setModalState(() => tempOrdering = '-created_at');
+                              },
+                            ),
+                            ChoiceChip(
+                              label: Text(tr(ref, 'Most Popular')),
+                              selected: tempOrdering == '-views_count',
+                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.18),
+                              labelStyle: TextStyle(
+                                color: tempOrdering == '-views_count' ? const Color(0xFF1B4D2E) : null,
+                                fontWeight: tempOrdering == '-views_count' ? FontWeight.bold : FontWeight.w600,
+                                fontSize: 15,
+                              ),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              onSelected: (val) {
+                                if (val) setModalState(() => tempOrdering = '-views_count');
+                              },
+                            ),
+                          ],
+                        ),
+                      ],
                       const SizedBox(height: 28),
 
                       // Reset & Apply Buttons
@@ -482,18 +839,28 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                               style: OutlinedButton.styleFrom(
                                 padding: const EdgeInsets.symmetric(vertical: 14),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                side: BorderSide(
+                                  color: isDark ? const Color(0xFF2E4534) : const Color(0xFFCBD5E1),
+                                ),
                               ),
                               onPressed: () {
                                 setModalState(() {
-                                  tempLevel = '';
-                                  tempOrdering = '';
-                                  tempPricePreset = 'all';
-                                  tempMinPrice = null;
-                                  tempMaxPrice = null;
-                                  tempMinRating = null;
+                                  if (isEbooksTab) {
+                                    tempEbookPricePreset = 'all';
+                                    tempEbookMinPrice = null;
+                                    tempEbookMaxPrice = null;
+                                  } else {
+                                    tempLevel = '';
+                                    tempLanguage = '';
+                                    tempOrdering = '';
+                                    tempPricePreset = 'all';
+                                    tempMinPrice = null;
+                                    tempMaxPrice = null;
+                                    tempMinRating = null;
+                                  }
                                 });
                               },
-                              child: const Text('Reset All', style: TextStyle(fontWeight: FontWeight.bold)),
+                              child: Text(tr(ref, 'Reset All'), style: const TextStyle(fontWeight: FontWeight.bold)),
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -510,15 +877,22 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                               onPressed: () {
                                 Navigator.pop(context);
                                 setState(() {
-                                  _selectedLevel = tempLevel;
-                                  _selectedOrdering = tempOrdering;
-                                  _selectedPricePreset = tempPricePreset;
-                                  _minPrice = tempMinPrice;
-                                  _maxPrice = tempMaxPrice;
-                                  _minRating = tempMinRating;
+                                  if (isEbooksTab) {
+                                    _selectedEbookPricePreset = tempEbookPricePreset;
+                                    _ebookMinPrice = tempEbookMinPrice;
+                                    _ebookMaxPrice = tempEbookMaxPrice;
+                                  } else {
+                                    _selectedLevel = tempLevel;
+                                    _selectedLanguage = tempLanguage;
+                                    _selectedOrdering = tempOrdering;
+                                    _selectedPricePreset = tempPricePreset;
+                                    _minPrice = tempMinPrice;
+                                    _maxPrice = tempMaxPrice;
+                                    _minRating = tempMinRating;
+                                  }
                                 });
                               },
-                              child: const Text('Apply Filters', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                              child: Text(tr(ref, 'Apply Filters'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                             ),
                           ),
                         ],
@@ -531,6 +905,8 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
             );
           },
         );
+          },
+        );
       },
     );
   }
@@ -539,13 +915,22 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Scaffold(
-      backgroundColor: isDark ? AppColors.bgDark : const Color(0xFFFBFBFA),
-      appBar: _buildAppBar(context, isDark),
-      body: SafeArea(
-        child: _isCategoriesView
-            ? _buildExploreCategoriesScreen(context, isDark)
-            : _buildSearchResultsScreen(context, isDark),
+    return PopScope(
+      canPop: _isCategoriesView,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        // If not in the base categories view, handle the phone back gesture
+        // by resetting to the main Explore categories view first.
+        _clearSearchAndFilters();
+      },
+      child: Scaffold(
+        backgroundColor: isDark ? AppColors.bgDark : const Color(0xFFFBFBFA),
+        appBar: _buildAppBar(context, isDark),
+        body: SafeArea(
+          child: _isCategoriesView
+              ? _buildExploreCategoriesScreen(context, isDark)
+              : _buildSearchResultsScreen(context, isDark),
+        ),
       ),
     );
   }
@@ -599,15 +984,10 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.more_vert_rounded),
+            icon: const Icon(Icons.tune_rounded),
             color: isDark ? Colors.white70 : const Color(0xFF1B4D2E),
-            onPressed: () {
-              // Quick action: switch directly to Search view
-              setState(() {
-                _searchQuery = ' ';
-                _searchController.text = '';
-              });
-            },
+            tooltip: tr(ref, 'Filter Courses'),
+            onPressed: _showFilterBottomSheet,
           ),
           const SizedBox(width: 8),
         ],
@@ -878,7 +1258,10 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                     children: [
                       const Icon(Icons.wifi_off_rounded, size: 40, color: Colors.grey),
                       const SizedBox(height: 10),
-                      Text(tr(ref, 'Unable to load categories')),
+                      Text(
+                        tr(ref, isOfflineOrNetworkError(err) ? 'No internet connection. Please try again later.' : 'Unable to load categories'),
+                        textAlign: TextAlign.center,
+                      ),
                       const SizedBox(height: 8),
                       TextButton(
                         onPressed: () => ref.invalidate(studentCategoriesProvider),
@@ -1151,6 +1534,8 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                 searchQuery: _searchQuery,
                 category: _selectedCategory == 'all' ? null : _selectedCategory,
                 instructorId: _selectedInstructorId,
+                minPrice: _ebookMinPrice,
+                maxPrice: _ebookMaxPrice,
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
               )
@@ -1158,17 +1543,26 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
               // Results List of Large Course Cards
               catalogAsync.when(
               data: (courses) {
-                // Apply language filter if Hindi or Marathi is selected
+                // Apply language filter (from filter sheet or quick filter)
                 var filteredCourses = courses;
-                if (_selectedQuickFilter == 'Hindi') {
+                final activeLang = _selectedLanguage.isNotEmpty
+                    ? _selectedLanguage
+                    : (_selectedQuickFilter != 'All' ? _selectedQuickFilter : '');
+
+                if (activeLang.isNotEmpty) {
+                  final lang = activeLang.toLowerCase();
                   filteredCourses = courses.where((c) {
                     final t = c.title.toLowerCase();
-                    return t.contains('hindi') || t.contains('हिंदी') || t.contains('हिन्दी');
-                  }).toList();
-                } else if (_selectedQuickFilter == 'Marathi') {
-                  filteredCourses = courses.where((c) {
-                    final t = c.title.toLowerCase();
-                    return t.contains('marathi') || t.contains('मराठी');
+                    final desc = (c.shortDescription ?? '').toLowerCase();
+                    if (lang == 'hindi') {
+                      return t.contains('hindi') || t.contains('हिंदी') || t.contains('हिन्दी') || desc.contains('hindi') || desc.contains('हिंदी');
+                    } else if (lang == 'marathi') {
+                      return t.contains('marathi') || t.contains('मराठी') || desc.contains('marathi') || desc.contains('मराठी');
+                    } else if (lang == 'english') {
+                      return t.contains('english') || desc.contains('english') || (!t.contains('hindi') && !t.contains('हिंदी') && !t.contains('marathi') && !t.contains('मराठी'));
+                    } else {
+                      return t.contains(lang) || desc.contains(lang);
+                    }
                   }).toList();
                 }
 
@@ -1253,9 +1647,16 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                 child: Center(
                   child: Column(
                     children: [
-                      const Icon(Icons.error_outline_rounded, size: 36, color: Colors.redAccent),
+                      Icon(
+                        isOfflineOrNetworkError(err) ? Icons.wifi_off_rounded : Icons.error_outline_rounded,
+                        size: 36,
+                        color: isOfflineOrNetworkError(err) ? Colors.orange : Colors.redAccent,
+                      ),
                       const SizedBox(height: 10),
-                      Text(tr(ref, 'Unable to load results')),
+                      Text(
+                        tr(ref, isOfflineOrNetworkError(err) ? 'No internet connection. Please try again later.' : 'Unable to load results'),
+                        textAlign: TextAlign.center,
+                      ),
                       const SizedBox(height: 8),
                       TextButton(
                         onPressed: () => ref.invalidate(studentCatalogProvider),
@@ -1343,7 +1744,11 @@ class _PrototypeCourseCard extends StatelessWidget {
         course.price == '0.00' ||
         course.price == '0.0';
     final priceText = isFree ? 'FREE' : '₹${course.price}';
-    final badgeLabel = isFree ? 'Free course' : (index % 2 == 0 ? 'Beginner' : 'Bestseller');
+    final categoryName = course.category?.name ??
+        CourseCategory.fromValue(course.category?.slug)?.display;
+    final badgeLabel = (categoryName != null && categoryName.trim().isNotEmpty)
+        ? categoryName.trim()
+        : (isFree ? 'Free course' : (index % 2 == 0 ? 'Beginner' : 'Bestseller'));
 
     return Material(
       color: Colors.transparent,
@@ -1408,11 +1813,11 @@ class _PrototypeCourseCard extends StatelessWidget {
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                           decoration: BoxDecoration(
-                            color: isFree ? const Color(0xFFFEF3C7) : const Color(0xFFFDE68A),
+                            color: isDark ? const Color(0xFF1E3A2F) : Colors.white.withValues(alpha: 0.95),
                             borderRadius: BorderRadius.circular(12),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.08),
+                                color: Colors.black.withValues(alpha: 0.12),
                                 blurRadius: 4,
                                 offset: const Offset(0, 1),
                               ),
@@ -1420,8 +1825,8 @@ class _PrototypeCourseCard extends StatelessWidget {
                           ),
                           child: Text(
                             badgeLabel,
-                            style: const TextStyle(
-                              color: Color(0xFF92400E),
+                            style: TextStyle(
+                              color: isDark ? const Color(0xFF86EFAC) : const Color(0xFF132A13),
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
                             ),

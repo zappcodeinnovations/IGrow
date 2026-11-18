@@ -58,107 +58,117 @@ class _ChooseRoleScreenState extends ConsumerState<ChooseRoleScreen> {
       child: SafeArea(
         child: ResponsiveContentConstraint(
           maxWidth: 500,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 16),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: IntrinsicHeight(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 16),
 
-                // Elevated Back Button to Language Selection
-                const AppElevatedBackButton(
-                  fallbackRoute: RouteNames.languageSelection,
-                ),
+                        // Elevated Back Button to Language Selection
+                        const AppElevatedBackButton(
+                          fallbackRoute: RouteNames.languageSelection,
+                        ),
 
-                const SizedBox(height: 24),
+                        const SizedBox(height: 20),
 
-                // Headline
-                Text(
-                  tr(ref, 'Choose Your Role'),
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 32,
-                    fontWeight: FontWeight.w800,
-                    color: isDark
-                        ? AppColors.organicHeadingDark
-                        : AppColors.organicHeadingGreen,
-                    height: 1.15,
-                    letterSpacing: -0.6,
+                        // Headline
+                        Text(
+                          tr(ref, 'Choose Your Role'),
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 32,
+                            fontWeight: FontWeight.w800,
+                            color: isDark
+                                ? AppColors.organicHeadingDark
+                                : AppColors.organicHeadingGreen,
+                            height: 1.15,
+                            letterSpacing: -0.6,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+
+                        // Subtitle
+                        Text(
+                          tr(ref, 'Select whether you want to learn or teach on iAgrow.'),
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w400,
+                            color: isDark
+                                ? AppColors.organicSubtitleDark
+                                : AppColors.organicSubtitleGreen,
+                            height: 1.35,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+
+                        // 1. Student / Learner Card
+                        _RoleCard(
+                          title: tr(ref, 'Student / Learner'),
+                          description: tr(
+                            ref,
+                            'Access agricultural courses, ebooks, community hubs, and expert guidance.',
+                          ),
+                          icon: Icons.school_rounded,
+                          isSelected: _selectedRole == UserRole.farmer,
+                          isDark: isDark,
+                          onTap: () => setState(() => _selectedRole = UserRole.farmer),
+                        ),
+
+                        const SizedBox(height: 14),
+
+                        // 2. Instructor / Educator Card
+                        _RoleCard(
+                          title: tr(ref, 'Instructor / Educator'),
+                          description: tr(
+                            ref,
+                            'Publish courses, manage student communities, upload guides, and track analytics.',
+                          ),
+                          icon: Icons.psychology_rounded,
+                          isSelected: _selectedRole == UserRole.instructor,
+                          isDark: isDark,
+                          onTap: () => setState(() => _selectedRole = UserRole.instructor),
+                        ),
+
+                        const SizedBox(height: 12),
+
+                        Text(
+                          tr(ref, 'You can switch roles anytime from your profile.'),
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: isDark ? Colors.white54 : AppColors.inkSoft,
+                          ),
+                        ),
+
+                        const Spacer(),
+                        const SizedBox(height: 16),
+
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 24),
+                          child: AppGradientButton(
+                            label: tr(ref, 'Continue'),
+                            onPressed: () async {
+                              final prefs = await SharedPreferences.getInstance();
+                              await prefs.setString('selected_auth_role', _selectedRole.name);
+                              if (context.mounted) {
+                                context.go(
+                                  '${RouteNames.login}?role=${_selectedRole.name}',
+                                );
+                              }
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-                const SizedBox(height: 8),
-
-                // Subtitle
-                Text(
-                  tr(ref, 'Select whether you want to learn or teach on iAgrow.'),
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 14.5,
-                    fontWeight: FontWeight.w400,
-                    color: isDark
-                        ? AppColors.organicSubtitleDark
-                        : AppColors.organicSubtitleGreen,
-                    height: 1.35,
-                  ),
-                ),
-                const SizedBox(height: 32),
-
-                // 1. Student / Learner Card
-                _RoleCard(
-                  title: tr(ref, 'Student / Learner'),
-                  description: tr(
-                    ref,
-                    'Access agricultural courses, ebooks, community hubs, and expert guidance.',
-                  ),
-                  icon: Icons.school_rounded,
-                  isSelected: _selectedRole == UserRole.farmer,
-                  isDark: isDark,
-                  onTap: () => setState(() => _selectedRole = UserRole.farmer),
-                ),
-
-                const SizedBox(height: 16),
-
-                // 2. Instructor / Educator Card
-                _RoleCard(
-                  title: tr(ref, 'Instructor / Educator'),
-                  description: tr(
-                    ref,
-                    'Publish courses, manage student communities, upload guides, and track analytics.',
-                  ),
-                  icon: Icons.psychology_rounded,
-                  isSelected: _selectedRole == UserRole.instructor,
-                  isDark: isDark,
-                  onTap: () => setState(() => _selectedRole = UserRole.instructor),
-                ),
-
-                const SizedBox(height: 14),
-
-                Text(
-                  tr(ref, 'You can switch roles anytime from your profile.'),
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: isDark ? Colors.white54 : AppColors.inkSoft,
-                  ),
-                ),
-
-                const Spacer(),
-
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 28),
-                  child: AppGradientButton(
-                    label: tr(ref, 'Continue'),
-                    onPressed: () async {
-                      final prefs = await SharedPreferences.getInstance();
-                      await prefs.setString('selected_auth_role', _selectedRole.name);
-                      if (context.mounted) {
-                        context.go(
-                          '${RouteNames.login}?role=${_selectedRole.name}',
-                        );
-                      }
-                    },
-                  ),
-                ),
-              ],
-            ),
+              );
+            },
           ),
         ),
       ),

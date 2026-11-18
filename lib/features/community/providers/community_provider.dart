@@ -14,11 +14,28 @@ final communityRepositoryProvider = Provider<CommunityRepository>((ref) {
 // ─── Student Discovery Tabs Provider ──────────────────────────────
 final studentCommunityTabProvider = StateProvider<int>((ref) => 0); // 0: Recommended, 1: All, 2: My Communities
 
+// ─── Pending Comment Modal Post Target ─────────────────────────────
+final pendingCommunityCommentPostIdProvider = StateProvider<String?>((ref) => null);
+
 // ─── Suggested Hubs Provider (Location-Aware) ──────────────────────
 final suggestedHubsProvider = FutureProvider<List<CommunityHub>>((ref) async {
   final repo = ref.watch(communityRepositoryProvider);
-  final district = ref.watch(selectedDistrictProvider);
-  return repo.getSuggestedHubs(district: district);
+  final district = ref.watch(selectedDistrictProvider).trim();
+  final hubs = await repo.getSuggestedHubs(district: district);
+
+  if (district.isEmpty) return hubs;
+
+  final target = district.toLowerCase();
+  // Strictly filter communities to match the selected location/district
+  return hubs.where((hub) {
+    final matchesDistrictList = hub.districts.any((d) {
+      final clean = d.trim().toLowerCase();
+      return clean == target || clean.contains(target) || target.contains(clean);
+    });
+    final matchesName = hub.name.trim().toLowerCase().contains(target);
+    final matchesDesc = hub.description.trim().toLowerCase().contains(target);
+    return matchesDistrictList || matchesName || matchesDesc;
+  }).toList();
 });
 
 // ─── Instructor Owned Hub Provider (State A vs State B) ────────────
@@ -95,8 +112,10 @@ class CommunityHubsNotifier extends StateNotifier<AsyncValue<List<CommunityHub>>
   final String stateName;
   final String districtName;
 
-  Future<void> fetchHubs({String? search}) async {
-    state = const AsyncValue.loading();
+  Future<void> fetchHubs({String? search, bool silent = false}) async {
+    if (!silent) {
+      state = const AsyncValue.loading();
+    }
     try {
       final hubs = await _repo.getHubs(
         state: stateName,
@@ -105,7 +124,9 @@ class CommunityHubsNotifier extends StateNotifier<AsyncValue<List<CommunityHub>>
       );
       state = AsyncValue.data(hubs);
     } catch (e, st) {
-      state = AsyncValue.error(e, st);
+      if (!silent) {
+        state = AsyncValue.error(e, st);
+      }
     }
   }
 
@@ -168,11 +189,74 @@ class CommunityHubsNotifier extends StateNotifier<AsyncValue<List<CommunityHub>>
       rethrow;
     }
   }
+
+  Future<CommunityHub> toggleHubActive(
+    String hubId, {
+    required bool isActive,
+    String reason = '',
+  }) async {
+    final updatedHub = await _repo.toggleHubActive(
+      hubId,
+      isActive: isActive,
+      reason: reason,
+    );
+    if (state.value != null) {
+      final updatedList = state.value!.map((h) => h.id == hubId ? updatedHub : h).toList();
+      state = AsyncValue.data(updatedList);
+    }
+    ref?.invalidate(myInstructorHubProvider);
+    ref?.invalidate(suggestedHubsProvider);
+    ref?.invalidate(hubDetailsProvider(hubId));
+    return updatedHub;
+  }
+
+  Future<void> deleteHub(String hubId) async {
+    await _repo.deleteHub(hubId);
+    if (state.value != null) {
+      final updated = state.value!.where((h) => h.id != hubId).toList();
+      state = AsyncValue.data(updated);
+    }
+    ref?.invalidate(myInstructorHubProvider);
+    ref?.invalidate(suggestedHubsProvider);
+    ref?.invalidate(hubDetailsProvider(hubId));
+    fetchHubs();
+  }
 }
 
 final hubDetailsProvider = FutureProvider.family<CommunityHub, String>((ref, hubId) async {
   final repo = ref.watch(communityRepositoryProvider);
   return repo.getHubDetails(hubId);
+});
+
+final hubMembersProvider = FutureProvider.family<List<HubMember>, String>((ref, hubId) async {
+  final repo = ref.watch(communityRepositoryProvider);
+  final apiMembers = await repo.getHubMembers(hubId);
+  if (apiMembers.isNotEmpty) {
+    return apiMembers;
+  }
+
+  // Graceful fallback from active post authors in this hub while backend implements /members/
+  try {
+    final postsAsync = ref.watch(communityHubPostsProvider(hubId));
+    final posts = postsAsync.value ?? [];
+    final Map<String, HubMember> memberMap = {};
+
+    for (final p in posts) {
+      final a = p.author;
+      if (a.id.isNotEmpty && !memberMap.containsKey(a.id)) {
+        memberMap[a.id] = HubMember(
+          id: a.id,
+          name: a.fullName,
+          avatar: a.avatarUrl,
+          role: a.isExpert ? 'Instructor' : (a.role.isNotEmpty ? a.role : 'Farmer'),
+          isHost: a.isExpert,
+        );
+      }
+    }
+    return memberMap.values.toList();
+  } catch (_) {
+    return <HubMember>[];
+  }
 });
 
 // ─── Topics ────────────────────────────────────────────────────────
@@ -208,8 +292,10 @@ class CommunityPostsNotifier extends StateNotifier<AsyncValue<List<CommunityPost
   final String? topicId;
   final String? hubId;
 
-  Future<void> fetchPosts({String? search, String? ordering}) async {
-    state = const AsyncValue.loading();
+  Future<void> fetchPosts({String? search, String? ordering, bool silent = false}) async {
+    if (!silent) {
+      state = const AsyncValue.loading();
+    }
     try {
       final posts = await _repo.getPosts(
         hubId: hubId,
@@ -219,7 +305,9 @@ class CommunityPostsNotifier extends StateNotifier<AsyncValue<List<CommunityPost
       );
       state = AsyncValue.data(posts);
     } catch (e, st) {
-      state = AsyncValue.error(e, st);
+      if (!silent) {
+        state = AsyncValue.error(e, st);
+      }
     }
   }
 
@@ -311,6 +399,33 @@ class CommunityPostsNotifier extends StateNotifier<AsyncValue<List<CommunityPost
     state = AsyncValue.data(updatedList);
   }
 
+  void decrementCommentsCount(String postId) {
+    if (state.value == null) return;
+    final oldPosts = state.value!;
+    final index = oldPosts.indexWhere((p) => p.id == postId);
+    if (index == -1) return;
+    final post = oldPosts[index];
+    final newCount = (post.commentsCount - 1).clamp(0, double.infinity).toInt();
+    final updatedPost = post.copyWith(commentsCount: newCount);
+    final updatedList = List<CommunityPost>.from(oldPosts);
+    updatedList[index] = updatedPost;
+    state = AsyncValue.data(updatedList);
+  }
+
+  void syncCommentsCount(String postId, int actualCount) {
+    if (state.value == null) return;
+    final oldPosts = state.value!;
+    final index = oldPosts.indexWhere((p) => p.id == postId);
+    if (index == -1) return;
+    final post = oldPosts[index];
+    if (post.commentsCount != actualCount) {
+      final updatedPost = post.copyWith(commentsCount: actualCount);
+      final updatedList = List<CommunityPost>.from(oldPosts);
+      updatedList[index] = updatedPost;
+      state = AsyncValue.data(updatedList);
+    }
+  }
+
   final Set<String> _viewedPosts = {};
 
   Future<void> recordView(String postId) async {
@@ -352,9 +467,16 @@ class CommunityPostsNotifier extends StateNotifier<AsyncValue<List<CommunityPost
     final index = oldPosts.indexWhere((p) => p.id == postId);
     if (index == -1) return false;
 
+    // Canonical representation for consistent local & server state
+    String canonical = reaction.toUpperCase();
+    if (canonical == 'IDEA') canonical = 'HELPFUL';
+    if (canonical == 'GROW' || canonical == 'LEAF') canonical = 'LIKE';
+
     final post = oldPosts[index];
-    final isUnreacting = post.userReaction == reaction;
-    final newUserReaction = isUnreacting ? null : reaction;
+    final currentReaction = post.userReaction?.toUpperCase();
+    final isUnreacting = currentReaction == canonical;
+
+    final newUserReaction = isUnreacting ? null : canonical;
     int newCount = post.reactionsCount;
     if (isUnreacting) {
       newCount = (newCount > 0) ? newCount - 1 : 0;
@@ -362,9 +484,22 @@ class CommunityPostsNotifier extends StateNotifier<AsyncValue<List<CommunityPost
       newCount += 1;
     }
 
+    final newBreakdown = Map<String, int>.from(post.reactionsBreakdown);
+    if (isUnreacting) {
+      final prevCount = newBreakdown[canonical] ?? 0;
+      newBreakdown[canonical] = (prevCount > 0) ? prevCount - 1 : 0;
+    } else {
+      if (currentReaction != null) {
+        final prevOther = newBreakdown[currentReaction] ?? 0;
+        newBreakdown[currentReaction] = (prevOther > 0) ? prevOther - 1 : 0;
+      }
+      newBreakdown[canonical] = (newBreakdown[canonical] ?? 0) + 1;
+    }
+
     final newPost = post.copyWith(
       userReaction: newUserReaction,
       reactionsCount: newCount,
+      reactionsBreakdown: newBreakdown,
     );
 
     final newPosts = List<CommunityPost>.from(oldPosts);
@@ -372,21 +507,38 @@ class CommunityPostsNotifier extends StateNotifier<AsyncValue<List<CommunityPost
     state = AsyncValue.data(newPosts);
 
     try {
-      final response = await _repo.reactToPost(postId, reaction);
-      final serverCount = (response['reactions_count'] ?? response['likes_count']) as int?;
-      final serverReaction = response['user_reaction']?.toString();
+      final response = await _repo.reactToPost(postId, canonical);
+      final serverCount = (response['reactions_count'] ??
+          response['likes_count'] ??
+          response['upvotes_count']) as int?;
+      final rawServerReaction = response['user_reaction']?.toString();
+      final serverReaction = (rawServerReaction == null ||
+              rawServerReaction.isEmpty ||
+              rawServerReaction == 'null')
+          ? null
+          : rawServerReaction;
 
-      if (serverCount != null || serverReaction != null) {
-        final verifiedPost = newPost.copyWith(
-          reactionsCount: serverCount ?? newCount,
-          userReaction: serverReaction ?? newUserReaction,
-        );
-        final verifiedPosts = List<CommunityPost>.from(state.value ?? newPosts);
-        final vIdx = verifiedPosts.indexWhere((p) => p.id == postId);
-        if (vIdx != -1) {
-          verifiedPosts[vIdx] = verifiedPost;
-          state = AsyncValue.data(verifiedPosts);
-        }
+      final serverBreakdownRaw = response['reactions_breakdown'];
+      Map<String, int>? serverBreakdown;
+      if (serverBreakdownRaw is Map) {
+        serverBreakdown = {};
+        serverBreakdownRaw.forEach((k, v) {
+          if (v is num) {
+            serverBreakdown![k.toString().toUpperCase()] = v.toInt();
+          }
+        });
+      }
+
+      final verifiedPost = newPost.copyWith(
+        reactionsCount: serverCount ?? newCount,
+        userReaction: serverReaction ?? newUserReaction,
+        reactionsBreakdown: serverBreakdown ?? newBreakdown,
+      );
+      final verifiedPosts = List<CommunityPost>.from(state.value ?? newPosts);
+      final vIdx = verifiedPosts.indexWhere((p) => p.id == postId);
+      if (vIdx != -1) {
+        verifiedPosts[vIdx] = verifiedPost;
+        state = AsyncValue.data(verifiedPosts);
       }
       return true;
     } catch (e) {
@@ -440,22 +592,28 @@ class CommunityPostsNotifier extends StateNotifier<AsyncValue<List<CommunityPost
 
 final postCommentsProvider = StateNotifierProvider.family<PostCommentsNotifier, AsyncValue<List<CommunityComment>>, String>((ref, postId) {
   final repo = ref.watch(communityRepositoryProvider);
-  return PostCommentsNotifier(repo, postId);
+  return PostCommentsNotifier(repo, postId, ref);
 });
 
 class PostCommentsNotifier extends StateNotifier<AsyncValue<List<CommunityComment>>> {
-  PostCommentsNotifier(this._repo, this.postId) : super(const AsyncValue.loading()) {
+  PostCommentsNotifier(this._repo, this.postId, this._ref) : super(const AsyncValue.loading()) {
     fetchComments();
   }
 
   final CommunityRepository _repo;
   final String postId;
+  final Ref _ref;
 
-  Future<void> fetchComments() async {
+  Future<void> fetchComments({String? hubId}) async {
     state = const AsyncValue.loading();
     try {
       final comments = await _repo.getComments(postId);
       state = AsyncValue.data(comments);
+      _ref.read(communityPostsProvider.notifier).syncCommentsCount(postId, comments.length);
+      final activeHub = hubId ?? _ref.read(selectedHubProvider)?.id;
+      if (activeHub != null && activeHub.isNotEmpty) {
+        _ref.read(communityHubPostsProvider(activeHub).notifier).syncCommentsCount(postId, comments.length);
+      }
     } catch (_) {
       state = AsyncValue.data(<CommunityComment>[]);
     }
@@ -465,6 +623,7 @@ class PostCommentsNotifier extends StateNotifier<AsyncValue<List<CommunityCommen
     required String text,
     required CommunityAuthor author,
     String? parentId,
+    String? hubId,
   }) async {
     final localComment = CommunityComment(
       id: 'local_${DateTime.now().millisecondsSinceEpoch}',
@@ -484,7 +643,13 @@ class PostCommentsNotifier extends StateNotifier<AsyncValue<List<CommunityCommen
       final serverComment = await _repo.addComment(postId, text, parentId: parentId);
       if (serverComment.id != localComment.id) {
         final updatedList = (state.value ?? []).map((c) {
-          return c.id == localComment.id ? serverComment : c;
+          if (c.id == localComment.id) {
+            // Keep parentId if server returned null or parentless model
+            return (serverComment.parentId == null || serverComment.parentId!.isEmpty) && parentId != null
+                ? serverComment.copyWith(parentId: parentId)
+                : serverComment;
+          }
+          return c;
         }).toList();
         state = AsyncValue.data(updatedList);
       }
@@ -499,6 +664,14 @@ class PostCommentsNotifier extends StateNotifier<AsyncValue<List<CommunityCommen
         state.value!.where((c) => c.id != commentId).toList(),
       );
     }
+  }
+
+  Future<void> deleteComment(String commentId) async {
+    removeCommentLocally(commentId);
+    _ref.read(communityPostsProvider.notifier).decrementCommentsCount(postId);
+    try {
+      await _repo.deleteComment(commentId);
+    } catch (_) {}
   }
 
   Future<bool> reportComment(String commentId, {required String reason, String? details}) async {

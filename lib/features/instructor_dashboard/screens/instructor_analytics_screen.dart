@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/localization/app_strings.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../home_instructor/providers/instructor_home_provider.dart';
@@ -16,11 +17,11 @@ class InstructorAnalyticsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Analytics & Payouts', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(tr(ref, 'Analytics & Payouts'), style: const TextStyle(fontWeight: FontWeight.bold)),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
-            tooltip: 'Refresh',
+            tooltip: tr(ref, 'Retry'),
             onPressed: () {
               ref.invalidate(instructorStatsProvider);
               ref.invalidate(instructorTransactionsProvider);
@@ -42,15 +43,15 @@ class InstructorAnalyticsScreen extends ConsumerWidget {
             children: [
               // ── Top Summary Header ──
               Text(
-                'Financial Performance',
+                tr(ref, 'Financial Performance'),
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
               ),
               const SizedBox(height: 4),
-              const Text(
-                'Track your real-time earnings, sales ledger, and course enrollments.',
-                style: TextStyle(color: AppColors.inkSoft, fontSize: 13),
+              Text(
+                tr(ref, 'Track your real-time earnings, sales ledger, and course enrollments.'),
+                style: const TextStyle(color: AppColors.inkSoft, fontSize: 13),
               ),
               const SizedBox(height: 18),
 
@@ -107,9 +108,9 @@ class InstructorAnalyticsScreen extends ConsumerWidget {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                const Text(
-                                  'NET INSTRUCTOR EARNINGS',
-                                  style: TextStyle(
+                                Text(
+                                  tr(ref, 'NET INSTRUCTOR EARNINGS'),
+                                  style: const TextStyle(
                                     color: Colors.white70,
                                     fontSize: 12,
                                     fontWeight: FontWeight.bold,
@@ -122,9 +123,9 @@ class InstructorAnalyticsScreen extends ConsumerWidget {
                                     color: Colors.white24,
                                     borderRadius: BorderRadius.circular(6),
                                   ),
-                                  child: const Text(
-                                    '70% Split',
-                                    style: TextStyle(
+                                  child: Text(
+                                    tr(ref, '70% Split'),
+                                    style: const TextStyle(
                                       color: Colors.white,
                                       fontWeight: FontWeight.bold,
                                       fontSize: 11,
@@ -135,7 +136,7 @@ class InstructorAnalyticsScreen extends ConsumerWidget {
                             ),
                             const SizedBox(height: 10),
                             Text(
-                              '₹${totalEarnings.toStringAsFixed(2)}',
+                              '₹${formatNum(ref, totalEarnings.toStringAsFixed(2))}',
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 32,
@@ -144,7 +145,7 @@ class InstructorAnalyticsScreen extends ConsumerWidget {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              'Gross Sales Revenue: ₹${totalRevenue.toStringAsFixed(2)}',
+                              '${tr(ref, 'Gross Sales Revenue')}: ₹${formatNum(ref, totalRevenue.toStringAsFixed(2))}',
                               style: const TextStyle(color: Colors.white70, fontSize: 13),
                             ),
                           ],
@@ -159,9 +160,9 @@ class InstructorAnalyticsScreen extends ConsumerWidget {
                             child: _MetricTile(
                               icon: Icons.people_alt_rounded,
                               iconColor: AppColors.skyBlue,
-                              label: 'Total Students',
-                              value: '$totalStudents',
-                              subtext: '$totalEnrollments enrollments',
+                              label: tr(ref, 'Total Students'),
+                              value: formatNum(ref, totalStudents),
+                              subtext: '${formatNum(ref, totalEnrollments)} ${tr(ref, 'enrollments')}',
                               isDark: isDark,
                             ),
                           ),
@@ -170,9 +171,9 @@ class InstructorAnalyticsScreen extends ConsumerWidget {
                             child: _MetricTile(
                               icon: Icons.menu_book_rounded,
                               iconColor: AppColors.accentOrange,
-                              label: 'Active Courses',
-                              value: '$activeCourses / $totalCourses',
-                              subtext: 'Published courses',
+                              label: tr(ref, 'Active Courses'),
+                              value: '${formatNum(ref, activeCourses)} / ${formatNum(ref, totalCourses)}',
+                              subtext: tr(ref, 'Published courses'),
                               isDark: isDark,
                             ),
                           ),
@@ -185,9 +186,9 @@ class InstructorAnalyticsScreen extends ConsumerWidget {
                             child: _MetricTile(
                               icon: Icons.star_rounded,
                               iconColor: const Color(0xFFFFB800),
-                              label: 'Avg Rating',
-                              value: avgRating.toStringAsFixed(1),
-                              subtext: 'From student reviews',
+                              label: tr(ref, 'Avg Rating'),
+                              value: formatNum(ref, avgRating.toStringAsFixed(1)),
+                              subtext: tr(ref, 'From student reviews'),
                               isDark: isDark,
                             ),
                           ),
@@ -196,9 +197,9 @@ class InstructorAnalyticsScreen extends ConsumerWidget {
                             child: _MetricTile(
                               icon: Icons.verified_user_rounded,
                               iconColor: standing == 'GOOD' ? AppColors.primaryGreen : AppColors.error,
-                              label: 'Standing',
-                              value: standing,
-                              subtext: 'Account health',
+                              label: tr(ref, 'Standing'),
+                              value: tr(ref, standing),
+                              subtext: tr(ref, 'Account health'),
                               isDark: isDark,
                             ),
                           ),
@@ -215,14 +216,14 @@ class InstructorAnalyticsScreen extends ConsumerWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Recent Sales Ledger',
+                    tr(ref, 'Recent Sales Ledger'),
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
                   ),
                   transactionsAsync.maybeWhen(
                     data: (txs) => Text(
-                      '${txs.length} transactions',
+                      '${formatNum(ref, txs.length)} ${tr(ref, 'transactions')}',
                       style: const TextStyle(color: AppColors.inkSoft, fontSize: 13),
                     ),
                     orElse: () => const SizedBox.shrink(),
@@ -249,12 +250,12 @@ class InstructorAnalyticsScreen extends ConsumerWidget {
                 ),
                 data: (transactions) {
                   if (transactions.isEmpty) {
-                    return const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 40),
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 40),
                       child: EmptyState(
                         icon: Icons.receipt_long_outlined,
-                        title: 'No Sales Transactions Recorded Yet',
-                        subtitle: 'When students enroll in and purchase your courses, their verified payments will appear in this ledger.',
+                        title: tr(ref, 'No Sales Transactions Recorded Yet'),
+                        subtitle: tr(ref, 'When students enroll in and purchase your courses, their verified payments will appear in this ledger.'),
                       ),
                     );
                   }
@@ -270,7 +271,8 @@ class InstructorAnalyticsScreen extends ConsumerWidget {
                       final item = tx['item']?.toString() ?? 'Course Purchase';
                       final buyer = tx['buyer']?.toString() ?? 'Student';
                       final date = tx['date']?.toString() ?? '';
-                      final amount = tx['amount'] != null ? '₹${tx['amount']}' : '₹0.00';
+                      final rawAmount = tx['amount'] != null ? '${tx['amount']}' : '0.00';
+                      final amount = '₹${formatNum(ref, rawAmount)}';
                       final status = tx['status']?.toString() ?? 'SUCCESS';
 
                       return Container(
@@ -303,14 +305,14 @@ class InstructorAnalyticsScreen extends ConsumerWidget {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    item,
+                                    tr(ref, item),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
-                                    'Buyer: $buyer • $date',
+                                    '${tr(ref, 'Buyer')}: $buyer • ${formatNum(ref, date)}',
                                     style: const TextStyle(color: AppColors.inkSoft, fontSize: 11),
                                   ),
                                   const SizedBox(height: 2),
@@ -348,7 +350,7 @@ class InstructorAnalyticsScreen extends ConsumerWidget {
                                     borderRadius: BorderRadius.circular(4),
                                   ),
                                   child: Text(
-                                    status,
+                                    tr(ref, status),
                                     style: TextStyle(
                                       fontSize: 9,
                                       fontWeight: FontWeight.bold,

@@ -7,6 +7,7 @@ import '../../../core/services/course_progress_service.dart';
 import '../../../core/services/quiz_service.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../cart/providers/cart_provider.dart';
+import '../../home_instructor/providers/instructor_home_provider.dart';
 
 final studentRepositoryProvider = Provider<StudentRepository>((ref) {
   return StudentRepository(
@@ -96,11 +97,15 @@ class EbooksQuery {
   final String? search;
   final String? category;
   final String? instructorId;
+  final num? minPrice;
+  final num? maxPrice;
 
   const EbooksQuery({
     this.search,
     this.category,
     this.instructorId,
+    this.minPrice,
+    this.maxPrice,
   });
 
   static const empty = EbooksQuery();
@@ -112,10 +117,12 @@ class EbooksQuery {
           runtimeType == other.runtimeType &&
           search == other.search &&
           category == other.category &&
-          instructorId == other.instructorId;
+          instructorId == other.instructorId &&
+          minPrice == other.minPrice &&
+          maxPrice == other.maxPrice;
 
   @override
-  int get hashCode => Object.hash(search, category, instructorId);
+  int get hashCode => Object.hash(search, category, instructorId, minPrice, maxPrice);
 }
 
 /// Provider for fetching the ebooks catalog with search, category, and strict instructor filtering.
@@ -165,7 +172,106 @@ final studentEbooksProvider = FutureProvider.autoDispose.family<List<EBook>, Ebo
     }).toList();
   }
 
+  // 4. Price filter
+  if (query.minPrice != null || query.maxPrice != null) {
+    list = list.where((ebook) {
+      final rawPrice = (ebook.price ?? '0.00').replaceAll('₹', '').trim();
+      final p = double.tryParse(rawPrice) ?? 0.0;
+      if (query.minPrice != null && p < query.minPrice!) return false;
+      if (query.maxPrice != null && p > query.maxPrice!) return false;
+      return true;
+    }).toList();
+  }
+
   return list;
+});
+
+/// Provider for fetching ONLY e-books that the student has purchased or enrolled in.
+final studentPurchasedEbooksProvider = FutureProvider.autoDispose<List<EBook>>((ref) async {
+  final repo = ref.watch(studentRepositoryProvider);
+  final purchasedFromEndpoint = await repo.getPurchasedEbooks();
+
+  // If endpoint returned purchased items, use them
+  if (purchasedFromEndpoint.isNotEmpty) {
+    return purchasedFromEndpoint;
+  }
+
+  // Cross-reference with completed orders or catalog items marked as isPurchased
+  final catalog = await repo.getEbooksCatalog();
+  final list = List<EBook>.from(catalog.results);
+
+  // Extract purchased ebook IDs from completed orders if available
+  final purchasedEbookIds = <String>{};
+  final purchasedTitles = <String>{};
+  try {
+    final orders = await ref.watch(ordersProvider.future);
+    for (final order in orders) {
+      final status = order.status?.toUpperCase();
+      if (status == 'SUCCESS' || status == 'COMPLETED' || status == 'PAID' || status == null) {
+        for (final item in order.items) {
+          final ebookId = item.ebook ?? item.ebookId;
+          if (ebookId != null && ebookId.isNotEmpty) {
+            purchasedEbookIds.add(ebookId.toLowerCase());
+          }
+          final ebookSlug = item.ebookSlug;
+          if (ebookSlug != null && ebookSlug.isNotEmpty) {
+            purchasedEbookIds.add(ebookSlug.toLowerCase());
+          }
+          final ebookTitle = item.ebookTitle ?? item.courseTitle;
+          if (ebookTitle != null && ebookTitle.isNotEmpty) {
+            purchasedTitles.add(ebookTitle.trim().toLowerCase());
+          }
+        }
+      }
+    }
+  } catch (_) {}
+
+  // Filter only purchased e-books (either flagged by backend or verified in completed orders)
+  return list.where((ebook) {
+    final isMarkedPurchased = ebook.isPurchased == true;
+    final inOrdersById = ebook.id != null && purchasedEbookIds.contains(ebook.id!.toLowerCase());
+    final inOrdersBySlug = ebook.slug != null && purchasedEbookIds.contains(ebook.slug!.toLowerCase());
+    final inOrdersByTitle = purchasedTitles.contains(ebook.title.trim().toLowerCase());
+    return isMarkedPurchased || inOrdersById || inOrdersBySlug || inOrdersByTitle;
+  }).toList();
+});
+
+/// Provider for checking if a specific ebook has been purchased by the student.
+final isEbookPurchasedProvider = Provider.autoDispose.family<bool, String>((ref, ebookIdOrSlug) {
+  final target = ebookIdOrSlug.trim();
+  if (target.isEmpty) return false;
+  final targetLower = target.toLowerCase();
+
+  // Check purchased ebooks list first
+  final purchasedAsync = ref.watch(studentPurchasedEbooksProvider);
+  final isPurchasedFromList = purchasedAsync.maybeWhen(
+    data: (ebooks) => ebooks.any((eb) =>
+        (eb.id != null && eb.id!.toLowerCase() == targetLower) ||
+        (eb.slug != null && eb.slug!.toLowerCase() == targetLower) ||
+        eb.title.trim().toLowerCase() == targetLower),
+    orElse: () => false,
+  );
+  if (isPurchasedFromList) return true;
+
+  // Cross check completed orders
+  final ordersAsync = ref.watch(ordersProvider);
+  return ordersAsync.maybeWhen(
+    data: (orders) {
+      return orders.any((order) {
+        final status = order.status?.toUpperCase();
+        if (status != 'FAILED' && status != 'CANCELLED' && status != 'REFUNDED') {
+          return order.items.any((item) {
+            final eId = (item.ebook ?? item.ebookId)?.toLowerCase();
+            final eSlug = item.ebookSlug?.toLowerCase();
+            final eTitle = (item.ebookTitle ?? item.courseTitle)?.trim().toLowerCase();
+            return eId == targetLower || eSlug == targetLower || eTitle == targetLower;
+          });
+        }
+        return false;
+      });
+    },
+    orElse: () => false,
+  );
 });
 
 /// Provider for fetching a single ebook detail by slug or ID.
@@ -186,6 +292,18 @@ final studentEnrollmentsProvider = FutureProvider.autoDispose<List<Enrollment>>(
   final repo = ref.watch(studentRepositoryProvider);
   final response = await repo.getEnrollments();
   final list = List<Enrollment>.from(response.results);
+  final deactivatedIds = ref.watch(deactivatedCoursesProvider);
+
+  // Fetch live active catalog courses to cross-reference deactivated/archived courses.
+  // When an instructor deactivates/archives a course, the backend removes it from /courses/catalog/.
+  // A course missing from the active catalog is treated as deactivated.
+  final activeCatalog = await ref.watch(studentCatalogProvider(const CatalogQuery()).future).catchError((_) => <CourseList>[]);
+  final activeCourseIds = <String>{};
+  final activeCourseSlugs = <String>{};
+  for (final c in activeCatalog) {
+    if (c.id != null && c.id!.isNotEmpty) activeCourseIds.add(c.id!.toLowerCase());
+    if (c.slug != null && c.slug!.isNotEmpty) activeCourseSlugs.add(c.slug!.toLowerCase());
+  }
 
   // Cross-reference completed orders so freshly bought courses appear immediately even before backend batch enrollment sync
   try {
@@ -195,6 +313,8 @@ final studentEnrollmentsProvider = FutureProvider.autoDispose<List<Enrollment>>(
       // Only include successful or pending/confirmed orders
       if (status == 'SUCCESS' || status == 'COMPLETED' || status == 'PAID' || status == null) {
         for (final item in order.items) {
+          if (item.isEbook) continue; // E-books belong exclusively to E-Books section
+
           final courseId = item.course;
           final courseSlug = item.courseSlug;
           if (courseId == null && courseSlug == null) continue;
@@ -222,6 +342,26 @@ final studentEnrollmentsProvider = FutureProvider.autoDispose<List<Enrollment>>(
     // Orders fetch is non-fatal fallback
   }
 
+  // Filter out deactivated/archived courses so they never show in the student's panel
+  list.removeWhere((enr) {
+    final cId = enr.course.trim().toLowerCase();
+    final cSlug = (enr.courseSlug ?? '').trim().toLowerCase();
+    
+    // 1. Locally marked deactivated by instructor action on this device
+    final isExplicitlyDeactivated = (cId.isNotEmpty && deactivatedIds.any((d) => d.toLowerCase() == cId)) ||
+        (cSlug.isNotEmpty && deactivatedIds.any((d) => d.toLowerCase() == cSlug));
+    if (isExplicitlyDeactivated) return true;
+
+    // 2. Global backend deactivation: If active catalog loaded successfully and does not contain this course
+    if (activeCourseIds.isNotEmpty || activeCourseSlugs.isNotEmpty) {
+      final isInActiveCatalog = (cId.isNotEmpty && activeCourseIds.contains(cId)) ||
+          (cSlug.isNotEmpty && activeCourseSlugs.contains(cSlug));
+      if (!isInActiveCatalog) return true;
+    }
+
+    return false;
+  });
+
   final enriched = <Enrollment>[];
   for (final enr in list) {
     final primaryKey = (enr.courseSlug != null && enr.courseSlug!.isNotEmpty) ? enr.courseSlug! : enr.course;
@@ -235,10 +375,10 @@ final studentEnrollmentsProvider = FutureProvider.autoDispose<List<Enrollment>>(
     if (localPercent != null && localPercent > 0.0) {
       effectivePercentage = localPercent > effectivePercentage ? localPercent : effectivePercentage;
     } else if (localCompleted.isNotEmpty && effectivePercentage == 0.0) {
-      effectivePercentage = 100.0;
+      effectivePercentage = 50.0; // Videos completed, quiz still pending
     }
 
-    final isCompleted = effectivePercentage >= 100.0 || (enr.completed == true);
+    final isCompleted = effectivePercentage >= 100.0;
 
     enriched.add(enr.copyWith(
       completionPercentage: effectivePercentage,
@@ -341,7 +481,7 @@ Set<String> parseCompletedLectureIds(dynamic progressData) {
       });
     }
 
-    final cList = progressData['completed_lectures'] ?? progressData['lectures'];
+    final cList = progressData['completed_lectures'];
     if (cList is List) {
       for (final item in cList) {
         if (item is Map) {
@@ -350,8 +490,21 @@ Set<String> parseCompletedLectureIds(dynamic progressData) {
           if (id != null && isDone) {
             completed.add(id.toString());
           }
-        } else if (item != null) {
+        } else if (item != null && item.toString().isNotEmpty) {
           completed.add(item.toString());
+        }
+      }
+    }
+
+    final lecturesList = progressData['lectures'];
+    if (lecturesList is List) {
+      for (final item in lecturesList) {
+        if (item is Map) {
+          final id = item['lecture_id'] ?? item['lecture'] ?? item['id'];
+          final isDone = item['is_completed'] == true || item['completed'] == true;
+          if (id != null && isDone) {
+            completed.add(id.toString());
+          }
         }
       }
     }
@@ -363,8 +516,6 @@ Set<String> parseCompletedLectureIds(dynamic progressData) {
         if (id != null && isDone) {
           completed.add(id.toString());
         }
-      } else if (item != null) {
-        completed.add(item.toString());
       }
     }
   }
@@ -434,7 +585,7 @@ class CourseProgressNotifier extends StateNotifier<AsyncValue<Set<String>>> {
         currentCompletedLectures: updatedSet,
       );
     } else {
-      final percent = updatedSet.isNotEmpty ? 100.0 : 0.0;
+      final percent = updatedSet.isNotEmpty ? 50.0 : 0.0;
       await CourseProgressService.instance.saveCoursePercentage(slug, percent);
     }
 
@@ -466,5 +617,11 @@ final coursePercentageProvider = FutureProvider.autoDispose.family<double, Strin
 final topInstructorsProvider = FutureProvider.autoDispose<List<ApiTopInstructor>>((ref) async {
   final repo = ref.watch(studentRepositoryProvider);
   return await repo.getTopInstructors();
+});
+
+/// Provider for fetching a single public instructor profile with their courses.
+final publicInstructorDetailProvider = FutureProvider.autoDispose.family<ApiPublicInstructorDetail?, String>((ref, instructorId) async {
+  final repo = ref.watch(studentRepositoryProvider);
+  return await repo.getInstructorDetail(instructorId);
 });
 

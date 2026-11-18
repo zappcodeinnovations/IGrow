@@ -5,8 +5,11 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
+import 'package:share_plus/share_plus.dart';
+
 import '../../../core/localization/app_strings.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/app_toast.dart';
 import '../../../core/widgets/ugc_report_dialog.dart';
 import '../../../data/models/api_models/community_models.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -20,33 +23,22 @@ class RichPostCard extends ConsumerStatefulWidget {
     required this.post,
     this.hubId,
     this.isInstructorView = false,
+    this.isHubActive = true,
   });
 
   final CommunityPost post;
   final String? hubId;
   final bool isInstructorView;
+  final bool isHubActive;
 
   @override
   ConsumerState<RichPostCard> createState() => _RichPostCardState();
 }
 
-class _RichPostCardState extends ConsumerState<RichPostCard> with SingleTickerProviderStateMixin {
-  bool _isEmojiPickerOpen = false;
-  late AnimationController _pickerAnimController;
-  late Animation<double> _pickerScaleAnim;
-
+class _RichPostCardState extends ConsumerState<RichPostCard> {
   @override
   void initState() {
     super.initState();
-    _pickerAnimController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 180),
-    );
-    _pickerScaleAnim = CurvedAnimation(
-      parent: _pickerAnimController,
-      curve: Curves.easeOutBack,
-    );
-
     // Record view automatically on appearance
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
@@ -59,31 +51,26 @@ class _RichPostCardState extends ConsumerState<RichPostCard> with SingleTickerPr
     });
   }
 
-  @override
-  void dispose() {
-    _pickerAnimController.dispose();
-    super.dispose();
-  }
-
-  void _toggleEmojiPicker() {
-    setState(() {
-      _isEmojiPickerOpen = !_isEmojiPickerOpen;
-      if (_isEmojiPickerOpen) {
-        _pickerAnimController.forward();
-      } else {
-        _pickerAnimController.reverse();
-      }
-    });
-  }
-
   void _onReact(String reaction) {
-    _pickerAnimController.reverse();
-    setState(() => _isEmojiPickerOpen = false);
+    if (!widget.isHubActive) {
+      AppToast.show(
+        context,
+        'This community hub has been deactivated by administration. Reactions are disabled.',
+        isError: true,
+      );
+      return;
+    }
     if (widget.hubId != null && widget.hubId!.isNotEmpty) {
       ref.read(communityHubPostsProvider(widget.hubId!).notifier).reactToPost(widget.post.id, reaction);
     } else {
       ref.read(communityPostsProvider.notifier).reactToPost(widget.post.id, reaction);
     }
+  }
+
+  void _sharePost() {
+    final title = widget.post.title.trim().isNotEmpty ? widget.post.title : 'Agricultural Update';
+    final shareUrl = 'https://iagrow.zappcode.in/community/post/${widget.post.id}';
+    Share.share('Check out this update on AgriLearn: $title\n$shareUrl');
   }
 
   Future<void> _deletePost() async {
@@ -360,8 +347,9 @@ class _RichPostCardState extends ConsumerState<RichPostCard> with SingleTickerPr
         children: [
           // ─── Header: Author Info, Verified Tag, Badge & Menu ───────
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 12, 10),
+            padding: const EdgeInsets.fromLTRB(16, 14, 8, 10),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 // Avatar with Glowing Ring
                 Container(
@@ -389,6 +377,7 @@ class _RichPostCardState extends ConsumerState<RichPostCard> with SingleTickerPr
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Row(
                         children: [
@@ -421,22 +410,22 @@ class _RichPostCardState extends ConsumerState<RichPostCard> with SingleTickerPr
                     ],
                   ),
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: 6),
                 // Post Type Badge
-                Flexible(
-                  fit: FlexFit.loose,
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 130),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3.5),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: badgeBg,
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: badgeColor.withValues(alpha: isDark ? 0.4 : 0.25)),
+                      border: Border.all(color: badgeColor.withValues(alpha: isDark ? 0.45 : 0.3)),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(badgeIcon, size: 11, color: badgeColor),
-                        const SizedBox(width: 3),
+                        Icon(badgeIcon, size: 12, color: badgeColor),
+                        const SizedBox(width: 4),
                         Flexible(
                           child: Text(
                             badgeLabel,
@@ -445,7 +434,7 @@ class _RichPostCardState extends ConsumerState<RichPostCard> with SingleTickerPr
                             style: TextStyle(
                               color: badgeColor,
                               fontWeight: FontWeight.bold,
-                              fontSize: 10,
+                              fontSize: 11,
                             ),
                           ),
                         ),
@@ -454,50 +443,47 @@ class _RichPostCardState extends ConsumerState<RichPostCard> with SingleTickerPr
                   ),
                 ),
                 // More 3-Dots Menu (Apple Guideline 1.2: Report & Block)
-                PopupMenuButton<String>(
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  icon: Icon(Icons.more_vert_rounded, size: 19, color: isDark ? Colors.white70 : AppColors.inkSoft),
-                  color: isDark ? const Color(0xFF1E2B22) : Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  onSelected: (value) {
-                    if (value == 'delete') _deletePost();
-                    if (value == 'report') _reportPost();
-                    if (value == 'block') _blockUser();
-                  },
-                  itemBuilder: (_) => [
-                    if (isAuthorOrInstructor)
-                      const PopupMenuItem(
-                        value: 'delete',
-                        child: Row(
-                          children: [
-                            Icon(Icons.delete_outline_rounded, color: AppColors.error, size: 18),
-                            SizedBox(width: 8),
-                            Text('Delete Post', style: TextStyle(color: AppColors.error)),
-                          ],
+                SizedBox(
+                  width: 24,
+                  height: 28,
+                  child: Center(
+                    child: PopupMenuButton<String>(
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      icon: Icon(Icons.more_vert_rounded, size: 20, color: isDark ? Colors.white70 : AppColors.inkSoft),
+                      color: isDark ? const Color(0xFF1E2B22) : Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      onSelected: (value) {
+                        if (value == 'delete') _deletePost();
+                        if (value == 'report') _reportPost();
+                        if (value == 'block') _blockUser();
+                        if (value == 'share') _sharePost();
+                      },
+                      itemBuilder: (_) => [
+                        const PopupMenuItem(
+                          value: 'share',
+                          child: Row(
+                            children: [
+                              Icon(Icons.share_outlined, color: AppColors.primaryGreen, size: 18),
+                              SizedBox(width: 8),
+                              Text('Share Post'),
+                            ],
+                          ),
                         ),
-                      ),
-                    const PopupMenuItem(
-                      value: 'report',
-                      child: Row(
-                        children: [
-                          Icon(Icons.flag_outlined, color: Colors.orange, size: 18),
-                          SizedBox(width: 8),
-                          Text('Report Post'),
-                        ],
-                      ),
+                        if (isAuthorOrInstructor)
+                          const PopupMenuItem(
+                            value: 'delete',
+                            child: Row(
+                              children: [
+                                Icon(Icons.delete_outline_rounded, color: AppColors.error, size: 18),
+                                SizedBox(width: 8),
+                                Text('Delete Post', style: TextStyle(color: AppColors.error)),
+                              ],
+                            ),
+                          ),
+                      ],
                     ),
-                    const PopupMenuItem(
-                      value: 'block',
-                      child: Row(
-                        children: [
-                          Icon(Icons.block_rounded, color: Colors.redAccent, size: 18),
-                          SizedBox(width: 8),
-                          Text('Block User', style: TextStyle(color: Colors.redAccent)),
-                        ],
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ],
             ),
@@ -571,48 +557,135 @@ class _RichPostCardState extends ConsumerState<RichPostCard> with SingleTickerPr
                           ),
                           const SizedBox(width: 8),
                           Expanded(
-                            child: Text(
-                              'Live: ${widget.post.formattedEventDateTime!}',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13.5,
-                                color: isDark ? const Color(0xFF93C5FD) : const Color(0xFF2563EB),
-                              ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Live: ${widget.post.formattedEventDateTime!}',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13.5,
+                                    color: isDark ? const Color(0xFF93C5FD) : const Color(0xFF2563EB),
+                                  ),
+                                ),
+                                if (widget.post.webinarCountdownMessage != null) ...[
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    widget.post.webinarCountdownMessage!,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: isDark ? Colors.white60 : AppColors.inkSoft,
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
                           ),
+                          if (!widget.post.isWebinarJoinable)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: isDark ? Colors.white10 : const Color(0xFFE2E8F0),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                widget.post.isWebinarEnded ? tr(ref, 'ENDED') : tr(ref, 'UPCOMING'),
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  color: isDark ? Colors.white54 : const Color(0xFF64748B),
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ),
                         ],
                       ),
                       const SizedBox(height: 12),
                     ],
-                    SizedBox(
-                      width: double.infinity,
-                      height: 44,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
-                          ),
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFF2563EB).withValues(alpha: 0.3),
-                              blurRadius: 8,
-                              offset: const Offset(0, 3),
+                    Builder(
+                      builder: (ctx) {
+                        final isJoinable = widget.post.isWebinarJoinable;
+                        final isEnded = widget.post.isWebinarEnded;
+
+                        final buttonText = isEnded
+                            ? tr(ref, 'Webinar Ended')
+                            : tr(ref, 'Join Live Webinar');
+
+                        final buttonIcon = isEnded
+                            ? Icons.event_busy_rounded
+                            : (isJoinable ? Icons.link_rounded : Icons.schedule_rounded);
+
+                        return SizedBox(
+                          width: double.infinity,
+                          height: 44,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              gradient: isJoinable
+                                  ? const LinearGradient(
+                                      colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
+                                    )
+                                  : null,
+                              color: isJoinable
+                                  ? null
+                                  : (isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0)),
+                              borderRadius: BorderRadius.circular(12),
+                              border: isJoinable
+                                  ? null
+                                  : Border.all(
+                                      color: isDark ? Colors.white12 : const Color(0xFFCBD5E1),
+                                      width: 1,
+                                    ),
+                              boxShadow: isJoinable
+                                  ? [
+                                      BoxShadow(
+                                        color: const Color(0xFF2563EB).withValues(alpha: 0.3),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 3),
+                                      ),
+                                    ]
+                                  : null,
                             ),
-                          ],
-                        ),
-                        child: ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.transparent,
-                            foregroundColor: Colors.white,
-                            shadowColor: Colors.transparent,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            child: ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.transparent,
+                                foregroundColor: isJoinable
+                                    ? Colors.white
+                                    : (isDark ? Colors.white38 : const Color(0xFF64748B)),
+                                disabledForegroundColor: isDark ? Colors.white38 : const Color(0xFF64748B),
+                                disabledBackgroundColor: Colors.transparent,
+                                shadowColor: Colors.transparent,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              onPressed: isJoinable
+                                  ? () => _openLink(widget.post.link)
+                                  : () {
+                                      if (isEnded) {
+                                        AppToast.showInfo(context, tr(ref, 'This webinar session has ended.'));
+                                      } else {
+                                        final countdown = widget.post.webinarCountdownMessage;
+                                        AppToast.showInfo(
+                                          context,
+                                          countdown != null
+                                              ? tr(ref, 'Webinar has not started yet ($countdown). Joining opens 15 minutes before start.')
+                                              : tr(ref, 'Webinar has not started yet. Joining opens 15 minutes before the session.'),
+                                        );
+                                      }
+                                    },
+                              icon: Icon(buttonIcon, size: 18),
+                              label: Text(
+                                buttonText,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: isJoinable
+                                      ? Colors.white
+                                      : (isDark ? Colors.white38 : const Color(0xFF64748B)),
+                                ),
+                              ),
+                            ),
                           ),
-                          onPressed: () => _openLink(widget.post.link),
-                          icon: const Icon(Icons.link_rounded, size: 18),
-                          label: const Text('Join Live Webinar', style: TextStyle(fontWeight: FontWeight.bold)),
-                        ),
-                      ),
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -931,67 +1004,9 @@ class _RichPostCardState extends ConsumerState<RichPostCard> with SingleTickerPr
             ),
           ],
 
-          // ─── Animated Floating Emoji Reaction Picker ─────────────
-          if (_isEmojiPickerOpen)
-            ScaleTransition(
-              scale: _pickerScaleAnim,
-              alignment: Alignment.bottomRight,
-              child: Container(
-                margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF223528) : const Color(0xFFF0FDF4),
-                  borderRadius: BorderRadius.circular(30),
-                  border: Border.all(color: AppColors.primaryGreen.withValues(alpha: 0.35)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primaryGreen.withValues(alpha: isDark ? 0.25 : 0.15),
-                      blurRadius: 14,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _EmojiItem(
-                      emoji: '🌾',
-                      label: 'Farm',
-                      isSelected: widget.post.userReaction == 'FARM' || widget.post.userReaction == 'LIKE',
-                      onTap: () => _onReact('FARM'),
-                    ),
-                    _EmojiItem(
-                      emoji: '🌱',
-                      label: 'Grow',
-                      isSelected: widget.post.userReaction == 'GROW',
-                      onTap: () => _onReact('GROW'),
-                    ),
-                    _EmojiItem(
-                      emoji: '❤️',
-                      label: 'Love',
-                      isSelected: widget.post.userReaction == 'LOVE',
-                      onTap: () => _onReact('LOVE'),
-                    ),
-                    _EmojiItem(
-                      emoji: '👏',
-                      label: 'Clap',
-                      isSelected: widget.post.userReaction == 'CLAP',
-                      onTap: () => _onReact('CLAP'),
-                    ),
-                    _EmojiItem(
-                      emoji: '💡',
-                      label: 'Helpful',
-                      isSelected: widget.post.userReaction == 'IDEA',
-                      onTap: () => _onReact('IDEA'),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
           Divider(height: 18, color: borderColor),
 
-          // ─── Footer: Views Tally & Emoji Reactions ────────────────
+          // ─── Footer: Views Tally & Separated Emoji Reactions ────────
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
             child: Row(
@@ -1020,6 +1035,9 @@ class _RichPostCardState extends ConsumerState<RichPostCard> with SingleTickerPr
                         context,
                         postId: widget.post.id,
                         postAuthorName: widget.post.author.fullName,
+                        hubId: widget.hubId ?? widget.post.hubId,
+                        isHubActive: widget.isHubActive,
+                        isHostInstructor: widget.isInstructorView,
                       ),
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -1048,43 +1066,97 @@ class _RichPostCardState extends ConsumerState<RichPostCard> with SingleTickerPr
                       ),
                     ),
                     const SizedBox(width: 8),
-                    // Emoji Reaction Button & Active Count
-                    GestureDetector(
-                      onTap: _toggleEmojiPicker,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: widget.post.userReaction != null
-                              ? (isDark ? const Color(0xFF263B2B) : const Color(0xFFDCFCE7))
-                              : (isDark ? Colors.white10 : const Color(0xFFF1F5F9)),
-                          borderRadius: BorderRadius.circular(18),
-                          border: Border.all(
-                            color: widget.post.userReaction != null
-                                ? AppColors.primaryGreen
-                                : Colors.transparent,
-                            width: 1.2,
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Text(
-                              _getReactionEmoji(widget.post.userReaction) ?? '🌾',
-                              style: const TextStyle(fontSize: 16),
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              '${widget.post.reactionsCount}',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: widget.post.userReaction != null
-                                    ? AppColors.primaryGreen
-                                    : (isDark ? Colors.white70 : AppColors.inkDark),
+
+                    // Separated Thumbs Up (👍) Reaction Button
+                    Builder(
+                      builder: (context) {
+                        final isLiked = widget.post.userReaction == 'LIKE' ||
+                            widget.post.userReaction == 'THUMBS_UP' ||
+                            widget.post.userReaction == 'GROW' ||
+                            widget.post.userReaction == 'LEAF' ||
+                            widget.post.userReaction == 'FARM';
+                        return GestureDetector(
+                          onTap: () => _onReact('LIKE'),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 150),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: isLiked
+                                  ? (isDark ? const Color(0xFF263B2B) : const Color(0xFFDCFCE7))
+                                  : (isDark ? Colors.white10 : const Color(0xFFF1F5F9)),
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(
+                                color: isLiked ? AppColors.primaryGreen : Colors.transparent,
+                                width: 1.2,
                               ),
                             ),
-                          ],
-                        ),
-                      ),
+                            child: Row(
+                              children: [
+                                const Text(
+                                  '👍',
+                                  style: TextStyle(fontSize: 15),
+                                ),
+                                const SizedBox(width: 5),
+                                Text(
+                                  '${widget.post.likeCount}',
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.bold,
+                                    color: isLiked
+                                        ? AppColors.primaryGreen
+                                        : (isDark ? Colors.white70 : AppColors.inkDark),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(width: 8),
+
+                    // Separated Heart (❤️) Reaction Button
+                    Builder(
+                      builder: (context) {
+                        final isLoved = widget.post.userReaction == 'LOVE' ||
+                            widget.post.userReaction == 'HEART';
+                        return GestureDetector(
+                          onTap: () => _onReact('LOVE'),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 150),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: isLoved
+                                  ? (isDark ? const Color(0xFF3B1E26) : const Color(0xFFFFE4E6))
+                                  : (isDark ? Colors.white10 : const Color(0xFFF1F5F9)),
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(
+                                color: isLoved ? const Color(0xFFE11D48) : Colors.transparent,
+                                width: 1.2,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                const Text(
+                                  '❤️',
+                                  style: TextStyle(fontSize: 15),
+                                ),
+                                const SizedBox(width: 5),
+                                Text(
+                                  '${widget.post.loveCount}',
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.bold,
+                                    color: isLoved
+                                        ? const Color(0xFFE11D48)
+                                        : (isDark ? Colors.white70 : AppColors.inkDark),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -1092,57 +1164,6 @@ class _RichPostCardState extends ConsumerState<RichPostCard> with SingleTickerPr
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  String? _getReactionEmoji(String? reaction) {
-    switch (reaction) {
-      case 'FARM':
-      case 'LIKE':
-        return '🌾';
-      case 'GROW':
-      case 'LEAF':
-        return '🌱';
-      case 'LOVE':
-        return '❤️';
-      case 'CLAP':
-        return '👏';
-      case 'IDEA':
-        return '💡';
-      default:
-        return null;
-    }
-  }
-}
-
-class _EmojiItem extends StatelessWidget {
-  const _EmojiItem({
-    required this.emoji,
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  final String emoji;
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.primaryGreen.withValues(alpha: 0.3) : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Text(
-          emoji,
-          style: TextStyle(fontSize: isSelected ? 24 : 20),
-        ),
       ),
     );
   }

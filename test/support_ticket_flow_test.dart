@@ -65,6 +65,45 @@ void main() {
       expect(ticket.isResolved, isFalse);
       expect(ticket.statusDisplay, 'Open');
       expect(ticket.adminReply, isNull);
+      expect(ticket.priority, 'MEDIUM');
+      expect(ticket.priorityDisplay, 'Medium');
+    });
+
+    test('parses and serializes priority levels correctly', () {
+      final urgentJson = {
+        'id': 'tick-999',
+        'ticket_number': 'TICK-999',
+        'category': 'Technical Issue / App Crash',
+        'subject': 'Critical blocker',
+        'message': 'App crashes repeatedly on startup',
+        'priority': 'URGENT',
+        'status': 'OPEN',
+      };
+
+      final ticket = SupportTicket.fromJson(urgentJson);
+      expect(ticket.priority, 'URGENT');
+      expect(ticket.priorityDisplay, 'Urgent');
+      expect(ticket.priorityTextColor, isNotNull);
+      expect(ticket.priorityBgColor, isNotNull);
+      expect(ticket.priorityIcon, isNotNull);
+
+      final serialized = ticket.toJson();
+      expect(serialized['priority'], 'URGENT');
+
+      // Test all priority values
+      final priorities = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'];
+      final displays = ['Low', 'Medium', 'High', 'Urgent'];
+
+      for (int i = 0; i < priorities.length; i++) {
+        final t = SupportTicket.fromJson({
+          'id': 'tick-$i',
+          'subject': 'Sub',
+          'message': 'Msg',
+          'priority': priorities[i],
+        });
+        expect(t.priority, priorities[i]);
+        expect(t.priorityDisplay, displays[i]);
+      }
     });
   });
 }
