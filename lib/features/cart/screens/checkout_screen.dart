@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui' show ImageFilter;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -679,43 +680,116 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
         children: [
           _buildScaffold(context, isDark, appliedCoupon, isDirectBuy),
           if (_isProcessing)
-            Container(
-              color: Colors.black54,
-              child: Center(
+            Positioned.fill(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
                 child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 32),
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF1E2E23) : Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: const [
-                      BoxShadow(color: Colors.black26, blurRadius: 16, offset: Offset(0, 4)),
-                    ],
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const CircularProgressIndicator(color: AppColors.primaryGreen),
-                      const SizedBox(height: 20),
-                      Text(
-                        'Securing Your Enrollment...',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.white : AppColors.inkDark,
-                        ),
+                  color: Colors.black.withValues(alpha: 0.55),
+                  alignment: Alignment.center,
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Container(
+                    constraints: const BoxConstraints(maxWidth: 340),
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF162319) : Colors.white,
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(
+                        color: isDark
+                            ? AppColors.primaryGreen.withValues(alpha: 0.25)
+                            : AppColors.primaryGreen.withValues(alpha: 0.15),
+                        width: 1.2,
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Please do not exit or close the app while we finalize your course access.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: isDark ? Colors.white70 : AppColors.inkSoft,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.12),
+                          blurRadius: 30,
+                          offset: const Offset(0, 12),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Animated pulse icon container
+                        Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            Container(
+                              width: 72,
+                              height: 72,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: AppColors.primaryGreen.withValues(alpha: 0.12),
+                              ),
+                            ),
+                            const SizedBox(
+                              width: 52,
+                              height: 52,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 3.2,
+                                color: AppColors.primaryGreen,
+                              ),
+                            ),
+                            const Icon(
+                              Icons.lock_outline_rounded,
+                              size: 24,
+                              color: AppColors.primaryGreen,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 22),
+                        Text(
+                          'Securing Your Enrollment',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: -0.3,
+                            color: isDark ? Colors.white : AppColors.inkDark,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          'Verifying your payment and setting up your learning access. Please do not close or exit the app.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 13,
+                            height: 1.45,
+                            color: isDark ? Colors.white70 : AppColors.inkSoft,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        // Safe security badge
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? Colors.white.withValues(alpha: 0.05)
+                                : const Color(0xFFF2F6F3),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.verified_user_rounded,
+                                size: 14,
+                                color: AppColors.primaryGreen,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                '256-Bit Encrypted Verification',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: isDark ? Colors.white60 : AppColors.inkSoft,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
