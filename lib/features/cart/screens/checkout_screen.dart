@@ -212,8 +212,16 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     _lastItemsSnapshot = List<dynamic>.from(items);
     _lastCouponCode = ref.read(appliedCouponProvider)?.code;
 
+    // Check if Razorpay is disabled on iOS for Apple App Store IAP (Guideline 3.1.1)
+    final canShowRazorpay = ref.read(appConfigProvider).canShowPaymentGateway;
+    if (!canShowRazorpay && !kIsWeb && Platform.isIOS && finalTotal > 0) {
+      // Direct immediately to Apple StoreKit without creating unwanted Razorpay pending orders!
+      await _startAppleIapFlow(items: items, finalTotal: finalTotal);
+      return;
+    }
+
     try {
-      // Step 1: Create Order via Backend
+      // Step 1: Create Order via Backend (for Android, Web, or Free Orders)
       final orderData = await ref.read(cartProvider.notifier).createRazorpayOrder(
             couponCode: _lastCouponCode,
             courseId: widget.directCourseId,
@@ -277,14 +285,6 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
         'send_sms_hash': true,
         'retry': {'enabled': true, 'max_count': 2},
       };
-
-      // Check if Razorpay is enabled for this platform/config
-      final canShowRazorpay = ref.read(appConfigProvider).canShowPaymentGateway;
-      if (!canShowRazorpay && !kIsWeb && Platform.isIOS) {
-        // Razorpay is disabled on iOS for App Store review. Execute Apple In-App Purchase flow!
-        await _startAppleIapFlow(items: items, finalTotal: finalTotal);
-        return;
-      }
 
       debugPrint('🚀 [Razorpay] Launching native checkout UI...');
       _razorpay.open(options);
@@ -381,12 +381,21 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       if (mounted) {
         setState(() => _isProcessing = false);
         final errText = e.toString().replaceAll('Exception: ', '').replaceAll('UnsupportedError: ', '');
-        AppToast.show(
-          context,
-          'Apple Purchase error: $errText',
-          isError: true,
-          duration: const Duration(seconds: 4),
-        );
+        final isCancelled = errText.toLowerCase().contains('cancel');
+        if (isCancelled) {
+          AppToast.show(
+            context,
+            'Payment was cancelled. You can retry whenever ready.',
+            isError: false,
+          );
+        } else {
+          AppToast.show(
+            context,
+            'Apple Purchase error: $errText',
+            isError: true,
+            duration: const Duration(seconds: 4),
+          );
+        }
       }
     }
   }
