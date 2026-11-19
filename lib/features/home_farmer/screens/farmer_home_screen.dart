@@ -18,6 +18,7 @@ import '../../news/widgets/home_news_carousel.dart';
 import '../../../core/widgets/shell_scaffold.dart';
 import '../../../core/localization/app_strings.dart';
 import '../../../data/models/user_role.dart';
+import '../../auth/widgets/become_instructor_bottom_sheet.dart';
 import '../widgets/floating_offer_badge.dart';
 import '../widgets/home_banner_carousel.dart';
 
@@ -31,6 +32,22 @@ class FarmerHomeScreen extends ConsumerStatefulWidget {
 
 class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
   void _showSwitchRoleDialog(BuildContext context) {
+    final user = ref.read(authProvider).user;
+    final hasInstructorRole = user?.grantedRoles.contains(UserRole.instructor) == true;
+
+    // If user has not yet unlocked Instructor role, show the Become Instructor flow (Name + Phone)
+    if (!hasInstructorRole) {
+      BecomeInstructorBottomSheet.show(
+        context,
+        onSuccess: () {
+          if (context.mounted) {
+            context.go(RouteNames.instructorHome);
+          }
+        },
+      );
+      return;
+    }
+
     final isDark = Theme.of(context).brightness == Brightness.dark;
     showDialog(
       context: context,
@@ -345,11 +362,8 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                                       const SizedBox(width: 14),
                                   itemBuilder: (context, index) {
                                     final cat = categories[index];
-                                    final imageAsset = _getCategoryAssetImage(cat.name);
-                                    final pastelBg = _getCategoryBg(
-                                      index,
-                                      isDark,
-                                    );
+                                    final iconData = _getCategoryIcon(cat.name, cat.slug);
+                                    final visual = _getCategoryVisual(cat.name, cat.slug, isDark, index);
 
                                     return InkWell(
                                       onTap: () {
@@ -357,50 +371,52 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                                           '/farmer/explore?category=${cat.id}',
                                         );
                                       },
-                                      borderRadius: BorderRadius.circular(16),
+                                      borderRadius: BorderRadius.circular(18),
                                       child: Column(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
                                           Container(
-                                            width: 64,
-                                            height: 64,
+                                            width: 62,
+                                            height: 62,
                                             decoration: BoxDecoration(
+                                              gradient: LinearGradient(
+                                                colors: visual.gradient,
+                                                begin: Alignment.topLeft,
+                                                end: Alignment.bottomRight,
+                                              ),
                                               borderRadius: BorderRadius.circular(18),
+                                              border: Border.all(
+                                                color: visual.borderColor,
+                                                width: 1.2,
+                                              ),
                                               boxShadow: [
                                                 BoxShadow(
-                                                  color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.08),
+                                                  color: visual.shadowColor,
                                                   blurRadius: 8,
                                                   offset: const Offset(0, 3),
                                                 ),
                                               ],
                                             ),
-                                            child: ClipRRect(
-                                              borderRadius: BorderRadius.circular(18),
-                                              child: Image.asset(
-                                                imageAsset,
-                                                fit: BoxFit.cover,
-                                                errorBuilder: (_, __, ___) => Container(
-                                                  color: pastelBg,
-                                                  child: Icon(
-                                                    _getCategoryIcon(cat.name),
-                                                    size: 28,
-                                                    color: _getCategoryColor(index, isDark),
-                                                  ),
-                                                ),
+                                            child: Center(
+                                              child: Icon(
+                                                iconData,
+                                                size: 26,
+                                                color: visual.iconColor,
                                               ),
                                             ),
                                           ),
                                           const SizedBox(height: 6),
                                           SizedBox(
-                                            width: 66,
+                                            width: 68,
                                             child: Text(
                                               cat.name,
                                               style: TextStyle(
-                                                fontSize: 11,
+                                                fontSize: 11.5,
                                                 fontWeight: FontWeight.w600,
+                                                letterSpacing: -0.2,
                                                 color: isDark
-                                                    ? Colors.white70
-                                                    : const Color(0xFF333333),
+                                                    ? Colors.white.withValues(alpha: 0.9)
+                                                    : const Color(0xFF1E293B),
                                               ),
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
@@ -796,7 +812,7 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 100),
+                    const SizedBox(height: 24),
                   ],
                 ),
               ),
@@ -811,85 +827,164 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
   }
 }
 
-// ── Category Icon & Color Helpers ─────────────────────────────
-String _getCategoryAssetImage(String name) {
-  final lower = name.toLowerCase();
-  if (lower.contains('dairy') || lower.contains('cow') || lower.contains('milk') || lower.contains('animal') || lower.contains('दुग्ध')) {
-    return 'assets/images/categories/dairy_farming.png';
-  } else if (lower.contains('food') || lower.contains('process') || lower.contains('खाद्य') || lower.contains('प्रक्रिया')) {
-    return 'assets/images/categories/food_processing.png';
-  } else if (lower.contains('horticult') || lower.contains('fruit') || lower.contains('veget') || lower.contains('बागवानी') || lower.contains('उद्यान')) {
-    return 'assets/images/categories/horticulture.png';
-  } else if (lower.contains('crop') || lower.contains('agronomy') || lower.contains('फसल') || lower.contains('पिके')) {
-    return 'assets/images/categories/crop_production.png';
-  } else if (lower.contains('organic') || lower.contains('जैविक') || lower.contains('सेंद्रिय')) {
-    return 'assets/images/categories/organic_farming.png';
-  } else if (lower.contains('pest') || lower.contains('protect') || lower.contains('कीट') || lower.contains('कीड')) {
-    return 'assets/images/categories/pest_control.png';
-  } else if (lower.contains('machin') || lower.contains('tech') || lower.contains('tractor') || lower.contains('यंत्र') || lower.contains('अवजारे')) {
-    return 'assets/images/categories/farm_machinery.png';
-  } else if (lower.contains('soil') || lower.contains('मृदा') || lower.contains('माती')) {
-    return 'assets/images/categories/soil.png';
-  } else if (lower.contains('water') || lower.contains('irrigat') || lower.contains('सिंचाई') || lower.contains('सिंचन')) {
-    return 'assets/images/categories/water.png';
-  }
-  return 'assets/images/categories/agronomy.png';
+// ── Professional Category Visual Configurations ─────────────────────────────
+class _CategoryVisualConfig {
+  final List<Color> gradient;
+  final Color borderColor;
+  final Color shadowColor;
+  final Color iconColor;
+
+  const _CategoryVisualConfig({
+    required this.gradient,
+    required this.borderColor,
+    required this.shadowColor,
+    required this.iconColor,
+  });
 }
 
-IconData _getCategoryIcon(String name) {
-  final lower = name.toLowerCase();
-  if (lower.contains('crop') || lower.contains('field')) {
-    return Icons.grass_rounded;
-  } else if (lower.contains('water') || lower.contains('irrigat')) {
-    return Icons.water_drop_rounded;
-  } else if (lower.contains('pest') || lower.contains('protect')) {
-    return Icons.pest_control_rounded;
-  } else if (lower.contains('organic') || lower.contains('soil')) {
-    return Icons.eco_rounded;
-  } else if (lower.contains('animal') ||
-      lower.contains('dairy') ||
-      lower.contains('husbandry')) {
-    return Icons.pets_rounded;
-  } else if (lower.contains('tech') || lower.contains('machin')) {
+IconData _getCategoryIcon(String name, [String? slug]) {
+  final key = '${name.toLowerCase()} ${slug?.toLowerCase() ?? ''}';
+  if (key.contains('crop') || key.contains('agronomy') || key.contains('फसल') || key.contains('पिके')) {
     return Icons.agriculture_rounded;
-  } else if (lower.contains('horticult') ||
-      lower.contains('fruit') ||
-      lower.contains('veget')) {
-    return Icons.yard_rounded;
-  } else if (lower.contains('climate') || lower.contains('weather')) {
-    return Icons.cloud_outlined;
+  } else if (key.contains('organic') || key.contains('sustainable') || key.contains('जैविक') || key.contains('सेंद्रिय')) {
+    return Icons.eco_rounded;
+  } else if (key.contains('water') || key.contains('irrigat') || key.contains('सिंचाई') || key.contains('सिंचन')) {
+    return Icons.water_drop_rounded;
+  } else if (key.contains('pest') || key.contains('disease') || key.contains('protect') || key.contains('कीट') || key.contains('कीड')) {
+    return Icons.shield_outlined;
+  } else if (key.contains('dairy') || key.contains('cow') || key.contains('milk') || key.contains('दुग्ध')) {
+    return Icons.local_drink_rounded;
+  } else if (key.contains('livestock') || key.contains('animal') || key.contains('husbandry') || key.contains('पशुधन')) {
+    return Icons.pets_rounded;
+  } else if (key.contains('poultry') || key.contains('मुर्गी') || key.contains('कुक्कुट')) {
+    return Icons.egg_outlined;
+  } else if (key.contains('aquaculture') || key.contains('fish') || key.contains('मछली') || key.contains('मत्स्य')) {
+    return Icons.set_meal_rounded;
+  } else if (key.contains('horticult') || key.contains('fruit') || key.contains('veget') || key.contains('बागवानी') || key.contains('फलोत्पादन')) {
+    return Icons.local_florist_rounded;
+  } else if (key.contains('agroforestry') || key.contains('forestry') || key.contains('वानिकी') || key.contains('वनशेती')) {
+    return Icons.park_rounded;
+  } else if (key.contains('food') || key.contains('process') || key.contains('storage') || key.contains('खाद्य') || key.contains('अन्न')) {
+    return Icons.inventory_2_outlined;
+  } else if (key.contains('business') || key.contains('market') || key.contains('व्यवसाय') || key.contains('विपणन')) {
+    return Icons.storefront_rounded;
+  } else if (key.contains('precision') || key.contains('tech') || key.contains('machin') || key.contains('यंत्र') || key.contains('अवजारे')) {
+    return Icons.precision_manufacturing_rounded;
+  } else if (key.contains('soil') || key.contains('मृदा') || key.contains('माती')) {
+    return Icons.landscape_rounded;
+  } else if (key.contains('climate') || key.contains('weather') || key.contains('मौसम')) {
+    return Icons.wb_sunny_rounded;
   }
-  return Icons.menu_book_rounded;
+  return Icons.spa_rounded;
 }
 
-Color _getCategoryBg(int index, bool isDark) {
-  if (isDark) return const Color(0xFF1F2D24);
-  const tints = [
-    Color(0xFFE8F5E9), // Crops / light green
-    Color(0xFFE1F5FE), // Water / light cyan
-    Color(0xFFE8F8F5), // Pests / light teal
-    Color(0xFFF1F8E9), // Organic / light lime
-    Color(0xFFFFF3E0), // Animal / light orange
-    Color(0xFFF3E5F5), // Tech / light purple
-    Color(0xFFFFEBEE), // Horticulture / light pink
-    Color(0xFFECEFF1), // Climate / light blue-grey
-  ];
-  return tints[index % tints.length];
-}
+_CategoryVisualConfig _getCategoryVisual(String name, String? slug, bool isDark, int index) {
+  final key = '${name.toLowerCase()} ${slug?.toLowerCase() ?? ''}';
 
-Color _getCategoryColor(int index, bool isDark) {
-  if (isDark) return const Color(0xFF86EFAC);
-  const colors = [
-    Color(0xFF2E7D32), // Crops
-    Color(0xFF0288D1), // Water
-    Color(0xFF00897B), // Pests
-    Color(0xFF558B2F), // Organic
-    Color(0xFFE65100), // Animal
-    Color(0xFF7B1FA2), // Tech
-    Color(0xFFC2185B), // Horticulture
-    Color(0xFF455A64), // Climate
-  ];
-  return colors[index % colors.length];
+  if (isDark) {
+    if (key.contains('crop') || key.contains('agronomy') || key.contains('organic') || key.contains('sustainable')) {
+      return _CategoryVisualConfig(
+        gradient: [const Color(0xFF143E24), const Color(0xFF1B4D2E)],
+        borderColor: const Color(0xFF22C55E).withValues(alpha: 0.35),
+        shadowColor: const Color(0xFF22C55E).withValues(alpha: 0.15),
+        iconColor: const Color(0xFF86EFAC),
+      );
+    } else if (key.contains('water') || key.contains('irrigat') || key.contains('aquaculture')) {
+      return _CategoryVisualConfig(
+        gradient: [const Color(0xFF0F314D), const Color(0xFF134E74)],
+        borderColor: const Color(0xFF38BDF8).withValues(alpha: 0.35),
+        shadowColor: const Color(0xFF38BDF8).withValues(alpha: 0.15),
+        iconColor: const Color(0xFF7DD3FC),
+      );
+    } else if (key.contains('pest') || key.contains('disease') || key.contains('protect')) {
+      return _CategoryVisualConfig(
+        gradient: [const Color(0xFF422020), const Color(0xFF6B2D2D)],
+        borderColor: const Color(0xFFF87171).withValues(alpha: 0.35),
+        shadowColor: const Color(0xFFF87171).withValues(alpha: 0.15),
+        iconColor: const Color(0xFFFCA5A5),
+      );
+    } else if (key.contains('dairy') || key.contains('livestock') || key.contains('poultry')) {
+      return _CategoryVisualConfig(
+        gradient: [const Color(0xFF3E2D12), const Color(0xFF5E431B)],
+        borderColor: const Color(0xFFFBBF24).withValues(alpha: 0.35),
+        shadowColor: const Color(0xFFFBBF24).withValues(alpha: 0.15),
+        iconColor: const Color(0xFFFDE68A),
+      );
+    } else if (key.contains('horticult') || key.contains('agroforestry')) {
+      return _CategoryVisualConfig(
+        gradient: [const Color(0xFF183B32), const Color(0xFF235447)],
+        borderColor: const Color(0xFF34D399).withValues(alpha: 0.35),
+        shadowColor: const Color(0xFF34D399).withValues(alpha: 0.15),
+        iconColor: const Color(0xFFA7F3D0),
+      );
+    } else if (key.contains('food') || key.contains('business')) {
+      return _CategoryVisualConfig(
+        gradient: [const Color(0xFF452B14), const Color(0xFF663E1C)],
+        borderColor: const Color(0xFFFB923C).withValues(alpha: 0.35),
+        shadowColor: const Color(0xFFFB923C).withValues(alpha: 0.15),
+        iconColor: const Color(0xFFFED7AA),
+      );
+    } else {
+      return _CategoryVisualConfig(
+        gradient: [const Color(0xFF272A3D), const Color(0xFF3A3F5C)],
+        borderColor: const Color(0xFF818CF8).withValues(alpha: 0.35),
+        shadowColor: const Color(0xFF818CF8).withValues(alpha: 0.15),
+        iconColor: const Color(0xFFC7D2FE),
+      );
+    }
+  }
+
+  // Light Mode (Clean, subtle pastel tints with crisp professional icon colors)
+  if (key.contains('crop') || key.contains('agronomy') || key.contains('organic') || key.contains('sustainable')) {
+    return _CategoryVisualConfig(
+      gradient: [const Color(0xFFF0FDF4), const Color(0xFFDCFCE7)],
+      borderColor: const Color(0xFFBBF7D0),
+      shadowColor: const Color(0xFF16A34A).withValues(alpha: 0.10),
+      iconColor: const Color(0xFF15803D),
+    );
+  } else if (key.contains('water') || key.contains('irrigat') || key.contains('aquaculture')) {
+    return _CategoryVisualConfig(
+      gradient: [const Color(0xFFF0F9FF), const Color(0xFFE0F2FE)],
+      borderColor: const Color(0xFFBAE6FD),
+      shadowColor: const Color(0xFF0284C7).withValues(alpha: 0.10),
+      iconColor: const Color(0xFF0369A1),
+    );
+  } else if (key.contains('pest') || key.contains('disease') || key.contains('protect')) {
+    return _CategoryVisualConfig(
+      gradient: [const Color(0xFFFEF2F2), const Color(0xFFFEE2E2)],
+      borderColor: const Color(0xFFFECACA),
+      shadowColor: const Color(0xFFDC2626).withValues(alpha: 0.10),
+      iconColor: const Color(0xFFB91C1C),
+    );
+  } else if (key.contains('dairy') || key.contains('livestock') || key.contains('poultry')) {
+    return _CategoryVisualConfig(
+      gradient: [const Color(0xFFFFFBEB), const Color(0xFFFEF3C7)],
+      borderColor: const Color(0xFFFDE68A),
+      shadowColor: const Color(0xFFD97706).withValues(alpha: 0.10),
+      iconColor: const Color(0xFFB45309),
+    );
+  } else if (key.contains('horticult') || key.contains('agroforestry')) {
+    return _CategoryVisualConfig(
+      gradient: [const Color(0xFFECFDF5), const Color(0xFFD1FAE5)],
+      borderColor: const Color(0xFFA7F3D0),
+      shadowColor: const Color(0xFF059669).withValues(alpha: 0.10),
+      iconColor: const Color(0xFF047857),
+    );
+  } else if (key.contains('food') || key.contains('business')) {
+    return _CategoryVisualConfig(
+      gradient: [const Color(0xFFFFF7ED), const Color(0xFFFFEDD5)],
+      borderColor: const Color(0xFFFED7AA),
+      shadowColor: const Color(0xFFEA580C).withValues(alpha: 0.10),
+      iconColor: const Color(0xFFC2410C),
+    );
+  } else {
+    return _CategoryVisualConfig(
+      gradient: [const Color(0xFFF5F3FF), const Color(0xFFEDE9FE)],
+      borderColor: const Color(0xFFDDD6FE),
+      shadowColor: const Color(0xFF7C3AED).withValues(alpha: 0.10),
+      iconColor: const Color(0xFF6D28D9),
+    );
+  }
 }
 
 // ── Course Card Component (Matching Prototype Screen 11 Large Card) ───────────────

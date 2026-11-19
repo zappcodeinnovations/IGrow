@@ -16,9 +16,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/app_toast.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/image_crop_rotate_screen.dart';
-import '../../../core/widgets/kyc_restricted_view.dart';
 import '../../../data/models/api_models/certificate_model.dart';
-import '../../../data/models/user_model.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../certificates/widgets/certificate_viewer_dialog.dart';
 import '../../home_instructor/providers/instructor_home_provider.dart';
@@ -727,12 +725,6 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
   // ── Final Submission (Create Course Draft Pipeline) ────────────────────────
 
   Future<void> _submitCreateCourseDraft() async {
-    final user = ref.read(authProvider).user;
-    if (user != null && !user.isKycVerified) {
-      _showKycRequiredDialog(user);
-      return;
-    }
-
     NotificationService.markCourseUploadStarted();
 
     setState(() {
@@ -1039,91 +1031,10 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
     );
   }
 
-  void _showKycRequiredDialog(UserModel? user) {
-    final bool isPending = user?.isKycPending == true;
-    showDialog(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: (isPending ? AppColors.accentOrange : AppColors.error)
-                      .withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  isPending ? Icons.hourglass_top_rounded : Icons.verified_user_outlined,
-                  color: isPending ? AppColors.accentOrange : AppColors.error,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  isPending ? 'Verification Under Review' : 'KYC Required',
-                  style: Theme.of(dialogContext).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                ),
-              ),
-            ],
-          ),
-          content: Text(
-            isPending
-                ? 'Your KYC documents have been submitted and are under review. Course creation will unlock once approved.'
-                : 'As an AgriLearn instructor, you must complete your KYC verification before creating and publishing courses.',
-            style: Theme.of(dialogContext).textTheme.bodyMedium?.copyWith(
-                  height: 1.5,
-                  color: AppColors.inkSoft,
-                ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: isPending ? AppColors.accentOrange : AppColors.primaryGreen,
-              ),
-              onPressed: () {
-                Navigator.of(dialogContext).pop();
-                context.push(RouteNames.instructorKyc);
-              },
-              child: Text(isPending ? 'Check KYC Status' : 'Complete KYC Now'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   // ── Build Method ──────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
-    final user = ref.watch(authProvider).user;
-
-    // Check KYC restriction
-    if (user != null && !user.isKycVerified) {
-      return Scaffold(
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        appBar: AppBar(
-          elevation: 0,
-          title: const Text(
-            'Create a New Course',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          centerTitle: true,
-        ),
-        body: const KycRestrictedView(featureName: 'Course Creation'),
-      );
-    }
-
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return GestureDetector(

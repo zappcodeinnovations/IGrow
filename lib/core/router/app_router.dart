@@ -189,8 +189,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: RouteNames.otp,
         builder: (context, state) {
           final email = state.uri.queryParameters['email'] ?? '';
+          final phone = state.uri.queryParameters['phone'] ?? '';
           final purpose = state.uri.queryParameters['purpose'] ?? '';
-          return OtpScreen(email: email, purpose: purpose);
+          return OtpScreen(email: email, phone: phone, purpose: purpose);
         },
       ),
       GoRoute(

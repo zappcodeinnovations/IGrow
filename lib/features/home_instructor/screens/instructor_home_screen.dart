@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 
 import '../../../core/localization/app_strings.dart';
@@ -27,7 +26,8 @@ class InstructorHomeScreen extends ConsumerStatefulWidget {
   const InstructorHomeScreen({super.key});
 
   @override
-  ConsumerState<InstructorHomeScreen> createState() => _InstructorHomeScreenState();
+  ConsumerState<InstructorHomeScreen> createState() =>
+      _InstructorHomeScreenState();
 }
 
 class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
@@ -42,7 +42,10 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
           children: const [
             Icon(Icons.swap_horiz_rounded, color: Color(0xFF16A34A), size: 28),
             SizedBox(width: 10),
-            Text('Switch Mode', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            Text(
+              'Switch Mode',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
           ],
         ),
         content: const Text(
@@ -52,13 +55,18 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogCtx),
-            child: const Text('Cancel', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600)),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600),
+            ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF1B4D2E),
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             onPressed: () async {
               Navigator.pop(dialogCtx);
@@ -68,7 +76,10 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                 context.go(RouteNames.farmerHome);
               }
             },
-            child: const Text('OK, Switch', style: TextStyle(fontWeight: FontWeight.bold)),
+            child: const Text(
+              'OK, Switch',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),
@@ -77,7 +88,7 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
 
   final _searchController = TextEditingController();
   String _searchQuery = '';
-  String _ordering = '';
+  final String _ordering = '';
   int _selectedDashboardTab = 0; // 0 for Recent Courses, 1 for My E-Books
 
   @override
@@ -94,7 +105,10 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
     super.dispose();
   }
 
-  void _showStudentsBottomSheet(BuildContext context, Map<String, dynamic> stats) {
+  void _showStudentsBottomSheet(
+    BuildContext context,
+    Map<String, dynamic> stats,
+  ) {
     final transactionsAsync = ref.read(instructorTransactionsProvider);
     final txs = transactionsAsync.value ?? [];
     final distinctProfiles = InstructorStudentProfile.groupTransactions(txs);
@@ -122,7 +136,9 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
             return Container(
               decoration: BoxDecoration(
                 color: Theme.of(sheetContext).scaffoldBackgroundColor,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(24),
+                ),
               ),
               child: MyStudentsSheet(
                 transactions: txs,
@@ -141,7 +157,10 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
     );
   }
 
-  void _showReviewsBottomSheet(BuildContext context, Map<String, dynamic> stats) {
+  void _showReviewsBottomSheet(
+    BuildContext context,
+    Map<String, dynamic> stats,
+  ) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -158,7 +177,10 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                 ? liveReviews.length
                 : ((stats['total_reviews'] as num?)?.toInt() ?? 0);
             final double avgRating = liveReviews.isNotEmpty
-                ? (liveReviews.map((r) => (r['rating'] as num?)?.toInt() ?? 5).reduce((a, b) => a + b) / liveReviews.length)
+                ? (liveReviews
+                          .map((r) => (r['rating'] as num?)?.toInt() ?? 5)
+                          .reduce((a, b) => a + b) /
+                      liveReviews.length)
                 : ((stats['average_rating'] as num?)?.toDouble() ?? 5.0);
 
             return Padding(
@@ -187,10 +209,16 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                             Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
-                                color: AppColors.signalYellow.withValues(alpha: 0.15),
+                                color: AppColors.signalYellow.withValues(
+                                  alpha: 0.15,
+                                ),
                                 borderRadius: BorderRadius.circular(10),
                               ),
-                              child: const Icon(Icons.star_rounded, color: AppColors.signalYellow, size: 24),
+                              child: const Icon(
+                                Icons.star_rounded,
+                                color: AppColors.signalYellow,
+                                size: 24,
+                              ),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
@@ -199,13 +227,19 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                                 children: [
                                   Text(
                                     tr(ref, 'Student Reviews & Ratings'),
-                                    style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                                    style: Theme.of(sheetContext)
+                                        .textTheme
+                                        .titleLarge
+                                        ?.copyWith(fontWeight: FontWeight.bold),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                   Text(
                                     '⭐ ${formatNum(ref, avgRating.toStringAsFixed(1))} ${tr(ref, 'average rating')} • ${formatNum(ref, totalReviews)} ${tr(ref, 'student reviews')}',
-                                    style: const TextStyle(fontSize: 12, color: AppColors.inkSoft),
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: AppColors.inkSoft,
+                                    ),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
@@ -232,7 +266,11 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                       children: [
                         Text(
                           formatNum(ref, avgRating.toStringAsFixed(1)),
-                          style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: AppColors.primaryGreen),
+                          style: const TextStyle(
+                            fontSize: 36,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primaryGreen,
+                          ),
                         ),
                         const SizedBox(width: 16),
                         Expanded(
@@ -243,7 +281,11 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                                 children: List.generate(
                                   5,
                                   (i) => Icon(
-                                    i < avgRating.floor() ? Icons.star_rounded : (i < avgRating ? Icons.star_half_rounded : Icons.star_outline_rounded),
+                                    i < avgRating.floor()
+                                        ? Icons.star_rounded
+                                        : (i < avgRating
+                                              ? Icons.star_half_rounded
+                                              : Icons.star_outline_rounded),
                                     color: AppColors.signalYellow,
                                     size: 20,
                                   ),
@@ -252,7 +294,10 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                               const SizedBox(height: 4),
                               Text(
                                 '${tr(ref, 'Based on')} ${formatNum(ref, totalReviews)} ${tr(ref, 'verified enrolled student ratings')}',
-                                style: const TextStyle(fontSize: 12, color: AppColors.inkSoft),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.inkSoft,
+                                ),
                               ),
                             ],
                           ),
@@ -269,10 +314,20 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                         color: AppColors.signalYellow.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(Icons.rate_review_outlined, color: AppColors.signalYellow, size: 20),
+                      child: const Icon(
+                        Icons.rate_review_outlined,
+                        color: AppColors.signalYellow,
+                        size: 20,
+                      ),
                     ),
-                    title: Text(tr(ref, 'Manage Reviews & Replies'), style: const TextStyle(fontWeight: FontWeight.bold)),
-                    subtitle: Text('${tr(ref, 'See all')} ${formatNum(ref, totalReviews)} ${tr(ref, 'ratings and reply to students')}', style: const TextStyle(fontSize: 12)),
+                    title: Text(
+                      tr(ref, 'Manage Reviews & Replies'),
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    subtitle: Text(
+                      '${tr(ref, 'See all')} ${formatNum(ref, totalReviews)} ${tr(ref, 'ratings and reply to students')}',
+                      style: const TextStyle(fontSize: 12),
+                    ),
                     trailing: const Icon(Icons.chevron_right_rounded),
                     onTap: () {
                       Navigator.pop(sheetContext);
@@ -288,10 +343,20 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                         color: AppColors.primaryGreen.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(Icons.question_answer_outlined, color: AppColors.primaryGreen, size: 20),
+                      child: const Icon(
+                        Icons.question_answer_outlined,
+                        color: AppColors.primaryGreen,
+                        size: 20,
+                      ),
                     ),
-                    title: Text(tr(ref, 'Student Q&A & Inquiries'), style: const TextStyle(fontWeight: FontWeight.bold)),
-                    subtitle: Text(tr(ref, 'Manage student discussions and doubts'), style: const TextStyle(fontSize: 12)),
+                    title: Text(
+                      tr(ref, 'Student Q&A & Inquiries'),
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    subtitle: Text(
+                      tr(ref, 'Manage student discussions and doubts'),
+                      style: const TextStyle(fontSize: 12),
+                    ),
                     trailing: const Icon(Icons.chevron_right_rounded),
                     onTap: () {
                       Navigator.pop(sheetContext);
@@ -308,15 +373,30 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
     );
   }
 
-  void _showTransactionDetailsModal(BuildContext context, Map<String, dynamic> txn) {
+  void _showTransactionDetailsModal(
+    BuildContext context,
+    Map<String, dynamic> txn,
+  ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final id = txn['id']?.toString() ?? txn['transaction_id']?.toString() ?? 'TXN-000';
-    final item = txn['item']?.toString() ?? txn['course_title']?.toString() ?? txn['description']?.toString() ?? 'Course Purchase';
-    final buyer = txn['buyer']?.toString() ?? txn['student_name']?.toString() ?? 'Student';
-    final date = txn['date']?.toString() ?? txn['created_at']?.toString() ?? 'Recently';
+    final id =
+        txn['id']?.toString() ?? txn['transaction_id']?.toString() ?? 'TXN-000';
+    final item =
+        txn['item']?.toString() ??
+        txn['course_title']?.toString() ??
+        txn['description']?.toString() ??
+        'Course Purchase';
+    final buyer =
+        txn['buyer']?.toString() ??
+        txn['student_name']?.toString() ??
+        'Student';
+    final date =
+        txn['date']?.toString() ?? txn['created_at']?.toString() ?? 'Recently';
     final amount = txn['amount'] != null ? '₹${txn['amount']}' : '₹0.00';
     final status = txn['status']?.toString() ?? 'SUCCESS';
-    final paymentMethod = txn['payment_method']?.toString() ?? txn['payment_mode']?.toString() ?? 'Online Payment';
+    final paymentMethod =
+        txn['payment_method']?.toString() ??
+        txn['payment_mode']?.toString() ??
+        'Online Payment';
 
     showModalBottomSheet(
       context: context,
@@ -354,10 +434,16 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                         Container(
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: AppColors.primaryGreen.withValues(alpha: 0.12),
+                            color: AppColors.primaryGreen.withValues(
+                              alpha: 0.12,
+                            ),
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Icon(Icons.receipt_long_rounded, color: AppColors.primaryGreen, size: 22),
+                          child: const Icon(
+                            Icons.receipt_long_rounded,
+                            color: AppColors.primaryGreen,
+                            size: 22,
+                          ),
                         ),
                         const SizedBox(width: 12),
                         Column(
@@ -365,13 +451,16 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                           children: [
                             Text(
                               tr(ref, 'Transaction Receipt'),
-                              style: Theme.of(sheetCtx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                              style: Theme.of(sheetCtx).textTheme.titleLarge
+                                  ?.copyWith(fontWeight: FontWeight.bold),
                             ),
                             Text(
                               id,
                               style: TextStyle(
                                 fontSize: 11,
-                                color: isDark ? Colors.white60 : AppColors.inkSoft,
+                                color: isDark
+                                    ? Colors.white60
+                                    : AppColors.inkSoft,
                                 fontFamily: 'monospace',
                               ),
                             ),
@@ -389,7 +478,9 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: isDark ? Colors.white.withValues(alpha: 0.05) : const Color(0xFFF9FAFB),
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.05)
+                        : const Color(0xFFF9FAFB),
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
                       color: isDark ? Colors.white10 : AppColors.lineLight,
@@ -400,7 +491,13 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(tr(ref, 'Amount Credited'), style: const TextStyle(fontSize: 13, color: AppColors.inkSoft)),
+                          Text(
+                            tr(ref, 'Amount Credited'),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: AppColors.inkSoft,
+                            ),
+                          ),
                           Text(
                             formatNum(ref, amount),
                             style: const TextStyle(
@@ -415,9 +512,18 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(tr(ref, 'Status'), style: const TextStyle(fontSize: 13, color: AppColors.inkSoft)),
+                          Text(
+                            tr(ref, 'Status'),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: AppColors.inkSoft,
+                            ),
+                          ),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
                             decoration: BoxDecoration(
                               color: status.toUpperCase().contains('FAIL')
                                   ? Colors.red.withValues(alpha: 0.12)
@@ -429,7 +535,9 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,
-                                color: status.toUpperCase().contains('FAIL') ? Colors.red : Colors.green.shade800,
+                                color: status.toUpperCase().contains('FAIL')
+                                    ? Colors.red
+                                    : Colors.green.shade800,
                               ),
                             ),
                           ),
@@ -439,11 +547,20 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(tr(ref, 'Item / Course'), style: const TextStyle(fontSize: 13, color: AppColors.inkSoft)),
+                          Text(
+                            tr(ref, 'Item / Course'),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: AppColors.inkSoft,
+                            ),
+                          ),
                           Flexible(
                             child: Text(
                               item,
-                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
                               textAlign: TextAlign.end,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
@@ -455,24 +572,60 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(tr(ref, 'Enrolled Student'), style: const TextStyle(fontSize: 13, color: AppColors.inkSoft)),
-                          Text(buyer, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                          Text(
+                            tr(ref, 'Enrolled Student'),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: AppColors.inkSoft,
+                            ),
+                          ),
+                          Text(
+                            buyer,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 12),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(tr(ref, 'Date & Time'), style: const TextStyle(fontSize: 13, color: AppColors.inkSoft)),
-                          Text(formatNum(ref, date), style: const TextStyle(fontSize: 12, color: AppColors.inkSoft)),
+                          Text(
+                            tr(ref, 'Date & Time'),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: AppColors.inkSoft,
+                            ),
+                          ),
+                          Text(
+                            formatNum(ref, date),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.inkSoft,
+                            ),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 12),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(tr(ref, 'Payment Method'), style: const TextStyle(fontSize: 13, color: AppColors.inkSoft)),
-                          Text(tr(ref, paymentMethod), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+                          Text(
+                            tr(ref, 'Payment Method'),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: AppColors.inkSoft,
+                            ),
+                          ),
+                          Text(
+                            tr(ref, paymentMethod),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
                         ],
                       ),
                     ],
@@ -486,10 +639,15 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       side: const BorderSide(color: AppColors.primaryGreen),
                       foregroundColor: AppColors.primaryGreen,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                     icon: const Icon(Icons.analytics_outlined, size: 18),
-                    label: Text(tr(ref, 'View Full Financial Ledger'), style: const TextStyle(fontWeight: FontWeight.bold)),
+                    label: Text(
+                      tr(ref, 'View Full Financial Ledger'),
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
                     onPressed: () {
                       Navigator.pop(sheetCtx);
                       context.push(RouteNames.instructorAnalytics);
@@ -510,15 +668,23 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
       context: context,
       builder: (c) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(tr(ref, 'Deactivate Course'), style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(
+          tr(ref, 'Deactivate Course'),
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
         content: Text(
           '${tr(ref, 'Are you sure you want to deactivate')} "${course.title}"?\n\n'
           '${tr(ref, 'The course will be moved to Draft status and hidden from the public marketplace. You can review and manage it anytime.')}',
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: Text(tr(ref, 'Cancel'))),
+          TextButton(
+            onPressed: () => Navigator.pop(c, false),
+            child: Text(tr(ref, 'Cancel')),
+          ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: const Color(0xFFF59E0B)),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFF59E0B),
+            ),
             onPressed: () => Navigator.pop(c, true),
             child: Text(tr(ref, 'Deactivate')),
           ),
@@ -530,8 +696,12 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
       try {
         debugPrint('📤 [DEACTIVATE] Deactivating course: ${course.id}');
         await ref.read(instructorRepositoryProvider).archiveCourse(course.id);
-        await ref.read(deactivatedCoursesProvider.notifier).markDeactivated(course.id);
-        debugPrint('✅ [DEACTIVATE] Successfully deactivated course: ${course.id}');
+        await ref
+            .read(deactivatedCoursesProvider.notifier)
+            .markDeactivated(course.id);
+        debugPrint(
+          '✅ [DEACTIVATE] Successfully deactivated course: ${course.id}',
+        );
         if (!mounted) return;
         final messenger = ScaffoldMessenger.of(context);
         messenger.clearSnackBars();
@@ -543,7 +713,14 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
         );
         ref.invalidate(instructorCoursesProvider);
         ref.invalidate(instructorCourseDetailProvider(course.id));
-        unawaited(ref.refresh(instructorCoursesProvider((search: _searchQuery, ordering: _ordering)).future));
+        unawaited(
+          ref.refresh(
+            instructorCoursesProvider((
+              search: _searchQuery,
+              ordering: _ordering,
+            )).future,
+          ),
+        );
         ref.invalidate(studentCatalogProvider);
         ref.invalidate(featuredCoursesProvider);
         ref.invalidate(exploreCoursesProvider);
@@ -569,15 +746,23 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
       context: context,
       builder: (c) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(tr(ref, 'Reactivate Course'), style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(
+          tr(ref, 'Reactivate Course'),
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
         content: Text(
           '${tr(ref, 'Are you sure you want to reactivate')} "${course.title}"?\n\n'
           '${tr(ref, 'The course will be restored back to live status on the marketplace.')}',
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: Text(tr(ref, 'Cancel'))),
+          TextButton(
+            onPressed: () => Navigator.pop(c, false),
+            child: Text(tr(ref, 'Cancel')),
+          ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.primaryGreen),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.primaryGreen,
+            ),
             onPressed: () => Navigator.pop(c, true),
             child: Text(tr(ref, 'Reactivate')),
           ),
@@ -589,8 +774,12 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
       try {
         debugPrint('📤 [REACTIVATE] Reactivating course: ${course.id}');
         await ref.read(instructorRepositoryProvider).unarchiveCourse(course.id);
-        await ref.read(deactivatedCoursesProvider.notifier).markReactivated(course.id);
-        debugPrint('✅ [REACTIVATE] Successfully reactivated course: ${course.id}');
+        await ref
+            .read(deactivatedCoursesProvider.notifier)
+            .markReactivated(course.id);
+        debugPrint(
+          '✅ [REACTIVATE] Successfully reactivated course: ${course.id}',
+        );
         if (!mounted) return;
         final messenger = ScaffoldMessenger.of(context);
         messenger.clearSnackBars();
@@ -602,7 +791,14 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
         );
         ref.invalidate(instructorCoursesProvider);
         ref.invalidate(instructorCourseDetailProvider(course.id));
-        unawaited(ref.refresh(instructorCoursesProvider((search: _searchQuery, ordering: _ordering)).future));
+        unawaited(
+          ref.refresh(
+            instructorCoursesProvider((
+              search: _searchQuery,
+              ordering: _ordering,
+            )).future,
+          ),
+        );
         ref.invalidate(studentCatalogProvider);
         ref.invalidate(featuredCoursesProvider);
         ref.invalidate(exploreCoursesProvider);
@@ -628,7 +824,9 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
       context: context,
       builder: (c) => AlertDialog(
         title: Text(tr(ref, 'Delete Course')),
-        content: Text('${tr(ref, 'Are you sure you want to permanently delete')} "${course.title}"? ${tr(ref, 'This action cannot be undone.')}'),
+        content: Text(
+          '${tr(ref, 'Are you sure you want to permanently delete')} "${course.title}"? ${tr(ref, 'This action cannot be undone.')}',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(c, false),
@@ -657,7 +855,14 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
         );
         ref.invalidate(instructorCoursesProvider);
         ref.invalidate(instructorCourseDetailProvider(course.id));
-        unawaited(ref.refresh(instructorCoursesProvider((search: _searchQuery, ordering: _ordering)).future));
+        unawaited(
+          ref.refresh(
+            instructorCoursesProvider((
+              search: _searchQuery,
+              ordering: _ordering,
+            )).future,
+          ),
+        );
         ref.invalidate(studentCatalogProvider);
         ref.invalidate(featuredCoursesProvider);
         ref.invalidate(exploreCoursesProvider);
@@ -687,16 +892,24 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
           children: [
             const Icon(Icons.rocket_launch, color: AppColors.primaryGreen),
             const SizedBox(width: 10),
-            Text(tr(ref, 'Submit for Review'), style: const TextStyle(fontWeight: FontWeight.bold)),
+            Text(
+              tr(ref, 'Submit for Review'),
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
           ],
         ),
         content: Text(
           '${tr(ref, 'Are you sure you want to submit')} "${course.title}" ${tr(ref, 'for automated AI safety review and administrator verification? Editing will be temporarily locked until the review completes.')}',
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: Text(tr(ref, 'Cancel'))),
+          TextButton(
+            onPressed: () => Navigator.pop(c, false),
+            child: Text(tr(ref, 'Cancel')),
+          ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.primaryGreen),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.primaryGreen,
+            ),
             onPressed: () => Navigator.pop(c, true),
             child: Text(tr(ref, 'Submit for Review')),
           ),
@@ -706,9 +919,13 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
 
     if (confirmed == true) {
       try {
-        final res = await ref.read(instructorRepositoryProvider).publishCourse(course.id);
+        final res = await ref
+            .read(instructorRepositoryProvider)
+            .publishCourse(course.id);
         if (!mounted) return;
-        final message = res['message']?.toString() ?? tr(ref, 'Course submitted for review successfully');
+        final message =
+            res['message']?.toString() ??
+            tr(ref, 'Course submitted for review successfully');
         final messenger = ScaffoldMessenger.of(context);
         messenger.clearSnackBars();
         messenger.showSnackBar(
@@ -719,29 +936,39 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
         );
         ref.invalidate(instructorCoursesProvider);
         ref.invalidate(instructorCourseDetailProvider(course.id));
-        unawaited(ref.refresh(instructorCoursesProvider((search: _searchQuery, ordering: _ordering)).future));
+        unawaited(
+          ref.refresh(
+            instructorCoursesProvider((
+              search: _searchQuery,
+              ordering: _ordering,
+            )).future,
+          ),
+        );
         ref.invalidate(instructorStatsProvider);
       } catch (e) {
         if (!mounted) return;
         String errorMsg = e.toString().replaceAll('Exception: ', '').trim();
         if (errorMsg.contains('{') && errorMsg.contains('}')) {
           try {
-            final jsonPart = errorMsg.substring(errorMsg.indexOf('{'), errorMsg.lastIndexOf('}') + 1);
+            final jsonPart = errorMsg.substring(
+              errorMsg.indexOf('{'),
+              errorMsg.lastIndexOf('}') + 1,
+            );
             final decoded = jsonDecode(jsonPart);
             if (decoded is Map) {
-              errorMsg = decoded['error']?.toString() ??
+              errorMsg =
+                  decoded['error']?.toString() ??
                   decoded['detail']?.toString() ??
-                  decoded.values.map((v) => v is List ? v.join(' ') : v.toString()).join(' ');
+                  decoded.values
+                      .map((v) => v is List ? v.join(' ') : v.toString())
+                      .join(' ');
             }
           } catch (_) {}
         }
         final messenger = ScaffoldMessenger.of(context);
         messenger.clearSnackBars();
         messenger.showSnackBar(
-          SnackBar(
-            content: Text(errorMsg),
-            backgroundColor: AppColors.error,
-          ),
+          SnackBar(content: Text(errorMsg), backgroundColor: AppColors.error),
         );
       }
     }
@@ -765,7 +992,9 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
             child: Text(tr(ref, 'Cancel')),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.primaryGreen),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.primaryGreen,
+            ),
             onPressed: () => Navigator.pop(c, true),
             child: Text(tr(ref, 'Send for Review')),
           ),
@@ -806,12 +1035,18 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
     final ebookId = ebook.id?.toString();
     if (ebookId == null || ebookId.isEmpty) return;
 
-    final currentPrice = (ebook.price ?? '0').toString().replaceAll('₹', '').trim();
-    final priceController = TextEditingController(text: currentPrice == '0.00' ? '0' : currentPrice);
+    final currentPrice = (ebook.price ?? '0')
+        .toString()
+        .replaceAll('₹', '')
+        .trim();
+    final priceController = TextEditingController(
+      text: currentPrice == '0.00' ? '0' : currentPrice,
+    );
 
     final config = ref.read(appConfigProvider);
     final allowsCustomPrice = config.allowsCustomCoursePrice;
-    String selectedTier = const ['0', '249', '499', '999', '1499'].contains(currentPrice)
+    String selectedTier =
+        const ['0', '249', '499', '999', '1499'].contains(currentPrice)
         ? currentPrice
         : '0';
 
@@ -821,7 +1056,9 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
       context: context,
       builder: (dialogCtx) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           title: Row(
             children: [
               Container(
@@ -830,7 +1067,11 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                   color: AppColors.primaryGreen.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.currency_rupee, color: AppColors.primaryGreen, size: 20),
+                child: const Icon(
+                  Icons.currency_rupee,
+                  color: AppColors.primaryGreen,
+                  size: 20,
+                ),
               ),
               const SizedBox(width: 10),
               const Expanded(
@@ -853,13 +1094,17 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
               if (allowsCustomPrice)
                 TextField(
                   controller: priceController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
                   autofocus: true,
                   decoration: InputDecoration(
                     prefixIcon: const Icon(Icons.currency_rupee, size: 18),
                     labelText: 'Price (₹)',
                     hintText: 'e.g. 299',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                 )
               else
@@ -871,16 +1116,27 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                     return ChoiceChip(
                       label: Text(tier == '0' ? 'FREE' : '₹$tier'),
                       selected: isSel,
-                      selectedColor: isDark ? const Color(0xFFD4FF80) : AppColors.primaryGreen,
-                      backgroundColor: isDark ? const Color(0xFF2A2D32) : Colors.grey.shade100,
+                      selectedColor: isDark
+                          ? const Color(0xFFD4FF80)
+                          : AppColors.primaryGreen,
+                      backgroundColor: isDark
+                          ? const Color(0xFF2A2D32)
+                          : Colors.grey.shade100,
                       side: BorderSide(
                         color: isSel
-                            ? (isDark ? const Color(0xFFD4FF80) : AppColors.primaryGreen)
+                            ? (isDark
+                                  ? const Color(0xFFD4FF80)
+                                  : AppColors.primaryGreen)
                             : (isDark ? Colors.white24 : AppColors.lineLight),
                       ),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                       showCheckmark: false,
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
                       labelStyle: TextStyle(
                         color: isSel
                             ? (isDark ? Colors.black : Colors.white)
@@ -888,7 +1144,8 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                         fontWeight: FontWeight.bold,
                         fontSize: 13,
                       ),
-                      onSelected: (_) => setDialogState(() => selectedTier = tier),
+                      onSelected: (_) =>
+                          setDialogState(() => selectedTier = tier),
                     );
                   }).toList(),
                 ),
@@ -902,10 +1159,14 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
             FilledButton(
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.primaryGreen,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
               onPressed: () {
-                final val = allowsCustomPrice ? priceController.text.trim() : selectedTier;
+                final val = allowsCustomPrice
+                    ? priceController.text.trim()
+                    : selectedTier;
                 Navigator.pop(dialogCtx, val);
               },
               child: Text(tr(ref, 'Save Price')),
@@ -1016,7 +1277,9 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final user = ref.watch(authProvider).user;
-    final userName = (user != null && user.fullName.isNotEmpty) ? user.fullName : 'Ravi Kumar';
+    final userName = (user != null && user.fullName.isNotEmpty)
+        ? user.fullName
+        : 'Ravi Kumar';
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -1025,33 +1288,40 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
         backgroundColor: Colors.transparent,
         automaticallyImplyLeading: false,
         titleSpacing: 20,
-        toolbarHeight: 70,
+        toolbarHeight: 76,
         title: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
                     '${tr(ref, 'Welcome')} 👨‍🏫',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppColors.inkSoft,
-                        ),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodyMedium?.copyWith(color: AppColors.inkSoft),
                   ),
                   const SizedBox(height: 2),
                   Row(
                     children: [
-                      Text(
-                        userName,
-                        style: Theme.of(context).textTheme.displaySmall,
+                      Flexible(
+                        child: Text(
+                          userName,
+                          style: Theme.of(context).textTheme.displaySmall
+                              ?.copyWith(fontSize: 20, height: 1.15),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                       if (user?.isKycVerified == true) ...[
                         const SizedBox(width: 6),
                         const Icon(
                           Icons.verified_rounded,
                           color: AppColors.primaryGreen,
-                          size: 22,
+                          size: 20,
                         ),
                       ],
                     ],
@@ -1059,6 +1329,7 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                 ],
               ),
             ),
+            const SizedBox(width: 8),
             Builder(
               builder: (context) {
                 final unreadCount = ref.watch(unreadNotificationsCountProvider);
@@ -1069,13 +1340,15 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                       borderRadius: BorderRadius.circular(16),
                       onTap: () => context.push(RouteNames.notifications),
                       child: Container(
-                        width: 40,
-                        height: 40,
+                        width: 38,
+                        height: 38,
                         decoration: BoxDecoration(
                           color: isDark ? AppColors.cardDark : AppColors.white,
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: isDark ? AppColors.lineDark : AppColors.lineLight,
+                            color: isDark
+                                ? AppColors.lineDark
+                                : AppColors.lineLight,
                           ),
                         ),
                         child: Stack(
@@ -1084,7 +1357,9 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                             Icon(
                               Icons.notifications_outlined,
                               size: 20,
-                              color: isDark ? AppColors.white : AppColors.inkDark,
+                              color: isDark
+                                  ? AppColors.white
+                                  : AppColors.inkDark,
                             ),
                             if (unreadCount > 0)
                               Positioned(
@@ -1109,7 +1384,10 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                       onTap: () => _showSwitchToStudentDialog(context),
                       borderRadius: BorderRadius.circular(20),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 7,
+                        ),
                         decoration: BoxDecoration(
                           color: const Color(0xFF1B4D2E),
                           borderRadius: BorderRadius.circular(20),
@@ -1126,15 +1404,15 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                           children: const [
                             Icon(
                               Icons.swap_horiz_rounded,
-                              size: 16,
+                              size: 15,
                               color: Color(0xFF86EFAC),
                             ),
-                            SizedBox(width: 5),
+                            SizedBox(width: 4),
                             Text(
                               'Student',
                               style: TextStyle(
                                 color: Colors.white,
-                                fontSize: 12,
+                                fontSize: 11.5,
                                 fontWeight: FontWeight.w700,
                                 letterSpacing: 0.2,
                               ),
@@ -1158,686 +1436,928 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
               Future.microtask(() => ref.invalidate(instructorStatsProvider)),
               Future.microtask(() => ref.invalidate(instructorCoursesProvider)),
               Future.microtask(() => ref.invalidate(instructorEbooksProvider)),
-              Future.microtask(() => ref.invalidate(instructorTransactionsProvider)),
+              Future.microtask(
+                () => ref.invalidate(instructorTransactionsProvider),
+              ),
             ]);
           },
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 8),
-              Text(
-                tr(ref, 'Manage your courses, revenue, and AI moderation status.'),
-                style: TextStyle(
-                  fontSize: 13,
-                  color: isDark ? Colors.grey.shade400 : AppColors.inkSoft,
-                ),
-              ),
-              const SizedBox(height: 14),
-
-              // Quick Action Buttons matching Screenshot 1 & 5
-              Row(
-                children: [
-                  Expanded(
-                    child: FilledButton.icon(
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.accentOrange,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      onPressed: () => context.push(RouteNames.uploadCourse),
-                      icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
-                      label: Text(
-                        tr(ref, 'Create a New Course'),
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                      ),
-                    ),
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 8),
+                Text(
+                  tr(
+                    ref,
+                    'Manage your courses, revenue, and AI moderation status.',
                   ),
-                  const SizedBox(width: 10),
-                  FilledButton.icon(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF9333EA),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    onPressed: () => context.push(RouteNames.uploadEbook),
-                    icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
-                    label: Text(
-                      tr(ref, 'New E-Book'),
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                    ),
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: isDark ? Colors.grey.shade400 : AppColors.inkSoft,
                   ),
-                ],
-              ),
-              const SizedBox(height: 16),
-
-              // KYC Alert / Banner if not verified
-              if (user?.isKycVerified != true) ...[
-                _KycPromptBanner(
-                  isPending: user?.isKycPending == true,
-                  onTap: () => context.push(RouteNames.instructorKyc),
                 ),
-                const SizedBox(height: 16),
-              ],
+                const SizedBox(height: 14),
 
-              // Stats Row
-              ref.watch(instructorStatsProvider).when(
-                data: (stats) {
-                  final transactionsAsync = ref.watch(instructorTransactionsProvider);
-                  final txs = transactionsAsync.value ?? [];
-                  final distinctProfiles = InstructorStudentProfile.groupTransactions(txs);
-                  final distinctStudentCount = distinctProfiles.isNotEmpty
-                      ? distinctProfiles.length
-                      : (stats['total_students'] ?? 0);
+                // ── 1. Stats Row (Students, Courses, E-Books, Reviews) ───
+                ref
+                    .watch(instructorStatsProvider)
+                    .when(
+                      data: (stats) {
+                        final transactionsAsync = ref.watch(
+                          instructorTransactionsProvider,
+                        );
+                        final txs = transactionsAsync.value ?? [];
+                        final distinctProfiles =
+                            InstructorStudentProfile.groupTransactions(txs);
+                        final distinctStudentCount = distinctProfiles.isNotEmpty
+                            ? distinctProfiles.length
+                            : (stats['total_students'] ?? 0);
 
-                  return Row(
-                    children: [
-                      Expanded(
-                        child: _StatCard(
-                          icon: Icons.people_alt_rounded,
-                          label: tr(ref, 'Students'),
-                          value: formatNum(ref, distinctStudentCount),
-                          color: AppColors.skyBlue,
-                          onTap: () => _showStudentsBottomSheet(context, stats),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: _StatCard(
-                          icon: Icons.play_lesson_rounded,
-                          label: tr(ref, 'Courses'),
-                          value: formatNum(ref, stats['total_courses'] ?? 0),
-                          color: AppColors.primaryGreen,
-                          onTap: () => context.push(RouteNames.instructorUploads),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Consumer(
-                          builder: (context, ref, _) {
-                            final ebooksAsync = ref.watch(instructorEbooksProvider);
-                            final totalEbooks = ebooksAsync.value?.length ??
-                                (stats['total_ebooks'] as num?)?.toInt() ??
-                                0;
-                            return _StatCard(
-                              icon: Icons.menu_book_rounded,
-                              label: tr(ref, 'E-Books'),
-                              value: formatNum(ref, totalEbooks),
-                              color: AppColors.accentOrange,
-                              onTap: () => context.push('${RouteNames.instructorUploads}?tab=1'),
-                            );
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Consumer(
-                          builder: (context, ref, _) {
-                            final reviewsAsync = ref.watch(instructorReviewsProvider);
-                            final liveReviews = reviewsAsync.value;
-                            final liveCount = liveReviews?.length;
-                            final totalReviewsCount = (liveCount != null && liveCount > 0)
-                                ? liveCount
-                                : ((stats['total_reviews'] as num?)?.toInt() ?? 0);
-
-                            return _StatCard(
-                              icon: Icons.star_rounded,
-                              label: tr(ref, 'Reviews'),
-                              value: formatNum(ref, totalReviewsCount),
-                              color: AppColors.signalYellow,
-                              onTap: () => _showReviewsBottomSheet(context, stats),
-                            );
-                          },
-                        ),
-                      ),
-                    ],
-                  );
-                },
-                loading: () => Row(
-                  children: [
-                    Expanded(child: ShimmerCard(height: 100)),
-                    const SizedBox(width: 8),
-                    Expanded(child: ShimmerCard(height: 100)),
-                    const SizedBox(width: 8),
-                    Expanded(child: ShimmerCard(height: 100)),
-                    const SizedBox(width: 8),
-                    Expanded(child: ShimmerCard(height: 100)),
-                  ],
-                ),
-                error: (err, _) => const SizedBox(),
-              ),
-              const SizedBox(height: 24),
-
-              // Upload Guide Chatbot Banner
-              AppCard(
-                padding: EdgeInsets.zero,
-                onTap: () {
-                  context.push(RouteNames.uploadGuide);
-                },
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
-                  child: Stack(
-                    children: [
-                      // Background Image
-                      // Positioned.fill(
-                      //   child: Image.asset(
-                      //     'assets/images/igrow_teacher_bot.png',
-                      //     fit: BoxFit.cover,
-                      //     alignment: Alignment.topCenter,
-                      //   ),
-                      // ),
-                      // Blur overlay
-                      Positioned.fill(
-                        child: BackdropFilter(
-                          filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-                          child: Container(
-                            color: Colors.black.withValues(alpha: 0.4),
-                          ),
-                        ),
-                      ),
-                      // Content
-                      Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: Row(
+                        return Row(
                           children: [
-                            Container(
-                              width: 64,
-                              height: 64,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(color: AppColors.white.withValues(alpha: 0.8), width: 2),
-                                image: const DecorationImage(
-                                  image: AssetImage('assets/images/igrow_teacher_bot.png'),
-                                  fit: BoxFit.cover,
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.3),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 16),
                             Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    tr(ref, 'Instructor Guide'),
-                                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                      color: AppColors.white, 
-                                      fontWeight: FontWeight.bold,
-                                      shadows: [
-                                        Shadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 4),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    tr(ref, 'Learn how to upload courses and ebooks with our AI assistant.'),
-                                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      color: AppColors.white.withValues(alpha: 0.9),
-                                    ),
-                                  ),
-                                ],
+                              child: _StatCard(
+                                icon: Icons.people_alt_rounded,
+                                label: tr(ref, 'Students'),
+                                value: formatNum(ref, distinctStudentCount),
+                                color: AppColors.skyBlue,
+                                onTap: () =>
+                                    _showStudentsBottomSheet(context, stats),
                               ),
                             ),
                             const SizedBox(width: 8),
-                            const Icon(
-                              Icons.arrow_forward_ios_rounded,
-                              color: AppColors.white,
-                              size: 20,
+                            Expanded(
+                              child: _StatCard(
+                                icon: Icons.play_lesson_rounded,
+                                label: tr(ref, 'Courses'),
+                                value: formatNum(
+                                  ref,
+                                  stats['total_courses'] ?? 0,
+                                ),
+                                color: AppColors.primaryGreen,
+                                onTap: () =>
+                                    context.push(RouteNames.instructorUploads),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Consumer(
+                                builder: (context, ref, _) {
+                                  final ebooksAsync = ref.watch(
+                                    instructorEbooksProvider,
+                                  );
+                                  final totalEbooks =
+                                      ebooksAsync.value?.length ??
+                                      (stats['total_ebooks'] as num?)
+                                          ?.toInt() ??
+                                      0;
+                                  return _StatCard(
+                                    icon: Icons.menu_book_rounded,
+                                    label: tr(ref, 'E-Books'),
+                                    value: formatNum(ref, totalEbooks),
+                                    color: AppColors.accentOrange,
+                                    onTap: () => context.push(
+                                      '${RouteNames.instructorUploads}?tab=1',
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Consumer(
+                                builder: (context, ref, _) {
+                                  final reviewsAsync = ref.watch(
+                                    instructorReviewsProvider,
+                                  );
+                                  final liveReviews = reviewsAsync.value;
+                                  final liveCount = liveReviews?.length;
+                                  final totalReviewsCount =
+                                      (liveCount != null && liveCount > 0)
+                                      ? liveCount
+                                      : ((stats['total_reviews'] as num?)
+                                                ?.toInt() ??
+                                            0);
+
+                                  return _StatCard(
+                                    icon: Icons.star_rounded,
+                                    label: tr(ref, 'Reviews'),
+                                    value: formatNum(ref, totalReviewsCount),
+                                    color: AppColors.signalYellow,
+                                    onTap: () =>
+                                        _showReviewsBottomSheet(context, stats),
+                                  );
+                                },
+                              ),
                             ),
                           ],
+                        );
+                      },
+                      loading: () => Row(
+                        children: [
+                          Expanded(child: ShimmerCard(height: 72)),
+                          const SizedBox(width: 8),
+                          Expanded(child: ShimmerCard(height: 72)),
+                          const SizedBox(width: 8),
+                          Expanded(child: ShimmerCard(height: 72)),
+                          const SizedBox(width: 8),
+                          Expanded(child: ShimmerCard(height: 72)),
+                        ],
+                      ),
+                      error: (err, _) => const SizedBox(),
+                    ),
+                const SizedBox(height: 14),
+
+                // ── 2. Quick Action Buttons (Create Course & New E-Book) ──
+                Row(
+                  children: [
+                    Expanded(
+                      child: FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.accentOrange,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: () => context.push(RouteNames.uploadCourse),
+                        icon: const Icon(
+                          Icons.add_circle_outline_rounded,
+                          size: 18,
+                        ),
+                        label: Text(
+                          tr(ref, 'Create a New Course'),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
                         ),
                       ),
-                    ],
+                    ),
+                    const SizedBox(width: 10),
+                    FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF9333EA),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed: () => context.push(RouteNames.uploadEbook),
+                      icon: const Icon(
+                        Icons.add_circle_outline_rounded,
+                        size: 18,
+                      ),
+                      label: Text(
+                        tr(ref, 'New E-Book'),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+
+                // ── 3. KYC Alert / Banner if not verified ───
+                if (user?.isKycVerified != true) ...[
+                  _KycPromptBanner(
+                    isPending: user?.isKycPending == true,
+                    onTap: () => context.push(RouteNames.instructorKyc),
+                  ),
+                  const SizedBox(height: 14),
+                ],
+
+                // ── 4. Compact Upload Guide Chatbot Banner ───
+                AppCard(
+                  padding: EdgeInsets.zero,
+                  onTap: () {
+                    context.push(RouteNames.uploadGuide);
+                  },
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Stack(
+                      children: [
+                        Positioned.fill(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: isDark
+                                    ? [
+                                        const Color(0xFF1E2E23),
+                                        const Color(0xFF142017),
+                                      ]
+                                    : [
+                                        const Color(0xFF2C3E31),
+                                        const Color(0xFF1B2A1E),
+                                      ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                            ),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 12,
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 42,
+                                height: 42,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: Colors.white.withValues(alpha: 0.6),
+                                    width: 1.5,
+                                  ),
+                                  image: const DecorationImage(
+                                    image: AssetImage(
+                                      'assets/images/igrow_teacher_bot.png',
+                                    ),
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Text(
+                                          tr(ref, 'Instructor Guide'),
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 14.5,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.primaryGreen
+                                                .withValues(alpha: 0.3),
+                                            borderRadius: BorderRadius.circular(
+                                              6,
+                                            ),
+                                          ),
+                                          child: const Text(
+                                            'AI Assistant',
+                                            style: TextStyle(
+                                              color: Color(0xFF86EFAC),
+                                              fontSize: 9.5,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      tr(
+                                        ref,
+                                        'Learn how to upload courses & ebooks with our AI assistant.',
+                                      ),
+                                      style: TextStyle(
+                                        color: Colors.white.withValues(
+                                          alpha: 0.85,
+                                        ),
+                                        fontSize: 11.5,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              const Icon(
+                                Icons.arrow_forward_ios_rounded,
+                                color: Colors.white70,
+                                size: 14,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 28),
+                const SizedBox(height: 22),
 
-              // Tab Header: Recent Courses & My E-Books (Matching Screenshot 1 & 5)
-              Row(
-                children: [
-                  InkWell(
-                    onTap: () => setState(() => _selectedDashboardTab = 0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          tr(ref, 'Recent Courses'),
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: _selectedDashboardTab == 0
-                                ? AppColors.primaryGreen
-                                : (isDark ? Colors.grey.shade400 : Colors.grey.shade600),
-                          ),
-                        ),
-                        if (_selectedDashboardTab == 0)
-                          Container(
-                            margin: const EdgeInsets.only(top: 4),
-                            height: 3,
-                            width: 60,
-                            decoration: BoxDecoration(
-                              color: AppColors.primaryGreen,
-                              borderRadius: BorderRadius.circular(2),
+                // Tab Header: Recent Courses & My E-Books (Matching Screenshot 1 & 5)
+                Row(
+                  children: [
+                    InkWell(
+                      onTap: () => setState(() => _selectedDashboardTab = 0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            tr(ref, 'Recent Courses'),
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: _selectedDashboardTab == 0
+                                  ? AppColors.primaryGreen
+                                  : (isDark
+                                        ? Colors.grey.shade400
+                                        : Colors.grey.shade600),
                             ),
                           ),
-                      ],
+                          if (_selectedDashboardTab == 0)
+                            Container(
+                              margin: const EdgeInsets.only(top: 4),
+                              height: 3,
+                              width: 60,
+                              decoration: BoxDecoration(
+                                color: AppColors.primaryGreen,
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 24),
-                  InkWell(
-                    onTap: () => setState(() => _selectedDashboardTab = 1),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          tr(ref, 'My E-Books'),
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: _selectedDashboardTab == 1
-                                ? AppColors.primaryGreen
-                                : (isDark ? Colors.grey.shade400 : Colors.grey.shade600),
-                          ),
-                        ),
-                        if (_selectedDashboardTab == 1)
-                          Container(
-                            margin: const EdgeInsets.only(top: 4),
-                            height: 3,
-                            width: 50,
-                            decoration: BoxDecoration(
-                              color: AppColors.primaryGreen,
-                              borderRadius: BorderRadius.circular(2),
+                    const SizedBox(width: 24),
+                    InkWell(
+                      onTap: () => setState(() => _selectedDashboardTab = 1),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            tr(ref, 'My E-Books'),
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: _selectedDashboardTab == 1
+                                  ? AppColors.primaryGreen
+                                  : (isDark
+                                        ? Colors.grey.shade400
+                                        : Colors.grey.shade600),
                             ),
                           ),
-                      ],
+                          if (_selectedDashboardTab == 1)
+                            Container(
+                              margin: const EdgeInsets.only(top: 4),
+                              height: 3,
+                              width: 50,
+                              decoration: BoxDecoration(
+                                color: AppColors.primaryGreen,
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
-                  ),
-                  const Spacer(),
-                  TextButton(
-                    onPressed: () {
-                      final tabParam = _selectedDashboardTab == 1 ? '?tab=1' : '';
-                      context.push('${RouteNames.instructorUploads}$tabParam');
-                    },
-                    style: TextButton.styleFrom(
-                      foregroundColor: isDark ? const Color(0xFF4ADE80) : AppColors.primaryGreen,
+                    const Spacer(),
+                    TextButton(
+                      onPressed: () {
+                        final tabParam = _selectedDashboardTab == 1
+                            ? '?tab=1'
+                            : '';
+                        context.push(
+                          '${RouteNames.instructorUploads}$tabParam',
+                        );
+                      },
+                      style: TextButton.styleFrom(
+                        foregroundColor: isDark
+                            ? const Color(0xFF4ADE80)
+                            : AppColors.primaryGreen,
+                      ),
+                      child: Text(
+                        tr(ref, 'See All'),
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ),
-                    child: Text(
-                      tr(ref, 'See All'),
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
+                  ],
+                ),
+                const SizedBox(height: 16),
 
-              if (_selectedDashboardTab == 0)
-                ref.watch(instructorCoursesProvider((search: _searchQuery, ordering: _ordering))).when(
-                  data: (courses) {
-                    final isSearching = _searchQuery.trim().isNotEmpty;
-                    if (courses.isEmpty) {
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+                if (_selectedDashboardTab == 0)
+                  ref
+                      .watch(
+                        instructorCoursesProvider((
+                          search: _searchQuery,
+                          ordering: _ordering,
+                        )),
+                      )
+                      .when(
+                        data: (courses) {
+                          final isSearching = _searchQuery.trim().isNotEmpty;
+                          if (courses.isEmpty) {
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 24,
+                                horizontal: 16,
+                              ),
+                              child: Center(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      isSearching
+                                          ? Icons.search_off_rounded
+                                          : Icons.video_library_outlined,
+                                      size: 48,
+                                      color: Colors.grey.shade400,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      isSearching
+                                          ? '${tr(ref, 'No courses found matching')} "$_searchQuery"'
+                                          : tr(ref, 'No courses created yet.'),
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    if (isSearching)
+                                      TextButton.icon(
+                                        onPressed: () {
+                                          setState(() {
+                                            _searchController.clear();
+                                            _searchQuery = '';
+                                          });
+                                        },
+                                        icon: const Icon(
+                                          Icons.clear_rounded,
+                                          size: 16,
+                                        ),
+                                        label: Text(tr(ref, 'Clear Search')),
+                                      )
+                                    else
+                                      FilledButton.icon(
+                                        style: FilledButton.styleFrom(
+                                          backgroundColor:
+                                              AppColors.accentOrange,
+                                        ),
+                                        onPressed: () => context.push(
+                                          RouteNames.uploadCourse,
+                                        ),
+                                        icon: const Icon(Icons.add, size: 18),
+                                        label: Text(
+                                          tr(ref, 'Create First Course'),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }
+                          return Column(
+                            children: courses.take(5).map((course) {
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: _AgriLearnCourseCard(
+                                  course: course,
+                                  onManage: () => context.push(
+                                    '/instructor/manage-course/${course.id}',
+                                  ),
+                                  onSubmitForReview: () =>
+                                      _submitCourseForReview(course),
+                                  onViewLive: () {
+                                    final target =
+                                        (course.slug != null &&
+                                            course.slug!.isNotEmpty)
+                                        ? course.slug!
+                                        : course.id;
+                                    if (target.isNotEmpty) {
+                                      context.push('/course/$target');
+                                    }
+                                  },
+                                  onDeactivate: () => _deactivateCourse(course),
+                                  onReactivate: () => _reactivateCourse(course),
+                                  onDelete: () => _deleteCourse(course),
+                                ),
+                              );
+                            }).toList(),
+                          );
+                        },
+                        loading: () => Column(
+                          children: List.generate(
+                            3,
+                            (_) => const Padding(
+                              padding: EdgeInsets.only(bottom: 12),
+                              child: ShimmerCard(height: 80),
+                            ),
+                          ),
+                        ),
+                        error: (err, _) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 20),
+                            child: Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.wifi_off_rounded,
+                                    size: 36,
+                                    color: Colors.orange,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    tr(
+                                      ref,
+                                      'Unable to load courses. Please check your connection.',
+                                    ),
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  TextButton.icon(
+                                    onPressed: () => ref.invalidate(
+                                      instructorCoursesProvider,
+                                    ),
+                                    icon: const Icon(
+                                      Icons.refresh,
+                                      size: 16,
+                                      color: AppColors.primaryGreen,
+                                    ),
+                                    label: Text(
+                                      tr(ref, 'Retry'),
+                                      style: const TextStyle(
+                                        color: AppColors.primaryGreen,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      )
+                else
+                  ref
+                      .watch(instructorEbooksProvider)
+                      .when(
+                        data: (ebooks) {
+                          final isSearching = _searchQuery.trim().isNotEmpty;
+                          final filteredEbooks = isSearching
+                              ? ebooks.where((e) {
+                                  final title = (e.title ?? e['title'] ?? '')
+                                      .toString()
+                                      .toLowerCase();
+                                  final desc =
+                                      (e.description ?? e['description'] ?? '')
+                                          .toString()
+                                          .toLowerCase();
+                                  final q = _searchQuery.trim().toLowerCase();
+                                  return title.contains(q) || desc.contains(q);
+                                }).toList()
+                              : ebooks;
+
+                          if (filteredEbooks.isEmpty) {
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 24,
+                                horizontal: 16,
+                              ),
+                              child: Center(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      isSearching
+                                          ? Icons.search_off_rounded
+                                          : Icons.menu_book_rounded,
+                                      size: 48,
+                                      color: Colors.grey.shade400,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      isSearching
+                                          ? '${tr(ref, 'No e-books found matching')} "$_searchQuery"'
+                                          : tr(ref, 'No e-books uploaded yet.'),
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    if (isSearching)
+                                      TextButton.icon(
+                                        onPressed: () {
+                                          setState(() {
+                                            _searchController.clear();
+                                            _searchQuery = '';
+                                          });
+                                        },
+                                        icon: const Icon(
+                                          Icons.clear_rounded,
+                                          size: 16,
+                                        ),
+                                        label: Text(tr(ref, 'Clear Search')),
+                                      )
+                                    else
+                                      FilledButton.icon(
+                                        style: FilledButton.styleFrom(
+                                          backgroundColor: const Color(
+                                            0xFF9333EA,
+                                          ),
+                                        ),
+                                        onPressed: () => context.push(
+                                          RouteNames.uploadEbook,
+                                        ),
+                                        icon: const Icon(Icons.add, size: 18),
+                                        label: Text(
+                                          tr(ref, 'Create First E-Book'),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }
+                          return Column(
+                            children: filteredEbooks.take(5).map((ebook) {
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: _AgriLearnEbookCard(
+                                  ebook: ebook,
+                                  onTap: () {
+                                    if (ebook.id != null &&
+                                        ebook.id!.isNotEmpty) {
+                                      context.push('/farmer/ebook/${ebook.id}');
+                                    } else {
+                                      context.push(
+                                        '${RouteNames.instructorUploads}?tab=1',
+                                      );
+                                    }
+                                  },
+                                  onViewLive: () {
+                                    if (ebook.id != null &&
+                                        ebook.id!.isNotEmpty) {
+                                      context.push('/farmer/ebook/${ebook.id}');
+                                    }
+                                  },
+                                  onEdit: () => _editEBookPrice(ebook),
+                                  onSubmitForReview: () =>
+                                      _submitEBookForReview(ebook),
+                                  onDelete: () => _deleteEBook(ebook),
+                                ),
+                              );
+                            }).toList(),
+                          );
+                        },
+                        loading: () => Column(
+                          children: List.generate(
+                            3,
+                            (_) => const Padding(
+                              padding: EdgeInsets.only(bottom: 12),
+                              child: ShimmerCard(height: 80),
+                            ),
+                          ),
+                        ),
+                        error: (err, _) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 20),
+                            child: Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.wifi_off_rounded,
+                                    size: 36,
+                                    color: Colors.orange,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    tr(
+                                      ref,
+                                      'Unable to load e-books. Please check your connection.',
+                                    ),
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  TextButton.icon(
+                                    onPressed: () => ref.invalidate(
+                                      instructorEbooksProvider,
+                                    ),
+                                    icon: const Icon(
+                                      Icons.refresh,
+                                      size: 16,
+                                      color: AppColors.primaryGreen,
+                                    ),
+                                    label: Text(
+                                      tr(ref, 'Retry'),
+                                      style: const TextStyle(
+                                        color: AppColors.primaryGreen,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                const SizedBox(height: 28),
+
+                // Recent Activity (Transactions)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(
+                      tr(ref, 'Recent Transactions'),
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                    TextButton.icon(
+                      onPressed: () =>
+                          context.push(RouteNames.instructorTransactions),
+                      icon: Icon(
+                        Icons.arrow_forward_rounded,
+                        size: 16,
+                        color: isDark
+                            ? const Color(0xFF4ADE80)
+                            : AppColors.primaryGreen,
+                      ),
+                      label: Text(
+                        tr(ref, 'View All'),
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: isDark
+                              ? const Color(0xFF4ADE80)
+                              : AppColors.primaryGreen,
+                        ),
+                      ),
+                      style: TextButton.styleFrom(
+                        foregroundColor: isDark
+                            ? const Color(0xFF4ADE80)
+                            : AppColors.primaryGreen,
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                ref
+                    .watch(instructorTransactionsProvider)
+                    .when(
+                      data: (transactions) {
+                        if (transactions.isEmpty) {
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 16),
+                            child: Text(tr(ref, 'No recent transactions.')),
+                          );
+                        }
+                        return Column(
+                          children: [
+                            ...transactions.take(5).map((txn) {
+                              final amount = txn['amount'] ?? '0';
+                              final desc =
+                                  txn['description'] ??
+                                  txn['item'] ??
+                                  txn['course_title'] ??
+                                  'Transaction';
+                              final date = txn['date'] ?? 'Recently';
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 10),
+                                child: _ActivityItem(
+                                  icon: Icons.payment_rounded,
+                                  color: AppColors.primaryGreen,
+                                  title: '₹$amount',
+                                  subtitle: desc,
+                                  time: date,
+                                  onTap: () => _showTransactionDetailsModal(
+                                    context,
+                                    txn,
+                                  ),
+                                ),
+                              );
+                            }),
+                            if (transactions.length > 5) ...[
+                              const SizedBox(height: 4),
+                              Center(
+                                child: OutlinedButton.icon(
+                                  onPressed: () => context.push(
+                                    RouteNames.instructorTransactions,
+                                  ),
+                                  icon: Icon(
+                                    Icons.receipt_long_rounded,
+                                    size: 16,
+                                    color: isDark
+                                        ? const Color(0xFF4ADE80)
+                                        : AppColors.primaryGreen,
+                                  ),
+                                  label: Text(
+                                    'View All ${transactions.length} Transactions',
+                                    style: TextStyle(
+                                      color: isDark
+                                          ? const Color(0xFF4ADE80)
+                                          : AppColors.primaryGreen,
+                                    ),
+                                  ),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: isDark
+                                        ? const Color(0xFF4ADE80)
+                                        : AppColors.primaryGreen,
+                                    side: BorderSide(
+                                      color: isDark
+                                          ? const Color(0xFF4ADE80)
+                                          : AppColors.primaryGreen,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    visualDensity: VisualDensity.compact,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        );
+                      },
+                      loading: () => Column(
+                        children: List.generate(
+                          5,
+                          (_) => const Padding(
+                            padding: EdgeInsets.only(bottom: 10),
+                            child: ShimmerCard(height: 70),
+                          ),
+                        ),
+                      ),
+                      error: (err, _) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 20),
                         child: Center(
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(
-                                isSearching ? Icons.search_off_rounded : Icons.video_library_outlined,
-                                size: 48,
-                                color: Colors.grey.shade400,
+                              const Icon(
+                                Icons.wifi_off_rounded,
+                                size: 36,
+                                color: Colors.orange,
                               ),
-                              const SizedBox(height: 12),
+                              const SizedBox(height: 8),
                               Text(
-                                isSearching
-                                    ? '${tr(ref, 'No courses found matching')} "$_searchQuery"'
-                                    : tr(ref, 'No courses created yet.'),
+                                tr(
+                                  ref,
+                                  'Unable to load transactions. Please check your connection.',
+                                ),
                                 textAlign: TextAlign.center,
                                 style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
+                                  fontSize: 13,
                                   color: Colors.grey,
                                 ),
                               ),
-                              const SizedBox(height: 12),
-                              if (isSearching)
-                                TextButton.icon(
-                                  onPressed: () {
-                                    setState(() {
-                                      _searchController.clear();
-                                      _searchQuery = '';
-                                    });
-                                  },
-                                  icon: const Icon(Icons.clear_rounded, size: 16),
-                                  label: Text(tr(ref, 'Clear Search')),
-                                )
-                              else
-                                FilledButton.icon(
-                                  style: FilledButton.styleFrom(backgroundColor: AppColors.accentOrange),
-                                  onPressed: () => context.push(RouteNames.uploadCourse),
-                                  icon: const Icon(Icons.add, size: 18),
-                                  label: Text(tr(ref, 'Create First Course')),
+                              const SizedBox(height: 8),
+                              TextButton.icon(
+                                onPressed: () => ref.invalidate(
+                                  instructorTransactionsProvider,
                                 ),
+                                icon: const Icon(
+                                  Icons.refresh,
+                                  size: 16,
+                                  color: AppColors.primaryGreen,
+                                ),
+                                label: Text(
+                                  tr(ref, 'Retry'),
+                                  style: const TextStyle(
+                                    color: AppColors.primaryGreen,
+                                  ),
+                                ),
+                              ),
                             ],
                           ),
                         ),
-                      );
-                    }
-                    return Column(
-                      children: courses.take(5).map((course) {
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: _AgriLearnCourseCard(
-                            course: course,
-                            onManage: () => context.push('/instructor/manage-course/${course.id}'),
-                            onSubmitForReview: () => _submitCourseForReview(course),
-                            onViewLive: () {
-                              final target = (course.slug != null && course.slug!.isNotEmpty) ? course.slug! : course.id;
-                              if (target.isNotEmpty) {
-                                context.push('/course/$target');
-                              }
-                            },
-                            onDeactivate: () => _deactivateCourse(course),
-                            onReactivate: () => _reactivateCourse(course),
-                            onDelete: () => _deleteCourse(course),
-                          ),
-                        );
-                      }).toList(),
-                    );
-                  },
-                  loading: () => Column(
-                    children: List.generate(3, (_) => const Padding(
-                      padding: EdgeInsets.only(bottom: 12),
-                      child: ShimmerCard(height: 80),
-                    )),
-                  ),
-                  error: (err, _) {
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 20),
-                      child: Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.wifi_off_rounded, size: 36, color: Colors.orange),
-                            const SizedBox(height: 8),
-                            Text(
-                              tr(ref, 'Unable to load courses. Please check your connection.'),
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(fontSize: 13, color: Colors.grey),
-                            ),
-                            const SizedBox(height: 8),
-                            TextButton.icon(
-                              onPressed: () => ref.invalidate(instructorCoursesProvider),
-                              icon: const Icon(Icons.refresh, size: 16, color: AppColors.primaryGreen),
-                              label: Text(
-                                tr(ref, 'Retry'),
-                                style: const TextStyle(color: AppColors.primaryGreen),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                )
-              else
-                ref.watch(instructorEbooksProvider).when(
-                  data: (ebooks) {
-                    final isSearching = _searchQuery.trim().isNotEmpty;
-                    final filteredEbooks = isSearching
-                        ? ebooks.where((e) {
-                            final title = (e.title ?? e['title'] ?? '').toString().toLowerCase();
-                            final desc = (e.description ?? e['description'] ?? '').toString().toLowerCase();
-                            final q = _searchQuery.trim().toLowerCase();
-                            return title.contains(q) || desc.contains(q);
-                          }).toList()
-                        : ebooks;
-
-                    if (filteredEbooks.isEmpty) {
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-                        child: Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                isSearching ? Icons.search_off_rounded : Icons.menu_book_rounded,
-                                size: 48,
-                                color: Colors.grey.shade400,
-                              ),
-                              const SizedBox(height: 12),
-                              Text(
-                                isSearching
-                                    ? '${tr(ref, 'No e-books found matching')} "$_searchQuery"'
-                                    : tr(ref, 'No e-books uploaded yet.'),
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.grey,
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              if (isSearching)
-                                TextButton.icon(
-                                  onPressed: () {
-                                    setState(() {
-                                      _searchController.clear();
-                                      _searchQuery = '';
-                                    });
-                                  },
-                                  icon: const Icon(Icons.clear_rounded, size: 16),
-                                  label: Text(tr(ref, 'Clear Search')),
-                                )
-                              else
-                                FilledButton.icon(
-                                  style: FilledButton.styleFrom(backgroundColor: const Color(0xFF9333EA)),
-                                  onPressed: () => context.push(RouteNames.uploadEbook),
-                                  icon: const Icon(Icons.add, size: 18),
-                                  label: Text(tr(ref, 'Create First E-Book')),
-                                ),
-                            ],
-                          ),
-                        ),
-                      );
-                    }
-                    return Column(
-                      children: filteredEbooks.take(5).map((ebook) {
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: _AgriLearnEbookCard(
-                            ebook: ebook,
-                            onTap: () {
-                              if (ebook.id != null && ebook.id!.isNotEmpty) {
-                                context.push('/farmer/ebook/${ebook.id}');
-                              } else {
-                                context.push('${RouteNames.instructorUploads}?tab=1');
-                              }
-                            },
-                            onViewLive: () {
-                              if (ebook.id != null && ebook.id!.isNotEmpty) {
-                                context.push('/farmer/ebook/${ebook.id}');
-                              }
-                            },
-                            onEdit: () => _editEBookPrice(ebook),
-                            onSubmitForReview: () => _submitEBookForReview(ebook),
-                            onDelete: () => _deleteEBook(ebook),
-                          ),
-                        );
-                      }).toList(),
-                    );
-                  },
-                  loading: () => Column(
-                    children: List.generate(3, (_) => const Padding(
-                      padding: EdgeInsets.only(bottom: 12),
-                      child: ShimmerCard(height: 80),
-                    )),
-                  ),
-                  error: (err, _) {
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 20),
-                      child: Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.wifi_off_rounded, size: 36, color: Colors.orange),
-                            const SizedBox(height: 8),
-                            Text(
-                              tr(ref, 'Unable to load e-books. Please check your connection.'),
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(fontSize: 13, color: Colors.grey),
-                            ),
-                            const SizedBox(height: 8),
-                            TextButton.icon(
-                              onPressed: () => ref.invalidate(instructorEbooksProvider),
-                              icon: const Icon(Icons.refresh, size: 16, color: AppColors.primaryGreen),
-                              label: Text(
-                                tr(ref, 'Retry'),
-                                style: const TextStyle(color: AppColors.primaryGreen),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              const SizedBox(height: 28),
-
-              // Recent Activity (Transactions)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Text(tr(ref, 'Recent Transactions'), style: Theme.of(context).textTheme.headlineSmall),
-                  TextButton.icon(
-                    onPressed: () => context.push(RouteNames.instructorTransactions),
-                    icon: Icon(
-                      Icons.arrow_forward_rounded,
-                      size: 16,
-                      color: isDark ? const Color(0xFF4ADE80) : AppColors.primaryGreen,
-                    ),
-                    label: Text(
-                      tr(ref, 'View All'),
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: isDark ? const Color(0xFF4ADE80) : AppColors.primaryGreen,
                       ),
                     ),
-                    style: TextButton.styleFrom(
-                      foregroundColor: isDark ? const Color(0xFF4ADE80) : AppColors.primaryGreen,
-                      visualDensity: VisualDensity.compact,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              ref.watch(instructorTransactionsProvider).when(
-                data: (transactions) {
-                  if (transactions.isEmpty) {
-                    return Padding(
-                      padding: const EdgeInsets.only(top: 16),
-                      child: Text(tr(ref, 'No recent transactions.')),
-                    );
-                  }
-                  return Column(
-                    children: [
-                      ...transactions.take(5).map((txn) {
-                        final amount = txn['amount'] ?? '0';
-                        final desc = txn['description'] ?? txn['item'] ?? txn['course_title'] ?? 'Transaction';
-                        final date = txn['date'] ?? 'Recently';
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: _ActivityItem(
-                            icon: Icons.payment_rounded,
-                            color: AppColors.primaryGreen,
-                            title: '₹$amount',
-                            subtitle: desc,
-                            time: date,
-                            onTap: () => _showTransactionDetailsModal(context, txn),
-                          ),
-                        );
-                      }),
-                      if (transactions.length > 5) ...[
-                        const SizedBox(height: 4),
-                        Center(
-                          child: OutlinedButton.icon(
-                            onPressed: () => context.push(RouteNames.instructorTransactions),
-                            icon: Icon(
-                              Icons.receipt_long_rounded,
-                              size: 16,
-                              color: isDark ? const Color(0xFF4ADE80) : AppColors.primaryGreen,
-                            ),
-                            label: Text(
-                              'View All ${transactions.length} Transactions',
-                              style: TextStyle(
-                                color: isDark ? const Color(0xFF4ADE80) : AppColors.primaryGreen,
-                              ),
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: isDark ? const Color(0xFF4ADE80) : AppColors.primaryGreen,
-                              side: BorderSide(
-                                color: isDark ? const Color(0xFF4ADE80) : AppColors.primaryGreen,
-                              ),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                              visualDensity: VisualDensity.compact,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
-                  );
-                },
-                loading: () => Column(
-                  children: List.generate(5, (_) => const Padding(
-                    padding: EdgeInsets.only(bottom: 10),
-                    child: ShimmerCard(height: 70),
-                  )),
-                ),
-                error: (err, _) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 20),
-                  child: Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.wifi_off_rounded, size: 36, color: Colors.orange),
-                        const SizedBox(height: 8),
-                        Text(
-                          tr(ref, 'Unable to load transactions. Please check your connection.'),
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(fontSize: 13, color: Colors.grey),
-                        ),
-                        const SizedBox(height: 8),
-                        TextButton.icon(
-                          onPressed: () => ref.invalidate(instructorTransactionsProvider),
-                          icon: const Icon(Icons.refresh, size: 16, color: AppColors.primaryGreen),
-                          label: Text(
-                            tr(ref, 'Retry'),
-                            style: const TextStyle(color: AppColors.primaryGreen),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-            ],
+                const SizedBox(height: 24),
+              ],
+            ),
           ),
         ),
       ),
-    ),
-  );
+    );
   }
 }
 
@@ -1858,44 +2378,70 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
-      onTap: onTap,
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
-      child: Column(
-        children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(12),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1E2822) : Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isDark ? const Color(0xFF2C3E31) : const Color(0xFFE2EBE0),
+              width: 1.2,
             ),
-            child: Icon(icon, color: color, size: 20),
+            boxShadow: [
+              BoxShadow(
+                color: isDark ? Colors.black26 : color.withValues(alpha: 0.06),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppColors.inkSoft,
+                child: Icon(icon, color: color, size: 18),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                value,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 16,
+                  color: isDark ? Colors.white : AppColors.inkDark,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: isDark ? Colors.white60 : AppColors.inkSoft,
                   fontSize: 11,
+                  fontWeight: FontWeight.w600,
                 ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 }
-
 
 typedef _AgriLearnCourseCard = AgriLearnCourseCard;
 
@@ -1923,7 +2469,8 @@ class AgriLearnCourseCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final status = (course.status ?? 'DRAFT').toUpperCase();
-    final isDeactivated = ref.watch(deactivatedCoursesProvider).contains(course.id) ||
+    final isDeactivated =
+        ref.watch(deactivatedCoursesProvider).contains(course.id) ||
         status == 'ARCHIVED' ||
         status == 'INACTIVE';
 
@@ -1931,7 +2478,8 @@ class AgriLearnCourseCard extends ConsumerWidget {
     Color badgeText;
     String badgeLabel;
 
-    final isLive = (status == 'APPROVED' ||
+    final isLive =
+        (status == 'APPROVED' ||
             status == 'LIVE' ||
             status == 'PUBLISHED' ||
             status == 'ACTIVE') &&
@@ -1939,10 +2487,18 @@ class AgriLearnCourseCard extends ConsumerWidget {
 
     // Only new made courses still in draft / review period can be deleted.
     // Approved and subsequently deactivated courses must NOT show a delete button.
-    final canDelete = !isLive && !isDeactivated && (status == 'DRAFT' || status == 'PROCESSING' || status == 'REVIEW' || status == 'REJECTED');
+    final canDelete =
+        !isLive &&
+        !isDeactivated &&
+        (status == 'DRAFT' ||
+            status == 'PROCESSING' ||
+            status == 'REVIEW' ||
+            status == 'REJECTED');
 
     if (isDeactivated) {
-      badgeBg = isDark ? Colors.amber.withValues(alpha: 0.2) : Colors.amber.shade50;
+      badgeBg = isDark
+          ? Colors.amber.withValues(alpha: 0.2)
+          : Colors.amber.shade50;
       badgeText = isDark ? Colors.amberAccent : Colors.amber.shade900;
       badgeLabel = tr(ref, '• Deactivated');
     } else if (isLive) {
@@ -1981,7 +2537,8 @@ class AgriLearnCourseCard extends ConsumerWidget {
                   width: 68,
                   height: 56,
                   color: isDark ? Colors.white10 : Colors.grey.shade200,
-                  child: course.thumbnail != null && course.thumbnail!.isNotEmpty
+                  child:
+                      course.thumbnail != null && course.thumbnail!.isNotEmpty
                       ? Image.network(
                           course.thumbnail!,
                           fit: BoxFit.cover,
@@ -2011,7 +2568,8 @@ class AgriLearnCourseCard extends ConsumerWidget {
                         Expanded(
                           child: Text(
                             course.title,
-                            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            style: Theme.of(context).textTheme.titleSmall
+                                ?.copyWith(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 14,
                                 ),
@@ -2021,7 +2579,10 @@ class AgriLearnCourseCard extends ConsumerWidget {
                         ),
                         const SizedBox(width: 6),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 3,
+                          ),
                           decoration: BoxDecoration(
                             color: badgeBg,
                             borderRadius: BorderRadius.circular(20),
@@ -2063,14 +2624,18 @@ class AgriLearnCourseCard extends ConsumerWidget {
                           '•',
                           style: TextStyle(
                             fontSize: 11,
-                            color: isDark ? Colors.grey.shade600 : Colors.grey.shade400,
+                            color: isDark
+                                ? Colors.grey.shade600
+                                : Colors.grey.shade400,
                           ),
                         ),
                         Text(
                           '${course.enrollmentCount ?? 0} ${tr(ref, 'Students')}',
                           style: TextStyle(
                             fontSize: 11,
-                            color: isDark ? Colors.grey.shade400 : AppColors.inkSoft,
+                            color: isDark
+                                ? Colors.grey.shade400
+                                : AppColors.inkSoft,
                           ),
                         ),
                       ],
@@ -2092,13 +2657,20 @@ class AgriLearnCourseCard extends ConsumerWidget {
                   children: [
                     OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
                         side: const BorderSide(color: AppColors.primaryGreen),
                         minimumSize: Size.zero,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
                       onPressed: onManage,
-                      icon: const Icon(Icons.settings_outlined, size: 14, color: AppColors.primaryGreen),
+                      icon: const Icon(
+                        Icons.settings_outlined,
+                        size: 14,
+                        color: AppColors.primaryGreen,
+                      ),
                       label: Text(
                         tr(ref, 'Manage Course'),
                         style: const TextStyle(
@@ -2108,18 +2680,26 @@ class AgriLearnCourseCard extends ConsumerWidget {
                         ),
                       ),
                     ),
-                    if ((status == 'DRAFT' || status == 'REJECTED') && onSubmitForReview != null)
+                    if ((status == 'DRAFT' || status == 'REJECTED') &&
+                        onSubmitForReview != null)
                       FilledButton.icon(
                         style: FilledButton.styleFrom(
                           backgroundColor: const Color(0xFF009688),
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
                           minimumSize: Size.zero,
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                           elevation: 0,
                         ),
                         onPressed: onSubmitForReview,
-                        icon: const Icon(Icons.send_rounded, size: 13, color: Colors.white),
+                        icon: const Icon(
+                          Icons.send_rounded,
+                          size: 13,
+                          color: Colors.white,
+                        ),
                         label: Text(
                           tr(ref, 'Submit for Review'),
                           style: const TextStyle(
@@ -2132,13 +2712,20 @@ class AgriLearnCourseCard extends ConsumerWidget {
                     if (isLive && onViewLive != null)
                       OutlinedButton.icon(
                         style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
                           side: BorderSide(color: Colors.teal.shade400),
                           minimumSize: Size.zero,
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
                         onPressed: onViewLive,
-                        icon: Icon(Icons.visibility_outlined, size: 14, color: Colors.teal.shade700),
+                        icon: Icon(
+                          Icons.visibility_outlined,
+                          size: 14,
+                          color: Colors.teal.shade700,
+                        ),
                         label: Text(
                           tr(ref, 'View Live'),
                           style: TextStyle(
@@ -2151,13 +2738,20 @@ class AgriLearnCourseCard extends ConsumerWidget {
                     if (isLive && onDeactivate != null)
                       OutlinedButton.icon(
                         style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
                           side: const BorderSide(color: Color(0xFFF59E0B)),
                           minimumSize: Size.zero,
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
                         onPressed: onDeactivate,
-                        icon: const Icon(Icons.pause_circle_outline, size: 14, color: Color(0xFFD97706)),
+                        icon: const Icon(
+                          Icons.pause_circle_outline,
+                          size: 14,
+                          color: Color(0xFFD97706),
+                        ),
                         label: Text(
                           tr(ref, 'Deactivate'),
                           style: const TextStyle(
@@ -2170,13 +2764,20 @@ class AgriLearnCourseCard extends ConsumerWidget {
                     if (isDeactivated && onReactivate != null)
                       OutlinedButton.icon(
                         style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
                           side: const BorderSide(color: AppColors.primaryGreen),
                           minimumSize: Size.zero,
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
                         onPressed: onReactivate,
-                        icon: const Icon(Icons.play_circle_outline, size: 14, color: AppColors.primaryGreen),
+                        icon: const Icon(
+                          Icons.play_circle_outline,
+                          size: 14,
+                          color: AppColors.primaryGreen,
+                        ),
                         label: Text(
                           tr(ref, 'Reactivate'),
                           style: const TextStyle(
@@ -2189,13 +2790,20 @@ class AgriLearnCourseCard extends ConsumerWidget {
                     if (canDelete && onDelete != null)
                       OutlinedButton.icon(
                         style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
                           side: const BorderSide(color: Color(0xFFEF4444)),
                           minimumSize: Size.zero,
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
                         onPressed: onDelete,
-                        icon: const Icon(Icons.delete_outline_rounded, size: 14, color: Color(0xFFEF4444)),
+                        icon: const Icon(
+                          Icons.delete_outline_rounded,
+                          size: 14,
+                          color: Color(0xFFEF4444),
+                        ),
                         label: Text(
                           tr(ref, 'Delete'),
                           style: const TextStyle(
@@ -2245,7 +2853,9 @@ class _AgriLearnEbookCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final hasCover = ebook.coverImage != null && ebook.coverImage.toString().trim().isNotEmpty;
+    final hasCover =
+        ebook.coverImage != null &&
+        ebook.coverImage.toString().trim().isNotEmpty;
     final status = _resolveStatus(ebook.status);
     final isLive = status == 'APPROVED';
     final isDraft = status == 'DRAFT';
@@ -2257,17 +2867,23 @@ class _AgriLearnEbookCard extends ConsumerWidget {
 
     switch (status) {
       case 'APPROVED':
-        badgeBg = isDark ? Colors.green.withValues(alpha: 0.2) : Colors.green.shade50;
+        badgeBg = isDark
+            ? Colors.green.withValues(alpha: 0.2)
+            : Colors.green.shade50;
         badgeText = isDark ? Colors.greenAccent : Colors.green.shade700;
         badgeLabel = tr(ref, '• Live');
         break;
       case 'REVIEW':
-        badgeBg = isDark ? Colors.amber.withValues(alpha: 0.2) : Colors.amber.shade50;
+        badgeBg = isDark
+            ? Colors.amber.withValues(alpha: 0.2)
+            : Colors.amber.shade50;
         badgeText = isDark ? Colors.amberAccent : Colors.amber.shade900;
         badgeLabel = tr(ref, '• Under Review');
         break;
       case 'REJECTED':
-        badgeBg = isDark ? Colors.red.withValues(alpha: 0.2) : Colors.red.shade50;
+        badgeBg = isDark
+            ? Colors.red.withValues(alpha: 0.2)
+            : Colors.red.shade50;
         badgeText = isDark ? Colors.redAccent : Colors.red.shade800;
         badgeLabel = tr(ref, '• Rejected');
         break;
@@ -2305,7 +2921,9 @@ class _AgriLearnEbookCard extends ConsumerWidget {
                 child: !hasCover
                     ? Icon(
                         Icons.picture_as_pdf_rounded,
-                        color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                        color: isDark
+                            ? Colors.grey.shade400
+                            : Colors.grey.shade600,
                         size: 32,
                       )
                     : null,
@@ -2323,7 +2941,8 @@ class _AgriLearnEbookCard extends ConsumerWidget {
                         Expanded(
                           child: Text(
                             ebook.title ?? 'Untitled E-Book',
-                            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            style: Theme.of(context).textTheme.titleSmall
+                                ?.copyWith(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 14,
                                 ),
@@ -2333,7 +2952,10 @@ class _AgriLearnEbookCard extends ConsumerWidget {
                         ),
                         const SizedBox(width: 6),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 3,
+                          ),
                           decoration: BoxDecoration(
                             color: badgeBg,
                             borderRadius: BorderRadius.circular(20),
@@ -2352,14 +2974,17 @@ class _AgriLearnEbookCard extends ConsumerWidget {
                         ),
                       ],
                     ),
-                    if (ebook.authorName != null && ebook.authorName.toString().trim().isNotEmpty) ...[
+                    if (ebook.authorName != null &&
+                        ebook.authorName.toString().trim().isNotEmpty) ...[
                       const SizedBox(height: 4),
                       Text(
                         'By ${ebook.authorName}',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: isDark ? Colors.grey.shade400 : AppColors.inkSoft,
-                              fontSize: 12,
-                            ),
+                          color: isDark
+                              ? Colors.grey.shade400
+                              : AppColors.inkSoft,
+                          fontSize: 12,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -2368,11 +2993,20 @@ class _AgriLearnEbookCard extends ConsumerWidget {
                     Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
-                            color: (ebook.price == null || ebook.price == '0' || ebook.price == '0.00' || ebook.price == '0.0')
+                            color:
+                                (ebook.price == null ||
+                                    ebook.price == '0' ||
+                                    ebook.price == '0.00' ||
+                                    ebook.price == '0.0')
                                 ? AppColors.primaryGreen.withValues(alpha: 0.12)
-                                : const Color(0xFFF59E0B).withValues(alpha: 0.14),
+                                : const Color(
+                                    0xFFF59E0B,
+                                  ).withValues(alpha: 0.14),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Row(
@@ -2381,18 +3015,29 @@ class _AgriLearnEbookCard extends ConsumerWidget {
                               Icon(
                                 Icons.currency_rupee,
                                 size: 10,
-                                color: (ebook.price == null || ebook.price == '0' || ebook.price == '0.00' || ebook.price == '0.0')
+                                color:
+                                    (ebook.price == null ||
+                                        ebook.price == '0' ||
+                                        ebook.price == '0.00' ||
+                                        ebook.price == '0.0')
                                     ? AppColors.primaryGreen
                                     : const Color(0xFFD97706),
                               ),
                               Text(
-                                (ebook.price == null || ebook.price == '0' || ebook.price == '0.00' || ebook.price == '0.0')
+                                (ebook.price == null ||
+                                        ebook.price == '0' ||
+                                        ebook.price == '0.00' ||
+                                        ebook.price == '0.0')
                                     ? 'FREE'
                                     : '${ebook.price}',
                                 style: TextStyle(
                                   fontSize: 10.5,
                                   fontWeight: FontWeight.bold,
-                                  color: (ebook.price == null || ebook.price == '0' || ebook.price == '0.00' || ebook.price == '0.0')
+                                  color:
+                                      (ebook.price == null ||
+                                          ebook.price == '0' ||
+                                          ebook.price == '0.00' ||
+                                          ebook.price == '0.0')
                                       ? AppColors.primaryGreen
                                       : const Color(0xFFD97706),
                                 ),
@@ -2421,13 +3066,20 @@ class _AgriLearnEbookCard extends ConsumerWidget {
                 if (isLive && onViewLive != null)
                   OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
                       side: BorderSide(color: Colors.teal.shade400),
                       minimumSize: Size.zero,
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
                     onPressed: onViewLive,
-                    icon: Icon(Icons.visibility_outlined, size: 14, color: Colors.teal.shade700),
+                    icon: Icon(
+                      Icons.visibility_outlined,
+                      size: 14,
+                      color: Colors.teal.shade700,
+                    ),
                     label: Text(
                       tr(ref, 'View in Library'),
                       style: TextStyle(
@@ -2440,13 +3092,20 @@ class _AgriLearnEbookCard extends ConsumerWidget {
                 if (!isLive && onEdit != null)
                   OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
                       side: const BorderSide(color: AppColors.primaryGreen),
                       minimumSize: Size.zero,
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
                     onPressed: onEdit,
-                    icon: const Icon(Icons.edit_outlined, size: 14, color: AppColors.primaryGreen),
+                    icon: const Icon(
+                      Icons.edit_outlined,
+                      size: 14,
+                      color: AppColors.primaryGreen,
+                    ),
                     label: Text(
                       tr(ref, 'Edit'),
                       style: const TextStyle(
@@ -2460,12 +3119,19 @@ class _AgriLearnEbookCard extends ConsumerWidget {
                   FilledButton.icon(
                     style: FilledButton.styleFrom(
                       backgroundColor: AppColors.primaryGreen,
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
                       minimumSize: Size.zero,
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
                     onPressed: onSubmitForReview,
-                    icon: const Icon(Icons.send_rounded, size: 13, color: Colors.white),
+                    icon: const Icon(
+                      Icons.send_rounded,
+                      size: 13,
+                      color: Colors.white,
+                    ),
                     label: Text(
                       tr(ref, 'Send for Review'),
                       style: const TextStyle(
@@ -2478,13 +3144,20 @@ class _AgriLearnEbookCard extends ConsumerWidget {
                 if (!isLive && onDelete != null)
                   OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
                       side: const BorderSide(color: Color(0xFFEF4444)),
                       minimumSize: Size.zero,
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
                     onPressed: onDelete,
-                    icon: const Icon(Icons.delete_outline_rounded, size: 14, color: Color(0xFFEF4444)),
+                    icon: const Icon(
+                      Icons.delete_outline_rounded,
+                      size: 14,
+                      color: Color(0xFFEF4444),
+                    ),
                     label: Text(
                       tr(ref, 'Delete'),
                       style: const TextStyle(
@@ -2545,7 +3218,9 @@ class _ActivityItem extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   subtitle,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.inkSoft),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: AppColors.inkSoft),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -2554,7 +3229,9 @@ class _ActivityItem extends StatelessWidget {
           ),
           Text(
             time,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.inkSoft),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: AppColors.inkSoft),
           ),
         ],
       ),
@@ -2563,10 +3240,7 @@ class _ActivityItem extends StatelessWidget {
 }
 
 class _KycPromptBanner extends ConsumerWidget {
-  const _KycPromptBanner({
-    required this.isPending,
-    required this.onTap,
-  });
+  const _KycPromptBanner({required this.isPending, required this.onTap});
 
   final bool isPending;
   final VoidCallback onTap;
@@ -2581,13 +3255,18 @@ class _KycPromptBanner extends ConsumerWidget {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: (isPending ? AppColors.accentOrange : AppColors.primaryGreen)
-                  .withValues(alpha: 0.12),
+              color:
+                  (isPending ? AppColors.accentOrange : AppColors.primaryGreen)
+                      .withValues(alpha: 0.12),
               shape: BoxShape.circle,
             ),
             child: Icon(
-              isPending ? Icons.hourglass_top_rounded : Icons.verified_user_outlined,
-              color: isPending ? AppColors.accentOrange : AppColors.primaryGreen,
+              isPending
+                  ? Icons.hourglass_top_rounded
+                  : Icons.verified_user_outlined,
+              color: isPending
+                  ? AppColors.accentOrange
+                  : AppColors.primaryGreen,
               size: 22,
             ),
           ),
@@ -2600,18 +3279,21 @@ class _KycPromptBanner extends ConsumerWidget {
                   isPending
                       ? tr(ref, 'KYC Verification Under Review')
                       : tr(ref, 'Complete KYC & Payout Profile'),
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   isPending
                       ? tr(ref, 'Admin is reviewing your documents (24-48 hrs)')
-                      : tr(ref, 'Required to receive earnings & publish courses'),
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.inkSoft,
-                      ),
+                      : tr(
+                          ref,
+                          'Required to receive revenue payouts to your bank account',
+                        ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: AppColors.inkSoft),
                 ),
               ],
             ),
@@ -2623,16 +3305,21 @@ class _KycPromptBanner extends ConsumerWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: (isPending ? AppColors.accentOrange : AppColors.primaryGreen)
-                    .withValues(alpha: 0.1),
+                color:
+                    (isPending
+                            ? AppColors.accentOrange
+                            : AppColors.primaryGreen)
+                        .withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
                 isPending ? tr(ref, 'Status') : tr(ref, 'Verify'),
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: isPending ? AppColors.accentOrange : AppColors.primaryGreen,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  color: isPending
+                      ? AppColors.accentOrange
+                      : AppColors.primaryGreen,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ),

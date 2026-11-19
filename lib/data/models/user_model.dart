@@ -105,8 +105,13 @@ class UserModel {
       !isKycVerified && hasSubmittedKyc && (verificationStatus == 'PENDING');
 
   /// Create a [UserModel] from the backend [UserProfile] response.
-  factory UserModel.fromApiProfile(UserProfile profile) {
-    final role = UserRole.fromApiValue(profile.role?.value ?? '');
+  factory UserModel.fromApiProfile(
+    UserProfile profile, {
+    List<UserRole>? availableRoles,
+    UserRole? activeRoleOverride,
+  }) {
+    final serverRole = UserRole.fromApiValue(profile.role?.value ?? '');
+    final role = activeRoleOverride ?? serverRole;
 
     // Build location string from state + district
     String? locationStr;
@@ -130,13 +135,21 @@ class UserModel {
       verStatus = rawInstructorMap['verification_status']?.toString();
     }
 
+    final granted = availableRoles != null && availableRoles.isNotEmpty
+        ? availableRoles
+        : (activeRoleOverride != null
+            ? (activeRoleOverride == serverRole
+                ? [serverRole]
+                : [serverRole, activeRoleOverride])
+            : [role]);
+
     return UserModel(
       id: profile.id ?? '',
       fullName: profile.fullName ?? '',
       email: profile.email ?? '',
       phone: profile.phoneNumber ?? '',
       activeRole: role,
-      grantedRoles: [role], // Backend sends single role
+      grantedRoles: granted,
       avatarUrl: profile.avatar,
       bio: instructorDetails?.bio,
       expertiseTags: instructorDetails?.expertiseTags,

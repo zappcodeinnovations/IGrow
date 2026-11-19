@@ -145,7 +145,6 @@ class _ShellScaffoldState extends ConsumerState<ShellScaffold> {
         child: Scaffold(
           key: shellScaffoldKey,
           backgroundColor: Colors.transparent,
-          extendBody: true,
           drawer: const AppNavigationDrawer(),
           drawerEnableOpenDragGesture: false,
           body: widget.child,

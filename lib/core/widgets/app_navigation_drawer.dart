@@ -8,6 +8,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/widgets/logout_dialog.dart';
 import '../../data/models/user_role.dart';
 import '../../features/auth/providers/auth_provider.dart';
+import '../../features/auth/widgets/become_instructor_bottom_sheet.dart';
 import '../../features/cart/providers/cart_provider.dart';
 
 /// Editorial EdTech Drawer navigation sidebar matching Stitch design specifications
@@ -165,6 +166,97 @@ class AppNavigationDrawer extends ConsumerWidget {
                     onTap: () {
                       Navigator.of(context).pop();
                       context.go(RouteNames.farmerProfile);
+                    },
+                  ),
+
+                  // ── Dual Role Mode Switcher ────────────────────────────────
+                  const SizedBox(height: 12),
+                  Builder(
+                    builder: (context) {
+                      final user = ref.watch(authProvider).user;
+                      final isCurrentlyInstructor = user?.activeRole == UserRole.instructor;
+                      final hasBothRoles = (user?.grantedRoles.length ?? 0) > 1;
+
+                      return Container(
+                        margin: const EdgeInsets.symmetric(vertical: 4),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: isCurrentlyInstructor
+                                ? [const Color(0xFF1B4D2E), const Color(0xFF2E7D32)]
+                                : [const Color(0xFFB45309), const Color(0xFFD97706)],
+                          ),
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: [
+                            BoxShadow(
+                              color: (isCurrentlyInstructor ? AppColors.primaryGreen : Colors.amber).withValues(alpha: 0.25),
+                              blurRadius: 10,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () async {
+                              Navigator.of(context).pop();
+                              if (hasBothRoles) {
+                                final targetRole = isCurrentlyInstructor ? UserRole.farmer : UserRole.instructor;
+                                await ref.read(authProvider.notifier).switchRole(targetRole);
+                                if (context.mounted) {
+                                  // Cache invalidation and route swap
+                                  ref.invalidate(cartProvider);
+                                  context.go(targetRole == UserRole.instructor ? RouteNames.instructorHome : RouteNames.farmerHome);
+                                }
+                              } else {
+                                // User is not yet registered as instructor -> ask name & phone
+                                BecomeInstructorBottomSheet.show(
+                                  context,
+                                  onSuccess: () {
+                                    ref.invalidate(cartProvider);
+                                    context.go(RouteNames.instructorHome);
+                                  },
+                                );
+                              }
+                            },
+                            borderRadius: BorderRadius.circular(14),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(alpha: 0.2),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      isCurrentlyInstructor ? Icons.school_rounded : Icons.menu_book_rounded,
+                                      color: Colors.white,
+                                      size: 18,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      isCurrentlyInstructor
+                                          ? tr(ref, 'Switch to Student')
+                                          : tr(ref, 'Switch to Instructor'),
+                                      style: const TextStyle(
+                                        fontSize: 13.5,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  const Icon(Icons.swap_horiz_rounded, color: Colors.white, size: 20),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
                     },
                   ),
 

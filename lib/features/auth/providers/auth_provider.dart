@@ -339,6 +339,83 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  /// Send Phone OTP via WhatsApp
+  Future<bool> sendPhoneOtp({required String phoneNumber}) async {
+    state = state.copyWith(status: AuthStatus.loading, error: null);
+    try {
+      await _repo.sendPhoneOtp(phoneNumber: phoneNumber);
+      state = state.copyWith(status: AuthStatus.unauthenticated);
+      return true;
+    } on ApiException catch (e) {
+      state = state.copyWith(status: AuthStatus.unauthenticated, error: ApiException.userFriendlyMessage(e));
+      return false;
+    } catch (e) {
+      state = state.copyWith(status: AuthStatus.unauthenticated, error: ApiException.userFriendlyMessage(e));
+      return false;
+    }
+  }
+
+  /// Verify Phone OTP
+  Future<Map<String, dynamic>?> verifyPhoneOtp({
+    required String phoneNumber,
+    required String otp,
+  }) async {
+    state = state.copyWith(status: AuthStatus.loading, error: null);
+    try {
+      final res = await _repo.verifyPhoneOtp(phoneNumber: phoneNumber, otp: otp);
+      final isNewUser = res['is_new_user'] == true;
+      if (!isNewUser) {
+        final currentUser = await _repo.getCurrentUser();
+        if (currentUser != null) {
+          state = AuthState(status: AuthStatus.authenticated, user: currentUser);
+          _startPeriodicSync();
+        } else {
+          state = state.copyWith(status: AuthStatus.unauthenticated);
+        }
+      } else {
+        state = state.copyWith(status: AuthStatus.unauthenticated);
+      }
+      return res;
+    } on ApiException catch (e) {
+      state = state.copyWith(status: AuthStatus.unauthenticated, error: ApiException.userFriendlyMessage(e));
+      return null;
+    } catch (e) {
+      state = state.copyWith(status: AuthStatus.unauthenticated, error: ApiException.userFriendlyMessage(e));
+      return null;
+    }
+  }
+
+  /// Complete Phone Profile for new registration
+  Future<bool> completePhoneProfile({
+    required String phoneNumber,
+    required String verificationToken,
+    required String fullName,
+    required String email,
+    required String password,
+    required UserRole role,
+  }) async {
+    state = state.copyWith(status: AuthStatus.loading, error: null);
+    try {
+      final user = await _repo.completePhoneProfile(
+        phoneNumber: phoneNumber,
+        verificationToken: verificationToken,
+        fullName: fullName,
+        email: email,
+        password: password,
+        role: role,
+      );
+      state = AuthState(status: AuthStatus.authenticated, user: user);
+      _startPeriodicSync();
+      return true;
+    } on ApiException catch (e) {
+      state = state.copyWith(status: AuthStatus.unauthenticated, error: ApiException.userFriendlyMessage(e));
+      return false;
+    } catch (e) {
+      state = state.copyWith(status: AuthStatus.unauthenticated, error: ApiException.userFriendlyMessage(e));
+      return false;
+    }
+  }
+
   /// Switch active role.
   Future<void> switchRole(UserRole newRole) async {
     state = state.copyWith(status: AuthStatus.loading);

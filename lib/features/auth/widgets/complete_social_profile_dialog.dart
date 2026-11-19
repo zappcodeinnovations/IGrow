@@ -121,7 +121,10 @@ class CompleteSocialProfileDialog extends ConsumerStatefulWidget {
     return showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (context) => CompleteSocialProfileDialog(user: user),
+      builder: (context) => PopScope(
+        canPop: false,
+        child: CompleteSocialProfileDialog(user: user),
+      ),
     );
   }
 
@@ -259,7 +262,7 @@ class _CompleteSocialProfileDialogState
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.18),
+                    color: Colors.black.withValues(alpha: 0.18),
                     blurRadius: 30,
                     offset: const Offset(0, 12),
                   ),
@@ -284,14 +287,14 @@ class _CompleteSocialProfileDialogState
                         gradient: LinearGradient(
                           colors: [
                             AppColors.primaryGreen,
-                            AppColors.primaryGreen.withOpacity(0.75),
+                            AppColors.primaryGreen.withValues(alpha: 0.75),
                           ],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: AppColors.primaryGreen.withOpacity(0.3),
+                            color: AppColors.primaryGreen.withValues(alpha: 0.3),
                             blurRadius: 14,
                             offset: const Offset(0, 6),
                           ),
@@ -336,11 +339,11 @@ class _CompleteSocialProfileDialogState
                 ),
                 const SizedBox(height: 22),
 
-                // Phone Field
+                // Phone Field (Mandatory)
                 AppPillTextField(
                   controller: _phoneController,
                   focusNode: _phoneFocusNode,
-                  hintText: tr(ref, 'Phone Number (10 digits)'),
+                  hintText: tr(ref, 'Phone Number (10 digits) *'),
                   prefixIcon: Icons.phone_android_rounded,
                   keyboardType: TextInputType.phone,
                   textInputAction: TextInputAction.next,
@@ -351,13 +354,14 @@ class _CompleteSocialProfileDialogState
                   ],
                   validator: (value) {
                     final digitsOnly = (value ?? '').trim().replaceAll(RegExp(r'\D'), '');
-                    if (digitsOnly.isNotEmpty) {
-                      if (digitsOnly.length != 10) {
-                        return tr(ref, 'Phone number must be exactly 10 digits');
-                      }
-                      if (!RegExp(r'^[6-9]\d{9}$').hasMatch(digitsOnly)) {
-                        return tr(ref, 'Enter a valid 10-digit mobile number');
-                      }
+                    if (digitsOnly.isEmpty) {
+                      return tr(ref, 'Phone number is required');
+                    }
+                    if (digitsOnly.length != 10) {
+                      return tr(ref, 'Phone number must be exactly 10 digits');
+                    }
+                    if (!RegExp(r'^[6-9]\d{9}$').hasMatch(digitsOnly)) {
+                      return tr(ref, 'Enter a valid 10-digit mobile number');
                     }
                     return null;
                   },
@@ -479,28 +483,6 @@ class _CompleteSocialProfileDialogState
                   label: tr(ref, 'Save & Continue'),
                   isLoading: _isSaving,
                   onPressed: _isSaving ? () {} : () => _saveAndContinue(),
-                ),
-                const SizedBox(height: 12),
-
-                // Secondary Action: Skip for now
-                TextButton(
-                  onPressed: _isSaving ? null : _dismissDialog,
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                  child: Text(
-                    tr(ref, 'Skip for Now'),
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: isDark
-                          ? AppColors.organicSubtitleDark
-                          : AppColors.organicSubtitleGreen,
-                    ),
-                  ),
                 ),
               ],
             ),

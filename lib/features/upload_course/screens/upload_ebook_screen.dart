@@ -5,15 +5,12 @@ import 'package:go_router/go_router.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../core/localization/app_strings.dart';
-import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/app_toast.dart';
 import '../../../core/utils/responsive_layout.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_text_field.dart';
 import '../../../core/widgets/image_crop_rotate_screen.dart';
-import '../../../core/widgets/kyc_restricted_view.dart';
-import '../../../data/models/user_model.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../home_instructor/providers/instructor_home_provider.dart';
 import '../../../core/services/app_config_service.dart';
@@ -56,74 +53,6 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
     _descriptionController.dispose();
     _priceController.dispose();
     super.dispose();
-  }
-
-  void _showKycRequiredDialog(UserModel? user) {
-    final bool isPending = user?.isKycPending == true;
-    showDialog(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          title: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: (isPending ? AppColors.accentOrange : AppColors.error)
-                      .withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  isPending
-                      ? Icons.hourglass_top_rounded
-                      : Icons.verified_user_outlined,
-                  color: isPending ? AppColors.accentOrange : AppColors.error,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  isPending ? tr(ref, 'Verification Under Review') : tr(ref, 'KYC Required'),
-                  style: Theme.of(dialogContext).textTheme.titleMedium
-                      ?.copyWith(fontWeight: FontWeight.bold),
-                ),
-              ),
-            ],
-          ),
-          content: Text(
-            isPending
-                ? tr(ref, 'Your KYC documents have been submitted and are under review. E-book upload will unlock once approved.')
-                : tr(ref, 'As an AgriLearn instructor, you must complete your KYC verification before uploading and publishing e-books.'),
-            style: Theme.of(dialogContext).textTheme.bodyMedium?.copyWith(
-              height: 1.5,
-              color: AppColors.inkSoft,
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: Text(tr(ref, 'Cancel')),
-            ),
-            FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: isPending
-                    ? AppColors.accentOrange
-                    : AppColors.primaryGreen,
-              ),
-              onPressed: () {
-                Navigator.of(dialogContext).pop();
-                context.push(RouteNames.instructorKyc);
-              },
-              child: Text(isPending ? tr(ref, 'Check KYC Status') : tr(ref, 'Complete KYC Now')),
-            ),
-          ],
-        );
-      },
-    );
   }
 
   Future<void> _pickCoverImage() async {
@@ -223,12 +152,6 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
       return;
     }
 
-    final currentUser = ref.read(authProvider).user;
-    if (currentUser != null && !currentUser.isKycVerified) {
-      _showKycRequiredDialog(currentUser);
-      return;
-    }
-
     setState(() {
       if (submitForReview) {
         _isSubmittingReview = true;
@@ -313,8 +236,6 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final user = ref.watch(authProvider).user;
-    final isKycVerified = user?.isKycVerified == true;
 
     return Scaffold(
       appBar: AppBar(title: Text(tr(ref, 'Upload E-Book'))),
@@ -324,20 +245,18 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
         },
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
-          child: !isKycVerified
-              ? const KycRestrictedView(featureName: 'E-Book Upload')
-              : ResponsiveContentConstraint(
-                  maxWidth: 680,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 20,
-                  ),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        AppCard(
+          child: ResponsiveContentConstraint(
+            maxWidth: 680,
+            padding: const EdgeInsets.symmetric(
+              horizontal: 20,
+              vertical: 20,
+            ),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  AppCard(
                           padding: const EdgeInsets.all(20),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
