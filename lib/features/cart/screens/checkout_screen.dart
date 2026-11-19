@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui' show ImageFilter;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -212,8 +213,16 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     _lastItemsSnapshot = List<dynamic>.from(items);
     _lastCouponCode = ref.read(appliedCouponProvider)?.code;
 
+    // Check if Razorpay is disabled on iOS for Apple App Store IAP (Guideline 3.1.1)
+    final canShowRazorpay = ref.read(appConfigProvider).canShowPaymentGateway;
+    if (!canShowRazorpay && !kIsWeb && Platform.isIOS && finalTotal > 0) {
+      // Direct immediately to Apple StoreKit without creating unwanted Razorpay pending orders!
+      await _startAppleIapFlow(items: items, finalTotal: finalTotal);
+      return;
+    }
+
     try {
-      // Step 1: Create Order via Backend
+      // Step 1: Create Order via Backend (for Android, Web, or Free Orders)
       final orderData = await ref.read(cartProvider.notifier).createRazorpayOrder(
             couponCode: _lastCouponCode,
             courseId: widget.directCourseId,
@@ -277,14 +286,6 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
         'send_sms_hash': true,
         'retry': {'enabled': true, 'max_count': 2},
       };
-
-      // Check if Razorpay is enabled for this platform/config
-      final canShowRazorpay = ref.read(appConfigProvider).canShowPaymentGateway;
-      if (!canShowRazorpay && !kIsWeb && Platform.isIOS) {
-        // Razorpay is disabled on iOS for App Store review. Execute Apple In-App Purchase flow!
-        await _startAppleIapFlow(items: items, finalTotal: finalTotal);
-        return;
-      }
 
       debugPrint('🚀 [Razorpay] Launching native checkout UI...');
       _razorpay.open(options);
@@ -381,12 +382,21 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       if (mounted) {
         setState(() => _isProcessing = false);
         final errText = e.toString().replaceAll('Exception: ', '').replaceAll('UnsupportedError: ', '');
-        AppToast.show(
-          context,
-          'Apple Purchase error: $errText',
-          isError: true,
-          duration: const Duration(seconds: 4),
-        );
+        final isCancelled = errText.toLowerCase().contains('cancel');
+        if (isCancelled) {
+          AppToast.show(
+            context,
+            'Payment was cancelled. You can retry whenever ready.',
+            isError: false,
+          );
+        } else {
+          AppToast.show(
+            context,
+            'Apple Purchase error: $errText',
+            isError: true,
+            duration: const Duration(seconds: 4),
+          );
+        }
       }
     }
   }
@@ -670,43 +680,68 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
         children: [
           _buildScaffold(context, isDark, appliedCoupon, isDirectBuy),
           if (_isProcessing)
-            Container(
-              color: Colors.black54,
-              child: Center(
+            Positioned.fill(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                 child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 32),
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF1E2E23) : Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: const [
-                      BoxShadow(color: Colors.black26, blurRadius: 16, offset: Offset(0, 4)),
-                    ],
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const CircularProgressIndicator(color: AppColors.primaryGreen),
-                      const SizedBox(height: 20),
-                      Text(
-                        'Securing Your Enrollment...',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.white : AppColors.inkDark,
-                        ),
+                  color: Colors.black.withValues(alpha: 0.4),
+                  alignment: Alignment.center,
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: Material(
+                    type: MaterialType.transparency,
+                    child: Container(
+                      width: double.infinity,
+                      constraints: const BoxConstraints(maxWidth: 300),
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF1E2820) : Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.08),
+                            blurRadius: 24,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Please do not exit or close the app while we finalize your course access.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: isDark ? Colors.white70 : AppColors.inkSoft,
-                        ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const SizedBox(
+                            width: 36,
+                            height: 36,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 3.0,
+                              strokeCap: StrokeCap.round,
+                              color: AppColors.primaryGreen,
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          Text(
+                            'Securing Your Enrollment',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: -0.2,
+                              color: isDark ? Colors.white : AppColors.inkDark,
+                              decoration: TextDecoration.none,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Please wait while we confirm your access.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: isDark ? Colors.white60 : AppColors.inkSoft,
+                              height: 1.4,
+                              decoration: TextDecoration.none,
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ),
