@@ -9,6 +9,7 @@ import '../providers/auth_provider.dart';
 import '../widgets/complete_phone_profile_bottom_sheet.dart';
 import '../widgets/dual_role_select_bottom_sheet.dart';
 
+import '../../../core/localization/app_strings.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/utils/app_toast.dart';
@@ -66,11 +67,11 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
       if (mounted) {
         if (success) {
           _otpController.clear();
-          AppToast.show(context, 'New OTP sent to your WhatsApp number.');
+          AppToast.show(context, tr(ref, 'New OTP sent to your WhatsApp number.'));
         } else {
           final error = ref.read(authProvider).error;
           if (error != null) {
-            AppToast.show(context, error, isError: true);
+            AppToast.show(context, tr(ref, error), isError: true);
           }
         }
       }
@@ -81,11 +82,11 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
       if (mounted) {
         if (success) {
           _otpController.clear();
-          AppToast.show(context, 'New OTP code sent to your email.');
+          AppToast.show(context, tr(ref, 'New OTP code sent to your email.'));
         } else {
           final error = ref.read(authProvider).error;
           if (error != null) {
-            AppToast.show(context, error, isError: true);
+            AppToast.show(context, tr(ref, error), isError: true);
           }
         }
       }
@@ -120,19 +121,28 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
             onCompleted: () => _handleLoginSuccess(),
           );
         } else {
-          // Outcome A: Existing User -> Check dual roles
+          // Outcome A: Existing User -> Show Student or Instructor choice pop up
           final rawRoles = res['available_roles'] as List<dynamic>?;
           final availableRoles =
               rawRoles
                   ?.map((r) => UserRole.fromApiValue(r.toString()))
                   .toList() ??
               [];
-          if (availableRoles.length > 1) {
-            final chosenRole = await DualRoleSelectBottomSheet.show(
-              context,
-              availableRoles: availableRoles,
-            );
-            if (chosenRole != null) {
+          final user = ref.read(authProvider).user;
+          final granted = (user?.grantedRoles.isNotEmpty == true)
+              ? user!.grantedRoles
+              : (availableRoles.isNotEmpty
+                  ? availableRoles
+                  : const [UserRole.farmer, UserRole.instructor]);
+
+          final chosenRole = await DualRoleSelectBottomSheet.show(
+            context,
+            availableRoles: granted,
+          );
+          if (chosenRole != null) {
+            if (chosenRole == UserRole.instructor && !granted.contains(UserRole.instructor)) {
+              await ref.read(authProvider.notifier).becomeInstructor();
+            } else if (chosenRole != user?.activeRole) {
               await ref.read(authProvider.notifier).switchRole(chosenRole);
             }
           }
@@ -162,9 +172,9 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
         } else {
           final errorMsg =
               ref.read(authProvider).error ??
-              'Invalid or expired OTP. Please request a new code.';
+              tr(ref, 'Invalid or expired OTP. Please request a new code.');
           _otpController.clear();
-          AppToast.show(context, errorMsg, isError: true);
+          AppToast.show(context, tr(ref, errorMsg), isError: true);
         }
       }
     } else {
@@ -255,14 +265,14 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
               ),
               const SizedBox(height: 32),
               Text(
-                'Verify OTP 🔐',
+                tr(ref, 'Verify OTP 🔐'),
                 style: Theme.of(context).textTheme.displayMedium,
               ),
               const SizedBox(height: 8),
               Text(
                 widget.purpose == 'PHONE_LOGIN'
-                    ? 'We sent a 6-digit WhatsApp OTP to ${widget.phone}'
-                    : 'We sent a 6-digit code to ${widget.email}',
+                    ? '${tr(ref, 'We sent a 6-digit WhatsApp OTP to ')}${widget.phone}'
+                    : '${tr(ref, 'We sent a 6-digit code to ')}${widget.email}',
                 style: Theme.of(
                   context,
                 ).textTheme.bodyLarge?.copyWith(color: AppColors.inkSoft),
@@ -283,7 +293,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
               Center(
                 child: _secondsLeft > 0
                     ? Text(
-                        'Resend code in ${_secondsLeft}s',
+                        '${tr(ref, 'Resend code in ')}${formatNum(ref, _secondsLeft)}s',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: AppColors.inkSoft,
                         ),
@@ -291,7 +301,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                     : GestureDetector(
                         onTap: _resendOtp,
                         child: Text(
-                          'Resend Code',
+                          tr(ref, 'Resend Code'),
                           style: Theme.of(context).textTheme.labelMedium
                               ?.copyWith(color: AppColors.primaryGreen),
                         ),
@@ -317,7 +327,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            ref.read(authProvider).error!,
+                            tr(ref, ref.read(authProvider).error!),
                             style: Theme.of(context).textTheme.bodySmall
                                 ?.copyWith(color: AppColors.error),
                           ),
@@ -329,7 +339,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
               Padding(
                 padding: const EdgeInsets.only(bottom: 32),
                 child: AppButton(
-                  label: 'Verify',
+                  label: tr(ref, 'Verify'),
                   onPressed: _verify,
                   isLoading: _isVerifying,
                 ),

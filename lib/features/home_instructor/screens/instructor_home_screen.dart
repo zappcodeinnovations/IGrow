@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/localization/app_strings.dart';
 import '../../../core/theme/app_colors.dart';
@@ -18,7 +19,6 @@ import '../../home_farmer/providers/student_provider.dart';
 import '../../certificates/providers/certificates_provider.dart';
 import '../../notifications/providers/notification_provider.dart';
 import '../../../core/widgets/shimmer_placeholders.dart';
-import '../../instructor_dashboard/widgets/my_students_sheet.dart';
 import '../../../core/services/app_config_service.dart';
 import '../../../data/models/user_role.dart';
 
@@ -103,274 +103,6 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
-  }
-
-  void _showStudentsBottomSheet(
-    BuildContext context,
-    Map<String, dynamic> stats,
-  ) {
-    final transactionsAsync = ref.read(instructorTransactionsProvider);
-    final txs = transactionsAsync.value ?? [];
-    final distinctProfiles = InstructorStudentProfile.groupTransactions(txs);
-    final totalStudents = distinctProfiles.isNotEmpty
-        ? distinctProfiles.length
-        : (stats['total_students'] ?? 0);
-    final totalEnrollments = txs.isNotEmpty
-        ? txs.length
-        : (stats['total_enrollments'] ?? totalStudents);
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (sheetContext) {
-        return DraggableScrollableSheet(
-          initialChildSize: 0.72,
-          minChildSize: 0.45,
-          maxChildSize: 0.95,
-          expand: false,
-          builder: (_, scrollController) {
-            return Container(
-              decoration: BoxDecoration(
-                color: Theme.of(sheetContext).scaffoldBackgroundColor,
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(24),
-                ),
-              ),
-              child: MyStudentsSheet(
-                transactions: txs,
-                totalStudents: totalStudents,
-                totalEnrollments: totalEnrollments,
-                scrollController: scrollController,
-                onOpenLedger: () {
-                  Navigator.pop(sheetContext);
-                  context.push(RouteNames.instructorAnalytics);
-                },
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  void _showReviewsBottomSheet(
-    BuildContext context,
-    Map<String, dynamic> stats,
-  ) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (sheetContext) {
-        final isDark = Theme.of(sheetContext).brightness == Brightness.dark;
-        return Consumer(
-          builder: (context, ref, _) {
-            final reviewsAsync = ref.watch(instructorReviewsProvider);
-            final liveReviews = reviewsAsync.value ?? [];
-            final totalReviews = liveReviews.isNotEmpty
-                ? liveReviews.length
-                : ((stats['total_reviews'] as num?)?.toInt() ?? 0);
-            final double avgRating = liveReviews.isNotEmpty
-                ? (liveReviews
-                          .map((r) => (r['rating'] as num?)?.toInt() ?? 5)
-                          .reduce((a, b) => a + b) /
-                      liveReviews.length)
-                : ((stats['average_rating'] as num?)?.toDouble() ?? 5.0);
-
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade300,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: AppColors.signalYellow.withValues(
-                                  alpha: 0.15,
-                                ),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: const Icon(
-                                Icons.star_rounded,
-                                color: AppColors.signalYellow,
-                                size: 24,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    tr(ref, 'Student Reviews & Ratings'),
-                                    style: Theme.of(sheetContext)
-                                        .textTheme
-                                        .titleLarge
-                                        ?.copyWith(fontWeight: FontWeight.bold),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  Text(
-                                    '⭐ ${formatNum(ref, avgRating.toStringAsFixed(1))} ${tr(ref, 'average rating')} • ${formatNum(ref, totalReviews)} ${tr(ref, 'student reviews')}',
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: AppColors.inkSoft,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close_rounded),
-                        onPressed: () => Navigator.pop(sheetContext),
-                      ),
-                    ],
-                  ),
-                  const Divider(height: 24),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: isDark ? AppColors.cardDark : AppColors.bgLight,
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Row(
-                      children: [
-                        Text(
-                          formatNum(ref, avgRating.toStringAsFixed(1)),
-                          style: const TextStyle(
-                            fontSize: 36,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primaryGreen,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: List.generate(
-                                  5,
-                                  (i) => Icon(
-                                    i < avgRating.floor()
-                                        ? Icons.star_rounded
-                                        : (i < avgRating
-                                              ? Icons.star_half_rounded
-                                              : Icons.star_outline_rounded),
-                                    color: AppColors.signalYellow,
-                                    size: 20,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                '${tr(ref, 'Based on')} ${formatNum(ref, totalReviews)} ${tr(ref, 'verified enrolled student ratings')}',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: AppColors.inkSoft,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: AppColors.signalYellow.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(
-                        Icons.rate_review_outlined,
-                        color: AppColors.signalYellow,
-                        size: 20,
-                      ),
-                    ),
-                    title: Text(
-                      tr(ref, 'Manage Reviews & Replies'),
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    subtitle: Text(
-                      '${tr(ref, 'See all')} ${formatNum(ref, totalReviews)} ${tr(ref, 'ratings and reply to students')}',
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                    trailing: const Icon(Icons.chevron_right_rounded),
-                    onTap: () {
-                      Navigator.pop(sheetContext);
-                      context.push(RouteNames.instructorReviews);
-                    },
-                  ),
-                  const SizedBox(height: 8),
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryGreen.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(
-                        Icons.question_answer_outlined,
-                        color: AppColors.primaryGreen,
-                        size: 20,
-                      ),
-                    ),
-                    title: Text(
-                      tr(ref, 'Student Q&A & Inquiries'),
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    subtitle: Text(
-                      tr(ref, 'Manage student discussions and doubts'),
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                    trailing: const Icon(Icons.chevron_right_rounded),
-                    onTap: () {
-                      Navigator.pop(sheetContext);
-                      context.push('/instructor/qa');
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
   }
 
   void _showTransactionDetailsModal(
@@ -1458,119 +1190,9 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                     color: isDark ? Colors.grey.shade400 : AppColors.inkSoft,
                   ),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 16),
 
-                // ── 1. Stats Row (Students, Courses, E-Books, Reviews) ───
-                ref
-                    .watch(instructorStatsProvider)
-                    .when(
-                      data: (stats) {
-                        final transactionsAsync = ref.watch(
-                          instructorTransactionsProvider,
-                        );
-                        final txs = transactionsAsync.value ?? [];
-                        final distinctProfiles =
-                            InstructorStudentProfile.groupTransactions(txs);
-                        final distinctStudentCount = distinctProfiles.isNotEmpty
-                            ? distinctProfiles.length
-                            : (stats['total_students'] ?? 0);
-
-                        return Row(
-                          children: [
-                            Expanded(
-                              child: _StatCard(
-                                icon: Icons.people_alt_rounded,
-                                label: tr(ref, 'Students'),
-                                value: formatNum(ref, distinctStudentCount),
-                                color: AppColors.skyBlue,
-                                onTap: () =>
-                                    _showStudentsBottomSheet(context, stats),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: _StatCard(
-                                icon: Icons.play_lesson_rounded,
-                                label: tr(ref, 'Courses'),
-                                value: formatNum(
-                                  ref,
-                                  stats['total_courses'] ?? 0,
-                                ),
-                                color: AppColors.primaryGreen,
-                                onTap: () =>
-                                    context.push(RouteNames.instructorUploads),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Consumer(
-                                builder: (context, ref, _) {
-                                  final ebooksAsync = ref.watch(
-                                    instructorEbooksProvider,
-                                  );
-                                  final totalEbooks =
-                                      ebooksAsync.value?.length ??
-                                      (stats['total_ebooks'] as num?)
-                                          ?.toInt() ??
-                                      0;
-                                  return _StatCard(
-                                    icon: Icons.menu_book_rounded,
-                                    label: tr(ref, 'E-Books'),
-                                    value: formatNum(ref, totalEbooks),
-                                    color: AppColors.accentOrange,
-                                    onTap: () => context.push(
-                                      '${RouteNames.instructorUploads}?tab=1',
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Consumer(
-                                builder: (context, ref, _) {
-                                  final reviewsAsync = ref.watch(
-                                    instructorReviewsProvider,
-                                  );
-                                  final liveReviews = reviewsAsync.value;
-                                  final liveCount = liveReviews?.length;
-                                  final totalReviewsCount =
-                                      (liveCount != null && liveCount > 0)
-                                      ? liveCount
-                                      : ((stats['total_reviews'] as num?)
-                                                ?.toInt() ??
-                                            0);
-
-                                  return _StatCard(
-                                    icon: Icons.star_rounded,
-                                    label: tr(ref, 'Reviews'),
-                                    value: formatNum(ref, totalReviewsCount),
-                                    color: AppColors.signalYellow,
-                                    onTap: () =>
-                                        _showReviewsBottomSheet(context, stats),
-                                  );
-                                },
-                              ),
-                            ),
-                          ],
-                        );
-                      },
-                      loading: () => Row(
-                        children: [
-                          Expanded(child: ShimmerCard(height: 72)),
-                          const SizedBox(width: 8),
-                          Expanded(child: ShimmerCard(height: 72)),
-                          const SizedBox(width: 8),
-                          Expanded(child: ShimmerCard(height: 72)),
-                          const SizedBox(width: 8),
-                          Expanded(child: ShimmerCard(height: 72)),
-                        ],
-                      ),
-                      error: (err, _) => const SizedBox(),
-                    ),
-                const SizedBox(height: 14),
-
-                // ── 2. Quick Action Buttons (Create Course & New E-Book) ──
+                // ── 1. Quick Action Buttons (Create Course & New E-Book) ──
                 Row(
                   children: [
                     Expanded(
@@ -1627,14 +1249,9 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                 ),
                 const SizedBox(height: 14),
 
-                // ── 3. KYC Alert / Banner if not verified ───
-                if (user?.isKycVerified != true) ...[
-                  _KycPromptBanner(
-                    isPending: user?.isKycPending == true,
-                    onTap: () => context.push(RouteNames.instructorKyc),
-                  ),
-                  const SizedBox(height: 14),
-                ],
+                // ── 3. Total Revenue & Analytics Banner ───
+                const _TotalRevenueBanner(),
+                const SizedBox(height: 14),
 
                 // ── 4. Compact Upload Guide Chatbot Banner ───
                 AppCard(
@@ -2354,88 +1971,6 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                 const SizedBox(height: 24),
               ],
             ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _StatCard extends StatelessWidget {
-  const _StatCard({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.color,
-    this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color color;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
-          decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF1E2822) : Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: isDark ? const Color(0xFF2C3E31) : const Color(0xFFE2EBE0),
-              width: 1.2,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: isDark ? Colors.black26 : color.withValues(alpha: 0.06),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(icon, color: color, size: 18),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                value,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 16,
-                  color: isDark ? Colors.white : AppColors.inkDark,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: isDark ? Colors.white60 : AppColors.inkSoft,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
           ),
         ),
       ),
@@ -3239,91 +2774,156 @@ class _ActivityItem extends StatelessWidget {
   }
 }
 
-class _KycPromptBanner extends ConsumerWidget {
-  const _KycPromptBanner({required this.isPending, required this.onTap});
-
-  final bool isPending;
-  final VoidCallback onTap;
+class _TotalRevenueBanner extends ConsumerWidget {
+  const _TotalRevenueBanner();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return AppCard(
-      onTap: onTap,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color:
-                  (isPending ? AppColors.accentOrange : AppColors.primaryGreen)
-                      .withValues(alpha: 0.12),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              isPending
-                  ? Icons.hourglass_top_rounded
-                  : Icons.verified_user_outlined,
-              color: isPending
-                  ? AppColors.accentOrange
-                  : AppColors.primaryGreen,
-              size: 22,
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  isPending
-                      ? tr(ref, 'KYC Verification Under Review')
-                      : tr(ref, 'Complete KYC & Payout Profile'),
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final statsAsync = ref.watch(instructorStatsProvider);
+
+    return statsAsync.maybeWhen(
+      data: (stats) {
+        final totalEarnings = (stats['total_earnings'] as num?)?.toDouble() ?? 0.0;
+        final totalRevenue = (stats['total_revenue'] as num?)?.toDouble() ?? 0.0;
+        final displayAmount = totalEarnings > 0 ? totalEarnings : totalRevenue;
+
+        return AppCard(
+          onTap: () => context.push(RouteNames.instructorAnalytics),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF16A34A), Color(0xFF15803D)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(13),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF16A34A).withValues(alpha: 0.3),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  isPending
-                      ? tr(ref, 'Admin is reviewing your documents (24-48 hrs)')
-                      : tr(
-                          ref,
-                          'Required to receive revenue payouts to your bank account',
-                        ),
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodySmall?.copyWith(color: AppColors.inkSoft),
+                child: const Icon(
+                  Icons.account_balance_wallet_rounded,
+                  color: Colors.white,
+                  size: 22,
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      tr(ref, 'Total Revenue'),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: isDark ? Colors.white60 : AppColors.inkSoft,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.2,
+                          ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '₹${displayAmount.toStringAsFixed(2)}',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.5,
+                        color: isDark ? Colors.white : AppColors.inkDark,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: (isDark ? const Color(0xFF142418) : const Color(0xFFEBF6EC)),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: AppColors.primaryGreen.withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      tr(ref, 'Analytics'),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primaryGreen,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    const Icon(
+                      Icons.arrow_forward_ios_rounded,
+                      size: 11,
+                      color: AppColors.primaryGreen,
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 8),
-          GestureDetector(
-            onTap: onTap,
-            behavior: HitTestBehavior.opaque,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        );
+      },
+      orElse: () => AppCard(
+        onTap: () => context.push(RouteNames.instructorAnalytics),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
               decoration: BoxDecoration(
-                color:
-                    (isPending
-                            ? AppColors.accentOrange
-                            : AppColors.primaryGreen)
-                        .withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
+                color: const Color(0xFF16A34A).withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(13),
               ),
-              child: Text(
-                isPending ? tr(ref, 'Status') : tr(ref, 'Verify'),
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: isPending
-                      ? AppColors.accentOrange
-                      : AppColors.primaryGreen,
-                  fontWeight: FontWeight.bold,
-                ),
+              child: const Icon(
+                Icons.account_balance_wallet_rounded,
+                color: Color(0xFF16A34A),
+                size: 22,
               ),
             ),
-          ),
-        ],
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    tr(ref, 'Total Revenue'),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: isDark ? Colors.white60 : AppColors.inkSoft,
+                          fontWeight: FontWeight.w600,
+                        ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '₹0.00',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: isDark ? Colors.white : AppColors.inkDark,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: Colors.grey,
+            ),
+          ],
+        ),
       ),
     );
   }

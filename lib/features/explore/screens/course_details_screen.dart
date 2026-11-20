@@ -3221,7 +3221,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen>
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Student Feedback',
+              tr(ref, 'Student Feedback'),
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -3240,9 +3240,9 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen>
                   courseTitle: course.title,
                 ),
                 icon: const Icon(Icons.rate_review_outlined, size: 18),
-                label: const Text(
-                  'Write a Review',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                label: Text(
+                  tr(ref, 'Write a Review'),
+                  style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
           ],
@@ -3269,7 +3269,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'No reviews yet. Be the first to review after enrolling!',
+                          tr(ref, 'No reviews yet. Be the first to review after enrolling!'),
                           style: TextStyle(
                             color: isDark ? Colors.white60 : AppColors.inkSoft,
                             fontSize: 13,
@@ -3292,7 +3292,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen>
                               courseTitle: course.title,
                             ),
                             icon: const Icon(Icons.star_rounded, size: 18),
-                            label: const Text('Leave a Review'),
+                            label: Text(tr(ref, 'Leave a Review')),
                           ),
                         ],
                       ],

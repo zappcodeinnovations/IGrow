@@ -19,7 +19,7 @@ class DualRoleSelectBottomSheet extends ConsumerWidget {
 
   static Future<UserRole?> show(
     BuildContext context, {
-    required List<UserRole> availableRoles,
+    List<UserRole>? availableRoles,
   }) {
     return showModalBottomSheet<UserRole>(
       context: context,
@@ -27,7 +27,7 @@ class DualRoleSelectBottomSheet extends ConsumerWidget {
       enableDrag: false,
       backgroundColor: Colors.transparent,
       builder: (ctx) => DualRoleSelectBottomSheet(
-        availableRoles: availableRoles,
+        availableRoles: availableRoles ?? const [UserRole.farmer, UserRole.instructor],
         onRoleSelected: (role) => Navigator.of(ctx).pop(role),
       ),
     );
@@ -78,7 +78,7 @@ class DualRoleSelectBottomSheet extends ConsumerWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              tr(ref, 'Your account has dual access. Choose your initial mode (you can switch anytime).'),
+              tr(ref, 'Choose how you want to continue (you can switch anytime):'),
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 13.5,
                 color: isDark ? Colors.white70 : AppColors.inkSoft,

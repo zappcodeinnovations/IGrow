@@ -427,6 +427,17 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  /// Enroll as an instructor via dedicated /become-instructor/ endpoint.
+  Future<void> becomeInstructor() async {
+    state = state.copyWith(status: AuthStatus.loading);
+    try {
+      final user = await _repo.becomeInstructor();
+      state = AuthState(status: AuthStatus.authenticated, user: user);
+    } catch (e) {
+      state = state.copyWith(status: AuthStatus.authenticated, error: ApiException.userFriendlyMessage(e));
+    }
+  }
+
   /// Logout.
   Future<void> logout() async {
     _stopPeriodicSync();

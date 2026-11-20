@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/localization/app_strings.dart';
 import '../../../core/theme/app_colors.dart';
 import '../providers/explore_provider.dart';
 
@@ -47,15 +48,15 @@ class _CourseReviewModalState extends ConsumerState<CourseReviewModal> {
   String _getRatingLabel(int rating) {
     switch (rating) {
       case 1:
-        return 'Poor';
+        return tr(ref, 'Poor');
       case 2:
-        return 'Fair';
+        return tr(ref, 'Fair');
       case 3:
-        return 'Good';
+        return tr(ref, 'Good');
       case 4:
-        return 'Very Good';
+        return tr(ref, 'Very Good');
       case 5:
-        return 'Excellent! 🌟';
+        return tr(ref, 'Excellent! 🌟');
       default:
         return '';
     }
@@ -88,10 +89,10 @@ class _CourseReviewModalState extends ConsumerState<CourseReviewModal> {
 
       navigator.pop();
       messenger.showSnackBar(
-        const SnackBar(
-          content: Text('Thank you! Your review has been submitted. ⭐'),
+        SnackBar(
+          content: Text(tr(ref, 'Thank you! Your review has been submitted. ⭐')),
           backgroundColor: AppColors.primaryGreen,
-          duration: Duration(seconds: 2),
+          duration: const Duration(seconds: 2),
         ),
       );
     } catch (e) {
@@ -150,7 +151,7 @@ class _CourseReviewModalState extends ConsumerState<CourseReviewModal> {
 
             // Title
             Text(
-              'Rate & Review Course',
+              tr(ref, 'Rate & Review Course'),
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -208,7 +209,7 @@ class _CourseReviewModalState extends ConsumerState<CourseReviewModal> {
               controller: _commentController,
               maxLines: 4,
               decoration: InputDecoration(
-                hintText: 'Share your feedback, key takeaways, and experience with this course...',
+                hintText: tr(ref, 'Share your feedback, key takeaways, and experience with this course...'),
                 hintStyle: const TextStyle(fontSize: 13, color: AppColors.inkSoft),
                 filled: true,
                 fillColor: isDark ? Colors.black26 : Colors.grey.shade50,
@@ -285,9 +286,9 @@ class _CourseReviewModalState extends ConsumerState<CourseReviewModal> {
                         color: Colors.white,
                       ),
                     )
-                  : const Text(
-                      'Submit Review',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  : Text(
+                      tr(ref, 'Submit Review'),
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                     ),
             ),
           ],

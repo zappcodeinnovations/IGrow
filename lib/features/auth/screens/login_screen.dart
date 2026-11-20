@@ -65,17 +65,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     var updatedUser = ref.read(authProvider).user ?? user;
     if (updatedUser == null) return;
 
-    // Check dual-role capabilities: If user has multiple available roles, prompt choice
-    if (updatedUser.grantedRoles.length > 1) {
-      final chosenRole = await DualRoleSelectBottomSheet.show(
-        context,
-        availableRoles: updatedUser.grantedRoles,
-      );
-      if (chosenRole != null && chosenRole != updatedUser.activeRole) {
+    // Prompt role choice: whether new or returning, allow user to pick Student or Instructor mode
+    final chosenRole = await DualRoleSelectBottomSheet.show(
+      context,
+      availableRoles: updatedUser.grantedRoles.isNotEmpty
+          ? updatedUser.grantedRoles
+          : const [UserRole.farmer, UserRole.instructor],
+    );
+    if (chosenRole != null) {
+      if (chosenRole == UserRole.instructor && !updatedUser.grantedRoles.contains(UserRole.instructor)) {
+        await ref.read(authProvider.notifier).becomeInstructor();
+      } else if (chosenRole != updatedUser.activeRole) {
         await ref.read(authProvider.notifier).switchRole(chosenRole);
-        if (!mounted) return;
-        updatedUser = ref.read(authProvider).user ?? updatedUser;
       }
+      if (!mounted) return;
+      updatedUser = ref.read(authProvider).user ?? updatedUser;
     }
 
     final prefs = await SharedPreferences.getInstance();
@@ -385,7 +389,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 4),
                         child: Text.rich(
                           TextSpan(
-                            text: 'By continuing, you agree to our ',
+                            text: tr(ref, 'By continuing, you agree to our '),
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 12,
                               height: 1.45,
@@ -395,7 +399,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ),
                             children: [
                               TextSpan(
-                                text: 'Terms of Use (EULA)',
+                                text: tr(ref, 'Terms of Use (EULA)'),
                                 style: GoogleFonts.plusJakartaSans(
                                   fontWeight: FontWeight.bold,
                                   color: isDark
@@ -404,9 +408,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   decoration: TextDecoration.underline,
                                 ),
                               ),
-                              const TextSpan(text: ' and '),
+                              TextSpan(text: tr(ref, ' and ')),
                               TextSpan(
-                                text: 'Privacy Policy',
+                                text: tr(ref, 'Privacy Policy'),
                                 style: GoogleFonts.plusJakartaSans(
                                   fontWeight: FontWeight.bold,
                                   color: isDark
@@ -415,9 +419,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   decoration: TextDecoration.underline,
                                 ),
                               ),
-                              const TextSpan(
-                                text:
-                                    '. We maintain a zero-tolerance policy against objectionable content and abusive users.',
+                              TextSpan(
+                                text: tr(
+                                  ref,
+                                  '. We maintain a zero-tolerance policy against objectionable content and abusive users.',
+                                ),
                               ),
                             ],
                           ),

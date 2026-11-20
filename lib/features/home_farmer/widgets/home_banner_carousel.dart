@@ -2,22 +2,25 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/network/swagger_generated/app_api.swagger.dart';
+import '../../../data/models/home_banner_model.dart';
 import 'course_banner_dialog.dart';
 
 /// Clean, full-bleed Swiping Banner Carousel.
 ///
-/// Slide 0: High-aesthetic greeting & ambient agriculture landscape banner with subtle text overlay.
-/// Slide 1..N: Full-bleed Course thumbnail with gradient protection and title on the bottom.
-/// Tapping the card opens [CourseBannerDialog].
+/// Priority 1: Backend dynamic banners from GET /api/v1/banners/ ([apiBanners]).
+/// Priority 2: Fallback to ambient welcome slide + top catalog courses if [apiBanners] is empty.
 class HomeBannerCarousel extends StatefulWidget {
-  final List<CourseList> courses;
+  final List<HomeBannerItem> apiBanners;
+  final List<CourseList> fallbackCourses;
   final String userName;
 
   const HomeBannerCarousel({
     super.key,
-    required this.courses,
+    this.apiBanners = const [],
+    this.fallbackCourses = const [],
     required this.userName,
   });
 
@@ -30,7 +33,11 @@ class _HomeBannerCarouselState extends State<HomeBannerCarousel> {
   int _currentPage = 0;
   Timer? _autoPlayTimer;
 
-  int get _totalItems => 1 + widget.courses.length;
+  bool get _hasApiBanners => widget.apiBanners.isNotEmpty;
+
+  int get _totalItems => _hasApiBanners
+      ? widget.apiBanners.length
+      : (1 + widget.fallbackCourses.length);
 
   @override
   void initState() {
@@ -59,9 +66,38 @@ class _HomeBannerCarouselState extends State<HomeBannerCarousel> {
     super.dispose();
   }
 
+  void _onApiBannerTapped(HomeBannerItem banner) {
+    if (banner.bannerCourse == true &&
+        banner.courseSlug != null &&
+        banner.courseSlug!.trim().isNotEmpty) {
+      // 🎓 Case 1: Course Linked Banner
+      final target = banner.courseSlug!.trim();
+      context.push('/farmer/course/$target');
+    } else if (banner.targetLink != null && banner.targetLink!.trim().isNotEmpty) {
+      // 📢 Case 2: Deep Link or Web Link
+      final link = banner.targetLink!.trim();
+      if (link.startsWith('http://') || link.startsWith('https://')) {
+        final uri = Uri.tryParse(link);
+        if (uri != null) {
+          launchUrl(uri, mode: LaunchMode.externalApplication);
+        }
+      } else if (link == '/community') {
+        context.go('/community');
+      } else if (link == '/ebooks' || link.contains('ebook')) {
+        context.push('/farmer/explore');
+      } else if (link.startsWith('/')) {
+        context.push(link);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    if (_totalItems == 0) {
+      return const SizedBox.shrink();
+    }
 
     return Column(
       children: [
@@ -75,11 +111,16 @@ class _HomeBannerCarouselState extends State<HomeBannerCarousel> {
               setState(() => _currentPage = idx);
             },
             itemBuilder: (context, index) {
-              if (index == 0) {
-                return _buildWelcomeSlide(isDark);
+              if (_hasApiBanners) {
+                final banner = widget.apiBanners[index];
+                return _buildApiBannerSlide(banner, isDark);
               } else {
-                final course = widget.courses[index - 1];
-                return _buildCourseSlide(course, isDark);
+                if (index == 0) {
+                  return _buildWelcomeSlide(isDark);
+                } else {
+                  final course = widget.fallbackCourses[index - 1];
+                  return _buildCourseSlide(course, isDark);
+                }
               }
             },
           ),
@@ -88,29 +129,134 @@ class _HomeBannerCarouselState extends State<HomeBannerCarousel> {
         const SizedBox(height: 12),
 
         // Indicator Dots
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(_totalItems, (i) {
-            final isSelected = i == _currentPage;
-            return AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              margin: const EdgeInsets.symmetric(horizontal: 3.5),
-              height: 6,
-              width: isSelected ? 22 : 6,
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? const Color(0xFF1B4D2E)
-                    : (isDark ? Colors.white24 : Colors.black12),
-                borderRadius: BorderRadius.circular(4),
-              ),
-            );
-          }),
-        ),
+        if (_totalItems > 1)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(_totalItems, (i) {
+              final isSelected = i == _currentPage;
+              return AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                margin: const EdgeInsets.symmetric(horizontal: 3.5),
+                height: 6,
+                width: isSelected ? 22 : 6,
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? const Color(0xFF1B4D2E)
+                      : (isDark ? Colors.white24 : Colors.black12),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              );
+            }),
+          ),
       ],
     );
   }
 
-  // SLIDE 0: Welcome greeting with lush landscape image (No translucent card, no button)
+  // ── DYNAMIC BACKEND API BANNER SLIDE ──────────────────────────────────────
+  Widget _buildApiBannerSlide(HomeBannerItem banner, bool isDark) {
+    return GestureDetector(
+      onTap: () => _onApiBannerTapped(banner),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(22),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.40 : 0.12),
+              blurRadius: 14,
+              spreadRadius: 0,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(22),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // Banner Image
+              banner.imageUrl.isNotEmpty
+                  ? Image.network(
+                      banner.imageUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => _buildFallbackGradient(),
+                    )
+                  : _buildFallbackGradient(),
+
+              // Gradient protection for text overlay if banner has title
+              if (banner.title.isNotEmpty || (banner.courseTitle != null && banner.courseTitle!.isNotEmpty)) ...[
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withValues(alpha: 0.15),
+                        Colors.black.withValues(alpha: 0.75),
+                      ],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      stops: const [0.45, 0.70, 1.0],
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: 18,
+                  right: 18,
+                  bottom: 14,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        banner.title,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                          letterSpacing: -0.2,
+                          shadows: [
+                            Shadow(
+                              color: Colors.black.withValues(alpha: 0.8),
+                              offset: const Offset(0, 1),
+                              blurRadius: 4,
+                            ),
+                          ],
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (banner.courseTitle != null && banner.courseTitle!.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          banner.courseTitle!,
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            color: Colors.white.withValues(alpha: 0.9),
+                            fontWeight: FontWeight.w500,
+                            shadows: [
+                              Shadow(
+                                color: Colors.black.withValues(alpha: 0.6),
+                                offset: const Offset(0, 1),
+                                blurRadius: 3,
+                              ),
+                            ],
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── FALLBACK SLIDE 0: Welcome greeting with lush landscape image ──────────
   Widget _buildWelcomeSlide(bool isDark) {
     return GestureDetector(
       onTap: () => context.push('/farmer/explore'),
@@ -132,13 +278,12 @@ class _HomeBannerCarouselState extends State<HomeBannerCarousel> {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // Background Image
               Image.asset(
                 'assets/images/banners/welcome_banner.png',
                 fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => _buildFallbackGradient(),
               ),
 
-              // Smooth bottom gradient overlay for clear text contrast
               DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -154,46 +299,20 @@ class _HomeBannerCarouselState extends State<HomeBannerCarousel> {
                 ),
               ),
 
-              // Bottom Title & Subtitle Overlay
               Positioned(
                 left: 18,
                 right: 18,
-                bottom: 16,
+                bottom: 14,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF1B4D2E),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: const Color(0xFF86EFAC).withValues(alpha: 0.5),
-                              width: 0.8,
-                            ),
-                          ),
-                          child: Text(
-                            'WELCOME BACK',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 9.5,
-                              fontWeight: FontWeight.w800,
-                              color: const Color(0xFF86EFAC),
-                              letterSpacing: 0.6,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        const Text('🌾', style: TextStyle(fontSize: 14)),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
                     Text(
-                      widget.userName.isNotEmpty ? 'Namaste, ${widget.userName}!' : 'Namaste, Farmer!',
+                      widget.userName.isNotEmpty
+                          ? 'Welcome back, ${widget.userName} 👋'
+                          : 'Welcome to iAgrow 🌾',
                       style: GoogleFonts.plusJakartaSans(
-                        fontSize: 18,
+                        fontSize: 16.5,
                         fontWeight: FontWeight.w800,
                         color: Colors.white,
                         letterSpacing: -0.3,
@@ -238,7 +357,7 @@ class _HomeBannerCarouselState extends State<HomeBannerCarousel> {
     );
   }
 
-  // SLIDE 1..N: Full-bleed Course Image with Title on Bottom (No translucent card, no button)
+  // ── FALLBACK SLIDE 1..N: Full-bleed Course Image ───────────────────────────
   Widget _buildCourseSlide(CourseList course, bool isDark) {
     final thumbnailUrl = course.thumbnail ?? '';
     final isFree = course.price == null ||
@@ -266,7 +385,6 @@ class _HomeBannerCarouselState extends State<HomeBannerCarousel> {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // Full background Course Image
               thumbnailUrl.isNotEmpty
                   ? Image.network(
                       thumbnailUrl,
@@ -275,7 +393,6 @@ class _HomeBannerCarouselState extends State<HomeBannerCarousel> {
                     )
                   : _buildFallbackGradient(),
 
-              // Smooth gradient from middle to bottom for clear typography
               DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -291,7 +408,6 @@ class _HomeBannerCarouselState extends State<HomeBannerCarousel> {
                 ),
               ),
 
-              // Top Badge (Category / Status)
               Positioned(
                 top: 14,
                 left: 16,
@@ -319,7 +435,6 @@ class _HomeBannerCarouselState extends State<HomeBannerCarousel> {
                 ),
               ),
 
-              // Bottom Course Title & Price (Clean overlay, tapping card opens dialog)
               Positioned(
                 left: 16,
                 right: 16,

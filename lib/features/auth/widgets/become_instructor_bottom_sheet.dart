@@ -7,7 +7,6 @@ import '../../../core/network/swagger_generated/app_api.swagger.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/app_toast.dart';
 import '../../../core/widgets/app_button.dart';
-import '../../../data/models/user_role.dart';
 import '../providers/auth_provider.dart';
 
 /// Modal bottom sheet for an existing student becoming an instructor.
@@ -78,8 +77,8 @@ class _BecomeInstructorBottomSheetState
             ),
           );
 
-      // 2. Switch role to Instructor (persisted locally and in grantedRoles)
-      await ref.read(authProvider.notifier).switchRole(UserRole.instructor);
+      // 2. Call dedicated creator onboarding endpoint to provision instructor profile and update claims
+      await ref.read(authProvider.notifier).becomeInstructor();
 
       if (mounted) {
         setState(() => _isLoading = false);

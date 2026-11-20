@@ -198,9 +198,7 @@ class CourseBannerDialog extends StatelessWidget {
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 20,
                             fontWeight: FontWeight.w800,
-                            color: isFree
-                                ? const Color(0xFF16A34A)
-                                : (isDark ? const Color(0xFF86EFAC) : const Color(0xFF1B4D2E)),
+                            color: isDark ? const Color(0xFF86EFAC) : const Color(0xFF1B4D2E),
                           ),
                         ),
                         const Spacer(),

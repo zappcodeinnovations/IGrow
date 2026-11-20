@@ -135,13 +135,24 @@ class UserModel {
       verStatus = rawInstructorMap['verification_status']?.toString();
     }
 
-    final granted = availableRoles != null && availableRoles.isNotEmpty
-        ? availableRoles
-        : (activeRoleOverride != null
-            ? (activeRoleOverride == serverRole
-                ? [serverRole]
-                : [serverRole, activeRoleOverride])
-            : [role]);
+    // Resolve available roles from profile, explicit argument, or serverRole
+    List<UserRole> granted;
+    if (availableRoles != null && availableRoles.isNotEmpty) {
+      granted = availableRoles;
+    } else if (profile.availableRoles != null && profile.availableRoles!.isNotEmpty) {
+      granted = profile.availableRoles!
+          .map((r) => UserRole.fromApiValue(r))
+          .toSet()
+          .toList();
+    } else if (profile.canTeach == true) {
+      granted = [UserRole.farmer, UserRole.instructor];
+    } else if (activeRoleOverride != null) {
+      granted = activeRoleOverride == serverRole
+          ? [serverRole]
+          : [serverRole, activeRoleOverride];
+    } else {
+      granted = [role];
+    }
 
     return UserModel(
       id: profile.id ?? '',

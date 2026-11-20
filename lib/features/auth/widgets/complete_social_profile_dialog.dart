@@ -13,6 +13,7 @@ import '../../../core/utils/app_toast.dart';
 import '../../../core/widgets/app_gradient_button.dart';
 import '../../../core/widgets/app_pill_text_field.dart';
 import '../../../data/models/user_model.dart';
+import '../../../data/models/user_role.dart';
 import '../providers/auth_provider.dart';
 
 /// Provider caching the location mapping {state: [districts]}
@@ -140,6 +141,7 @@ class _CompleteSocialProfileDialogState
   final FocusNode _phoneFocusNode = FocusNode();
   String? _selectedState;
   String? _selectedDistrict;
+  UserRole _selectedRole = UserRole.farmer;
   bool _isSaving = false;
   bool _isSheetOpen = false;
 
@@ -188,6 +190,13 @@ class _CompleteSocialProfileDialogState
       );
 
       await ref.read(authProvider.notifier).updateProfile(request);
+
+      // If user chose Instructor or a different role, ensure role switch is performed
+      if (_selectedRole == UserRole.instructor) {
+        await ref.read(authProvider.notifier).switchRole(UserRole.instructor);
+      } else {
+        await ref.read(authProvider.notifier).switchRole(UserRole.farmer);
+      }
 
       if (mounted) {
         AppToast.show(context, tr(ref, 'Profile updated successfully!'));
@@ -476,6 +485,39 @@ class _CompleteSocialProfileDialogState
                     );
                   },
                 ),
+                const SizedBox(height: 20),
+
+                // Role Selection for New Account
+                Text(
+                  tr(ref, 'Choose Your Role'),
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: isDark ? Colors.white : AppColors.inkDark,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildRoleCard(
+                        isDark: isDark,
+                        title: tr(ref, 'Student 🎓'),
+                        subtitle: tr(ref, 'Learn & study'),
+                        role: UserRole.farmer,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildRoleCard(
+                        isDark: isDark,
+                        title: tr(ref, 'Instructor 👨‍🏫'),
+                        subtitle: tr(ref, 'Teach & create'),
+                        role: UserRole.instructor,
+                      ),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 24),
 
                 // Primary Action Button: Save & Continue
@@ -493,6 +535,57 @@ class _CompleteSocialProfileDialogState
   ),
   ),
   );
+  }
+
+  Widget _buildRoleCard({
+    required bool isDark,
+    required String title,
+    required String subtitle,
+    required UserRole role,
+  }) {
+    final isSelected = _selectedRole == role;
+    return GestureDetector(
+      onTap: () => setState(() => _selectedRole = role),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? (isDark ? const Color(0xFF162B1D) : const Color(0xFFEBF6EC))
+              : (isDark ? const Color(0xFF141F17) : const Color(0xFFF7FAF6)),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isSelected
+                ? AppColors.primaryGreen
+                : (isDark ? const Color(0xFF2C3E31) : const Color(0xFFE2EBE0)),
+            width: isSelected ? 2.0 : 1.0,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 13.5,
+                fontWeight: FontWeight.bold,
+                color: isSelected
+                    ? AppColors.primaryGreen
+                    : (isDark ? Colors.white : AppColors.inkDark),
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              subtitle,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 11,
+                color: isDark ? Colors.white60 : AppColors.inkSoft,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildPillDropdown({

@@ -21,6 +21,8 @@ import '../../../data/models/user_role.dart';
 import '../../auth/widgets/become_instructor_bottom_sheet.dart';
 import '../widgets/floating_offer_badge.dart';
 import '../widgets/home_banner_carousel.dart';
+import '../providers/home_banners_provider.dart';
+import '../../../data/models/home_banner_model.dart';
 
 /// Upgraded Student / Farmer Dashboard Screen matching the Agrilearn Web UI & UX.
 class FarmerHomeScreen extends ConsumerStatefulWidget {
@@ -33,7 +35,8 @@ class FarmerHomeScreen extends ConsumerStatefulWidget {
 class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
   void _showSwitchRoleDialog(BuildContext context) {
     final user = ref.read(authProvider).user;
-    final hasInstructorRole = user?.grantedRoles.contains(UserRole.instructor) == true;
+    final hasInstructorRole =
+        user?.grantedRoles.contains(UserRole.instructor) == true;
 
     // If user has not yet unlocked Instructor role, show the Become Instructor flow (Name + Phone)
     if (!hasInstructorRole) {
@@ -58,7 +61,10 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
           children: const [
             Icon(Icons.swap_horiz_rounded, color: Color(0xFF16A34A), size: 28),
             SizedBox(width: 10),
-            Text('Switch Mode', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            Text(
+              'Switch Mode',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
           ],
         ),
         content: const Text(
@@ -68,23 +74,33 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogCtx),
-            child: const Text('Cancel', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600)),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600),
+            ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF1B4D2E),
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             onPressed: () async {
               Navigator.pop(dialogCtx);
               // Switch role in AuthProvider and navigate to Instructor panel
-              await ref.read(authProvider.notifier).switchRole(UserRole.instructor);
+              await ref
+                  .read(authProvider.notifier)
+                  .switchRole(UserRole.instructor);
               if (context.mounted) {
                 context.go(RouteNames.instructorHome);
               }
             },
-            child: const Text('OK, Switch', style: TextStyle(fontWeight: FontWeight.bold)),
+            child: const Text(
+              'OK, Switch',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),
@@ -162,668 +178,745 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
               parent: AlwaysScrollableScrollPhysics(),
             ),
             child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── 1. Clean Transparent / Natural Top App Bar ─────
-            Container(
-              width: double.infinity,
-              padding: EdgeInsets.only(
-                top: MediaQuery.of(context).padding.top + 10,
-                left: 18,
-                right: 18,
-                bottom: 12,
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ── 1. Clean Transparent / Natural Top App Bar ─────
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.only(
+                    top: MediaQuery.of(context).padding.top + 10,
+                    left: 18,
+                    right: 18,
+                    bottom: 12,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      InkWell(
-                        onTap: () {
-                          if (shellScaffoldKey.currentState != null) {
-                            shellScaffoldKey.currentState!.openDrawer();
-                          } else {
-                            Scaffold.of(context).openDrawer();
-                          }
-                        },
-                        borderRadius: BorderRadius.circular(9999),
-                        child: Container(
-                          width: 38,
-                          height: 38,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: isDark
-                                ? Colors.white.withValues(alpha: 0.08)
-                                : const Color(0xFFE8F0EA),
+                      Row(
+                        children: [
+                          InkWell(
+                            onTap: () {
+                              if (shellScaffoldKey.currentState != null) {
+                                shellScaffoldKey.currentState!.openDrawer();
+                              } else {
+                                Scaffold.of(context).openDrawer();
+                              }
+                            },
+                            borderRadius: BorderRadius.circular(9999),
+                            child: Container(
+                              width: 38,
+                              height: 38,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: isDark
+                                    ? Colors.white.withValues(alpha: 0.08)
+                                    : const Color(0xFFE8F0EA),
+                              ),
+                              child: Icon(
+                                Icons.menu_rounded,
+                                size: 20,
+                                color: isDark
+                                    ? Colors.white
+                                    : const Color(0xFF1B4D2E),
+                              ),
+                            ),
                           ),
-                          child: Icon(
-                            Icons.menu_rounded,
+                          const SizedBox(width: 10),
+                          const Icon(
+                            Icons.eco_rounded,
                             size: 20,
-                            color: isDark ? Colors.white : const Color(0xFF1B4D2E),
+                            color: Color(0xFF16A34A),
                           ),
-                        ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'IAGROW',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 1.1,
+                              color: isDark
+                                  ? const Color(0xFF86EFAC)
+                                  : const Color(0xFF1B4D2E),
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 10),
-                      const Icon(
-                        Icons.eco_rounded,
-                        size: 20,
-                        color: Color(0xFF16A34A),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'IAGROW',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1.1,
-                          color: isDark ? const Color(0xFF86EFAC) : const Color(0xFF1B4D2E),
-                        ),
+                      Row(
+                        children: [
+                          // Notification Bell
+                          InkWell(
+                            onTap: () => context.push(RouteNames.notifications),
+                            borderRadius: BorderRadius.circular(9999),
+                            child: Container(
+                              width: 38,
+                              height: 38,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: isDark
+                                    ? Colors.white.withValues(alpha: 0.08)
+                                    : const Color(0xFFE8F0EA),
+                              ),
+                              child: Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.notifications_outlined,
+                                    size: 20,
+                                    color: isDark
+                                        ? Colors.white
+                                        : const Color(0xFF1B4D2E),
+                                  ),
+                                  if (ref.watch(
+                                        unreadNotificationsCountProvider,
+                                      ) >
+                                      0)
+                                    Positioned(
+                                      top: 9,
+                                      right: 9,
+                                      child: Container(
+                                        width: 7,
+                                        height: 7,
+                                        decoration: const BoxDecoration(
+                                          color: Color(0xFFFBBF24),
+                                          shape: BoxShape.circle,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          // Switch to Instructor Mode Pill Button
+                          InkWell(
+                            onTap: () => _showSwitchRoleDialog(context),
+                            borderRadius: BorderRadius.circular(20),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 7,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF1B4D2E),
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.12),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: const [
+                                  Icon(
+                                    Icons.swap_horiz_rounded,
+                                    size: 16,
+                                    color: Color(0xFF86EFAC),
+                                  ),
+                                  SizedBox(width: 5),
+                                  Text(
+                                    'Instructor',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 0.2,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                  Row(
-                    children: [
-                      // Notification Bell
-                      InkWell(
-                        onTap: () => context.push(RouteNames.notifications),
-                        borderRadius: BorderRadius.circular(9999),
-                        child: Container(
-                          width: 38,
-                          height: 38,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: isDark
-                                ? Colors.white.withValues(alpha: 0.08)
-                                : const Color(0xFFE8F0EA),
+                ),
+
+                const SizedBox(height: 14),
+
+                // ── 2. Top Interactive Swiping Banner Carousel ───────────────────
+                // Priority 1: Backend dynamic banners from GET /api/v1/banners/
+                // Priority 2: Fallback to ambient welcome landscape + top catalog courses
+                Builder(
+                  builder: (context) {
+                    final apiBanners = ref
+                        .watch(homeBannersProvider)
+                        .maybeWhen(
+                          data: (banners) => banners,
+                          orElse: () => const <HomeBannerItem>[],
+                        );
+                    final fallbackCourses = ref
+                        .watch(studentCatalogProvider(const CatalogQuery()))
+                        .maybeWhen(
+                          data: (courses) => courses.take(6).toList(),
+                          orElse: () => const <CourseList>[],
+                        );
+
+                    return HomeBannerCarousel(
+                      apiBanners: apiBanners,
+                      fallbackCourses: fallbackCourses,
+                      userName: firstName,
+                    );
+                  },
+                ),
+
+                // ── 3. Content Body on Light/Dark Canvas ───────────────────────
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 12,
+                  ),
+                  child: ResponsiveContentConstraint(
+                    maxWidth: 1040,
+                    padding: EdgeInsets.zero,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // ── "Browse by category" Section with matching graphic badges ─────
+                        if (_searchQuery.isEmpty) ...[
+                          Text(
+                            tr(ref, 'Browse by category'),
+                            style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: -0.3,
+                              color: isDark
+                                  ? Colors.white
+                                  : const Color(0xFF1B4D2E),
+                            ),
                           ),
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              Icon(
-                                Icons.notifications_outlined,
-                                size: 20,
-                                color: isDark ? Colors.white : const Color(0xFF1B4D2E),
-                              ),
-                              if (ref.watch(unreadNotificationsCountProvider) > 0)
-                                Positioned(
-                                  top: 9,
-                                  right: 9,
-                                  child: Container(
-                                    width: 7,
-                                    height: 7,
-                                    decoration: const BoxDecoration(
-                                      color: Color(0xFFFBBF24),
-                                      shape: BoxShape.circle,
+                          const SizedBox(height: 12),
+                          ref
+                              .watch(studentCategoriesProvider)
+                              .when(
+                                data: (categories) {
+                                  if (categories.isEmpty) {
+                                    return const SizedBox.shrink();
+                                  }
+                                  return SizedBox(
+                                    height: 98,
+                                    child: ListView.separated(
+                                      scrollDirection: Axis.horizontal,
+                                      itemCount: categories.length,
+                                      separatorBuilder: (_, __) =>
+                                          const SizedBox(width: 14),
+                                      itemBuilder: (context, index) {
+                                        final cat = categories[index];
+                                        final iconData = _getCategoryIcon(
+                                          cat.name,
+                                          cat.slug,
+                                        );
+                                        final visual = _getCategoryVisual(
+                                          cat.name,
+                                          cat.slug,
+                                          isDark,
+                                          index,
+                                        );
+
+                                        return InkWell(
+                                          onTap: () {
+                                            context.push(
+                                              '/farmer/explore?category=${cat.id}',
+                                            );
+                                          },
+                                          borderRadius: BorderRadius.circular(
+                                            18,
+                                          ),
+                                          child: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Container(
+                                                width: 62,
+                                                height: 62,
+                                                decoration: BoxDecoration(
+                                                  gradient: LinearGradient(
+                                                    colors: visual.gradient,
+                                                    begin: Alignment.topLeft,
+                                                    end: Alignment.bottomRight,
+                                                  ),
+                                                  borderRadius:
+                                                      BorderRadius.circular(18),
+                                                  border: Border.all(
+                                                    color: visual.borderColor,
+                                                    width: 1.2,
+                                                  ),
+                                                  boxShadow: [
+                                                    BoxShadow(
+                                                      color: visual.shadowColor,
+                                                      blurRadius: 8,
+                                                      offset: const Offset(
+                                                        0,
+                                                        3,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                                child: Center(
+                                                  child: Icon(
+                                                    iconData,
+                                                    size: 26,
+                                                    color: visual.iconColor,
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(height: 6),
+                                              SizedBox(
+                                                width: 68,
+                                                child: Text(
+                                                  cat.name,
+                                                  style: TextStyle(
+                                                    fontSize: 11.5,
+                                                    fontWeight: FontWeight.w600,
+                                                    letterSpacing: -0.2,
+                                                    color: isDark
+                                                        ? Colors.white
+                                                              .withValues(
+                                                                alpha: 0.9,
+                                                              )
+                                                        : const Color(
+                                                            0xFF1E293B,
+                                                          ),
+                                                  ),
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  textAlign: TextAlign.center,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  );
+                                },
+                                loading: () => SizedBox(
+                                  height: 98,
+                                  child: ListView.separated(
+                                    scrollDirection: Axis.horizontal,
+                                    itemCount: 4,
+                                    separatorBuilder: (_, __) =>
+                                        const SizedBox(width: 14),
+                                    itemBuilder: (context, index) => Column(
+                                      children: const [
+                                        ShimmerContainer(
+                                          width: 62,
+                                          height: 62,
+                                          borderRadius: 16,
+                                        ),
+                                        SizedBox(height: 6),
+                                        ShimmerContainer(
+                                          width: 48,
+                                          height: 10,
+                                          borderRadius: 4,
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      // Switch to Instructor Mode Pill Button
-                      InkWell(
-                        onTap: () => _showSwitchRoleDialog(context),
-                        borderRadius: BorderRadius.circular(20),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF1B4D2E),
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.12),
-                                blurRadius: 6,
-                                offset: const Offset(0, 2),
+                                error: (_, __) => const SizedBox.shrink(),
                               ),
-                            ],
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: const [
-                              Icon(
-                                Icons.swap_horiz_rounded,
-                                size: 16,
-                                color: Color(0xFF86EFAC),
+                          const SizedBox(height: 20),
+                        ],
+
+                        // ── "Featured courses" Section Header ────────────────────
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Text(
+                              _searchQuery.isNotEmpty
+                                  ? '${tr(ref, "Search Results")} (${tr(ref, "Courses")})'
+                                  : tr(ref, 'Featured courses'),
+                              style: TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: -0.3,
+                                color: isDark
+                                    ? Colors.white
+                                    : const Color(0xFF1B4D2E),
                               ),
-                              SizedBox(width: 5),
-                              Text(
-                                'Instructor',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 0.2,
+                            ),
+                            InkWell(
+                              onTap: () => context.go(RouteNames.explore),
+                              borderRadius: BorderRadius.circular(6),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 4,
+                                  vertical: 2,
                                 ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 14),
-
-            // ── 2. Top Interactive Swiping Banner Carousel ───────────────────
-            // Slide 0: High-aesthetic ambient welcome landscape
-            // Slide 1..N: Featured Courses (Tap opens modal with View Course)
-            ref.watch(studentCatalogProvider(const CatalogQuery())).maybeWhen(
-              data: (courses) => HomeBannerCarousel(
-                courses: courses.take(6).toList(),
-                userName: firstName,
-              ),
-              orElse: () => HomeBannerCarousel(
-                courses: const [],
-                userName: firstName,
-              ),
-            ),
-
-            // ── 3. Content Body on Light/Dark Canvas ───────────────────────
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-              child: ResponsiveContentConstraint(
-                maxWidth: 1040,
-                padding: EdgeInsets.zero,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // ── "Browse by category" Section with matching graphic badges ─────
-                    if (_searchQuery.isEmpty) ...[
-                      Text(
-                        tr(ref, 'Browse by category'),
-                        style: TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: -0.3,
-                          color: isDark
-                              ? Colors.white
-                              : const Color(0xFF1B4D2E),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      ref
-                          .watch(studentCategoriesProvider)
-                          .when(
-                            data: (categories) {
-                              if (categories.isEmpty) {
-                                return const SizedBox.shrink();
-                              }
-                              return SizedBox(
-                                height: 98,
-                                child: ListView.separated(
-                                  scrollDirection: Axis.horizontal,
-                                  itemCount: categories.length,
-                                  separatorBuilder: (_, __) =>
-                                      const SizedBox(width: 14),
-                                  itemBuilder: (context, index) {
-                                    final cat = categories[index];
-                                    final iconData = _getCategoryIcon(cat.name, cat.slug);
-                                    final visual = _getCategoryVisual(cat.name, cat.slug, isDark, index);
-
-                                    return InkWell(
-                                      onTap: () {
-                                        context.push(
-                                          '/farmer/explore?category=${cat.id}',
-                                        );
-                                      },
-                                      borderRadius: BorderRadius.circular(18),
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Container(
-                                            width: 62,
-                                            height: 62,
-                                            decoration: BoxDecoration(
-                                              gradient: LinearGradient(
-                                                colors: visual.gradient,
-                                                begin: Alignment.topLeft,
-                                                end: Alignment.bottomRight,
-                                              ),
-                                              borderRadius: BorderRadius.circular(18),
-                                              border: Border.all(
-                                                color: visual.borderColor,
-                                                width: 1.2,
-                                              ),
-                                              boxShadow: [
-                                                BoxShadow(
-                                                  color: visual.shadowColor,
-                                                  blurRadius: 8,
-                                                  offset: const Offset(0, 3),
-                                                ),
-                                              ],
-                                            ),
-                                            child: Center(
-                                              child: Icon(
-                                                iconData,
-                                                size: 26,
-                                                color: visual.iconColor,
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(height: 6),
-                                          SizedBox(
-                                            width: 68,
-                                            child: Text(
-                                              cat.name,
-                                              style: TextStyle(
-                                                fontSize: 11.5,
-                                                fontWeight: FontWeight.w600,
-                                                letterSpacing: -0.2,
-                                                color: isDark
-                                                    ? Colors.white.withValues(alpha: 0.9)
-                                                    : const Color(0xFF1E293B),
-                                              ),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                              textAlign: TextAlign.center,
-                                            ),
-                                          ),
-                                        ],
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      tr(ref, 'See all'),
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: isDark
+                                            ? const Color(0xFF4ADE80)
+                                            : const Color(0xFF1B4D2E),
                                       ),
-                                    );
-                                  },
-                                ),
-                              );
-                            },
-                            loading: () => SizedBox(
-                              height: 98,
-                              child: ListView.separated(
-                                scrollDirection: Axis.horizontal,
-                                itemCount: 4,
-                                separatorBuilder: (_, __) =>
-                                    const SizedBox(width: 14),
-                                itemBuilder: (context, index) => Column(
-                                  children: const [
-                                    ShimmerContainer(
-                                      width: 62,
-                                      height: 62,
-                                      borderRadius: 16,
                                     ),
-                                    SizedBox(height: 6),
-                                    ShimmerContainer(
-                                      width: 48,
-                                      height: 10,
-                                      borderRadius: 4,
+                                    const SizedBox(width: 2),
+                                    Icon(
+                                      Icons.arrow_forward_rounded,
+                                      size: 14,
+                                      color: isDark
+                                          ? const Color(0xFF4ADE80)
+                                          : const Color(0xFF1B4D2E),
                                     ),
                                   ],
                                 ),
                               ),
                             ),
-                            error: (_, __) => const SizedBox.shrink(),
-                          ),
-                      const SizedBox(height: 20),
-                    ],
-
-                    // ── "Featured courses" Section Header ────────────────────
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Text(
-                          _searchQuery.isNotEmpty
-                              ? '${tr(ref, "Search Results")} (${tr(ref, "Courses")})'
-                              : tr(ref, 'Featured courses'),
-                          style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: -0.3,
-                            color: isDark
-                                ? Colors.white
-                                : const Color(0xFF1B4D2E),
-                          ),
+                          ],
                         ),
-                        InkWell(
-                          onTap: () => context.go(RouteNames.explore),
-                          borderRadius: BorderRadius.circular(6),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 4,
-                              vertical: 2,
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  tr(ref, 'See all'),
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF1B4D2E),
-                                  ),
-                                ),
-                                const SizedBox(width: 2),
-                                Icon(
-                                  Icons.arrow_forward_rounded,
-                                  size: 14,
-                                  color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF1B4D2E),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 14),
-                    ref
-                        .watch(
-                          studentCatalogProvider(
-                            CatalogQuery(search: _searchQuery),
-                          ),
-                        )
-                        .when(
-                          data: (courses) {
-                            if (courses.isEmpty) {
-                              return Padding(
+                        const SizedBox(height: 14),
+                        ref
+                            .watch(
+                              studentCatalogProvider(
+                                CatalogQuery(search: _searchQuery),
+                              ),
+                            )
+                            .when(
+                              data: (courses) {
+                                if (courses.isEmpty) {
+                                  return Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 30,
+                                    ),
+                                    child: Center(
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            Icons.search_off_rounded,
+                                            size: 44,
+                                            color: AppColors.inkSoft.withValues(
+                                              alpha: 0.5,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 10),
+                                          Text(
+                                            _searchQuery.isNotEmpty
+                                                ? 'No courses found for "$_searchQuery"'
+                                                : 'No courses available right now',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600,
+                                              color: isDark
+                                                  ? Colors.white70
+                                                  : AppColors
+                                                        .editorialOnSurface,
+                                            ),
+                                            textAlign: TextAlign.center,
+                                          ),
+                                          if (_searchQuery.isNotEmpty) ...[
+                                            const SizedBox(height: 8),
+                                            TextButton(
+                                              onPressed: () {
+                                                _searchController.clear();
+                                                setState(() {
+                                                  _searchQuery = '';
+                                                });
+                                              },
+                                              child: Text(
+                                                tr(ref, 'Clear Search'),
+                                              ),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                }
+                                return Column(
+                                  children: [
+                                    for (
+                                      int i = 0;
+                                      i < courses.length;
+                                      i++
+                                    ) ...[
+                                      _CourseCard(course: courses[i], index: i),
+                                      if (i < courses.length - 1)
+                                        const SizedBox(height: 14),
+                                    ],
+                                  ],
+                                );
+                              },
+                              loading: () => Column(
+                                children: const [
+                                  ShimmerCourseCard(),
+                                  SizedBox(height: 14),
+                                  ShimmerCourseCard(),
+                                ],
+                              ),
+                              error: (err, _) => Padding(
                                 padding: const EdgeInsets.symmetric(
-                                  vertical: 30,
+                                  vertical: 24,
                                 ),
                                 child: Center(
                                   child: Column(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Icon(
-                                        Icons.search_off_rounded,
-                                        size: 44,
-                                        color: AppColors.inkSoft.withValues(
-                                          alpha: 0.5,
-                                        ),
+                                      const Icon(
+                                        Icons.wifi_off_rounded,
+                                        size: 40,
+                                        color: Colors.orange,
                                       ),
                                       const SizedBox(height: 10),
                                       Text(
-                                        _searchQuery.isNotEmpty
-                                            ? 'No courses found for "$_searchQuery"'
-                                            : 'No courses available right now',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600,
-                                          color: isDark
-                                              ? Colors.white70
-                                              : AppColors.editorialOnSurface,
+                                        tr(
+                                          ref,
+                                          'Unable to load courses. Please check your connection.',
                                         ),
                                         textAlign: TextAlign.center,
-                                      ),
-                                      if (_searchQuery.isNotEmpty) ...[
-                                        const SizedBox(height: 8),
-                                        TextButton(
-                                          onPressed: () {
-                                            _searchController.clear();
-                                            setState(() {
-                                              _searchQuery = '';
-                                            });
-                                          },
-                                          child: Text(tr(ref, 'Clear Search')),
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: isDark
+                                              ? Colors.white70
+                                              : AppColors.editorialOutline,
                                         ),
-                                      ],
+                                      ),
+                                      const SizedBox(height: 12),
+                                      ElevatedButton.icon(
+                                        icon: const Icon(
+                                          Icons.refresh_rounded,
+                                          size: 16,
+                                        ),
+                                        label: Text(tr(ref, 'Try Again')),
+                                        onPressed: () => ref.invalidate(
+                                          studentCatalogProvider(
+                                            CatalogQuery(search: _searchQuery),
+                                          ),
+                                        ),
+                                      ),
                                     ],
                                   ),
                                 ),
-                              );
-                            }
-                            return Column(
-                              children: [
-                                for (int i = 0; i < courses.length; i++) ...[
-                                  _CourseCard(course: courses[i], index: i),
-                                  if (i < courses.length - 1)
-                                    const SizedBox(height: 14),
+                              ),
+                            ),
+                        const SizedBox(height: 28),
+
+                        // ── Verified Faculty Showcase (Top Agricultural Instructors) ──
+                        ref
+                            .watch(topInstructorsProvider)
+                            .when(
+                              data: (instructors) {
+                                if (instructors.isEmpty) {
+                                  return const SizedBox.shrink();
+                                }
+                                return Column(
+                                  children: [
+                                    _TopInstructorsShowcase(
+                                      instructors: instructors,
+                                    ),
+                                    const SizedBox(height: 28),
+                                  ],
+                                );
+                              },
+                              loading: () => Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const ShimmerContainer(
+                                    width: 130,
+                                    height: 22,
+                                    borderRadius: 12,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  const ShimmerContainer(
+                                    width: 250,
+                                    height: 24,
+                                  ),
+                                  const SizedBox(height: 14),
+                                  SizedBox(
+                                    height: 240,
+                                    child: ListView.separated(
+                                      scrollDirection: Axis.horizontal,
+                                      itemCount: 2,
+                                      separatorBuilder: (_, __) =>
+                                          const SizedBox(width: 14),
+                                      itemBuilder: (context, index) =>
+                                          const ShimmerContainer(
+                                            width: 220,
+                                            height: 240,
+                                            borderRadius: 18,
+                                          ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 28),
                                 ],
-                              ],
-                            );
-                          },
-                          loading: () => Column(
-                            children: const [
-                              ShimmerCourseCard(),
-                              SizedBox(height: 14),
-                              ShimmerCourseCard(),
+                              ),
+                              error: (err, _) => const SizedBox.shrink(),
+                            ),
+
+                        // ── Latest Agriculture News Carousel ───────────────────────
+                        const HomeNewsCarousel(),
+                        const SizedBox(height: 28),
+
+                        // ── 7. Daily Agricultural Tip (Stitch Exact Match) ───────────
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? AppColors.surfaceContainerLowDark
+                                : AppColors.editorialSurfaceContainerLow,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(
+                                  alpha: isDark ? 0.2 : 0.03,
+                                ),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
                             ],
                           ),
-                          error: (err, _) => Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 24),
-                            child: Center(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
-                                  const Icon(
-                                    Icons.wifi_off_rounded,
-                                    size: 40,
-                                    color: Colors.orange,
+                                  Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.lightbulb_outline_rounded,
+                                        size: 18,
+                                        color: AppColors.editorialSecondary,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        tr(ref, 'DAILY AGRICULTURAL TIP'),
+                                        style: const TextStyle(
+                                          fontSize: 10.5,
+                                          fontWeight: FontWeight.bold,
+                                          letterSpacing: 0.6,
+                                          color: AppColors.editorialSecondary,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                  const SizedBox(height: 10),
+                                  Text(
+                                    'Vol. 18',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: isDark
+                                          ? Colors.white60
+                                          : AppColors.editorialOnSurfaceVariant,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              Container(
+                                padding: const EdgeInsets.only(left: 10),
+                                decoration: BoxDecoration(
+                                  border: Border(
+                                    left: BorderSide(
+                                      color: AppColors.editorialSecondary
+                                          .withValues(alpha: 0.5),
+                                      width: 2.5,
+                                    ),
+                                  ),
+                                ),
+                                child: Text(
+                                  tr(
+                                    ref,
+                                    'Optimizing drip line pressure to 1.0–1.5 bar minimizes emitter clogging and ensures uniform micro-nutrient dissemination across lateral orchard rows.',
+                                  ),
+                                  style: TextStyle(
+                                    fontSize: 13.5,
+                                    fontStyle: FontStyle.italic,
+                                    height: 1.45,
+                                    color: isDark
+                                        ? Colors.white
+                                        : AppColors.editorialOnSurface,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
                                   Text(
                                     tr(
                                       ref,
-                                      'Unable to load courses. Please check your connection.',
+                                      'Prof. R. Deshmukh • Soil & Water Div.',
                                     ),
-                                    textAlign: TextAlign.center,
                                     style: TextStyle(
-                                      fontSize: 13,
+                                      fontSize: 11,
                                       color: isDark
-                                          ? Colors.white70
-                                          : AppColors.editorialOutline,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  ElevatedButton.icon(
-                                    icon: const Icon(
-                                      Icons.refresh_rounded,
-                                      size: 16,
-                                    ),
-                                    label: Text(tr(ref, 'Try Again')),
-                                    onPressed: () => ref.invalidate(
-                                      studentCatalogProvider(
-                                        CatalogQuery(search: _searchQuery),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                    const SizedBox(height: 28),
-
-                    // ── Verified Faculty Showcase (Top Agricultural Instructors) ──
-                    ref
-                        .watch(topInstructorsProvider)
-                        .when(
-                          data: (instructors) {
-                            if (instructors.isEmpty) {
-                              return const SizedBox.shrink();
-                            }
-                            return Column(
-                              children: [
-                                _TopInstructorsShowcase(
-                                  instructors: instructors,
-                                ),
-                                const SizedBox(height: 28),
-                              ],
-                            );
-                          },
-                          loading: () => Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const ShimmerContainer(
-                                width: 130,
-                                height: 22,
-                                borderRadius: 12,
-                              ),
-                              const SizedBox(height: 8),
-                              const ShimmerContainer(width: 250, height: 24),
-                              const SizedBox(height: 14),
-                              SizedBox(
-                                height: 240,
-                                child: ListView.separated(
-                                  scrollDirection: Axis.horizontal,
-                                  itemCount: 2,
-                                  separatorBuilder: (_, __) =>
-                                      const SizedBox(width: 14),
-                                  itemBuilder: (context, index) =>
-                                      const ShimmerContainer(
-                                        width: 220,
-                                        height: 240,
-                                        borderRadius: 18,
-                                      ),
-                                ),
-                              ),
-                              const SizedBox(height: 28),
-                            ],
-                          ),
-                          error: (err, _) => const SizedBox.shrink(),
-                        ),
-
-                    // ── Latest Agriculture News Carousel ───────────────────────
-                    const HomeNewsCarousel(),
-                    const SizedBox(height: 28),
-
-                    // ── 7. Daily Agricultural Tip (Stitch Exact Match) ───────────
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? AppColors.surfaceContainerLowDark
-                            : AppColors.editorialSurfaceContainerLow,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(
-                              alpha: isDark ? 0.2 : 0.03,
-                            ),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.lightbulb_outline_rounded,
-                                    size: 18,
-                                    color: AppColors.editorialSecondary,
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    tr(ref, 'DAILY AGRICULTURAL TIP'),
-                                    style: const TextStyle(
-                                      fontSize: 10.5,
-                                      fontWeight: FontWeight.bold,
-                                      letterSpacing: 0.6,
-                                      color: AppColors.editorialSecondary,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Text(
-                                'Vol. 18',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: isDark
-                                      ? Colors.white60
-                                      : AppColors.editorialOnSurfaceVariant,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 10),
-                          Container(
-                            padding: const EdgeInsets.only(left: 10),
-                            decoration: BoxDecoration(
-                              border: Border(
-                                left: BorderSide(
-                                  color: AppColors.editorialSecondary
-                                      .withValues(alpha: 0.5),
-                                  width: 2.5,
-                                ),
-                              ),
-                            ),
-                            child: Text(
-                              tr(ref, 'Optimizing drip line pressure to 1.0–1.5 bar minimizes emitter clogging and ensures uniform micro-nutrient dissemination across lateral orchard rows.'),
-                              style: TextStyle(
-                                fontSize: 13.5,
-                                fontStyle: FontStyle.italic,
-                                height: 1.45,
-                                color: isDark
-                                    ? Colors.white
-                                    : AppColors.editorialOnSurface,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                tr(ref, 'Prof. R. Deshmukh • Soil & Water Div.'),
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: isDark
-                                      ? Colors.white60
-                                      : AppColors.editorialOnSurfaceVariant,
-                                ),
-                              ),
-                              InkWell(
-                                onTap: () {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        tr(ref, 'Tip saved to your agriculture notes'),
-                                      ),
-                                      duration: const Duration(seconds: 2),
-                                    ),
-                                  );
-                                },
-                                borderRadius: BorderRadius.circular(4),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      Icons.bookmark_border_rounded,
-                                      size: 16,
-                                      color: isDark
-                                          ? Colors.white70
+                                          ? Colors.white60
                                           : AppColors.editorialOnSurfaceVariant,
                                     ),
-                                    const SizedBox(width: 2),
-                                    Text(
-                                      tr(ref, 'Save'),
-                                      style: TextStyle(
-                                        fontSize: 11.5,
-                                        fontWeight: FontWeight.w600,
-                                        color: isDark
-                                            ? Colors.white70
-                                            : AppColors
-                                                  .editorialOnSurfaceVariant,
-                                      ),
+                                  ),
+                                  InkWell(
+                                    onTap: () {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            tr(
+                                              ref,
+                                              'Tip saved to your agriculture notes',
+                                            ),
+                                          ),
+                                          duration: const Duration(seconds: 2),
+                                        ),
+                                      );
+                                    },
+                                    borderRadius: BorderRadius.circular(4),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.bookmark_border_rounded,
+                                          size: 16,
+                                          color: isDark
+                                              ? Colors.white70
+                                              : AppColors
+                                                    .editorialOnSurfaceVariant,
+                                        ),
+                                        const SizedBox(width: 2),
+                                        Text(
+                                          tr(ref, 'Save'),
+                                          style: TextStyle(
+                                            fontSize: 11.5,
+                                            fontWeight: FontWeight.w600,
+                                            color: isDark
+                                                ? Colors.white70
+                                                : AppColors
+                                                      .editorialOnSurfaceVariant,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(height: 24),
+                      ],
                     ),
-                    const SizedBox(height: 24),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             ),
-          ],
+          ),
         ),
-      ),
-    ),
-    const FloatingOfferBadge(),
-  ],
-);
+        const FloatingOfferBadge(),
+      ],
+    );
   }
 }
 
@@ -844,66 +937,126 @@ class _CategoryVisualConfig {
 
 IconData _getCategoryIcon(String name, [String? slug]) {
   final key = '${name.toLowerCase()} ${slug?.toLowerCase() ?? ''}';
-  if (key.contains('crop') || key.contains('agronomy') || key.contains('फसल') || key.contains('पिके')) {
+  if (key.contains('crop') ||
+      key.contains('agronomy') ||
+      key.contains('फसल') ||
+      key.contains('पिके')) {
     return Icons.agriculture_rounded;
-  } else if (key.contains('organic') || key.contains('sustainable') || key.contains('जैविक') || key.contains('सेंद्रिय')) {
+  } else if (key.contains('organic') ||
+      key.contains('sustainable') ||
+      key.contains('जैविक') ||
+      key.contains('सेंद्रिय')) {
     return Icons.eco_rounded;
-  } else if (key.contains('water') || key.contains('irrigat') || key.contains('सिंचाई') || key.contains('सिंचन')) {
+  } else if (key.contains('water') ||
+      key.contains('irrigat') ||
+      key.contains('सिंचाई') ||
+      key.contains('सिंचन')) {
     return Icons.water_drop_rounded;
-  } else if (key.contains('pest') || key.contains('disease') || key.contains('protect') || key.contains('कीट') || key.contains('कीड')) {
+  } else if (key.contains('pest') ||
+      key.contains('disease') ||
+      key.contains('protect') ||
+      key.contains('कीट') ||
+      key.contains('कीड')) {
     return Icons.shield_outlined;
-  } else if (key.contains('dairy') || key.contains('cow') || key.contains('milk') || key.contains('दुग्ध')) {
+  } else if (key.contains('dairy') ||
+      key.contains('cow') ||
+      key.contains('milk') ||
+      key.contains('दुग्ध')) {
     return Icons.local_drink_rounded;
-  } else if (key.contains('livestock') || key.contains('animal') || key.contains('husbandry') || key.contains('पशुधन')) {
+  } else if (key.contains('livestock') ||
+      key.contains('animal') ||
+      key.contains('husbandry') ||
+      key.contains('पशुधन')) {
     return Icons.pets_rounded;
-  } else if (key.contains('poultry') || key.contains('मुर्गी') || key.contains('कुक्कुट')) {
+  } else if (key.contains('poultry') ||
+      key.contains('मुर्गी') ||
+      key.contains('कुक्कुट')) {
     return Icons.egg_outlined;
-  } else if (key.contains('aquaculture') || key.contains('fish') || key.contains('मछली') || key.contains('मत्स्य')) {
+  } else if (key.contains('aquaculture') ||
+      key.contains('fish') ||
+      key.contains('मछली') ||
+      key.contains('मत्स्य')) {
     return Icons.set_meal_rounded;
-  } else if (key.contains('horticult') || key.contains('fruit') || key.contains('veget') || key.contains('बागवानी') || key.contains('फलोत्पादन')) {
+  } else if (key.contains('horticult') ||
+      key.contains('fruit') ||
+      key.contains('veget') ||
+      key.contains('बागवानी') ||
+      key.contains('फलोत्पादन')) {
     return Icons.local_florist_rounded;
-  } else if (key.contains('agroforestry') || key.contains('forestry') || key.contains('वानिकी') || key.contains('वनशेती')) {
+  } else if (key.contains('agroforestry') ||
+      key.contains('forestry') ||
+      key.contains('वानिकी') ||
+      key.contains('वनशेती')) {
     return Icons.park_rounded;
-  } else if (key.contains('food') || key.contains('process') || key.contains('storage') || key.contains('खाद्य') || key.contains('अन्न')) {
+  } else if (key.contains('food') ||
+      key.contains('process') ||
+      key.contains('storage') ||
+      key.contains('खाद्य') ||
+      key.contains('अन्न')) {
     return Icons.inventory_2_outlined;
-  } else if (key.contains('business') || key.contains('market') || key.contains('व्यवसाय') || key.contains('विपणन')) {
+  } else if (key.contains('business') ||
+      key.contains('market') ||
+      key.contains('व्यवसाय') ||
+      key.contains('विपणन')) {
     return Icons.storefront_rounded;
-  } else if (key.contains('precision') || key.contains('tech') || key.contains('machin') || key.contains('यंत्र') || key.contains('अवजारे')) {
+  } else if (key.contains('precision') ||
+      key.contains('tech') ||
+      key.contains('machin') ||
+      key.contains('यंत्र') ||
+      key.contains('अवजारे')) {
     return Icons.precision_manufacturing_rounded;
-  } else if (key.contains('soil') || key.contains('मृदा') || key.contains('माती')) {
+  } else if (key.contains('soil') ||
+      key.contains('मृदा') ||
+      key.contains('माती')) {
     return Icons.landscape_rounded;
-  } else if (key.contains('climate') || key.contains('weather') || key.contains('मौसम')) {
+  } else if (key.contains('climate') ||
+      key.contains('weather') ||
+      key.contains('मौसम')) {
     return Icons.wb_sunny_rounded;
   }
   return Icons.spa_rounded;
 }
 
-_CategoryVisualConfig _getCategoryVisual(String name, String? slug, bool isDark, int index) {
+_CategoryVisualConfig _getCategoryVisual(
+  String name,
+  String? slug,
+  bool isDark,
+  int index,
+) {
   final key = '${name.toLowerCase()} ${slug?.toLowerCase() ?? ''}';
 
   if (isDark) {
-    if (key.contains('crop') || key.contains('agronomy') || key.contains('organic') || key.contains('sustainable')) {
+    if (key.contains('crop') ||
+        key.contains('agronomy') ||
+        key.contains('organic') ||
+        key.contains('sustainable')) {
       return _CategoryVisualConfig(
         gradient: [const Color(0xFF143E24), const Color(0xFF1B4D2E)],
         borderColor: const Color(0xFF22C55E).withValues(alpha: 0.35),
         shadowColor: const Color(0xFF22C55E).withValues(alpha: 0.15),
         iconColor: const Color(0xFF86EFAC),
       );
-    } else if (key.contains('water') || key.contains('irrigat') || key.contains('aquaculture')) {
+    } else if (key.contains('water') ||
+        key.contains('irrigat') ||
+        key.contains('aquaculture')) {
       return _CategoryVisualConfig(
         gradient: [const Color(0xFF0F314D), const Color(0xFF134E74)],
         borderColor: const Color(0xFF38BDF8).withValues(alpha: 0.35),
         shadowColor: const Color(0xFF38BDF8).withValues(alpha: 0.15),
         iconColor: const Color(0xFF7DD3FC),
       );
-    } else if (key.contains('pest') || key.contains('disease') || key.contains('protect')) {
+    } else if (key.contains('pest') ||
+        key.contains('disease') ||
+        key.contains('protect')) {
       return _CategoryVisualConfig(
         gradient: [const Color(0xFF422020), const Color(0xFF6B2D2D)],
         borderColor: const Color(0xFFF87171).withValues(alpha: 0.35),
         shadowColor: const Color(0xFFF87171).withValues(alpha: 0.15),
         iconColor: const Color(0xFFFCA5A5),
       );
-    } else if (key.contains('dairy') || key.contains('livestock') || key.contains('poultry')) {
+    } else if (key.contains('dairy') ||
+        key.contains('livestock') ||
+        key.contains('poultry')) {
       return _CategoryVisualConfig(
         gradient: [const Color(0xFF3E2D12), const Color(0xFF5E431B)],
         borderColor: const Color(0xFFFBBF24).withValues(alpha: 0.35),
@@ -935,28 +1088,37 @@ _CategoryVisualConfig _getCategoryVisual(String name, String? slug, bool isDark,
   }
 
   // Light Mode (Clean, subtle pastel tints with crisp professional icon colors)
-  if (key.contains('crop') || key.contains('agronomy') || key.contains('organic') || key.contains('sustainable')) {
+  if (key.contains('crop') ||
+      key.contains('agronomy') ||
+      key.contains('organic') ||
+      key.contains('sustainable')) {
     return _CategoryVisualConfig(
       gradient: [const Color(0xFFF0FDF4), const Color(0xFFDCFCE7)],
       borderColor: const Color(0xFFBBF7D0),
       shadowColor: const Color(0xFF16A34A).withValues(alpha: 0.10),
       iconColor: const Color(0xFF15803D),
     );
-  } else if (key.contains('water') || key.contains('irrigat') || key.contains('aquaculture')) {
+  } else if (key.contains('water') ||
+      key.contains('irrigat') ||
+      key.contains('aquaculture')) {
     return _CategoryVisualConfig(
       gradient: [const Color(0xFFF0F9FF), const Color(0xFFE0F2FE)],
       borderColor: const Color(0xFFBAE6FD),
       shadowColor: const Color(0xFF0284C7).withValues(alpha: 0.10),
       iconColor: const Color(0xFF0369A1),
     );
-  } else if (key.contains('pest') || key.contains('disease') || key.contains('protect')) {
+  } else if (key.contains('pest') ||
+      key.contains('disease') ||
+      key.contains('protect')) {
     return _CategoryVisualConfig(
       gradient: [const Color(0xFFFEF2F2), const Color(0xFFFEE2E2)],
       borderColor: const Color(0xFFFECACA),
       shadowColor: const Color(0xFFDC2626).withValues(alpha: 0.10),
       iconColor: const Color(0xFFB91C1C),
     );
-  } else if (key.contains('dairy') || key.contains('livestock') || key.contains('poultry')) {
+  } else if (key.contains('dairy') ||
+      key.contains('livestock') ||
+      key.contains('poultry')) {
     return _CategoryVisualConfig(
       gradient: [const Color(0xFFFFFBEB), const Color(0xFFFEF3C7)],
       borderColor: const Color(0xFFFDE68A),
@@ -1178,11 +1340,9 @@ class _CourseCard extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.w800,
-                            color: isFree
-                                ? const Color(0xFF1B4D2E)
-                                : (isDark
-                                      ? const Color(0xFF86EFAC)
-                                      : const Color(0xFF1B4D2E)),
+                            color: isDark
+                                ? const Color(0xFF86EFAC)
+                                : const Color(0xFF1B4D2E),
                           ),
                         ),
                       ],

@@ -14050,6 +14050,8 @@ class UserProfile {
     this.areasOfInterest,
     this.dateJoined,
     this.instructorProfile,
+    this.availableRoles,
+    this.canTeach,
   });
 
   factory UserProfile.fromJson(Map<String, dynamic> json) =>
@@ -14086,6 +14088,10 @@ class UserProfile {
   final DateTime? dateJoined;
   @JsonKey(name: 'instructor_profile')
   final dynamic instructorProfile;
+  @JsonKey(name: 'available_roles')
+  final List<String>? availableRoles;
+  @JsonKey(name: 'can_teach')
+  final bool? canTeach;
   static const fromJsonFactory = _$UserProfileFromJson;
 
   @override

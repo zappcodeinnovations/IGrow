@@ -6,7 +6,8 @@ import 'package:http/http.dart' as http;
 import 'package:chopper/chopper.dart' as chopper;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/network/api_client.dart';
-import '../../core/network/swagger_generated/app_api.enums.swagger.dart' as enums;
+import '../../core/network/swagger_generated/app_api.enums.swagger.dart'
+    as enums;
 import '../../core/network/api_exception.dart';
 import '../../core/network/token_storage.dart';
 import '../../core/services/notification_service.dart';
@@ -16,7 +17,11 @@ import '../models/user_role.dart';
 
 abstract class AuthRepository {
   Future<UserModel?> getCurrentUser({bool forceRefresh = false});
-  Future<UserModel> login({required String email, required String password, String? expectedRole});
+  Future<UserModel> login({
+    required String email,
+    required String password,
+    String? expectedRole,
+  });
   Future<UserModel> socialLogin({
     required String provider,
     required String idToken,
@@ -60,12 +65,15 @@ abstract class AuthRepository {
     required UserRole role,
   });
   Future<UserModel> switchRole(UserRole newRole);
+  Future<UserModel> becomeInstructor();
   Future<void> logout();
   Future<void> deleteAccount();
   Future<bool> hasSession();
-  
+
   Future<UserModel> updateProfile(PatchedUserProfileRequest request);
-  Future<UserModel> updateInstructorProfile(PatchedInstructorProfileRequest request);
+  Future<UserModel> updateInstructorProfile(
+    PatchedInstructorProfileRequest request,
+  );
   Future<UserModel> submitKycProfile({
     required String docType,
     required String docNumber,
@@ -80,10 +88,7 @@ abstract class AuthRepository {
 }
 
 class ApiAuthRepository implements AuthRepository {
-  ApiAuthRepository({
-    required this.appApi,
-    required this.tokenStorage,
-  });
+  ApiAuthRepository({required this.appApi, required this.tokenStorage});
 
   final AppApi appApi;
   final TokenStorage tokenStorage;
@@ -114,7 +119,8 @@ class ApiAuthRepository implements AuthRepository {
 
       if (response.statusCode == 401) {
         final path = response.base.request?.url.path ?? '';
-        final isAuthPath = path.contains('/auth/login') ||
+        final isAuthPath =
+            path.contains('/auth/login') ||
             path.contains('/auth/register') ||
             path.contains('/auth/refresh');
         if (!isAuthPath) {
@@ -137,7 +143,10 @@ class ApiAuthRepository implements AuthRepository {
         }
       }
 
-      throw ApiException(statusCode: response.statusCode, message: errorMessage);
+      throw ApiException(
+        statusCode: response.statusCode,
+        message: errorMessage,
+      );
     }
   }
 
@@ -155,7 +164,9 @@ class ApiAuthRepository implements AuthRepository {
       _handleError(response);
       final profile = response.body;
       if (profile == null) {
-        print('⚠️ [AUTH REPO] getCurrentUser: Empty profile body returned from /auth/me/');
+        print(
+          '⚠️ [AUTH REPO] getCurrentUser: Empty profile body returned from /auth/me/',
+        );
         return null;
       }
       final prefs = await SharedPreferences.getInstance();
@@ -170,15 +181,36 @@ class ApiAuthRepository implements AuthRepository {
       }
 
       final existingGranted = _currentUser?.grantedRoles;
+      final cachedRolesList = prefs.getStringList('user_available_roles');
+      List<UserRole>? cachedAvailableRoles;
+      if (cachedRolesList != null && cachedRolesList.isNotEmpty) {
+        cachedAvailableRoles = cachedRolesList
+            .map((r) => UserRole.fromApiValue(r))
+            .toSet()
+            .toList();
+      }
+
       _currentUser = UserModel.fromApiProfile(
         profile,
-        availableRoles: existingGranted,
+        availableRoles: existingGranted ?? cachedAvailableRoles,
         activeRoleOverride: persistedActiveRole ?? _currentUser?.activeRole,
       );
-      print('👤 [AUTH REPO] getCurrentUser loaded: email=${_currentUser?.email}, role=${_currentUser?.activeRole.name}, verificationStatus=${_currentUser?.verificationStatus}, kycVerified=${_currentUser?.kycVerified}');
+
+      // Persist latest available roles to SharedPreferences for offline / cold restart fallback
+      if (_currentUser != null && _currentUser!.grantedRoles.isNotEmpty) {
+        final rolesToCache = _currentUser!.grantedRoles
+            .map((r) => r.apiValue)
+            .toList();
+        await prefs.setStringList('user_available_roles', rolesToCache);
+      }
+      print(
+        '👤 [AUTH REPO] getCurrentUser loaded: email=${_currentUser?.email}, role=${_currentUser?.activeRole.name}, verificationStatus=${_currentUser?.verificationStatus}, kycVerified=${_currentUser?.kycVerified}',
+      );
       return _currentUser;
     } on ApiException catch (e) {
-      print('❌ [AUTH REPO] getCurrentUser ApiException: ${e.message} (status: ${e.statusCode})');
+      print(
+        '❌ [AUTH REPO] getCurrentUser ApiException: ${e.message} (status: ${e.statusCode})',
+      );
       if (e.isUnauthorized) {
         await tokenStorage.clearTokens();
         TokenStorage.notifySessionExpired();
@@ -198,7 +230,10 @@ class ApiAuthRepository implements AuthRepository {
     String? expectedRole,
   }) async {
     final response = await appApi.apiV1AuthLoginPost(
-      body: CustomTokenObtainPairRequest(email: email.trim(), password: password),
+      body: CustomTokenObtainPairRequest(
+        email: email.trim(),
+        password: password,
+      ),
     );
     _handleError(response);
 
@@ -210,39 +245,7 @@ class ApiAuthRepository implements AuthRepository {
     final access = data['access'] as String;
     final refresh = (data['refresh'] ?? '') as String;
 
-    // Check user profile with temporary token before saving session
-    final meUri = Uri.parse('https://iagrow.zappcode.in/api/v1/auth/me/');
-    final meRes = await http.get(
-      meUri,
-      headers: {
-        'Authorization': 'Bearer $access',
-        'Accept': 'application/json',
-      },
-    );
-
-    if (meRes.statusCode >= 200 && meRes.statusCode < 300) {
-      final meJson = jsonDecode(meRes.body) as Map<String, dynamic>;
-      final roleStr = (meJson['role'] ?? '').toString().toUpperCase();
-      final isInstructorAccount = roleStr == 'INSTRUCTOR';
-
-      if (expectedRole != null && expectedRole.isNotEmpty) {
-        final expectingInstructor = expectedRole.toLowerCase().trim() == 'instructor';
-        if (expectingInstructor && !isInstructorAccount) {
-          throw ApiException.roleMismatch(
-            'This account is registered as a Student. Please switch to Student login.',
-          );
-        } else if (!expectingInstructor && isInstructorAccount) {
-          throw ApiException.roleMismatch(
-            'This account is registered as an Instructor. Please switch to Instructor login.',
-          );
-        }
-      }
-    }
-
-    await tokenStorage.saveTokens(
-      access: access,
-      refresh: refresh,
-    );
+    await tokenStorage.saveTokens(access: access, refresh: refresh);
 
     // Safely register existing FCM token in background without blocking login
     // NOTE: Do NOT use forceRefresh:true here — it deletes the token, triggers
@@ -258,7 +261,7 @@ class ApiAuthRepository implements AuthRepository {
     _handleError(meResponse);
     final profile = meResponse.body;
     if (profile == null) throw ApiException.server('Failed to fetch profile');
-    
+
     _currentUser = UserModel.fromApiProfile(profile);
     return _currentUser!;
   }
@@ -271,11 +274,10 @@ class ApiAuthRepository implements AuthRepository {
     String? fcmToken,
     String? expectedRole,
   }) async {
-    final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/auth/social-login/');
-    final body = <String, dynamic>{
-      'provider': provider,
-      'id_token': idToken,
-    };
+    final uri = Uri.parse(
+      'https://iagrow.zappcode.in/api/v1/auth/social-login/',
+    );
+    final body = <String, dynamic>{'provider': provider, 'id_token': idToken};
     if (fullName != null && fullName.trim().isNotEmpty) {
       body['full_name'] = fullName.trim();
     }
@@ -284,11 +286,17 @@ class ApiAuthRepository implements AuthRepository {
     }
     if (expectedRole != null && expectedRole.trim().isNotEmpty) {
       final roleUpper = expectedRole.trim().toUpperCase();
-      body['role'] = (roleUpper == 'FARMER' || roleUpper == 'STUDENT') ? 'STUDENT' : 'INSTRUCTOR';
+      body['role'] = (roleUpper == 'FARMER' || roleUpper == 'STUDENT')
+          ? 'STUDENT'
+          : 'INSTRUCTOR';
     }
 
-    print('\n🌐 [AUTH_REPO] POST /api/v1/auth/social-login/ with provider: $provider');
-    print('📦 [AUTH_REPO] Payload: id_token length=${idToken.length}, full_name=$fullName, fcm_token=${fcmToken != null}');
+    print(
+      '\n🌐 [AUTH_REPO] POST /api/v1/auth/social-login/ with provider: $provider',
+    );
+    print(
+      '📦 [AUTH_REPO] Payload: id_token length=${idToken.length}, full_name=$fullName, fcm_token=${fcmToken != null}',
+    );
 
     final response = await http.post(
       uri,
@@ -311,7 +319,9 @@ class ApiAuthRepository implements AuthRepository {
             final errs = errorData['errors'] as Map;
             final firstKey = errs.keys.first;
             final firstVal = errs[firstKey];
-            errorMessage = firstVal is List ? firstVal.first.toString() : firstVal.toString();
+            errorMessage = firstVal is List
+                ? firstVal.first.toString()
+                : firstVal.toString();
           } else if (errorData.containsKey('error')) {
             errorMessage = errorData['error'].toString();
           } else {
@@ -329,7 +339,10 @@ class ApiAuthRepository implements AuthRepository {
       } catch (e) {
         if (e is ApiException) rethrow;
       }
-      throw ApiException(statusCode: response.statusCode, message: errorMessage);
+      throw ApiException(
+        statusCode: response.statusCode,
+        message: errorMessage,
+      );
     }
 
     final data = jsonDecode(response.body) as Map<String, dynamic>;
@@ -338,42 +351,12 @@ class ApiAuthRepository implements AuthRepository {
     final refresh = tokens?['refresh'] as String?;
 
     if (access == null || access.isEmpty) {
-      throw ApiException.server('Invalid social login response: Missing access token');
+      throw ApiException.server(
+        'Invalid social login response: Missing access token',
+      );
     }
 
-    // Check user profile before saving session tokens
-    final meUri = Uri.parse('https://iagrow.zappcode.in/api/v1/auth/me/');
-    final meRes = await http.get(
-      meUri,
-      headers: {
-        'Authorization': 'Bearer $access',
-        'Accept': 'application/json',
-      },
-    );
-
-    if (meRes.statusCode >= 200 && meRes.statusCode < 300) {
-      final meJson = jsonDecode(meRes.body) as Map<String, dynamic>;
-      final roleStr = (meJson['role'] ?? '').toString().toUpperCase();
-      final isInstructorAccount = roleStr == 'INSTRUCTOR';
-
-      if (expectedRole != null && expectedRole.isNotEmpty) {
-        final expectingInstructor = expectedRole.toLowerCase().trim() == 'instructor';
-        if (expectingInstructor && !isInstructorAccount) {
-          throw ApiException.roleMismatch(
-            'This account is registered as a Student. Please switch to Student login.',
-          );
-        } else if (!expectingInstructor && isInstructorAccount) {
-          throw ApiException.roleMismatch(
-            'This account is registered as an Instructor. Please switch to Instructor login.',
-          );
-        }
-      }
-    }
-
-    await tokenStorage.saveTokens(
-      access: access,
-      refresh: refresh ?? '',
-    );
+    await tokenStorage.saveTokens(access: access, refresh: refresh ?? '');
 
     // Safely register FCM token in background
     unawaited(
@@ -387,7 +370,8 @@ class ApiAuthRepository implements AuthRepository {
     final meResponse = await appApi.apiV1AuthMeGet();
     _handleError(meResponse);
     final profile = meResponse.body;
-    if (profile == null) throw ApiException.server('Failed to fetch profile after social login');
+    if (profile == null)
+      throw ApiException.server('Failed to fetch profile after social login');
 
     _currentUser = UserModel.fromApiProfile(profile);
     return _currentUser!;
@@ -432,7 +416,8 @@ class ApiAuthRepository implements AuthRepository {
           }
           if (errorData is Map && errorData.containsKey('detail')) {
             errorMessage = errorData['detail'].toString();
-          } else if (errorData is Map && errorData.containsKey('non_field_errors')) {
+          } else if (errorData is Map &&
+              errorData.containsKey('non_field_errors')) {
             final nfe = errorData['non_field_errors'];
             errorMessage = nfe is List ? nfe.first.toString() : nfe.toString();
           } else {
@@ -441,7 +426,10 @@ class ApiAuthRepository implements AuthRepository {
         } catch (e) {
           if (e is ApiException) rethrow;
         }
-        throw ApiException(statusCode: response.statusCode, message: errorMessage);
+        throw ApiException(
+          statusCode: response.statusCode,
+          message: errorMessage,
+        );
       }
     } on SocketException catch (_) {
       throw ApiException.network();
@@ -470,17 +458,16 @@ class ApiAuthRepository implements AuthRepository {
     required String email,
     required String otp,
   }) async {
-    final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/auth/verify-reset-otp/');
+    final uri = Uri.parse(
+      'https://iagrow.zappcode.in/api/v1/auth/verify-reset-otp/',
+    );
     final response = await http.post(
       uri,
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
       },
-      body: jsonEncode({
-        'email': email.trim(),
-        'otp': otp.trim(),
-      }),
+      body: jsonEncode({'email': email.trim(), 'otp': otp.trim()}),
     );
 
     if (response.statusCode >= 400) {
@@ -502,7 +489,10 @@ class ApiAuthRepository implements AuthRepository {
           }
         }
       } catch (_) {}
-      throw ApiException(statusCode: response.statusCode, message: errorMessage);
+      throw ApiException(
+        statusCode: response.statusCode,
+        message: errorMessage,
+      );
     }
 
     try {
@@ -519,7 +509,9 @@ class ApiAuthRepository implements AuthRepository {
     required String newPassword,
     required String confirmPassword,
   }) async {
-    final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/auth/reset-password/');
+    final uri = Uri.parse(
+      'https://iagrow.zappcode.in/api/v1/auth/reset-password/',
+    );
     final response = await http.post(
       uri,
       headers: {
@@ -546,21 +538,27 @@ class ApiAuthRepository implements AuthRepository {
       if (errorData != null) {
         if (errorData.containsKey('error') && errorData['error'] != null) {
           errorMessage = errorData['error'].toString();
-        } else if (errorData.containsKey('detail') && errorData['detail'] != null) {
+        } else if (errorData.containsKey('detail') &&
+            errorData['detail'] != null) {
           errorMessage = errorData['detail'].toString();
-        } else if (errorData.containsKey('non_field_errors') && errorData['non_field_errors'] != null) {
+        } else if (errorData.containsKey('non_field_errors') &&
+            errorData['non_field_errors'] != null) {
           final nfe = errorData['non_field_errors'];
           errorMessage = nfe is List ? nfe.first.toString() : nfe.toString();
         } else {
           // Check for field-specific errors
-          final entries = errorData.entries.where((e) => e.value != null).toList();
+          final entries = errorData.entries
+              .where((e) => e.value != null)
+              .toList();
           if (entries.isNotEmpty) {
             final firstEntry = entries.first;
             final val = firstEntry.value;
             final raw = val is List ? val.first.toString() : val.toString();
             if (firstEntry.key == 'reset_token') {
-              errorMessage = 'Reset link has expired or is invalid. Please request a new OTP.';
-            } else if (firstEntry.key == 'new_password' || firstEntry.key == 'confirm_password') {
+              errorMessage =
+                  'Reset link has expired or is invalid. Please request a new OTP.';
+            } else if (firstEntry.key == 'new_password' ||
+                firstEntry.key == 'confirm_password') {
               errorMessage = raw;
             } else {
               errorMessage = '${firstEntry.key}: $raw';
@@ -569,7 +567,10 @@ class ApiAuthRepository implements AuthRepository {
         }
       }
 
-      throw ApiException(statusCode: response.statusCode, message: errorMessage);
+      throw ApiException(
+        statusCode: response.statusCode,
+        message: errorMessage,
+      );
     }
   }
 
@@ -591,7 +592,9 @@ class ApiAuthRepository implements AuthRepository {
     required String confirmPassword,
   }) async {
     final token = await tokenStorage.getAccessToken();
-    final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/auth/change-password/');
+    final uri = Uri.parse(
+      'https://iagrow.zappcode.in/api/v1/auth/change-password/',
+    );
     final response = await http.post(
       uri,
       headers: {
@@ -607,7 +610,8 @@ class ApiAuthRepository implements AuthRepository {
     );
 
     if (response.statusCode >= 400) {
-      String errorMessage = 'Failed to change password (${response.statusCode})';
+      String errorMessage =
+          'Failed to change password (${response.statusCode})';
       Map<String, dynamic>? errorData;
       try {
         final decoded = jsonDecode(response.body);
@@ -619,15 +623,20 @@ class ApiAuthRepository implements AuthRepository {
       if (errorData != null) {
         if (errorData.containsKey('error') && errorData['error'] != null) {
           errorMessage = errorData['error'].toString();
-        } else if (errorData.containsKey('detail') && errorData['detail'] != null) {
+        } else if (errorData.containsKey('detail') &&
+            errorData['detail'] != null) {
           errorMessage = errorData['detail'].toString();
-        } else if (errorData.containsKey('message') && errorData['message'] != null) {
+        } else if (errorData.containsKey('message') &&
+            errorData['message'] != null) {
           errorMessage = errorData['message'].toString();
-        } else if (errorData.containsKey('non_field_errors') && errorData['non_field_errors'] != null) {
+        } else if (errorData.containsKey('non_field_errors') &&
+            errorData['non_field_errors'] != null) {
           final nfe = errorData['non_field_errors'];
           errorMessage = nfe is List ? nfe.first.toString() : nfe.toString();
         } else {
-          final entries = errorData.entries.where((e) => e.value != null).toList();
+          final entries = errorData.entries
+              .where((e) => e.value != null)
+              .toList();
           if (entries.isNotEmpty) {
             final firstEntry = entries.first;
             final val = firstEntry.value;
@@ -637,23 +646,34 @@ class ApiAuthRepository implements AuthRepository {
         }
       }
 
-      throw ApiException(statusCode: response.statusCode, message: errorMessage);
+      throw ApiException(
+        statusCode: response.statusCode,
+        message: errorMessage,
+      );
     }
   }
 
   @override
-  Future<Map<String, dynamic>> sendPhoneOtp({required String phoneNumber}) async {
-    final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/auth/phone/send-otp/');
-    final formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : '+91$phoneNumber';
+  Future<Map<String, dynamic>> sendPhoneOtp({
+    required String phoneNumber,
+  }) async {
+    final uri = Uri.parse(
+      'https://iagrow.zappcode.in/api/v1/auth/phone/send-otp/',
+    );
+    final formattedPhone = phoneNumber.startsWith('+')
+        ? phoneNumber
+        : '+91$phoneNumber';
     try {
-      final response = await http.post(
-        uri,
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: jsonEncode({'phone_number': formattedPhone}),
-      ).timeout(const Duration(seconds: 15));
+      final response = await http
+          .post(
+            uri,
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: jsonEncode({'phone_number': formattedPhone}),
+          )
+          .timeout(const Duration(seconds: 15));
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         return jsonDecode(response.body) as Map<String, dynamic>;
@@ -662,7 +682,10 @@ class ApiAuthRepository implements AuthRepository {
         try {
           final errJson = jsonDecode(response.body);
           if (errJson is Map && errJson['message'] != null) {
-            throw ApiException(statusCode: response.statusCode, message: errJson['message'].toString());
+            throw ApiException(
+              statusCode: response.statusCode,
+              message: errJson['message'].toString(),
+            );
           }
         } catch (e) {
           if (e is ApiException) rethrow;
@@ -688,23 +711,29 @@ class ApiAuthRepository implements AuthRepository {
     required String phoneNumber,
     required String otp,
   }) async {
-    final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/auth/phone/verify-otp/');
-    final formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : '+91$phoneNumber';
+    final uri = Uri.parse(
+      'https://iagrow.zappcode.in/api/v1/auth/phone/verify-otp/',
+    );
+    final formattedPhone = phoneNumber.startsWith('+')
+        ? phoneNumber
+        : '+91$phoneNumber';
     // Retry loop in case production Gunicorn distributes across worker processes using in-memory cache
     http.Response? response;
     for (int attempt = 0; attempt < 4; attempt++) {
       try {
-        response = await http.post(
-          uri,
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          },
-          body: jsonEncode({
-            'phone_number': formattedPhone,
-            'otp': otp.trim(),
-          }),
-        ).timeout(const Duration(seconds: 15));
+        response = await http
+            .post(
+              uri,
+              headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+              },
+              body: jsonEncode({
+                'phone_number': formattedPhone,
+                'otp': otp.trim(),
+              }),
+            )
+            .timeout(const Duration(seconds: 15));
 
         if (response.statusCode >= 200 && response.statusCode < 300) {
           break;
@@ -723,19 +752,33 @@ class ApiAuthRepository implements AuthRepository {
     }
 
     try {
-      if (response != null && response.statusCode >= 200 && response.statusCode < 300) {
+      if (response != null &&
+          response.statusCode >= 200 &&
+          response.statusCode < 300) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         final isNewUser = data['is_new_user'] == true;
         if (!isNewUser) {
-          final access = data['access'] as String? ?? (data['tokens']?['access'] as String?);
-          final refresh = data['refresh'] as String? ?? (data['tokens']?['refresh'] as String?);
+          final access =
+              data['access'] as String? ??
+              (data['tokens']?['access'] as String?);
+          final refresh =
+              data['refresh'] as String? ??
+              (data['tokens']?['refresh'] as String?);
           if (access != null && access.isNotEmpty) {
-            await tokenStorage.saveTokens(access: access, refresh: refresh ?? '');
+            await tokenStorage.saveTokens(
+              access: access,
+              refresh: refresh ?? '',
+            );
             final rawRoles = data['available_roles'] as List<dynamic>?;
-            final availableRoles = rawRoles?.map((r) => UserRole.fromApiValue(r.toString())).toList();
+            final availableRoles = rawRoles
+                ?.map((r) => UserRole.fromApiValue(r.toString()))
+                .toList();
             final meResponse = await appApi.apiV1AuthMeGet();
             if (meResponse.body != null) {
-              _currentUser = UserModel.fromApiProfile(meResponse.body!, availableRoles: availableRoles);
+              _currentUser = UserModel.fromApiProfile(
+                meResponse.body!,
+                availableRoles: availableRoles,
+              );
             }
           }
         }
@@ -745,15 +788,24 @@ class ApiAuthRepository implements AuthRepository {
           if (response != null) {
             final errJson = jsonDecode(response.body);
             if (errJson is Map && errJson['message'] != null) {
-              throw ApiException(statusCode: response.statusCode, message: errJson['message'].toString());
+              throw ApiException(
+                statusCode: response.statusCode,
+                message: errJson['message'].toString(),
+              );
             } else if (errJson is Map && errJson['error'] != null) {
-              throw ApiException(statusCode: response.statusCode, message: errJson['error'].toString());
+              throw ApiException(
+                statusCode: response.statusCode,
+                message: errJson['error'].toString(),
+              );
             }
           }
         } catch (e) {
           if (e is ApiException) rethrow;
         }
-        throw ApiException(statusCode: response?.statusCode ?? 400, message: 'Invalid or expired OTP.');
+        throw ApiException(
+          statusCode: response?.statusCode ?? 400,
+          message: 'Invalid or expired OTP.',
+        );
       }
     } catch (e) {
       if (e is ApiException) rethrow;
@@ -766,7 +818,10 @@ class ApiAuthRepository implements AuthRepository {
           'verification_token': 'dev_sandbox_verification_token',
         };
       }
-      throw ApiException(statusCode: 400, message: 'Verification failed: ${e.toString()}');
+      throw ApiException(
+        statusCode: 400,
+        message: 'Verification failed: ${e.toString()}',
+      );
     }
   }
 
@@ -779,8 +834,12 @@ class ApiAuthRepository implements AuthRepository {
     required String password,
     required UserRole role,
   }) async {
-    final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/auth/phone/complete-profile/');
-    final formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : '+91$phoneNumber';
+    final uri = Uri.parse(
+      'https://iagrow.zappcode.in/api/v1/auth/phone/complete-profile/',
+    );
+    final formattedPhone = phoneNumber.startsWith('+')
+        ? phoneNumber
+        : '+91$phoneNumber';
     final payload = {
       'phone_number': formattedPhone,
       'verification_token': verificationToken,
@@ -794,14 +853,16 @@ class ApiAuthRepository implements AuthRepository {
     http.Response? response;
     for (int attempt = 0; attempt < 5; attempt++) {
       try {
-        response = await http.post(
-          uri,
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          },
-          body: jsonEncode(payload),
-        ).timeout(const Duration(seconds: 15));
+        response = await http
+            .post(
+              uri,
+              headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+              },
+              body: jsonEncode(payload),
+            )
+            .timeout(const Duration(seconds: 15));
 
         if (response.statusCode >= 200 && response.statusCode < 300) {
           break;
@@ -811,7 +872,9 @@ class ApiAuthRepository implements AuthRepository {
         if (response.statusCode == 400 && attempt < 4) {
           try {
             final err = jsonDecode(response.body);
-            if (err is Map && err['error']?.toString().contains('verification session') == true) {
+            if (err is Map &&
+                err['error']?.toString().contains('verification session') ==
+                    true) {
               await Future.delayed(const Duration(milliseconds: 300));
               continue;
             }
@@ -824,26 +887,37 @@ class ApiAuthRepository implements AuthRepository {
       }
     }
 
-    if (response != null && response.statusCode >= 200 && response.statusCode < 300) {
+    if (response != null &&
+        response.statusCode >= 200 &&
+        response.statusCode < 300) {
       final data = jsonDecode(response.body) as Map<String, dynamic>;
-      final access = data['access'] as String? ?? (data['tokens']?['access'] as String?);
-      final refresh = data['refresh'] as String? ?? (data['tokens']?['refresh'] as String?);
+      final access =
+          data['access'] as String? ?? (data['tokens']?['access'] as String?);
+      final refresh =
+          data['refresh'] as String? ?? (data['tokens']?['refresh'] as String?);
       if (access != null && access.isNotEmpty) {
         await tokenStorage.saveTokens(access: access, refresh: refresh ?? '');
       }
       final rawRoles = data['available_roles'] as List<dynamic>?;
-      final availableRoles = rawRoles?.map((r) => UserRole.fromApiValue(r.toString())).toList() ?? [role];
+      final availableRoles =
+          rawRoles?.map((r) => UserRole.fromApiValue(r.toString())).toList() ??
+          [role];
       try {
         final meResponse = await appApi.apiV1AuthMeGet();
         if (meResponse.body != null) {
-          _currentUser = UserModel.fromApiProfile(meResponse.body!, availableRoles: availableRoles);
+          _currentUser = UserModel.fromApiProfile(
+            meResponse.body!,
+            availableRoles: availableRoles,
+          );
           return _currentUser!;
         }
       } catch (_) {}
 
       // Fallback if /auth/me/ delayed
       _currentUser = UserModel(
-        id: (data['user']?['id'])?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString(),
+        id:
+            (data['user']?['id'])?.toString() ??
+            DateTime.now().millisecondsSinceEpoch.toString(),
         fullName: fullName,
         email: email,
         phone: formattedPhone,
@@ -865,12 +939,17 @@ class ApiAuthRepository implements AuthRepository {
               errorMessage = errData['detail'].toString();
             } else {
               final firstVal = errData.values.first;
-              errorMessage = firstVal is List ? firstVal.first.toString() : firstVal.toString();
+              errorMessage = firstVal is List
+                  ? firstVal.first.toString()
+                  : firstVal.toString();
             }
           }
         } catch (_) {}
       }
-      throw ApiException(statusCode: response?.statusCode ?? 400, message: errorMessage);
+      throw ApiException(
+        statusCode: response?.statusCode ?? 400,
+        message: errorMessage,
+      );
     }
   }
 
@@ -882,23 +961,30 @@ class ApiAuthRepository implements AuthRepository {
     final accessToken = await tokenStorage.getAccessToken();
     if (accessToken != null && accessToken.isNotEmpty) {
       try {
-        final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/auth/switch-mode/');
-        final response = await http.post(
-          uri,
-          headers: {
-            'Authorization': 'Bearer $accessToken',
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          },
-          body: jsonEncode({'target_role': newRole.apiValue}),
-        ).timeout(const Duration(seconds: 15));
+        final uri = Uri.parse(
+          'https://iagrow.zappcode.in/api/v1/auth/switch-mode/',
+        );
+        final response = await http
+            .post(
+              uri,
+              headers: {
+                'Authorization': 'Bearer $accessToken',
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+              },
+              body: jsonEncode({'target_role': newRole.apiValue}),
+            )
+            .timeout(const Duration(seconds: 15));
 
         if (response.statusCode >= 200 && response.statusCode < 300) {
           final data = jsonDecode(response.body) as Map<String, dynamic>;
           final newAccess = data['access'] as String?;
           final newRefresh = data['refresh'] as String?;
           if (newAccess != null && newAccess.isNotEmpty) {
-            await tokenStorage.saveTokens(access: newAccess, refresh: newRefresh ?? '');
+            await tokenStorage.saveTokens(
+              access: newAccess,
+              refresh: newRefresh ?? '',
+            );
           }
         }
       } catch (e) {
@@ -919,9 +1005,104 @@ class ApiAuthRepository implements AuthRepository {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('active_user_role', newRole.name);
       await prefs.setString('selected_auth_role', newRole.name);
+      final rolesToCache = updatedGranted.map((r) => r.apiValue).toList();
+      await prefs.setStringList('user_available_roles', rolesToCache);
     } catch (_) {}
 
     return _currentUser!;
+  }
+
+  @override
+  Future<UserModel> becomeInstructor() async {
+    final accessToken = await tokenStorage.getAccessToken();
+    if (accessToken == null || accessToken.isEmpty) {
+      throw Exception('Not authenticated');
+    }
+
+    try {
+      final uri = Uri.parse(
+        'https://iagrow.zappcode.in/api/v1/auth/become-instructor/',
+      );
+      final response = await http
+          .post(
+            uri,
+            headers: {
+              'Authorization': 'Bearer $accessToken',
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: jsonEncode({}),
+          )
+          .timeout(const Duration(seconds: 15));
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final newAccess =
+            data['access'] as String? ?? (data['tokens']?['access'] as String?);
+        final newRefresh =
+            data['refresh'] as String? ??
+            (data['tokens']?['refresh'] as String?);
+        if (newAccess != null && newAccess.isNotEmpty) {
+          await tokenStorage.saveTokens(
+            access: newAccess,
+            refresh: newRefresh ?? '',
+          );
+        }
+
+        final rawRoles = data['available_roles'] as List<dynamic>?;
+        final availableRoles =
+            rawRoles
+                ?.map((r) => UserRole.fromApiValue(r.toString()))
+                .toList() ??
+            [UserRole.farmer, UserRole.instructor];
+
+        try {
+          final meResponse = await appApi.apiV1AuthMeGet();
+          if (meResponse.body != null) {
+            _currentUser = UserModel.fromApiProfile(
+              meResponse.body!,
+              availableRoles: availableRoles,
+              activeRoleOverride: UserRole.instructor,
+            );
+          }
+        } catch (_) {}
+
+        if (_currentUser == null) {
+          _currentUser =
+              _currentUser?.copyWith(
+                activeRole: UserRole.instructor,
+                grantedRoles: availableRoles,
+              ) ??
+              UserModel(
+                id: (data['user']?['id'])?.toString() ?? '',
+                fullName: (data['user']?['full_name'])?.toString() ?? '',
+                email: (data['user']?['email'])?.toString() ?? '',
+                phone: (data['user']?['phone_number'])?.toString() ?? '',
+                activeRole: UserRole.instructor,
+                grantedRoles: availableRoles,
+              );
+        }
+
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('active_user_role', UserRole.instructor.name);
+        await prefs.setString('selected_auth_role', UserRole.instructor.name);
+        await prefs.setStringList(
+          'user_available_roles',
+          availableRoles.map((r) => r.apiValue).toList(),
+        );
+
+        return _currentUser!;
+      } else {
+        // Fallback to switchRole(UserRole.instructor) if endpoint returns non-200
+        debugPrint(
+          '⚠️ [becomeInstructor] HTTP ${response.statusCode}, falling back to switchRole',
+        );
+        return await switchRole(UserRole.instructor);
+      }
+    } catch (e) {
+      debugPrint('⚠️ [becomeInstructor] Error: $e, falling back to switchRole');
+      return await switchRole(UserRole.instructor);
+    }
   }
 
   @override
@@ -947,7 +1128,10 @@ class ApiAuthRepository implements AuthRepository {
               if (fcmToken != null) 'fcm_token': fcmToken,
             }),
           )
-          .timeout(const Duration(seconds: 5), onTimeout: () => http.Response('{}', 408));
+          .timeout(
+            const Duration(seconds: 5),
+            onTimeout: () => http.Response('{}', 408),
+          );
     } catch (_) {
       try {
         await appApi.apiV1AuthLogoutPost();
@@ -956,16 +1140,20 @@ class ApiAuthRepository implements AuthRepository {
 
     // Unregister / delete FCM token so this device receives no further notifications for this user
     try {
-      await NotificationService.instance
-          .deleteFcmToken()
-          .timeout(const Duration(seconds: 2), onTimeout: () => null);
+      await NotificationService.instance.deleteFcmToken().timeout(
+        const Duration(seconds: 2),
+        onTimeout: () => null,
+      );
     } catch (_) {}
 
     await tokenStorage.clearTokens();
     try {
       final prefs = await SharedPreferences.getInstance();
       if (_currentUser?.activeRole != null) {
-        await prefs.setString('selected_auth_role', _currentUser!.activeRole.name);
+        await prefs.setString(
+          'selected_auth_role',
+          _currentUser!.activeRole.name,
+        );
       }
       await prefs.remove('active_user_role');
     } catch (_) {}
@@ -990,19 +1178,25 @@ class ApiAuthRepository implements AuthRepository {
         };
 
         // Try primary delete-account endpoint first
-        final deleteUri = Uri.parse('https://iagrow.zappcode.in/api/v1/auth/delete-account/');
-        final res = await http.delete(deleteUri, headers: headers).timeout(
-          const Duration(seconds: 8),
-          onTimeout: () => http.Response('{"detail":"Timeout"}', 408),
+        final deleteUri = Uri.parse(
+          'https://iagrow.zappcode.in/api/v1/auth/delete-account/',
         );
+        final res = await http
+            .delete(deleteUri, headers: headers)
+            .timeout(
+              const Duration(seconds: 8),
+              onTimeout: () => http.Response('{"detail":"Timeout"}', 408),
+            );
 
         // If 404/405, fallback to DELETE /api/v1/auth/me/ in case backend supports it
         if (res.statusCode == 404 || res.statusCode == 405) {
           final meUri = Uri.parse('https://iagrow.zappcode.in/api/v1/auth/me/');
-          await http.delete(meUri, headers: headers).timeout(
-            const Duration(seconds: 8),
-            onTimeout: () => http.Response('{"detail":"Timeout"}', 408),
-          );
+          await http
+              .delete(meUri, headers: headers)
+              .timeout(
+                const Duration(seconds: 8),
+                onTimeout: () => http.Response('{"detail":"Timeout"}', 408),
+              );
         }
       }
     } catch (e) {
@@ -1041,14 +1235,17 @@ class ApiAuthRepository implements AuthRepository {
     if (token == null) throw ApiException.unauthorized();
 
     final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/auth/me/');
-    
+
     // Only send non-null and provided fields in PATCH payload to avoid overwriting with nulls
     final body = <String, dynamic>{};
     if (request.fullName != null && request.fullName!.trim().isNotEmpty) {
       body['full_name'] = request.fullName!.trim();
     }
     if (request.phoneNumber != null && request.phoneNumber!.trim().isNotEmpty) {
-      String phone = request.phoneNumber!.trim().replaceAll(RegExp(r'[^\d]'), '');
+      String phone = request.phoneNumber!.trim().replaceAll(
+        RegExp(r'[^\d]'),
+        '',
+      );
       if (phone.startsWith('91') && phone.length == 12) {
         phone = phone.substring(2);
       } else if (phone.startsWith('0') && phone.length == 11) {
@@ -1056,10 +1253,12 @@ class ApiAuthRepository implements AuthRepository {
       }
       body['phone_number'] = phone;
     }
-    if (request.locationState != null && request.locationState!.trim().isNotEmpty) {
+    if (request.locationState != null &&
+        request.locationState!.trim().isNotEmpty) {
       body['location_state'] = request.locationState!.trim();
     }
-    if (request.locationDistrict != null && request.locationDistrict!.trim().isNotEmpty) {
+    if (request.locationDistrict != null &&
+        request.locationDistrict!.trim().isNotEmpty) {
       body['location_district'] = request.locationDistrict!.trim();
     }
     if (request.farmingExperience != null) {
@@ -1106,7 +1305,10 @@ class ApiAuthRepository implements AuthRepository {
       } catch (e) {
         if (e is ApiException) rethrow;
       }
-      throw ApiException(statusCode: response.statusCode, message: 'Failed to update profile (${response.statusCode})');
+      throw ApiException(
+        statusCode: response.statusCode,
+        message: 'Failed to update profile (${response.statusCode})',
+      );
     }
 
     // Refresh profile from server to guarantee fully populated, synchronized state
@@ -1125,22 +1327,39 @@ class ApiAuthRepository implements AuthRepository {
       if (data is Map<String, dynamic>) {
         final profile = UserProfile.fromJson(data);
         final prefs = await SharedPreferences.getInstance();
-      final savedActiveRoleStr = prefs.getString('active_user_role');
-      UserRole? persistedActiveRole;
-      if (savedActiveRoleStr != null) {
-        if (savedActiveRoleStr.toLowerCase() == 'instructor') {
-          persistedActiveRole = UserRole.instructor;
-        } else if (savedActiveRoleStr.toLowerCase() == 'farmer') {
-          persistedActiveRole = UserRole.farmer;
+        final savedActiveRoleStr = prefs.getString('active_user_role');
+        UserRole? persistedActiveRole;
+        if (savedActiveRoleStr != null) {
+          if (savedActiveRoleStr.toLowerCase() == 'instructor') {
+            persistedActiveRole = UserRole.instructor;
+          } else if (savedActiveRoleStr.toLowerCase() == 'farmer') {
+            persistedActiveRole = UserRole.farmer;
+          }
         }
-      }
 
-      final existingGranted = _currentUser?.grantedRoles;
-      _currentUser = UserModel.fromApiProfile(
-        profile,
-        availableRoles: existingGranted,
-        activeRoleOverride: persistedActiveRole ?? _currentUser?.activeRole,
-      );
+        final existingGranted = _currentUser?.grantedRoles;
+        final cachedRolesList = prefs.getStringList('user_available_roles');
+        List<UserRole>? cachedAvailableRoles;
+        if (cachedRolesList != null && cachedRolesList.isNotEmpty) {
+          cachedAvailableRoles = cachedRolesList
+              .map((r) => UserRole.fromApiValue(r))
+              .toSet()
+              .toList();
+        }
+
+        _currentUser = UserModel.fromApiProfile(
+          profile,
+          availableRoles: existingGranted ?? cachedAvailableRoles,
+          activeRoleOverride: persistedActiveRole ?? _currentUser?.activeRole,
+        );
+
+        // Persist latest available roles to SharedPreferences for offline / cold restart fallback
+        if (_currentUser != null && _currentUser!.grantedRoles.isNotEmpty) {
+          final rolesToCache = _currentUser!.grantedRoles
+              .map((r) => r.apiValue)
+              .toList();
+          await prefs.setStringList('user_available_roles', rolesToCache);
+        }
         return _currentUser!;
       }
     } catch (_) {}
@@ -1153,11 +1372,15 @@ class ApiAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<UserModel> updateInstructorProfile(PatchedInstructorProfileRequest request) async {
+  Future<UserModel> updateInstructorProfile(
+    PatchedInstructorProfileRequest request,
+  ) async {
     final token = await tokenStorage.getAccessToken();
     if (token == null) throw ApiException.unauthorized();
 
-    final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/auth/instructor-profile/');
+    final uri = Uri.parse(
+      'https://iagrow.zappcode.in/api/v1/auth/instructor-profile/',
+    );
     final body = <String, dynamic>{};
 
     final json = request.toJson();
@@ -1193,14 +1416,17 @@ class ApiAuthRepository implements AuthRepository {
       if (errorData != null) {
         throw ApiException.validation(errorData);
       }
-      throw ApiException.server('Failed to update instructor profile (${response.statusCode})');
+      throw ApiException.server(
+        'Failed to update instructor profile (${response.statusCode})',
+      );
     }
 
     // Refresh profile
     final meResponse = await appApi.apiV1AuthMeGet();
     _handleError(meResponse);
     final fullProfile = meResponse.body;
-    if (fullProfile == null) throw ApiException.server('Failed to fetch full profile');
+    if (fullProfile == null)
+      throw ApiException.server('Failed to fetch full profile');
 
     _currentUser = UserModel.fromApiProfile(fullProfile);
     return _currentUser!;
@@ -1218,7 +1444,9 @@ class ApiAuthRepository implements AuthRepository {
 
     final response = await request.send();
     if (response.statusCode >= 400) {
-      throw ApiException.server('Failed to upload avatar: ${response.statusCode}');
+      throw ApiException.server(
+        'Failed to upload avatar: ${response.statusCode}',
+      );
     }
 
     // Refresh profile
@@ -1246,7 +1474,9 @@ class ApiAuthRepository implements AuthRepository {
     );
 
     if (response.statusCode >= 400) {
-      throw ApiException.server('Failed to delete avatar: ${response.statusCode}');
+      throw ApiException.server(
+        'Failed to delete avatar: ${response.statusCode}',
+      );
     }
 
     // Refresh profile
@@ -1275,11 +1505,19 @@ class ApiAuthRepository implements AuthRepository {
     }
 
     print('═══════════════════════════════════════════════════════════');
-    print('🚀 [KYC REPO] Submitting KYC profile to PATCH /api/v1/auth/instructor-profile/');
-    print('📋 Details: docType=$docType, docNumber=$docNumber, bank=$bankName, accountName=$accountName, accountNum=$accountNumber, ifsc=$ifscCode');
-    print('📷 Photo attached: ${docImagePath != null && docImagePath.isNotEmpty ? docImagePath : "None"}');
+    print(
+      '🚀 [KYC REPO] Submitting KYC profile to PATCH /api/v1/auth/instructor-profile/',
+    );
+    print(
+      '📋 Details: docType=$docType, docNumber=$docNumber, bank=$bankName, accountName=$accountName, accountNum=$accountNumber, ifsc=$ifscCode',
+    );
+    print(
+      '📷 Photo attached: ${docImagePath != null && docImagePath.isNotEmpty ? docImagePath : "None"}',
+    );
 
-    final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/auth/instructor-profile/');
+    final uri = Uri.parse(
+      'https://iagrow.zappcode.in/api/v1/auth/instructor-profile/',
+    );
     final request = http.MultipartRequest('PATCH', uri)
       ..headers['Authorization'] = 'Bearer $token'
       ..fields['kyc_document_type'] = docType
@@ -1290,7 +1528,9 @@ class ApiAuthRepository implements AuthRepository {
       ..fields['bank_ifsc_code'] = ifscCode;
 
     if (docImagePath != null && docImagePath.isNotEmpty) {
-      request.files.add(await http.MultipartFile.fromPath('kyc_document_image', docImagePath));
+      request.files.add(
+        await http.MultipartFile.fromPath('kyc_document_image', docImagePath),
+      );
     }
 
     final http.StreamedResponse streamedResponse;
@@ -1318,19 +1558,23 @@ class ApiAuthRepository implements AuthRepository {
       if (errorData != null) {
         throw ApiException.validation(errorData);
       }
-      throw ApiException.server('Failed to submit KYC details (${response.statusCode})');
+      throw ApiException.server(
+        'Failed to submit KYC details (${response.statusCode})',
+      );
     }
 
     // Refresh profile
     final meResponse = await appApi.apiV1AuthMeGet();
     _handleError(meResponse);
     final fullProfile = meResponse.body;
-    if (fullProfile == null) throw ApiException.server('Failed to fetch full profile');
+    if (fullProfile == null)
+      throw ApiException.server('Failed to fetch full profile');
 
     _currentUser = UserModel.fromApiProfile(fullProfile);
-    print('✅ [KYC REPO] KYC Submission SUCCESS! Updated state -> verificationStatus: ${_currentUser?.verificationStatus}, kycVerified: ${_currentUser?.kycVerified}');
+    print(
+      '✅ [KYC REPO] KYC Submission SUCCESS! Updated state -> verificationStatus: ${_currentUser?.verificationStatus}, kycVerified: ${_currentUser?.kycVerified}',
+    );
     print('═══════════════════════════════════════════════════════════');
     return _currentUser!;
   }
 }
-

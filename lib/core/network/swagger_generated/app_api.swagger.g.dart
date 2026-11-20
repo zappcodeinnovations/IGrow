@@ -1871,6 +1871,10 @@ UserProfile _$UserProfileFromJson(Map<String, dynamic> json) => UserProfile(
       ? null
       : DateTime.parse(json['date_joined'] as String),
   instructorProfile: json['instructor_profile'],
+  availableRoles: (json['available_roles'] as List<dynamic>?)
+      ?.map((e) => e.toString())
+      .toList(),
+  canTeach: json['can_teach'] as bool?,
 );
 
 Map<String, dynamic> _$UserProfileToJson(UserProfile instance) =>
@@ -1887,6 +1891,8 @@ Map<String, dynamic> _$UserProfileToJson(UserProfile instance) =>
       'areas_of_interest': instance.areasOfInterest,
       'date_joined': instance.dateJoined?.toIso8601String(),
       'instructor_profile': instance.instructorProfile,
+      'available_roles': instance.availableRoles,
+      'can_teach': instance.canTeach,
     };
 
 UserProfileRequest _$UserProfileRequestFromJson(Map<String, dynamic> json) =>

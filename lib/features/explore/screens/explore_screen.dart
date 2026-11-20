@@ -180,6 +180,43 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
     num? tempEbookMinPrice = _ebookMinPrice;
     num? tempEbookMaxPrice = _ebookMaxPrice;
 
+    Widget buildFilterChip({
+      required String label,
+      required bool isSelected,
+      required bool isDark,
+      required ValueChanged<bool> onSelected,
+      Widget? leadingIcon,
+    }) {
+      final selectedBg = isDark ? const Color(0xFF1E3A24) : const Color(0xFFE8F5E9);
+      final unselectedBg = isDark ? const Color(0xFF1B261D) : const Color(0xFFF1F5F9);
+      final selectedBorder = isDark ? const Color(0xFF81C784) : const Color(0xFF2E7D32);
+      final unselectedBorder = isDark ? const Color(0xFF2E4534) : const Color(0xFFE2E8F0);
+      final selectedTextColor = isDark ? const Color(0xFF81C784) : const Color(0xFF1B4D2E);
+      final unselectedTextColor = isDark ? Colors.white70 : AppColors.inkDark;
+
+      return ChoiceChip(
+        avatar: leadingIcon,
+        label: Text(label),
+        selected: isSelected,
+        showCheckmark: leadingIcon == null,
+        checkmarkColor: isDark ? const Color(0xFF81C784) : const Color(0xFF1B4D2E),
+        selectedColor: selectedBg,
+        backgroundColor: unselectedBg,
+        side: BorderSide(
+          color: isSelected ? selectedBorder : unselectedBorder,
+          width: isSelected ? 1.5 : 1.0,
+        ),
+        labelStyle: TextStyle(
+          color: isSelected ? selectedTextColor : unselectedTextColor,
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+          fontSize: 14,
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        onSelected: onSelected,
+      );
+    }
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -251,12 +288,14 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                               Container(
                                 padding: const EdgeInsets.all(9),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF1B4D2E).withValues(alpha: 0.14),
+                                  color: isDark
+                                      ? AppColors.primaryGreen.withValues(alpha: 0.25)
+                                      : const Color(0xFF1B4D2E).withValues(alpha: 0.14),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Icon(
                                   isEbooksTab ? Icons.auto_stories_rounded : Icons.tune_rounded,
-                                  color: const Color(0xFF1B4D2E),
+                                  color: isDark ? const Color(0xFF81C784) : const Color(0xFF1B4D2E),
                                   size: 22,
                                 ),
                               ),
@@ -279,7 +318,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF1B4D2E),
+                                    color: isDark ? AppColors.primaryGreen : const Color(0xFF1B4D2E),
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: Text(
@@ -312,7 +351,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                       if (isEbooksTab) ...[
                         Row(
                           children: [
-                            const Icon(Icons.payments_outlined, size: 20, color: Color(0xFF1B4D2E)),
+                            Icon(Icons.payments_outlined, size: 20, color: isDark ? const Color(0xFF81C784) : const Color(0xFF1B4D2E)),
                             const SizedBox(width: 8),
                             Text(
                               tr(ref, 'Price Filter'),
@@ -328,17 +367,10 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                           spacing: 12,
                           runSpacing: 12,
                           children: [
-                            ChoiceChip(
-                              label: Text(tr(ref, 'All Prices')),
-                              selected: tempEbookPricePreset == 'all',
-                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.18),
-                              labelStyle: TextStyle(
-                                color: tempEbookPricePreset == 'all' ? const Color(0xFF1B4D2E) : null,
-                                fontWeight: tempEbookPricePreset == 'all' ? FontWeight.bold : FontWeight.w600,
-                                fontSize: 15,
-                              ),
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            buildFilterChip(
+                              label: tr(ref, 'All Prices'),
+                              isSelected: tempEbookPricePreset == 'all',
+                              isDark: isDark,
                               onSelected: (val) {
                                 if (val) {
                                   setModalState(() {
@@ -349,17 +381,10 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                                 }
                               },
                             ),
-                            ChoiceChip(
-                              label: Text(tr(ref, 'Free E-Books')),
-                              selected: tempEbookPricePreset == 'free',
-                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.18),
-                              labelStyle: TextStyle(
-                                color: tempEbookPricePreset == 'free' ? const Color(0xFF1B4D2E) : null,
-                                fontWeight: tempEbookPricePreset == 'free' ? FontWeight.bold : FontWeight.w600,
-                                fontSize: 15,
-                              ),
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            buildFilterChip(
+                              label: tr(ref, 'Free E-Books'),
+                              isSelected: tempEbookPricePreset == 'free',
+                              isDark: isDark,
                               onSelected: (val) {
                                 if (val) {
                                   setModalState(() {
@@ -370,17 +395,10 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                                 }
                               },
                             ),
-                            ChoiceChip(
-                              label: Text(tr(ref, 'Paid E-Books')),
-                              selected: tempEbookPricePreset == 'paid',
-                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.18),
-                              labelStyle: TextStyle(
-                                color: tempEbookPricePreset == 'paid' ? const Color(0xFF1B4D2E) : null,
-                                fontWeight: tempEbookPricePreset == 'paid' ? FontWeight.bold : FontWeight.w600,
-                                fontSize: 15,
-                              ),
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            buildFilterChip(
+                              label: tr(ref, 'Paid E-Books'),
+                              isSelected: tempEbookPricePreset == 'paid',
+                              isDark: isDark,
                               onSelected: (val) {
                                 if (val) {
                                   setModalState(() {
@@ -391,17 +409,10 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                                 }
                               },
                             ),
-                            ChoiceChip(
-                              label: Text(tr(ref, 'Under ₹200')),
-                              selected: tempEbookPricePreset == 'under_200',
-                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.18),
-                              labelStyle: TextStyle(
-                                color: tempEbookPricePreset == 'under_200' ? const Color(0xFF1B4D2E) : null,
-                                fontWeight: tempEbookPricePreset == 'under_200' ? FontWeight.bold : FontWeight.w600,
-                                fontSize: 15,
-                              ),
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            buildFilterChip(
+                              label: tr(ref, 'Under ₹200'),
+                              isSelected: tempEbookPricePreset == 'under_200',
+                              isDark: isDark,
                               onSelected: (val) {
                                 if (val) {
                                   setModalState(() {
@@ -412,17 +423,10 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                                 }
                               },
                             ),
-                            ChoiceChip(
-                              label: Text(tr(ref, 'Under ₹500')),
-                              selected: tempEbookPricePreset == 'under_500',
-                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.18),
-                              labelStyle: TextStyle(
-                                color: tempEbookPricePreset == 'under_500' ? const Color(0xFF1B4D2E) : null,
-                                fontWeight: tempEbookPricePreset == 'under_500' ? FontWeight.bold : FontWeight.w600,
-                                fontSize: 15,
-                              ),
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            buildFilterChip(
+                              label: tr(ref, 'Under ₹500'),
+                              isSelected: tempEbookPricePreset == 'under_500',
+                              isDark: isDark,
                               onSelected: (val) {
                                 if (val) {
                                   setModalState(() {
@@ -458,17 +462,10 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                           spacing: 12,
                           runSpacing: 12,
                           children: [
-                            ChoiceChip(
-                              label: Text(tr(ref, 'All Ratings')),
-                              selected: tempMinRating == null,
-                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.18),
-                              labelStyle: TextStyle(
-                                color: tempMinRating == null ? const Color(0xFF1B4D2E) : null,
-                                fontWeight: tempMinRating == null ? FontWeight.bold : FontWeight.w600,
-                                fontSize: 15,
-                              ),
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            buildFilterChip(
+                              label: tr(ref, 'All Ratings'),
+                              isSelected: tempMinRating == null,
+                              isDark: isDark,
                               onSelected: (val) {
                                 if (val) {
                                   setModalState(() => tempMinRating = null);
@@ -477,24 +474,11 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                             ),
                             ...[4.5, 4.0, 3.5, 3.0].map((rating) {
                               final isSelected = tempMinRating == rating;
-                              return ChoiceChip(
-                                label: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(Icons.star_rounded, size: 18, color: Colors.amber),
-                                    const SizedBox(width: 5),
-                                    Text('${formatNum(ref, rating)} ${tr(ref, '& up')}'),
-                                  ],
-                                ),
-                                selected: isSelected,
-                                selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.18),
-                                labelStyle: TextStyle(
-                                  color: isSelected ? const Color(0xFF1B4D2E) : null,
-                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                                  fontSize: 15,
-                                ),
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              return buildFilterChip(
+                                label: '${formatNum(ref, rating)} ${tr(ref, '& up')}',
+                                leadingIcon: const Icon(Icons.star_rounded, size: 18, color: Colors.amber),
+                                isSelected: isSelected,
+                                isDark: isDark,
                                 onSelected: (val) {
                                   setModalState(() => tempMinRating = val ? rating : null);
                                 },
@@ -507,7 +491,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                         // Price Preset Filter
                         Row(
                           children: [
-                            const Icon(Icons.payments_outlined, size: 20, color: Color(0xFF1B4D2E)),
+                            Icon(Icons.payments_outlined, size: 20, color: isDark ? const Color(0xFF81C784) : const Color(0xFF1B4D2E)),
                             const SizedBox(width: 8),
                             Text(
                               tr(ref, 'Price Filter'),
@@ -523,17 +507,10 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                           spacing: 12,
                           runSpacing: 12,
                           children: [
-                            ChoiceChip(
-                              label: Text(tr(ref, 'All Prices')),
-                              selected: tempPricePreset == 'all',
-                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.18),
-                              labelStyle: TextStyle(
-                                color: tempPricePreset == 'all' ? const Color(0xFF1B4D2E) : null,
-                                fontWeight: tempPricePreset == 'all' ? FontWeight.bold : FontWeight.w600,
-                                fontSize: 15,
-                              ),
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            buildFilterChip(
+                              label: tr(ref, 'All Prices'),
+                              isSelected: tempPricePreset == 'all',
+                              isDark: isDark,
                               onSelected: (val) {
                                 if (val) {
                                   setModalState(() {
@@ -544,17 +521,10 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                                 }
                               },
                             ),
-                            ChoiceChip(
-                              label: Text(tr(ref, 'Free Courses')),
-                              selected: tempPricePreset == 'free',
-                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.18),
-                              labelStyle: TextStyle(
-                                color: tempPricePreset == 'free' ? const Color(0xFF1B4D2E) : null,
-                                fontWeight: tempPricePreset == 'free' ? FontWeight.bold : FontWeight.w600,
-                                fontSize: 15,
-                              ),
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            buildFilterChip(
+                              label: tr(ref, 'Free Courses'),
+                              isSelected: tempPricePreset == 'free',
+                              isDark: isDark,
                               onSelected: (val) {
                                 if (val) {
                                   setModalState(() {
@@ -565,17 +535,10 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                                 }
                               },
                             ),
-                            ChoiceChip(
-                              label: Text(tr(ref, 'Paid Courses')),
-                              selected: tempPricePreset == 'paid',
-                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.18),
-                              labelStyle: TextStyle(
-                                color: tempPricePreset == 'paid' ? const Color(0xFF1B4D2E) : null,
-                                fontWeight: tempPricePreset == 'paid' ? FontWeight.bold : FontWeight.w600,
-                                fontSize: 15,
-                              ),
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            buildFilterChip(
+                              label: tr(ref, 'Paid Courses'),
+                              isSelected: tempPricePreset == 'paid',
+                              isDark: isDark,
                               onSelected: (val) {
                                 if (val) {
                                   setModalState(() {
@@ -586,17 +549,10 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                                 }
                               },
                             ),
-                            ChoiceChip(
-                              label: Text(tr(ref, 'Under ₹500')),
-                              selected: tempPricePreset == 'under_500',
-                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.18),
-                              labelStyle: TextStyle(
-                                color: tempPricePreset == 'under_500' ? const Color(0xFF1B4D2E) : null,
-                                fontWeight: tempPricePreset == 'under_500' ? FontWeight.bold : FontWeight.w600,
-                                fontSize: 15,
-                              ),
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            buildFilterChip(
+                              label: tr(ref, 'Under ₹500'),
+                              isSelected: tempPricePreset == 'under_500',
+                              isDark: isDark,
                               onSelected: (val) {
                                 if (val) {
                                   setModalState(() {
@@ -614,7 +570,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                         // Skill Level
                         Row(
                           children: [
-                            const Icon(Icons.signal_cellular_alt_rounded, size: 20, color: Color(0xFF1B4D2E)),
+                            Icon(Icons.signal_cellular_alt_rounded, size: 20, color: isDark ? const Color(0xFF81C784) : const Color(0xFF1B4D2E)),
                             const SizedBox(width: 8),
                             Text(
                               tr(ref, 'Skill Level'),
@@ -630,62 +586,34 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                           spacing: 12,
                           runSpacing: 12,
                           children: [
-                            ChoiceChip(
-                              label: Text(tr(ref, 'All Levels')),
-                              selected: tempLevel.isEmpty,
-                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.18),
-                              labelStyle: TextStyle(
-                                color: tempLevel.isEmpty ? const Color(0xFF1B4D2E) : null,
-                                fontWeight: tempLevel.isEmpty ? FontWeight.bold : FontWeight.w600,
-                                fontSize: 15,
-                              ),
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            buildFilterChip(
+                              label: tr(ref, 'All Levels'),
+                              isSelected: tempLevel.isEmpty,
+                              isDark: isDark,
                               onSelected: (val) {
                                 if (val) setModalState(() => tempLevel = '');
                               },
                             ),
-                            ChoiceChip(
-                              label: Text(tr(ref, 'Beginner')),
-                              selected: tempLevel == 'beginner',
-                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.18),
-                              labelStyle: TextStyle(
-                                color: tempLevel == 'beginner' ? const Color(0xFF1B4D2E) : null,
-                                fontWeight: tempLevel == 'beginner' ? FontWeight.bold : FontWeight.w600,
-                                fontSize: 15,
-                              ),
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            buildFilterChip(
+                              label: tr(ref, 'Beginner'),
+                              isSelected: tempLevel == 'beginner',
+                              isDark: isDark,
                               onSelected: (val) {
                                 setModalState(() => tempLevel = val ? 'beginner' : '');
                               },
                             ),
-                            ChoiceChip(
-                              label: Text(tr(ref, 'Intermediate')),
-                              selected: tempLevel == 'intermediate',
-                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.18),
-                              labelStyle: TextStyle(
-                                color: tempLevel == 'intermediate' ? const Color(0xFF1B4D2E) : null,
-                                fontWeight: tempLevel == 'intermediate' ? FontWeight.bold : FontWeight.w600,
-                                fontSize: 15,
-                              ),
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            buildFilterChip(
+                              label: tr(ref, 'Intermediate'),
+                              isSelected: tempLevel == 'intermediate',
+                              isDark: isDark,
                               onSelected: (val) {
                                 setModalState(() => tempLevel = val ? 'intermediate' : '');
                               },
                             ),
-                            ChoiceChip(
-                              label: Text(tr(ref, 'Advanced')),
-                              selected: tempLevel == 'advanced',
-                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.18),
-                              labelStyle: TextStyle(
-                                color: tempLevel == 'advanced' ? const Color(0xFF1B4D2E) : null,
-                                fontWeight: tempLevel == 'advanced' ? FontWeight.bold : FontWeight.w600,
-                                fontSize: 15,
-                              ),
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            buildFilterChip(
+                              label: tr(ref, 'Advanced'),
+                              isSelected: tempLevel == 'advanced',
+                              isDark: isDark,
                               onSelected: (val) {
                                 setModalState(() => tempLevel = val ? 'advanced' : '');
                               },
@@ -697,7 +625,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                         // Language Filter
                         Row(
                           children: [
-                            const Icon(Icons.language_rounded, size: 20, color: Color(0xFF1B4D2E)),
+                            Icon(Icons.language_rounded, size: 20, color: isDark ? const Color(0xFF81C784) : const Color(0xFF1B4D2E)),
                             const SizedBox(width: 8),
                             Text(
                               tr(ref, 'Language Filter'),
@@ -713,62 +641,34 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                           spacing: 12,
                           runSpacing: 12,
                           children: [
-                            ChoiceChip(
-                              label: Text(tr(ref, 'All Languages')),
-                              selected: tempLanguage.isEmpty,
-                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.18),
-                              labelStyle: TextStyle(
-                                color: tempLanguage.isEmpty ? const Color(0xFF1B4D2E) : null,
-                                fontWeight: tempLanguage.isEmpty ? FontWeight.bold : FontWeight.w600,
-                                fontSize: 15,
-                              ),
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            buildFilterChip(
+                              label: tr(ref, 'All Languages'),
+                              isSelected: tempLanguage.isEmpty,
+                              isDark: isDark,
                               onSelected: (val) {
                                 if (val) setModalState(() => tempLanguage = '');
                               },
                             ),
-                            ChoiceChip(
-                              label: Text(tr(ref, 'English')),
-                              selected: tempLanguage == 'English',
-                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.18),
-                              labelStyle: TextStyle(
-                                color: tempLanguage == 'English' ? const Color(0xFF1B4D2E) : null,
-                                fontWeight: tempLanguage == 'English' ? FontWeight.bold : FontWeight.w600,
-                                fontSize: 15,
-                              ),
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            buildFilterChip(
+                              label: tr(ref, 'English'),
+                              isSelected: tempLanguage == 'English',
+                              isDark: isDark,
                               onSelected: (val) {
                                 setModalState(() => tempLanguage = val ? 'English' : '');
                               },
                             ),
-                            ChoiceChip(
-                              label: Text(tr(ref, 'Hindi')),
-                              selected: tempLanguage == 'Hindi',
-                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.18),
-                              labelStyle: TextStyle(
-                                color: tempLanguage == 'Hindi' ? const Color(0xFF1B4D2E) : null,
-                                fontWeight: tempLanguage == 'Hindi' ? FontWeight.bold : FontWeight.w600,
-                                fontSize: 15,
-                              ),
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            buildFilterChip(
+                              label: tr(ref, 'Hindi'),
+                              isSelected: tempLanguage == 'Hindi',
+                              isDark: isDark,
                               onSelected: (val) {
                                 setModalState(() => tempLanguage = val ? 'Hindi' : '');
                               },
                             ),
-                            ChoiceChip(
-                              label: Text(tr(ref, 'Marathi')),
-                              selected: tempLanguage == 'Marathi',
-                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.18),
-                              labelStyle: TextStyle(
-                                color: tempLanguage == 'Marathi' ? const Color(0xFF1B4D2E) : null,
-                                fontWeight: tempLanguage == 'Marathi' ? FontWeight.bold : FontWeight.w600,
-                                fontSize: 15,
-                              ),
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            buildFilterChip(
+                              label: tr(ref, 'Marathi'),
+                              isSelected: tempLanguage == 'Marathi',
+                              isDark: isDark,
                               onSelected: (val) {
                                 setModalState(() => tempLanguage = val ? 'Marathi' : '');
                               },
@@ -780,7 +680,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                         // Sort By
                         Row(
                           children: [
-                            const Icon(Icons.sort_rounded, size: 20, color: Color(0xFF1B4D2E)),
+                            Icon(Icons.sort_rounded, size: 20, color: isDark ? const Color(0xFF81C784) : const Color(0xFF1B4D2E)),
                             const SizedBox(width: 8),
                             Text(
                               tr(ref, 'Sort by'),
@@ -796,32 +696,18 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                           spacing: 12,
                           runSpacing: 12,
                           children: [
-                            ChoiceChip(
-                              label: Text(tr(ref, 'Newest')),
-                              selected: tempOrdering == '-created_at' || tempOrdering == '',
-                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.18),
-                              labelStyle: TextStyle(
-                                color: (tempOrdering == '-created_at' || tempOrdering == '') ? const Color(0xFF1B4D2E) : null,
-                                fontWeight: (tempOrdering == '-created_at' || tempOrdering == '') ? FontWeight.bold : FontWeight.w600,
-                                fontSize: 15,
-                              ),
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            buildFilterChip(
+                              label: tr(ref, 'Newest'),
+                              isSelected: tempOrdering == '-created_at' || tempOrdering == '',
+                              isDark: isDark,
                               onSelected: (val) {
                                 if (val) setModalState(() => tempOrdering = '-created_at');
                               },
                             ),
-                            ChoiceChip(
-                              label: Text(tr(ref, 'Most Popular')),
-                              selected: tempOrdering == '-views_count',
-                              selectedColor: const Color(0xFF1B4D2E).withValues(alpha: 0.18),
-                              labelStyle: TextStyle(
-                                color: tempOrdering == '-views_count' ? const Color(0xFF1B4D2E) : null,
-                                fontWeight: tempOrdering == '-views_count' ? FontWeight.bold : FontWeight.w600,
-                                fontSize: 15,
-                              ),
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            buildFilterChip(
+                              label: tr(ref, 'Most Popular'),
+                              isSelected: tempOrdering == '-views_count',
+                              isDark: isDark,
                               onSelected: (val) {
                                 if (val) setModalState(() => tempOrdering = '-views_count');
                               },
@@ -985,7 +871,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.tune_rounded),
-            color: isDark ? Colors.white70 : const Color(0xFF1B4D2E),
+            color: isDark ? Colors.white : const Color(0xFF1B4D2E),
             tooltip: tr(ref, 'Filter Courses'),
             onPressed: _showFilterBottomSheet,
           ),
@@ -1060,7 +946,9 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
           children: [
             IconButton(
               icon: const Icon(Icons.tune_rounded),
-              color: _activeFilterCount > 0 ? AppColors.accentOrange : const Color(0xFF1B4D2E),
+              color: _activeFilterCount > 0
+                  ? AppColors.accentOrange
+                  : (isDark ? Colors.white : const Color(0xFF1B4D2E)),
               tooltip: 'Filter Courses',
               onPressed: _showFilterBottomSheet,
             ),
@@ -1899,9 +1787,7 @@ class _PrototypeCourseCard extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.w800,
-                            color: isFree
-                                ? const Color(0xFF1B4D2E)
-                                : (isDark ? const Color(0xFF86EFAC) : const Color(0xFF1B4D2E)),
+                            color: isDark ? const Color(0xFF86EFAC) : const Color(0xFF1B4D2E),
                           ),
                         ),
                       ],
