@@ -1227,11 +1227,30 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
         // instead, preventing the double-resize overflow.
         resizeToAvoidBottomInset: false,
         appBar: AppBar(
-          title: Text(
-            _currentLecture?.title ?? 'Course Player',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                _currentCourse?.title ?? 'Course Player',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+              ),
+              if (_currentLecture != null) ...[
+                const SizedBox(height: 1.5),
+                Text(
+                  _currentLecture!.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w500,
+                    color: isDark ? Colors.white60 : AppColors.inkSoft,
+                  ),
+                ),
+              ],
+            ],
           ),
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
@@ -1418,6 +1437,20 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            if (course.title.isNotEmpty) ...[
+                              Text(
+                                course.title,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: isDark ? const Color(0xFF86EFAC) : AppColors.primaryGreen,
+                                  letterSpacing: -0.1,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 2),
+                            ],
                             Text(
                               _currentSection?.title ?? 'Course Content',
                               style: TextStyle(
