@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -43,6 +44,7 @@ class _BecomeInstructorBottomSheetState
   late final TextEditingController _phoneController;
 
   bool _isLoading = false;
+  AutovalidateMode _autovalidateMode = AutovalidateMode.disabled;
 
   @override
   void initState() {
@@ -62,7 +64,18 @@ class _BecomeInstructorBottomSheetState
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+    setState(() {
+      _autovalidateMode = AutovalidateMode.onUserInteraction;
+    });
+
+    if (!_formKey.currentState!.validate()) {
+      AppToast.show(
+        context,
+        tr(ref, 'Please enter a valid 10-digit mobile number'),
+        isError: true,
+      );
+      return;
+    }
 
     setState(() => _isLoading = true);
     try {
@@ -117,6 +130,7 @@ class _BecomeInstructorBottomSheetState
         child: SingleChildScrollView(
           child: Form(
             key: _formKey,
+            autovalidateMode: _autovalidateMode,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -209,6 +223,12 @@ class _BecomeInstructorBottomSheetState
                 TextFormField(
                   controller: _phoneController,
                   keyboardType: TextInputType.phone,
+                  maxLength: 10,
+                  buildCounter: (context, {required currentLength, required isFocused, maxLength}) => null,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(10),
+                  ],
                   decoration: InputDecoration(
                     labelText: tr(ref, 'Contact Mobile Number *'),
                     hintText: tr(ref, '10-digit mobile number'),
@@ -224,7 +244,8 @@ class _BecomeInstructorBottomSheetState
                     ),
                   ),
                   validator: (val) {
-                    if (val == null || val.trim().length < 10) {
+                    final clean = (val ?? '').replaceAll(RegExp(r'[^\d]'), '').trim();
+                    if (clean.length != 10) {
                       return tr(ref, 'Please enter a valid 10-digit mobile number');
                     }
                     return null;

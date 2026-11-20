@@ -1685,6 +1685,8 @@ class AppStrings {
       'New OTP sent to your WhatsApp number.': 'New OTP sent to your WhatsApp number.',
       'New OTP code sent to your email.': 'New OTP code sent to your email.',
       'Invalid or expired OTP. Please request a new code.': 'Invalid or expired OTP. Please request a new code.',
+      'Please enter your instructor name': 'Please enter your instructor name',
+      'Please enter a valid 10-digit mobile number': 'Please enter a valid 10-digit mobile number',
 
       // Profile Screen Subtitles
       'Name, phone and email': 'Name, phone and email',
@@ -3363,6 +3365,8 @@ class AppStrings {
       'New OTP sent to your WhatsApp number.': 'आपके व्हाट्सएप नंबर पर नया ओटीपी भेज दिया गया है।',
       'New OTP code sent to your email.': 'आपके ईमेल पर नया ओटीपी कोड भेज दिया गया है।',
       'Invalid or expired OTP. Please request a new code.': 'अमान्य या समाप्त हो चुका ओटीपी। कृपया नया कोड मंगाएं।',
+      'Please enter your instructor name': 'कृपया अपना प्रशिक्षक नाम दर्ज करें',
+      'Please enter a valid 10-digit mobile number': 'कृपया एक मान्य 10 अंकों का मोबाइल नंबर दर्ज करें',
 
       // Profile Screen Subtitles
       'Name, phone and email': 'नाम, फोन और ईमेल',
@@ -5041,6 +5045,8 @@ class AppStrings {
       'New OTP sent to your WhatsApp number.': 'तुमच्या व्हॉट्सअ‍ॅप नंबरवर नवीन ओटीपी पाठवला आहे.',
       'New OTP code sent to your email.': 'तुमच्या ईमेलवर नवीन ओटीपी कोड पाठवला आहे.',
       'Invalid or expired OTP. Please request a new code.': 'अवैध किंवा मुदत संपलेला ओटीपी. कृपया नवीन कोड मागवा.',
+      'Please enter your instructor name': 'कृपया तुमचे प्रशिक्षक नाव प्रविष्ट करा',
+      'Please enter a valid 10-digit mobile number': 'कृपया वैध १० अंकी मोबाइल क्रमांक प्रविष्ट करा',
 
       // Profile Screen Subtitles
       'Name, phone and email': 'नाव, फोन आणि ईमेल',
