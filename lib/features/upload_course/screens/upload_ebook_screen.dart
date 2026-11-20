@@ -41,6 +41,10 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
   @override
   void initState() {
     super.initState();
+    final user = ref.read(authProvider).user;
+    if (user != null && user.fullName.trim().isNotEmpty) {
+      _authorController.text = user.fullName.trim();
+    }
     _priceController.addListener(() {
       if (mounted) setState(() {});
     });
@@ -184,6 +188,9 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
 
       // Invalidate instructor ebooks provider so uploads list and home reflect latest state
       ref.invalidate(instructorEbooksProvider);
+
+      // Set instructor dashboard active tab to My E-Books (index 1)
+      ref.read(instructorDashboardTabProvider.notifier).state = 1;
 
       if (mounted) {
         AppToast.showSuccess(

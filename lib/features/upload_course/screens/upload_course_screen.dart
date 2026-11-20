@@ -903,6 +903,9 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
       ref.invalidate(instructorCoursesProvider);
       ref.invalidate(instructorStatsProvider);
 
+      // Set instructor dashboard active tab to Recent Courses (index 0)
+      ref.read(instructorDashboardTabProvider.notifier).state = 0;
+
       await Future.delayed(const Duration(milliseconds: 600));
 
       if (mounted) {

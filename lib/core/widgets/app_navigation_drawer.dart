@@ -19,11 +19,17 @@ class AppNavigationDrawer extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final user = ref.watch(authProvider).user;
-    final fullName = (user != null && user.fullName.isNotEmpty) ? user.fullName : 'Learner';
-    final email = (user != null && user.email.isNotEmpty) ? user.email : 'learner@iagrow.edu';
+    final fullName = (user != null && user.fullName.isNotEmpty)
+        ? user.fullName
+        : 'Learner';
+    final email = (user != null && user.email.isNotEmpty)
+        ? user.email
+        : 'learner@iagrow.edu';
     final roleName = user?.activeRole == UserRole.instructor
         ? 'Verified Instructor'
-        : (user?.activeRole == UserRole.admin ? 'Administrator' : 'Research Fellow');
+        : (user?.activeRole == UserRole.admin
+              ? 'Administrator'
+              : 'Research Fellow');
 
     final screenWidth = MediaQuery.of(context).size.width;
     // Constrain the drawer width to at most 75% of screen or 290dp so it doesn't take too much space
@@ -32,7 +38,9 @@ class AppNavigationDrawer extends ConsumerWidget {
     return SizedBox(
       width: drawerWidth,
       child: Drawer(
-        backgroundColor: isDark ? AppColors.cardDark : AppColors.editorialSurface,
+        backgroundColor: isDark
+            ? AppColors.cardDark
+            : AppColors.editorialSurface,
         elevation: 16,
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.horizontal(right: Radius.circular(24)),
@@ -41,349 +49,424 @@ class AppNavigationDrawer extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-            // ── Drawer Header ──────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 12, 16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        'iAgrow',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: -0.5,
-                          color: isDark ? Colors.white : AppColors.editorialOnSurface,
-                        ),
-                      ),
-                    ],
-                  ),
-                  IconButton(
-                    icon: Icon(
-                      Icons.close_rounded,
-                      color: isDark ? Colors.white70 : AppColors.editorialOnSurface,
-                    ),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                ],
-              ),
-            ),
-
-            const Divider(height: 1),
-
-            // ── Drawer Menu Navigation Items ───────────────────────────
-            Expanded(
-              child: ListView(
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                children: [
-                  _buildSectionHeader(context, tr(ref, 'CURRICULUM & MEDIA'), isDark),
-                  const SizedBox(height: 6),
-                  _buildDrawerItem(
-                    context: context,
-                    icon: Icons.menu_book_rounded,
-                    title: tr(ref, 'Courses'),
-                    iconColor: AppColors.editorialSecondary,
-                    isDark: isDark,
-                    onTap: () {
-                      Navigator.of(context).pop();
-                      context.go(RouteNames.explore);
-                    },
-                  ),
-                  _buildDrawerItem(
-                    context: context,
-                    icon: Icons.play_circle_fill_rounded,
-                    title: tr(ref, 'My Learning'),
-                    iconColor: AppColors.editorialSecondary,
-                    isDark: isDark,
-                    onTap: () {
-                      Navigator.of(context).pop();
-                      context.go(RouteNames.farmerLearning);
-                    },
-                  ),
-                  _buildDrawerItem(
-                    context: context,
-                    icon: Icons.workspace_premium_rounded,
-                    title: tr(ref, 'My Certificates'),
-                    iconColor: const Color(0xFFD97706),
-                    isDark: isDark,
-                    onTap: () {
-                      Navigator.of(context).pop();
-                      context.push(RouteNames.certificates);
-                    },
-                  ),
-                  _buildDrawerItem(
-                    context: context,
-                    icon: Icons.favorite_rounded,
-                    title: tr(ref, 'Wishlist'),
-                    iconColor: Colors.redAccent,
-                    isDark: isDark,
-                    onTap: () {
-                      Navigator.of(context).pop();
-                      context.push(RouteNames.wishlist);
-                    },
-                  ),
-                  Builder(
-                    builder: (context) {
-                      final cartAsync = ref.watch(cartProvider);
-                      final count = cartAsync.maybeWhen(
-                        data: (cart) => cart.items.length,
-                        orElse: () => 0,
-                      );
-                      return _buildDrawerItem(
-                        context: context,
-                        icon: Icons.shopping_cart_rounded,
-                        title: tr(ref, 'Cart'),
-                        subtitle: count > 0 ? '$count ${count == 1 ? "item" : "items"}' : null,
-                        iconColor: const Color(0xFF10B981),
-                        isDark: isDark,
-                        onTap: () {
-                          Navigator.of(context).pop();
-                          context.push(RouteNames.cart);
-                        },
-                      );
-                    },
-                  ),
-                  _buildDrawerItem(
-                    context: context,
-                    icon: Icons.groups_rounded,
-                    title: tr(ref, 'Community Hubs'),
-                    iconColor: isDark ? Colors.white70 : AppColors.editorialOnSurfaceVariant,
-                    isDark: isDark,
-                    onTap: () {
-                      Navigator.of(context).pop();
-                      context.go(RouteNames.farmerCommunity);
-                    },
-                  ),
-                  _buildDrawerItem(
-                    context: context,
-                    icon: Icons.person_rounded,
-                    title: tr(ref, 'My Profile'),
-                    iconColor: isDark ? AppColors.editorialSecondaryFixedDim : AppColors.editorialSecondary,
-                    isDark: isDark,
-                    onTap: () {
-                      Navigator.of(context).pop();
-                      context.go(RouteNames.farmerProfile);
-                    },
-                  ),
-
-                  // ── Dual Role Mode Switcher ────────────────────────────────
-                  const SizedBox(height: 12),
-                  Builder(
-                    builder: (context) {
-                      final user = ref.watch(authProvider).user;
-                      final isCurrentlyInstructor = user?.activeRole == UserRole.instructor;
-                      final hasBothRoles = (user?.grantedRoles.length ?? 0) > 1;
-
-                      return Container(
-                        margin: const EdgeInsets.symmetric(vertical: 4),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: isCurrentlyInstructor
-                                ? [const Color(0xFF1B4D2E), const Color(0xFF2E7D32)]
-                                : [const Color(0xFFB45309), const Color(0xFFD97706)],
-                          ),
-                          borderRadius: BorderRadius.circular(14),
-                          boxShadow: [
-                            BoxShadow(
-                              color: (isCurrentlyInstructor ? AppColors.primaryGreen : Colors.amber).withValues(alpha: 0.25),
-                              blurRadius: 10,
-                              offset: const Offset(0, 3),
-                            ),
-                          ],
-                        ),
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: () async {
-                              Navigator.of(context).pop();
-                              if (hasBothRoles) {
-                                final targetRole = isCurrentlyInstructor ? UserRole.farmer : UserRole.instructor;
-                                await ref.read(authProvider.notifier).switchRole(targetRole);
-                                if (context.mounted) {
-                                  // Cache invalidation and route swap
-                                  ref.invalidate(cartProvider);
-                                  context.go(targetRole == UserRole.instructor ? RouteNames.instructorHome : RouteNames.farmerHome);
-                                }
-                              } else {
-                                // User is not yet registered as instructor -> ask name & phone
-                                BecomeInstructorBottomSheet.show(
-                                  context,
-                                  onSuccess: () {
-                                    ref.invalidate(cartProvider);
-                                    context.go(RouteNames.instructorHome);
-                                  },
-                                );
-                              }
-                            },
-                            borderRadius: BorderRadius.circular(14),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(6),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withValues(alpha: 0.2),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: Icon(
-                                      isCurrentlyInstructor ? Icons.school_rounded : Icons.menu_book_rounded,
-                                      color: Colors.white,
-                                      size: 18,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Text(
-                                      isCurrentlyInstructor
-                                          ? tr(ref, 'Switch to Student')
-                                          : tr(ref, 'Switch to Instructor'),
-                                      style: const TextStyle(
-                                        fontSize: 13.5,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                  const Icon(Icons.swap_horiz_rounded, color: Colors.white, size: 20),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-
-                  const SizedBox(height: 16),
-                  const Divider(height: 1),
-                  const SizedBox(height: 16),
-
-                  _buildSectionHeader(context, tr(ref, 'ASSISTANCE & SUPPORT'), isDark),
-                  const SizedBox(height: 6),
-                  _buildDrawerItem(
-                    context: context,
-                    icon: Icons.support_agent_rounded,
-                    title: tr(ref, 'Help & Support'),
-                    iconColor: isDark ? Colors.white70 : AppColors.editorialOnSurfaceVariant,
-                    isDark: isDark,
-                    onTap: () {
-                      Navigator.of(context).pop();
-                      context.push('/support');
-                    },
-                  ),
-                  _buildDrawerItem(
-                    context: context,
-                    icon: Icons.confirmation_number_outlined,
-                    title: tr(ref, 'My Tickets'),
-                    iconColor: isDark ? Colors.white70 : AppColors.editorialOnSurfaceVariant,
-                    isDark: isDark,
-                    onTap: () {
-                      Navigator.of(context).pop();
-                      context.push('/support?tab=my-tickets');
-                    },
-                  ),
-                  _buildDrawerItem(
-                    context: context,
-                    icon: Icons.security_rounded,
-                    title: tr(ref, 'Privacy Settings'),
-                    iconColor: isDark ? Colors.white70 : AppColors.editorialOnSurfaceVariant,
-                    isDark: isDark,
-                    onTap: () {
-                      Navigator.of(context).pop();
-                      context.push('/privacy');
-                    },
-                  ),
-                  _buildDrawerItem(
-                    context: context,
-                    icon: Icons.logout_rounded,
-                    title: tr(ref, 'Log Out'),
-                    iconColor: isDark ? Colors.white70 : AppColors.editorialOnSurfaceVariant,
-                    textColor: isDark ? Colors.white : AppColors.editorialOnSurface,
-                    isDark: isDark,
-                    onTap: () {
-                      Navigator.of(context).pop();
-                      showLogoutConfirmationDialog(context, ref);
-                    },
-                  ),
-                ],
-              ),
-            ),
-
-            // ── Drawer User Footer ──────────────────────────────────────
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: isDark ? AppColors.cardDark : AppColors.editorialSurfaceContainerLow,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-              ),
-              child: InkWell(
-                onTap: () {
-                  Navigator.of(context).pop();
-                  context.go(RouteNames.farmerProfile);
-                },
-                borderRadius: BorderRadius.circular(14),
+              // ── Drawer Header ──────────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 12, 16),
                 child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    CircleAvatar(
-                      radius: 20,
-                      backgroundColor: isDark ? Colors.white24 : AppColors.editorialPrimary,
-                      child: Text(
-                        fullName.isNotEmpty ? fullName[0].toUpperCase() : 'U',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
+                    Row(
+                      children: [
+                        Text(
+                          'iAgrow',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: -0.5,
+                            color: isDark
+                                ? Colors.white
+                                : AppColors.editorialOnSurface,
+                          ),
                         ),
-                      ),
+                      ],
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            fullName,
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                              color: isDark ? Colors.white : AppColors.editorialOnSurface,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          Text(
-                            email.isNotEmpty ? email : roleName,
-                            style: TextStyle(
-                              fontSize: 11.5,
-                              color: isDark ? Colors.white60 : AppColors.editorialOnSurfaceVariant,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
+                    IconButton(
+                      icon: Icon(
+                        Icons.close_rounded,
+                        color: isDark
+                            ? Colors.white70
+                            : AppColors.editorialOnSurface,
                       ),
-                    ),
-                    Icon(
-                      Icons.chevron_right_rounded,
-                      color: isDark ? Colors.white38 : AppColors.editorialOnSurfaceVariant,
+                      onPressed: () => Navigator.of(context).pop(),
                     ),
                   ],
                 ),
               ),
-            ),
-          ],
+
+              const Divider(height: 1),
+
+              // ── Drawer Menu Navigation Items ───────────────────────────
+              Expanded(
+                child: ListView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 16,
+                  ),
+                  children: [
+                    _buildSectionHeader(
+                      context,
+                      tr(ref, 'CURRICULUM & MEDIA'),
+                      isDark,
+                    ),
+                    const SizedBox(height: 6),
+                    _buildDrawerItem(
+                      context: context,
+                      icon: Icons.menu_book_rounded,
+                      title: tr(ref, 'Courses'),
+                      iconColor: AppColors.editorialSecondary,
+                      isDark: isDark,
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        context.go(RouteNames.explore);
+                      },
+                    ),
+                    _buildDrawerItem(
+                      context: context,
+                      icon: Icons.play_circle_fill_rounded,
+                      title: tr(ref, 'My Learning'),
+                      iconColor: AppColors.editorialSecondary,
+                      isDark: isDark,
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        context.go(RouteNames.farmerLearning);
+                      },
+                    ),
+                    _buildDrawerItem(
+                      context: context,
+                      icon: Icons.workspace_premium_rounded,
+                      title: tr(ref, 'My Certificates'),
+                      iconColor: const Color(0xFFD97706),
+                      isDark: isDark,
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        context.push(RouteNames.certificates);
+                      },
+                    ),
+                    _buildDrawerItem(
+                      context: context,
+                      icon: Icons.favorite_rounded,
+                      title: tr(ref, 'Wishlist'),
+                      iconColor: Colors.redAccent,
+                      isDark: isDark,
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        context.push(RouteNames.wishlist);
+                      },
+                    ),
+                    Builder(
+                      builder: (context) {
+                        final cartAsync = ref.watch(cartProvider);
+                        final count = cartAsync.maybeWhen(
+                          data: (cart) => cart.items.length,
+                          orElse: () => 0,
+                        );
+                        return _buildDrawerItem(
+                          context: context,
+                          icon: Icons.shopping_cart_rounded,
+                          title: tr(ref, 'Cart'),
+                          subtitle: count > 0
+                              ? '$count ${count == 1 ? "item" : "items"}'
+                              : null,
+                          iconColor: const Color(0xFF10B981),
+                          isDark: isDark,
+                          onTap: () {
+                            Navigator.of(context).pop();
+                            context.push(RouteNames.cart);
+                          },
+                        );
+                      },
+                    ),
+                    _buildDrawerItem(
+                      context: context,
+                      icon: Icons.groups_rounded,
+                      title: tr(ref, 'Community Hubs'),
+                      iconColor: isDark
+                          ? Colors.white70
+                          : AppColors.editorialOnSurfaceVariant,
+                      isDark: isDark,
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        context.go(RouteNames.farmerCommunity);
+                      },
+                    ),
+                    _buildDrawerItem(
+                      context: context,
+                      icon: Icons.person_rounded,
+                      title: tr(ref, 'My Profile'),
+                      iconColor: isDark
+                          ? AppColors.editorialSecondaryFixedDim
+                          : AppColors.editorialSecondary,
+                      isDark: isDark,
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        context.go(RouteNames.farmerProfile);
+                      },
+                    ),
+
+                    // ── Dual Role Mode Switcher ────────────────────────────────
+                    const SizedBox(height: 12),
+                    Builder(
+                      builder: (context) {
+                        final user = ref.watch(authProvider).user;
+                        final isCurrentlyInstructor =
+                            user?.activeRole == UserRole.instructor;
+                        final hasBothRoles =
+                            (user?.grantedRoles.length ?? 0) > 1;
+
+                        return Container(
+                          margin: const EdgeInsets.symmetric(vertical: 4),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: isCurrentlyInstructor
+                                  ? [
+                                      const Color(0xFF1B4D2E),
+                                      const Color(0xFF2E7D32),
+                                    ]
+                                  : [
+                                      const Color(0xFFB45309),
+                                      const Color(0xFFD97706),
+                                    ],
+                            ),
+                            borderRadius: BorderRadius.circular(14),
+                            boxShadow: [
+                              BoxShadow(
+                                color:
+                                    (isCurrentlyInstructor
+                                            ? AppColors.primaryGreen
+                                            : Colors.amber)
+                                        .withValues(alpha: 0.25),
+                                blurRadius: 10,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () async {
+                                Navigator.of(context).pop();
+                                if (hasBothRoles) {
+                                  final targetRole = isCurrentlyInstructor
+                                      ? UserRole.farmer
+                                      : UserRole.instructor;
+                                  await ref
+                                      .read(authProvider.notifier)
+                                      .switchRole(targetRole);
+                                  if (context.mounted) {
+                                    // Cache invalidation and route swap
+                                    ref.invalidate(cartProvider);
+                                    context.go(
+                                      targetRole == UserRole.instructor
+                                          ? RouteNames.instructorHome
+                                          : RouteNames.farmerHome,
+                                    );
+                                  }
+                                } else {
+                                  // User is not yet registered as instructor -> ask name & phone
+                                  BecomeInstructorBottomSheet.show(
+                                    context,
+                                    onSuccess: () {
+                                      if (context.mounted) {
+                                        context.go(RouteNames.instructorHome);
+                                      }
+                                    },
+                                  );
+                                }
+                              },
+                              borderRadius: BorderRadius.circular(14),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 11,
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(6),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withValues(
+                                          alpha: 0.2,
+                                        ),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(
+                                        isCurrentlyInstructor
+                                            ? Icons.school_rounded
+                                            : Icons.menu_book_rounded,
+                                        color: Colors.white,
+                                        size: 18,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        isCurrentlyInstructor
+                                            ? tr(ref, 'Switch to Student')
+                                            : tr(ref, 'Switch to Instructor'),
+                                        style: const TextStyle(
+                                          fontSize: 13.5,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    const Icon(
+                                      Icons.swap_horiz_rounded,
+                                      color: Colors.white,
+                                      size: 20,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+
+                    const SizedBox(height: 16),
+                    const Divider(height: 1),
+                    const SizedBox(height: 16),
+
+                    _buildSectionHeader(
+                      context,
+                      tr(ref, 'ASSISTANCE & SUPPORT'),
+                      isDark,
+                    ),
+                    const SizedBox(height: 6),
+                    _buildDrawerItem(
+                      context: context,
+                      icon: Icons.support_agent_rounded,
+                      title: tr(ref, 'Help & Support'),
+                      iconColor: isDark
+                          ? Colors.white70
+                          : AppColors.editorialOnSurfaceVariant,
+                      isDark: isDark,
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        context.push('/support');
+                      },
+                    ),
+                    _buildDrawerItem(
+                      context: context,
+                      icon: Icons.confirmation_number_outlined,
+                      title: tr(ref, 'My Tickets'),
+                      iconColor: isDark
+                          ? Colors.white70
+                          : AppColors.editorialOnSurfaceVariant,
+                      isDark: isDark,
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        context.push('/support?tab=my-tickets');
+                      },
+                    ),
+                    _buildDrawerItem(
+                      context: context,
+                      icon: Icons.security_rounded,
+                      title: tr(ref, 'Privacy Settings'),
+                      iconColor: isDark
+                          ? Colors.white70
+                          : AppColors.editorialOnSurfaceVariant,
+                      isDark: isDark,
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        context.push('/privacy');
+                      },
+                    ),
+                    _buildDrawerItem(
+                      context: context,
+                      icon: Icons.logout_rounded,
+                      title: tr(ref, 'Log Out'),
+                      iconColor: isDark
+                          ? Colors.white70
+                          : AppColors.editorialOnSurfaceVariant,
+                      textColor: isDark
+                          ? Colors.white
+                          : AppColors.editorialOnSurface,
+                      isDark: isDark,
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        showLogoutConfirmationDialog(context, ref);
+                      },
+                    ),
+                  ],
+                ),
+              ),
+
+              // ── Drawer User Footer ──────────────────────────────────────
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? AppColors.cardDark
+                      : AppColors.editorialSurfaceContainerLow,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(20),
+                  ),
+                ),
+                child: InkWell(
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    context.go(RouteNames.farmerProfile);
+                  },
+                  borderRadius: BorderRadius.circular(14),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 20,
+                        backgroundColor: isDark
+                            ? Colors.white24
+                            : AppColors.editorialPrimary,
+                        child: Text(
+                          fullName.isNotEmpty ? fullName[0].toUpperCase() : 'U',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              fullName,
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                                color: isDark
+                                    ? Colors.white
+                                    : AppColors.editorialOnSurface,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Text(
+                              email.isNotEmpty ? email : roleName,
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                color: isDark
+                                    ? Colors.white60
+                                    : AppColors.editorialOnSurfaceVariant,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        color: isDark
+                            ? Colors.white38
+                            : AppColors.editorialOnSurfaceVariant,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildSectionHeader(BuildContext context, String title, bool isDark) {
     return Padding(
@@ -437,7 +520,11 @@ class AppNavigationDrawer extends ConsumerWidget {
                     style: TextStyle(
                       fontSize: 14.5,
                       fontWeight: FontWeight.w600,
-                      color: textColor ?? (isDark ? Colors.white : AppColors.editorialOnSurface),
+                      color:
+                          textColor ??
+                          (isDark
+                              ? Colors.white
+                              : AppColors.editorialOnSurface),
                     ),
                   ),
                   if (subtitle != null && subtitle.isNotEmpty) ...[
@@ -446,7 +533,9 @@ class AppNavigationDrawer extends ConsumerWidget {
                       subtitle,
                       style: TextStyle(
                         fontSize: 11,
-                        color: isDark ? Colors.white54 : AppColors.editorialOnSurfaceVariant,
+                        color: isDark
+                            ? Colors.white54
+                            : AppColors.editorialOnSurfaceVariant,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,

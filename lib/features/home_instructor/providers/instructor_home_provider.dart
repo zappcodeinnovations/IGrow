@@ -131,3 +131,7 @@ final deactivatedCoursesProvider =
   return DeactivatedCoursesNotifier();
 });
 
+/// Tracks the active content tab on the Instructor Home dashboard
+/// 0 = Recent Courses (हाल के कोर्सेस), 1 = My E-Books (मेरी ई-पुस्तकें)
+final instructorDashboardTabProvider = StateProvider<int>((ref) => 0);
+

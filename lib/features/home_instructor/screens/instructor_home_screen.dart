@@ -89,7 +89,7 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
   final String _ordering = '';
-  int _selectedDashboardTab = 0; // 0 for Recent Courses, 1 for My E-Books
+  int get _selectedDashboardTab => ref.watch(instructorDashboardTabProvider);
 
   @override
   void initState() {
@@ -1383,7 +1383,11 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                 Row(
                   children: [
                     InkWell(
-                      onTap: () => setState(() => _selectedDashboardTab = 0),
+                      onTap: () =>
+                          ref
+                                  .read(instructorDashboardTabProvider.notifier)
+                                  .state =
+                              0,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -1414,7 +1418,11 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                     ),
                     const SizedBox(width: 24),
                     InkWell(
-                      onTap: () => setState(() => _selectedDashboardTab = 1),
+                      onTap: () =>
+                          ref
+                                  .read(instructorDashboardTabProvider.notifier)
+                                  .state =
+                              1,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -2784,8 +2792,10 @@ class _TotalRevenueBanner extends ConsumerWidget {
 
     return statsAsync.maybeWhen(
       data: (stats) {
-        final totalEarnings = (stats['total_earnings'] as num?)?.toDouble() ?? 0.0;
-        final totalRevenue = (stats['total_revenue'] as num?)?.toDouble() ?? 0.0;
+        final totalEarnings =
+            (stats['total_earnings'] as num?)?.toDouble() ?? 0.0;
+        final totalRevenue =
+            (stats['total_revenue'] as num?)?.toDouble() ?? 0.0;
         final displayAmount = totalEarnings > 0 ? totalEarnings : totalRevenue;
 
         return AppCard(
@@ -2825,10 +2835,10 @@ class _TotalRevenueBanner extends ConsumerWidget {
                     Text(
                       tr(ref, 'Total Revenue'),
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: isDark ? Colors.white60 : AppColors.inkSoft,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 0.2,
-                          ),
+                        color: isDark ? Colors.white60 : AppColors.inkSoft,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.2,
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Text(
@@ -2844,9 +2854,14 @@ class _TotalRevenueBanner extends ConsumerWidget {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
-                  color: (isDark ? const Color(0xFF142418) : const Color(0xFFEBF6EC)),
+                  color: (isDark
+                      ? const Color(0xFF142418)
+                      : const Color(0xFFEBF6EC)),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
                     color: AppColors.primaryGreen.withValues(alpha: 0.3),
@@ -2902,9 +2917,9 @@ class _TotalRevenueBanner extends ConsumerWidget {
                   Text(
                     tr(ref, 'Total Revenue'),
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: isDark ? Colors.white60 : AppColors.inkSoft,
-                          fontWeight: FontWeight.w600,
-                        ),
+                      color: isDark ? Colors.white60 : AppColors.inkSoft,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   const SizedBox(height: 2),
                   Text(
@@ -2918,10 +2933,7 @@ class _TotalRevenueBanner extends ConsumerWidget {
                 ],
               ),
             ),
-            const Icon(
-              Icons.chevron_right_rounded,
-              color: Colors.grey,
-            ),
+            const Icon(Icons.chevron_right_rounded, color: Colors.grey),
           ],
         ),
       ),

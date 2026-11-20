@@ -93,16 +93,18 @@ class _BecomeInstructorBottomSheetState
       // 2. Call dedicated creator onboarding endpoint to provision instructor profile and update claims
       await ref.read(authProvider.notifier).becomeInstructor();
 
+      final successMsg = tr(ref, 'Switched to Instructor Mode! 👨‍🏫');
+
       if (mounted) {
         setState(() => _isLoading = false);
         Navigator.of(context).pop(true);
-        AppToast.show(context, tr(ref, 'Switched to Instructor Mode! 👨‍🏫'));
+        AppToast.show(context, successMsg);
         widget.onSuccess();
       }
     } catch (e) {
       if (mounted) {
+        final err = e.toString().replaceAll('Exception: ', '').trim();
         setState(() => _isLoading = false);
-        final err = ref.read(authProvider).error ?? e.toString();
         AppToast.show(context, err, isError: true);
       }
     }
