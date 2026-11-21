@@ -47,6 +47,7 @@ class RouteNames {
   static const creatorDashboard = '/instructor/creator-dashboard';
   static const instructorUploads = '/instructor/uploads';
   static const instructorKyc = '/instructor/kyc';
+  static const instructorQa = '/instructor/qa';
   static const instructorReviews = '/instructor/reviews';
   static const instructorTransactions = '/instructor/transactions';
   static const instructorStudents = '/instructor/students';

@@ -71,36 +71,59 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
           'You are switching to Instructor Mode. You will be able to create courses, manage students, and view teaching analytics.',
           style: TextStyle(fontSize: 14, height: 1.4),
         ),
+        actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogCtx),
-            child: const Text(
-              'Cancel',
-              style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600),
-            ),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1B4D2E),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: isDark ? Colors.white70 : AppColors.inkDark,
+                    side: BorderSide(
+                      color: isDark ? const Color(0xFF2C3E31) : const Color(0xFFD1DDD0),
+                      width: 1.2,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                  ),
+                  onPressed: () => Navigator.pop(dialogCtx),
+                  child: Text(
+                    tr(ref, 'Cancel'),
+                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5),
+                  ),
+                ),
               ),
-            ),
-            onPressed: () async {
-              Navigator.pop(dialogCtx);
-              // Switch role in AuthProvider and navigate to Instructor panel
-              await ref
-                  .read(authProvider.notifier)
-                  .switchRole(UserRole.instructor);
-              if (context.mounted) {
-                context.go(RouteNames.instructorHome);
-              }
-            },
-            child: const Text(
-              'OK, Switch',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryGreen,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                  ),
+                  onPressed: () async {
+                    Navigator.pop(dialogCtx);
+                    // Switch role in AuthProvider and navigate to Instructor panel
+                    await ref
+                        .read(authProvider.notifier)
+                        .switchRole(UserRole.instructor);
+                    if (context.mounted) {
+                      context.go(RouteNames.instructorHome);
+                    }
+                  },
+                  child: Text(
+                    tr(ref, 'OK, Switch'),
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -1150,29 +1173,31 @@ _CategoryVisualConfig _getCategoryVisual(
 }
 
 // ── Course Card Component (Matching Prototype Screen 11 Large Card) ───────────────
-class _CourseCard extends StatelessWidget {
+class _CourseCard extends ConsumerWidget {
   const _CourseCard({required this.course, required this.index});
 
   final CourseList course;
   final int index;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isFree =
         course.price == null ||
         course.price == '0' ||
         course.price == '0.00' ||
         course.price == '0.0';
-    final priceText = isFree ? 'FREE' : '₹${course.price}';
+    final priceText = isFree ? tr(ref, 'FREE') : '₹${formatNum(ref, course.price)}';
+    final ratingDisplay = formatNum(ref, '4.8');
+    final reviewCount = formatNum(ref, 248);
     final categoryName =
         course.category?.name ??
         CourseCategory.fromValue(course.category?.slug)?.display;
     final badgeLabel = (categoryName != null && categoryName.trim().isNotEmpty)
-        ? categoryName.trim()
+        ? tr(ref, categoryName.trim())
         : (isFree
-              ? 'Free course'
-              : (index % 2 == 0 ? 'Bestseller' : 'Popular'));
+              ? tr(ref, 'Free course')
+              : (index % 2 == 0 ? tr(ref, 'Bestseller') : tr(ref, 'Popular')));
 
     return Material(
       color: Colors.transparent,
@@ -1324,7 +1349,7 @@ class _CourseCard extends StatelessWidget {
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              '4.8 (248)',
+                              '$ratingDisplay ($reviewCount)',
                               style: TextStyle(
                                 fontSize: 12.5,
                                 fontWeight: FontWeight.bold,

@@ -20,6 +20,8 @@ import '../../certificates/providers/certificates_provider.dart';
 import '../../notifications/providers/notification_provider.dart';
 import '../../../core/widgets/shimmer_placeholders.dart';
 import '../../../core/services/app_config_service.dart';
+import '../../../core/utils/app_toast.dart';
+import '../../../core/widgets/app_error_state.dart';
 import '../../../data/models/user_role.dart';
 
 class InstructorHomeScreen extends ConsumerStatefulWidget {
@@ -52,34 +54,57 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
           'You are switching to Student Mode. You will be able to browse courses, read eBooks, and learn farming techniques.',
           style: TextStyle(fontSize: 14, height: 1.4),
         ),
+        actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogCtx),
-            child: const Text(
-              'Cancel',
-              style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600),
-            ),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1B4D2E),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: isDark ? Colors.white70 : AppColors.inkDark,
+                    side: BorderSide(
+                      color: isDark ? const Color(0xFF2C3E31) : const Color(0xFFD1DDD0),
+                      width: 1.2,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                  ),
+                  onPressed: () => Navigator.pop(dialogCtx),
+                  child: Text(
+                    tr(ref, 'Cancel'),
+                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5),
+                  ),
+                ),
               ),
-            ),
-            onPressed: () async {
-              Navigator.pop(dialogCtx);
-              // Switch role in AuthProvider and navigate to Student panel
-              await ref.read(authProvider.notifier).switchRole(UserRole.farmer);
-              if (context.mounted) {
-                context.go(RouteNames.farmerHome);
-              }
-            },
-            child: const Text(
-              'OK, Switch',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryGreen,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                  ),
+                  onPressed: () async {
+                    Navigator.pop(dialogCtx);
+                    // Switch role in AuthProvider and navigate to Student panel
+                    await ref.read(authProvider.notifier).switchRole(UserRole.farmer);
+                    if (context.mounted) {
+                      context.go(RouteNames.farmerHome);
+                    }
+                  },
+                  child: Text(
+                    tr(ref, 'OK, Switch'),
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -751,13 +776,23 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
         ref.invalidate(instructorStatsProvider);
       } catch (e) {
         if (!mounted) return;
-        final messenger = ScaffoldMessenger.of(context);
-        messenger.clearSnackBars();
-        messenger.showSnackBar(
-          SnackBar(
-            content: Text(e.toString().replaceAll('Exception: ', '')),
-            backgroundColor: AppColors.error,
-          ),
+        final rawMsg = e.toString().replaceAll('Exception: ', '').trim();
+        // If 404 / already removed, refresh lists so stale item disappears
+        if (rawMsg.toLowerCase().contains('matches the given query') ||
+            rawMsg.contains('404')) {
+          ref.invalidate(instructorEbooksProvider);
+          ref.invalidate(studentEbooksProvider);
+          ref.invalidate(instructorStatsProvider);
+          AppToast.show(
+            context,
+            tr(ref, 'Draft e-book deleted successfully'),
+          );
+          return;
+        }
+        AppToast.show(
+          context,
+          getUserFriendlyErrorMessage(e, fallback: tr(ref, 'Failed to delete e-book')),
+          isError: true,
         );
       }
     }
@@ -993,13 +1028,23 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
         ref.invalidate(instructorStatsProvider);
       } catch (e) {
         if (!mounted) return;
-        final messenger = ScaffoldMessenger.of(context);
-        messenger.clearSnackBars();
-        messenger.showSnackBar(
-          SnackBar(
-            content: Text(e.toString().replaceAll('Exception: ', '')),
-            backgroundColor: AppColors.error,
-          ),
+        final rawMsg = e.toString().replaceAll('Exception: ', '').trim();
+        // If 404 / already removed, refresh lists so stale item disappears
+        if (rawMsg.toLowerCase().contains('matches the given query') ||
+            rawMsg.contains('404')) {
+          ref.invalidate(instructorEbooksProvider);
+          ref.invalidate(studentEbooksProvider);
+          ref.invalidate(instructorStatsProvider);
+          AppToast.show(
+            context,
+            tr(ref, 'Draft e-book deleted successfully'),
+          );
+          return;
+        }
+        AppToast.show(
+          context,
+          getUserFriendlyErrorMessage(e, fallback: tr(ref, 'Failed to delete e-book')),
+          isError: true,
         );
       }
     }
@@ -1037,26 +1082,31 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                     ).textTheme.bodyMedium?.copyWith(color: AppColors.inkSoft),
                   ),
                   const SizedBox(height: 2),
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          userName,
+                  Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(
+                          text: userName,
                           style: Theme.of(context).textTheme.displaySmall
                               ?.copyWith(fontSize: 20, height: 1.15),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                      if (user?.isKycVerified == true) ...[
-                        const SizedBox(width: 6),
-                        const Icon(
-                          Icons.verified_rounded,
-                          color: AppColors.primaryGreen,
-                          size: 20,
-                        ),
+                        if (user?.isKycVerified == true) ...[
+                          const WidgetSpan(
+                            alignment: PlaceholderAlignment.middle,
+                            child: Padding(
+                              padding: EdgeInsets.only(left: 6),
+                              child: Icon(
+                                Icons.verified_rounded,
+                                color: AppColors.primaryGreen,
+                                size: 19,
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
-                    ],
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
@@ -1200,7 +1250,10 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                         style: FilledButton.styleFrom(
                           backgroundColor: AppColors.accentOrange,
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 12,
+                          ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -1211,7 +1264,7 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                           size: 18,
                         ),
                         label: Text(
-                          tr(ref, 'Create a New Course'),
+                          tr(ref, 'New Course'),
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 13,
@@ -1416,7 +1469,7 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(width: 24),
+                    const SizedBox(width: 16),
                     InkWell(
                       onTap: () =>
                           ref
@@ -1462,6 +1515,9 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                         );
                       },
                       style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         foregroundColor: isDark
                             ? const Color(0xFF4ADE80)
                             : AppColors.primaryGreen,

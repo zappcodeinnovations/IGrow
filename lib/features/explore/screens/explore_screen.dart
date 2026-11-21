@@ -66,16 +66,19 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
     if (_selectedTab == 1) {
       int count = 0;
       if (_selectedEbookPricePreset != 'all') count++;
-      if (_selectedInstructorId != null && _selectedInstructorId!.isNotEmpty) count++;
+      if (_selectedInstructorId != null && _selectedInstructorId!.isNotEmpty)
+        count++;
       return count;
     }
     int count = 0;
     if (_selectedLevel.isNotEmpty) count++;
     if (_selectedLanguage.isNotEmpty) count++;
-    if (_selectedOrdering.isNotEmpty && _selectedOrdering != '-created_at') count++;
+    if (_selectedOrdering.isNotEmpty && _selectedOrdering != '-created_at')
+      count++;
     if (_selectedPricePreset != 'all') count++;
     if (_minRating != null && _minRating! > 0) count++;
-    if (_selectedInstructorId != null && _selectedInstructorId!.isNotEmpty) count++;
+    if (_selectedInstructorId != null && _selectedInstructorId!.isNotEmpty)
+      count++;
     return count;
   }
 
@@ -87,7 +90,8 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
     if (widget.initialCategory != null && widget.initialCategory!.isNotEmpty) {
       _selectedCategory = widget.initialCategory!;
     }
-    if (widget.initialInstructorId != null && widget.initialInstructorId!.isNotEmpty) {
+    if (widget.initialInstructorId != null &&
+        widget.initialInstructorId!.isNotEmpty) {
       _selectedInstructorId = widget.initialInstructorId;
     }
     if (widget.initialSearch != null && widget.initialSearch!.isNotEmpty) {
@@ -187,11 +191,21 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
       required ValueChanged<bool> onSelected,
       Widget? leadingIcon,
     }) {
-      final selectedBg = isDark ? const Color(0xFF1E3A24) : const Color(0xFFE8F5E9);
-      final unselectedBg = isDark ? const Color(0xFF1B261D) : const Color(0xFFF1F5F9);
-      final selectedBorder = isDark ? const Color(0xFF81C784) : const Color(0xFF2E7D32);
-      final unselectedBorder = isDark ? const Color(0xFF2E4534) : const Color(0xFFE2E8F0);
-      final selectedTextColor = isDark ? const Color(0xFF81C784) : const Color(0xFF1B4D2E);
+      final selectedBg = isDark
+          ? const Color(0xFF1E3A24)
+          : const Color(0xFFE8F5E9);
+      final unselectedBg = isDark
+          ? const Color(0xFF1B261D)
+          : const Color(0xFFF1F5F9);
+      final selectedBorder = isDark
+          ? const Color(0xFF81C784)
+          : const Color(0xFF2E7D32);
+      final unselectedBorder = isDark
+          ? const Color(0xFF2E4534)
+          : const Color(0xFFE2E8F0);
+      final selectedTextColor = isDark
+          ? const Color(0xFF81C784)
+          : const Color(0xFF1B4D2E);
       final unselectedTextColor = isDark ? Colors.white70 : AppColors.inkDark;
 
       return ChoiceChip(
@@ -199,7 +213,9 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
         label: Text(label),
         selected: isSelected,
         showCheckmark: leadingIcon == null,
-        checkmarkColor: isDark ? const Color(0xFF81C784) : const Color(0xFF1B4D2E),
+        checkmarkColor: isDark
+            ? const Color(0xFF81C784)
+            : const Color(0xFF1B4D2E),
         selectedColor: selectedBg,
         backgroundColor: unselectedBg,
         side: BorderSide(
@@ -236,7 +252,8 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
               int count = 0;
               if (tempLevel.isNotEmpty) count++;
               if (tempLanguage.isNotEmpty) count++;
-              if (tempOrdering.isNotEmpty && tempOrdering != '-created_at') count++;
+              if (tempOrdering.isNotEmpty && tempOrdering != '-created_at')
+                count++;
               if (tempPricePreset != 'all') count++;
               if (tempMinRating != null && tempMinRating! > 0) count++;
               return count;
@@ -253,10 +270,14 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                 return Container(
                   decoration: BoxDecoration(
                     color: isDark ? const Color(0xFF141E16) : Colors.white,
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(24),
+                    ),
                     border: Border(
                       top: BorderSide(
-                        color: isDark ? const Color(0xFF263B2B) : const Color(0xFFE2E8F0),
+                        color: isDark
+                            ? const Color(0xFF263B2B)
+                            : const Color(0xFFE2E8F0),
                         width: 1,
                       ),
                     ),
@@ -266,7 +287,10 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                     child: SingleChildScrollView(
                       controller: scrollController,
                       physics: const ClampingScrollPhysics(),
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -277,7 +301,9 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                               height: 5,
                               margin: const EdgeInsets.only(top: 4, bottom: 16),
                               decoration: BoxDecoration(
-                                color: isDark ? Colors.white30 : Colors.grey.shade400,
+                                color: isDark
+                                    ? Colors.white30
+                                    : Colors.grey.shade400,
                                 borderRadius: BorderRadius.circular(3),
                               ),
                             ),
@@ -289,13 +315,21 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                                 padding: const EdgeInsets.all(9),
                                 decoration: BoxDecoration(
                                   color: isDark
-                                      ? AppColors.primaryGreen.withValues(alpha: 0.25)
-                                      : const Color(0xFF1B4D2E).withValues(alpha: 0.14),
+                                      ? AppColors.primaryGreen.withValues(
+                                          alpha: 0.25,
+                                        )
+                                      : const Color(
+                                          0xFF1B4D2E,
+                                        ).withValues(alpha: 0.14),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Icon(
-                                  isEbooksTab ? Icons.auto_stories_rounded : Icons.tune_rounded,
-                                  color: isDark ? const Color(0xFF81C784) : const Color(0xFF1B4D2E),
+                                  isEbooksTab
+                                      ? Icons.auto_stories_rounded
+                                      : Icons.tune_rounded,
+                                  color: isDark
+                                      ? const Color(0xFF81C784)
+                                      : const Color(0xFF1B4D2E),
                                   size: 22,
                                 ),
                               ),
@@ -305,7 +339,8 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                                   isEbooksTab
                                       ? tr(ref, 'Filter & Sort E-Books')
                                       : tr(ref, 'Filter & Sort Courses'),
-                                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                  style: Theme.of(context).textTheme.titleLarge
+                                      ?.copyWith(
                                         fontWeight: FontWeight.bold,
                                         fontSize: 17,
                                         letterSpacing: -0.3,
@@ -316,9 +351,14 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                               ),
                               if (tempCount > 0) ...[
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 9,
+                                    vertical: 4,
+                                  ),
                                   decoration: BoxDecoration(
-                                    color: isDark ? AppColors.primaryGreen : const Color(0xFF1B4D2E),
+                                    color: isDark
+                                        ? AppColors.primaryGreen
+                                        : const Color(0xFF1B4D2E),
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: Text(
@@ -335,9 +375,14 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                               IconButton(
                                 visualDensity: VisualDensity.compact,
                                 padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                                constraints: const BoxConstraints(
+                                  minWidth: 36,
+                                  minHeight: 36,
+                                ),
                                 icon: const Icon(Icons.close_rounded, size: 24),
-                                color: isDark ? Colors.white70 : Colors.grey.shade700,
+                                color: isDark
+                                    ? Colors.white70
+                                    : Colors.grey.shade700,
                                 tooltip: tr(ref, 'Close'),
                                 onPressed: () => Navigator.pop(sheetContext),
                               ),
@@ -345,452 +390,547 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                           ),
                           const SizedBox(height: 22),
 
-                      // ═════════════════════════════════════════════════════════════
-                      // E-BOOKS TAB SPECIFIC FILTERS
-                      // ═════════════════════════════════════════════════════════════
-                      if (isEbooksTab) ...[
-                        Row(
-                          children: [
-                            Icon(Icons.payments_outlined, size: 20, color: isDark ? const Color(0xFF81C784) : const Color(0xFF1B4D2E)),
-                            const SizedBox(width: 8),
-                            Text(
-                              tr(ref, 'Price Filter'),
-                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                  ),
+                          // ═════════════════════════════════════════════════════════════
+                          // E-BOOKS TAB SPECIFIC FILTERS
+                          // ═════════════════════════════════════════════════════════════
+                          if (isEbooksTab) ...[
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.payments_outlined,
+                                  size: 20,
+                                  color: isDark
+                                      ? const Color(0xFF81C784)
+                                      : const Color(0xFF1B4D2E),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  tr(ref, 'Price Filter'),
+                                  style: Theme.of(context).textTheme.titleMedium
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Wrap(
-                          spacing: 12,
-                          runSpacing: 12,
-                          children: [
-                            buildFilterChip(
-                              label: tr(ref, 'All Prices'),
-                              isSelected: tempEbookPricePreset == 'all',
-                              isDark: isDark,
-                              onSelected: (val) {
-                                if (val) {
-                                  setModalState(() {
-                                    tempEbookPricePreset = 'all';
-                                    tempEbookMinPrice = null;
-                                    tempEbookMaxPrice = null;
-                                  });
-                                }
-                              },
+                            const SizedBox(height: 12),
+                            Wrap(
+                              spacing: 12,
+                              runSpacing: 12,
+                              children: [
+                                buildFilterChip(
+                                  label: tr(ref, 'All Prices'),
+                                  isSelected: tempEbookPricePreset == 'all',
+                                  isDark: isDark,
+                                  onSelected: (val) {
+                                    if (val) {
+                                      setModalState(() {
+                                        tempEbookPricePreset = 'all';
+                                        tempEbookMinPrice = null;
+                                        tempEbookMaxPrice = null;
+                                      });
+                                    }
+                                  },
+                                ),
+                                buildFilterChip(
+                                  label: tr(ref, 'Free E-Books'),
+                                  isSelected: tempEbookPricePreset == 'free',
+                                  isDark: isDark,
+                                  onSelected: (val) {
+                                    if (val) {
+                                      setModalState(() {
+                                        tempEbookPricePreset = 'free';
+                                        tempEbookMinPrice = 0;
+                                        tempEbookMaxPrice = 0;
+                                      });
+                                    }
+                                  },
+                                ),
+                                buildFilterChip(
+                                  label: tr(ref, 'Paid E-Books'),
+                                  isSelected: tempEbookPricePreset == 'paid',
+                                  isDark: isDark,
+                                  onSelected: (val) {
+                                    if (val) {
+                                      setModalState(() {
+                                        tempEbookPricePreset = 'paid';
+                                        tempEbookMinPrice = 1;
+                                        tempEbookMaxPrice = null;
+                                      });
+                                    }
+                                  },
+                                ),
+                                buildFilterChip(
+                                  label: tr(ref, 'Under ₹200'),
+                                  isSelected:
+                                      tempEbookPricePreset == 'under_200',
+                                  isDark: isDark,
+                                  onSelected: (val) {
+                                    if (val) {
+                                      setModalState(() {
+                                        tempEbookPricePreset = 'under_200';
+                                        tempEbookMinPrice = 1;
+                                        tempEbookMaxPrice = 200;
+                                      });
+                                    }
+                                  },
+                                ),
+                                buildFilterChip(
+                                  label: tr(ref, 'Under ₹500'),
+                                  isSelected:
+                                      tempEbookPricePreset == 'under_500',
+                                  isDark: isDark,
+                                  onSelected: (val) {
+                                    if (val) {
+                                      setModalState(() {
+                                        tempEbookPricePreset = 'under_500';
+                                        tempEbookMinPrice = 1;
+                                        tempEbookMaxPrice = 500;
+                                      });
+                                    }
+                                  },
+                                ),
+                              ],
                             ),
-                            buildFilterChip(
-                              label: tr(ref, 'Free E-Books'),
-                              isSelected: tempEbookPricePreset == 'free',
-                              isDark: isDark,
-                              onSelected: (val) {
-                                if (val) {
-                                  setModalState(() {
-                                    tempEbookPricePreset = 'free';
-                                    tempEbookMinPrice = 0;
-                                    tempEbookMaxPrice = 0;
-                                  });
-                                }
-                              },
+                          ] else ...[
+                            // ═════════════════════════════════════════════════════════════
+                            // COURSES TAB SPECIFIC FILTERS
+                            // ═════════════════════════════════════════════════════════════
+                            // Rating Filter
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.star_rounded,
+                                  size: 20,
+                                  color: Colors.amber,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  tr(ref, 'Minimum Rating'),
+                                  style: Theme.of(context).textTheme.titleMedium
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                ),
+                              ],
                             ),
-                            buildFilterChip(
-                              label: tr(ref, 'Paid E-Books'),
-                              isSelected: tempEbookPricePreset == 'paid',
-                              isDark: isDark,
-                              onSelected: (val) {
-                                if (val) {
-                                  setModalState(() {
-                                    tempEbookPricePreset = 'paid';
-                                    tempEbookMinPrice = 1;
-                                    tempEbookMaxPrice = null;
-                                  });
-                                }
-                              },
+                            const SizedBox(height: 12),
+                            Wrap(
+                              spacing: 12,
+                              runSpacing: 12,
+                              children: [
+                                buildFilterChip(
+                                  label: tr(ref, 'All Ratings'),
+                                  isSelected: tempMinRating == null,
+                                  isDark: isDark,
+                                  onSelected: (val) {
+                                    if (val) {
+                                      setModalState(() => tempMinRating = null);
+                                    }
+                                  },
+                                ),
+                                ...[4.5, 4.0, 3.5, 3.0].map((rating) {
+                                  final isSelected = tempMinRating == rating;
+                                  return buildFilterChip(
+                                    label:
+                                        '${formatNum(ref, rating)} ${tr(ref, '& up')}',
+                                    leadingIcon: const Icon(
+                                      Icons.star_rounded,
+                                      size: 18,
+                                      color: Colors.amber,
+                                    ),
+                                    isSelected: isSelected,
+                                    isDark: isDark,
+                                    onSelected: (val) {
+                                      setModalState(
+                                        () =>
+                                            tempMinRating = val ? rating : null,
+                                      );
+                                    },
+                                  );
+                                }),
+                              ],
                             ),
-                            buildFilterChip(
-                              label: tr(ref, 'Under ₹200'),
-                              isSelected: tempEbookPricePreset == 'under_200',
-                              isDark: isDark,
-                              onSelected: (val) {
-                                if (val) {
-                                  setModalState(() {
-                                    tempEbookPricePreset = 'under_200';
-                                    tempEbookMinPrice = 1;
-                                    tempEbookMaxPrice = 200;
-                                  });
-                                }
-                              },
-                            ),
-                            buildFilterChip(
-                              label: tr(ref, 'Under ₹500'),
-                              isSelected: tempEbookPricePreset == 'under_500',
-                              isDark: isDark,
-                              onSelected: (val) {
-                                if (val) {
-                                  setModalState(() {
-                                    tempEbookPricePreset = 'under_500';
-                                    tempEbookMinPrice = 1;
-                                    tempEbookMaxPrice = 500;
-                                  });
-                                }
-                              },
-                            ),
-                          ],
-                        ),
-                      ] else ...[
-                        // ═════════════════════════════════════════════════════════════
-                        // COURSES TAB SPECIFIC FILTERS
-                        // ═════════════════════════════════════════════════════════════
-                        // Rating Filter
-                        Row(
-                          children: [
-                            const Icon(Icons.star_rounded, size: 20, color: Colors.amber),
-                            const SizedBox(width: 8),
-                            Text(
-                              tr(ref, 'Minimum Rating'),
-                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                  ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Wrap(
-                          spacing: 12,
-                          runSpacing: 12,
-                          children: [
-                            buildFilterChip(
-                              label: tr(ref, 'All Ratings'),
-                              isSelected: tempMinRating == null,
-                              isDark: isDark,
-                              onSelected: (val) {
-                                if (val) {
-                                  setModalState(() => tempMinRating = null);
-                                }
-                              },
-                            ),
-                            ...[4.5, 4.0, 3.5, 3.0].map((rating) {
-                              final isSelected = tempMinRating == rating;
-                              return buildFilterChip(
-                                label: '${formatNum(ref, rating)} ${tr(ref, '& up')}',
-                                leadingIcon: const Icon(Icons.star_rounded, size: 18, color: Colors.amber),
-                                isSelected: isSelected,
-                                isDark: isDark,
-                                onSelected: (val) {
-                                  setModalState(() => tempMinRating = val ? rating : null);
-                                },
-                              );
-                            }),
-                          ],
-                        ),
-                        const SizedBox(height: 22),
+                            const SizedBox(height: 22),
 
-                        // Price Preset Filter
-                        Row(
-                          children: [
-                            Icon(Icons.payments_outlined, size: 20, color: isDark ? const Color(0xFF81C784) : const Color(0xFF1B4D2E)),
-                            const SizedBox(width: 8),
-                            Text(
-                              tr(ref, 'Price Filter'),
-                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                  ),
+                            // Price Preset Filter
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.payments_outlined,
+                                  size: 20,
+                                  color: isDark
+                                      ? const Color(0xFF81C784)
+                                      : const Color(0xFF1B4D2E),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  tr(ref, 'Price Filter'),
+                                  style: Theme.of(context).textTheme.titleMedium
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Wrap(
-                          spacing: 12,
-                          runSpacing: 12,
-                          children: [
-                            buildFilterChip(
-                              label: tr(ref, 'All Prices'),
-                              isSelected: tempPricePreset == 'all',
-                              isDark: isDark,
-                              onSelected: (val) {
-                                if (val) {
-                                  setModalState(() {
-                                    tempPricePreset = 'all';
-                                    tempMinPrice = null;
-                                    tempMaxPrice = null;
-                                  });
-                                }
-                              },
+                            const SizedBox(height: 12),
+                            Wrap(
+                              spacing: 12,
+                              runSpacing: 12,
+                              children: [
+                                buildFilterChip(
+                                  label: tr(ref, 'All Prices'),
+                                  isSelected: tempPricePreset == 'all',
+                                  isDark: isDark,
+                                  onSelected: (val) {
+                                    if (val) {
+                                      setModalState(() {
+                                        tempPricePreset = 'all';
+                                        tempMinPrice = null;
+                                        tempMaxPrice = null;
+                                      });
+                                    }
+                                  },
+                                ),
+                                buildFilterChip(
+                                  label: tr(ref, 'Free Courses'),
+                                  isSelected: tempPricePreset == 'free',
+                                  isDark: isDark,
+                                  onSelected: (val) {
+                                    if (val) {
+                                      setModalState(() {
+                                        tempPricePreset = 'free';
+                                        tempMinPrice = 0;
+                                        tempMaxPrice = 0;
+                                      });
+                                    }
+                                  },
+                                ),
+                                buildFilterChip(
+                                  label: tr(ref, 'Paid Courses'),
+                                  isSelected: tempPricePreset == 'paid',
+                                  isDark: isDark,
+                                  onSelected: (val) {
+                                    if (val) {
+                                      setModalState(() {
+                                        tempPricePreset = 'paid';
+                                        tempMinPrice = 1;
+                                        tempMaxPrice = null;
+                                      });
+                                    }
+                                  },
+                                ),
+                                buildFilterChip(
+                                  label: tr(ref, 'Under ₹500'),
+                                  isSelected: tempPricePreset == 'under_500',
+                                  isDark: isDark,
+                                  onSelected: (val) {
+                                    if (val) {
+                                      setModalState(() {
+                                        tempPricePreset = 'under_500';
+                                        tempMinPrice = 1;
+                                        tempMaxPrice = 500;
+                                      });
+                                    }
+                                  },
+                                ),
+                              ],
                             ),
-                            buildFilterChip(
-                              label: tr(ref, 'Free Courses'),
-                              isSelected: tempPricePreset == 'free',
-                              isDark: isDark,
-                              onSelected: (val) {
-                                if (val) {
-                                  setModalState(() {
-                                    tempPricePreset = 'free';
-                                    tempMinPrice = 0;
-                                    tempMaxPrice = 0;
-                                  });
-                                }
-                              },
-                            ),
-                            buildFilterChip(
-                              label: tr(ref, 'Paid Courses'),
-                              isSelected: tempPricePreset == 'paid',
-                              isDark: isDark,
-                              onSelected: (val) {
-                                if (val) {
-                                  setModalState(() {
-                                    tempPricePreset = 'paid';
-                                    tempMinPrice = 1;
-                                    tempMaxPrice = null;
-                                  });
-                                }
-                              },
-                            ),
-                            buildFilterChip(
-                              label: tr(ref, 'Under ₹500'),
-                              isSelected: tempPricePreset == 'under_500',
-                              isDark: isDark,
-                              onSelected: (val) {
-                                if (val) {
-                                  setModalState(() {
-                                    tempPricePreset = 'under_500';
-                                    tempMinPrice = 1;
-                                    tempMaxPrice = 500;
-                                  });
-                                }
-                              },
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 22),
+                            const SizedBox(height: 22),
 
-                        // Skill Level
-                        Row(
-                          children: [
-                            Icon(Icons.signal_cellular_alt_rounded, size: 20, color: isDark ? const Color(0xFF81C784) : const Color(0xFF1B4D2E)),
-                            const SizedBox(width: 8),
-                            Text(
-                              tr(ref, 'Skill Level'),
-                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                  ),
+                            // Skill Level
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.signal_cellular_alt_rounded,
+                                  size: 20,
+                                  color: isDark
+                                      ? const Color(0xFF81C784)
+                                      : const Color(0xFF1B4D2E),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  tr(ref, 'Skill Level'),
+                                  style: Theme.of(context).textTheme.titleMedium
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Wrap(
-                          spacing: 12,
-                          runSpacing: 12,
-                          children: [
-                            buildFilterChip(
-                              label: tr(ref, 'All Levels'),
-                              isSelected: tempLevel.isEmpty,
-                              isDark: isDark,
-                              onSelected: (val) {
-                                if (val) setModalState(() => tempLevel = '');
-                              },
+                            const SizedBox(height: 12),
+                            Wrap(
+                              spacing: 12,
+                              runSpacing: 12,
+                              children: [
+                                buildFilterChip(
+                                  label: tr(ref, 'All Levels'),
+                                  isSelected: tempLevel.isEmpty,
+                                  isDark: isDark,
+                                  onSelected: (val) {
+                                    if (val)
+                                      setModalState(() => tempLevel = '');
+                                  },
+                                ),
+                                buildFilterChip(
+                                  label: tr(ref, 'Beginner'),
+                                  isSelected: tempLevel == 'beginner',
+                                  isDark: isDark,
+                                  onSelected: (val) {
+                                    setModalState(
+                                      () => tempLevel = val ? 'beginner' : '',
+                                    );
+                                  },
+                                ),
+                                buildFilterChip(
+                                  label: tr(ref, 'Intermediate'),
+                                  isSelected: tempLevel == 'intermediate',
+                                  isDark: isDark,
+                                  onSelected: (val) {
+                                    setModalState(
+                                      () =>
+                                          tempLevel = val ? 'intermediate' : '',
+                                    );
+                                  },
+                                ),
+                                buildFilterChip(
+                                  label: tr(ref, 'Advanced'),
+                                  isSelected: tempLevel == 'advanced',
+                                  isDark: isDark,
+                                  onSelected: (val) {
+                                    setModalState(
+                                      () => tempLevel = val ? 'advanced' : '',
+                                    );
+                                  },
+                                ),
+                              ],
                             ),
-                            buildFilterChip(
-                              label: tr(ref, 'Beginner'),
-                              isSelected: tempLevel == 'beginner',
-                              isDark: isDark,
-                              onSelected: (val) {
-                                setModalState(() => tempLevel = val ? 'beginner' : '');
-                              },
-                            ),
-                            buildFilterChip(
-                              label: tr(ref, 'Intermediate'),
-                              isSelected: tempLevel == 'intermediate',
-                              isDark: isDark,
-                              onSelected: (val) {
-                                setModalState(() => tempLevel = val ? 'intermediate' : '');
-                              },
-                            ),
-                            buildFilterChip(
-                              label: tr(ref, 'Advanced'),
-                              isSelected: tempLevel == 'advanced',
-                              isDark: isDark,
-                              onSelected: (val) {
-                                setModalState(() => tempLevel = val ? 'advanced' : '');
-                              },
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 22),
+                            const SizedBox(height: 22),
 
-                        // Language Filter
-                        Row(
-                          children: [
-                            Icon(Icons.language_rounded, size: 20, color: isDark ? const Color(0xFF81C784) : const Color(0xFF1B4D2E)),
-                            const SizedBox(width: 8),
-                            Text(
-                              tr(ref, 'Language Filter'),
-                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                  ),
+                            // Language Filter
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.language_rounded,
+                                  size: 20,
+                                  color: isDark
+                                      ? const Color(0xFF81C784)
+                                      : const Color(0xFF1B4D2E),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  tr(ref, 'Language Filter'),
+                                  style: Theme.of(context).textTheme.titleMedium
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Wrap(
-                          spacing: 12,
-                          runSpacing: 12,
-                          children: [
-                            buildFilterChip(
-                              label: tr(ref, 'All Languages'),
-                              isSelected: tempLanguage.isEmpty,
-                              isDark: isDark,
-                              onSelected: (val) {
-                                if (val) setModalState(() => tempLanguage = '');
-                              },
+                            const SizedBox(height: 12),
+                            Wrap(
+                              spacing: 12,
+                              runSpacing: 12,
+                              children: [
+                                buildFilterChip(
+                                  label: tr(ref, 'All Languages'),
+                                  isSelected: tempLanguage.isEmpty,
+                                  isDark: isDark,
+                                  onSelected: (val) {
+                                    if (val)
+                                      setModalState(() => tempLanguage = '');
+                                  },
+                                ),
+                                buildFilterChip(
+                                  label: tr(ref, 'English'),
+                                  isSelected: tempLanguage == 'English',
+                                  isDark: isDark,
+                                  onSelected: (val) {
+                                    setModalState(
+                                      () => tempLanguage = val ? 'English' : '',
+                                    );
+                                  },
+                                ),
+                                buildFilterChip(
+                                  label: tr(ref, 'Hindi'),
+                                  isSelected: tempLanguage == 'Hindi',
+                                  isDark: isDark,
+                                  onSelected: (val) {
+                                    setModalState(
+                                      () => tempLanguage = val ? 'Hindi' : '',
+                                    );
+                                  },
+                                ),
+                                buildFilterChip(
+                                  label: tr(ref, 'Marathi'),
+                                  isSelected: tempLanguage == 'Marathi',
+                                  isDark: isDark,
+                                  onSelected: (val) {
+                                    setModalState(
+                                      () => tempLanguage = val ? 'Marathi' : '',
+                                    );
+                                  },
+                                ),
+                              ],
                             ),
-                            buildFilterChip(
-                              label: tr(ref, 'English'),
-                              isSelected: tempLanguage == 'English',
-                              isDark: isDark,
-                              onSelected: (val) {
-                                setModalState(() => tempLanguage = val ? 'English' : '');
-                              },
-                            ),
-                            buildFilterChip(
-                              label: tr(ref, 'Hindi'),
-                              isSelected: tempLanguage == 'Hindi',
-                              isDark: isDark,
-                              onSelected: (val) {
-                                setModalState(() => tempLanguage = val ? 'Hindi' : '');
-                              },
-                            ),
-                            buildFilterChip(
-                              label: tr(ref, 'Marathi'),
-                              isSelected: tempLanguage == 'Marathi',
-                              isDark: isDark,
-                              onSelected: (val) {
-                                setModalState(() => tempLanguage = val ? 'Marathi' : '');
-                              },
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 22),
+                            const SizedBox(height: 22),
 
-                        // Sort By
-                        Row(
-                          children: [
-                            Icon(Icons.sort_rounded, size: 20, color: isDark ? const Color(0xFF81C784) : const Color(0xFF1B4D2E)),
-                            const SizedBox(width: 8),
-                            Text(
-                              tr(ref, 'Sort by'),
-                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                  ),
+                            // Sort By
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.sort_rounded,
+                                  size: 20,
+                                  color: isDark
+                                      ? const Color(0xFF81C784)
+                                      : const Color(0xFF1B4D2E),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  tr(ref, 'Sort by'),
+                                  style: Theme.of(context).textTheme.titleMedium
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Wrap(
+                              spacing: 12,
+                              runSpacing: 12,
+                              children: [
+                                buildFilterChip(
+                                  label: tr(ref, 'Newest'),
+                                  isSelected:
+                                      tempOrdering == '-created_at' ||
+                                      tempOrdering == '',
+                                  isDark: isDark,
+                                  onSelected: (val) {
+                                    if (val)
+                                      setModalState(
+                                        () => tempOrdering = '-created_at',
+                                      );
+                                  },
+                                ),
+                                buildFilterChip(
+                                  label: tr(ref, 'Most Popular'),
+                                  isSelected: tempOrdering == '-views_count',
+                                  isDark: isDark,
+                                  onSelected: (val) {
+                                    if (val)
+                                      setModalState(
+                                        () => tempOrdering = '-views_count',
+                                      );
+                                  },
+                                ),
+                              ],
                             ),
                           ],
-                        ),
-                        const SizedBox(height: 12),
-                        Wrap(
-                          spacing: 12,
-                          runSpacing: 12,
-                          children: [
-                            buildFilterChip(
-                              label: tr(ref, 'Newest'),
-                              isSelected: tempOrdering == '-created_at' || tempOrdering == '',
-                              isDark: isDark,
-                              onSelected: (val) {
-                                if (val) setModalState(() => tempOrdering = '-created_at');
-                              },
-                            ),
-                            buildFilterChip(
-                              label: tr(ref, 'Most Popular'),
-                              isSelected: tempOrdering == '-views_count',
-                              isDark: isDark,
-                              onSelected: (val) {
-                                if (val) setModalState(() => tempOrdering = '-views_count');
-                              },
-                            ),
-                          ],
-                        ),
-                      ],
-                      const SizedBox(height: 28),
+                          const SizedBox(height: 28),
 
-                      // Reset & Apply Buttons
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 14),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                                side: BorderSide(
-                                  color: isDark ? const Color(0xFF2E4534) : const Color(0xFFCBD5E1),
+                          // Reset & Apply Buttons
+                          Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton(
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 14,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                    side: BorderSide(
+                                      color: isDark
+                                          ? const Color(0xFF2E4534)
+                                          : const Color(0xFFCBD5E1),
+                                    ),
+                                  ),
+                                  onPressed: () {
+                                    setModalState(() {
+                                      if (isEbooksTab) {
+                                        tempEbookPricePreset = 'all';
+                                        tempEbookMinPrice = null;
+                                        tempEbookMaxPrice = null;
+                                      } else {
+                                        tempLevel = '';
+                                        tempLanguage = '';
+                                        tempOrdering = '';
+                                        tempPricePreset = 'all';
+                                        tempMinPrice = null;
+                                        tempMaxPrice = null;
+                                        tempMinRating = null;
+                                      }
+                                    });
+                                  },
+                                  child: Text(
+                                    tr(ref, 'Reset All'),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                                 ),
                               ),
-                              onPressed: () {
-                                setModalState(() {
-                                  if (isEbooksTab) {
-                                    tempEbookPricePreset = 'all';
-                                    tempEbookMinPrice = null;
-                                    tempEbookMaxPrice = null;
-                                  } else {
-                                    tempLevel = '';
-                                    tempLanguage = '';
-                                    tempOrdering = '';
-                                    tempPricePreset = 'all';
-                                    tempMinPrice = null;
-                                    tempMaxPrice = null;
-                                    tempMinRating = null;
-                                  }
-                                });
-                              },
-                              child: Text(tr(ref, 'Reset All'), style: const TextStyle(fontWeight: FontWeight.bold)),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            flex: 2,
-                            child: ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF1B4D2E),
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(vertical: 14),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                                elevation: 0,
+                              const SizedBox(width: 12),
+                              Expanded(
+                                flex: 2,
+                                child: ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF1B4D2E),
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 14,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                    elevation: 0,
+                                  ),
+                                  onPressed: () {
+                                    Navigator.pop(context);
+                                    setState(() {
+                                      if (isEbooksTab) {
+                                        _selectedEbookPricePreset =
+                                            tempEbookPricePreset;
+                                        _ebookMinPrice = tempEbookMinPrice;
+                                        _ebookMaxPrice = tempEbookMaxPrice;
+                                      } else {
+                                        _selectedLevel = tempLevel;
+                                        _selectedLanguage = tempLanguage;
+                                        _selectedOrdering = tempOrdering;
+                                        _selectedPricePreset = tempPricePreset;
+                                        _minPrice = tempMinPrice;
+                                        _maxPrice = tempMaxPrice;
+                                        _minRating = tempMinRating;
+                                      }
+                                    });
+                                  },
+                                  child: Text(
+                                    tr(ref, 'Apply Filters'),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                ),
                               ),
-                              onPressed: () {
-                                Navigator.pop(context);
-                                setState(() {
-                                  if (isEbooksTab) {
-                                    _selectedEbookPricePreset = tempEbookPricePreset;
-                                    _ebookMinPrice = tempEbookMinPrice;
-                                    _ebookMaxPrice = tempEbookMaxPrice;
-                                  } else {
-                                    _selectedLevel = tempLevel;
-                                    _selectedLanguage = tempLanguage;
-                                    _selectedOrdering = tempOrdering;
-                                    _selectedPricePreset = tempPricePreset;
-                                    _minPrice = tempMinPrice;
-                                    _maxPrice = tempMaxPrice;
-                                    _minRating = tempMinRating;
-                                  }
-                                });
-                              },
-                              child: Text(tr(ref, 'Apply Filters'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                            ),
+                            ],
                           ),
+                          const SizedBox(height: 12),
                         ],
                       ),
-                      const SizedBox(height: 12),
-                    ],
+                    ),
                   ),
-                ),
-              ),
+                );
+              },
             );
-          },
-        );
           },
         );
       },
@@ -881,15 +1021,18 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
     }
 
     // Determine category display name if filtered
-    final categories = ref.watch(studentCategoriesProvider).maybeWhen(
-          data: (cats) => cats,
-          orElse: () => null,
-        );
+    final categories = ref
+        .watch(studentCategoriesProvider)
+        .maybeWhen(data: (cats) => cats, orElse: () => null);
     String? categoryDisplayName;
     if (_selectedCategory != 'all' && categories != null) {
       try {
         final catName = categories
-            .firstWhere((c) => c.id == _selectedCategory || c.name.toLowerCase() == _selectedCategory.toLowerCase())
+            .firstWhere(
+              (c) =>
+                  c.id == _selectedCategory ||
+                  c.name.toLowerCase() == _selectedCategory.toLowerCase(),
+            )
             .name;
         categoryDisplayName = tr(ref, catName);
       } catch (_) {
@@ -897,9 +1040,12 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
       }
     }
 
-    final headerTitle = (categoryDisplayName != null && categoryDisplayName.isNotEmpty)
+    final headerTitle =
+        (categoryDisplayName != null && categoryDisplayName.isNotEmpty)
         ? categoryDisplayName
-        : (_selectedTab == 1 ? tr(ref, 'Search E-Books') : tr(ref, 'Search Courses'));
+        : (_selectedTab == 1
+              ? tr(ref, 'Search E-Books')
+              : tr(ref, 'Search Courses'));
 
     // ── Screen 13 App Bar: Selected Category Name or "Search Courses" ──
     return AppBar(
@@ -962,7 +1108,10 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                     color: AppColors.accentOrange,
                     shape: BoxShape.circle,
                   ),
-                  constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                  constraints: const BoxConstraints(
+                    minWidth: 16,
+                    minHeight: 16,
+                  ),
                   child: Text(
                     '$_activeFilterCount',
                     style: const TextStyle(
@@ -1025,7 +1174,11 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.category_outlined, size: 48, color: Colors.grey.shade400),
+                          Icon(
+                            Icons.category_outlined,
+                            size: 48,
+                            color: Colors.grey.shade400,
+                          ),
                           const SizedBox(height: 12),
                           Text(
                             tr(ref, 'No categories found'),
@@ -1067,17 +1220,24 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                       },
                       borderRadius: BorderRadius.circular(18),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
                         decoration: BoxDecoration(
                           color: isDark ? AppColors.cardDark : Colors.white,
                           borderRadius: BorderRadius.circular(18),
                           border: Border.all(
-                            color: isDark ? AppColors.lineDark : const Color(0xFFE8EFE8),
+                            color: isDark
+                                ? AppColors.lineDark
+                                : const Color(0xFFE8EFE8),
                             width: 1,
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.035),
+                              color: Colors.black.withValues(
+                                alpha: isDark ? 0.25 : 0.035,
+                              ),
                               blurRadius: 10,
                               offset: const Offset(0, 3),
                             ),
@@ -1109,7 +1269,9 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                                   fontWeight: FontWeight.w700,
                                   letterSpacing: -0.2,
                                   height: 1.25,
-                                  color: isDark ? Colors.white : const Color(0xFF1B4D2E),
+                                  color: isDark
+                                      ? Colors.white
+                                      : const Color(0xFF1B4D2E),
                                 ),
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
@@ -1144,15 +1306,25 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.wifi_off_rounded, size: 40, color: Colors.grey),
+                      const Icon(
+                        Icons.wifi_off_rounded,
+                        size: 40,
+                        color: Colors.grey,
+                      ),
                       const SizedBox(height: 10),
                       Text(
-                        tr(ref, isOfflineOrNetworkError(err) ? 'No internet connection. Please try again later.' : 'Unable to load categories'),
+                        tr(
+                          ref,
+                          isOfflineOrNetworkError(err)
+                              ? 'No internet connection. Please try again later.'
+                              : 'Unable to load categories',
+                        ),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 8),
                       TextButton(
-                        onPressed: () => ref.invalidate(studentCategoriesProvider),
+                        onPressed: () =>
+                            ref.invalidate(studentCategoriesProvider),
                         child: Text(tr(ref, 'Retry')),
                       ),
                     ],
@@ -1200,7 +1372,9 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                   boxShadow: _selectedTab == 0
                       ? [
                           BoxShadow(
-                            color: const Color(0xFF1B4D2E).withValues(alpha: 0.28),
+                            color: const Color(
+                              0xFF1B4D2E,
+                            ).withValues(alpha: 0.28),
                             blurRadius: 6,
                             offset: const Offset(0, 2),
                           ),
@@ -1216,17 +1390,23 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                         size: 16,
                         color: _selectedTab == 0
                             ? Colors.white
-                            : (isDark ? Colors.white60 : const Color(0xFF556559)),
+                            : (isDark
+                                  ? Colors.white60
+                                  : const Color(0xFF556559)),
                       ),
                       const SizedBox(width: 6),
                       Text(
                         tr(ref, 'Courses'),
                         style: TextStyle(
                           fontSize: 13,
-                          fontWeight: _selectedTab == 0 ? FontWeight.w700 : FontWeight.w600,
+                          fontWeight: _selectedTab == 0
+                              ? FontWeight.w700
+                              : FontWeight.w600,
                           color: _selectedTab == 0
                               ? Colors.white
-                              : (isDark ? Colors.white70 : const Color(0xFF2C3E30)),
+                              : (isDark
+                                    ? Colors.white70
+                                    : const Color(0xFF2C3E30)),
                         ),
                       ),
                     ],
@@ -1256,7 +1436,9 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                   boxShadow: _selectedTab == 1
                       ? [
                           BoxShadow(
-                            color: const Color(0xFF1B4D2E).withValues(alpha: 0.28),
+                            color: const Color(
+                              0xFF1B4D2E,
+                            ).withValues(alpha: 0.28),
                             blurRadius: 6,
                             offset: const Offset(0, 2),
                           ),
@@ -1272,17 +1454,23 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                         size: 16,
                         color: _selectedTab == 1
                             ? Colors.white
-                            : (isDark ? Colors.white60 : const Color(0xFF556559)),
+                            : (isDark
+                                  ? Colors.white60
+                                  : const Color(0xFF556559)),
                       ),
                       const SizedBox(width: 6),
                       Text(
                         tr(ref, 'E-Books'),
                         style: TextStyle(
                           fontSize: 13,
-                          fontWeight: _selectedTab == 1 ? FontWeight.w700 : FontWeight.w600,
+                          fontWeight: _selectedTab == 1
+                              ? FontWeight.w700
+                              : FontWeight.w600,
                           color: _selectedTab == 1
                               ? Colors.white
-                              : (isDark ? Colors.white70 : const Color(0xFF2C3E30)),
+                              : (isDark
+                                    ? Colors.white70
+                                    : const Color(0xFF2C3E30)),
                         ),
                       ),
                     ],
@@ -1300,16 +1488,20 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
   // SCREEN 13: SEARCH COURSES / FILTERED RESULTS
   // ═════════════════════════════════════════════════════════════════════════════
   Widget _buildSearchResultsScreen(BuildContext context, bool isDark) {
-    final catalogAsync = ref.watch(studentCatalogProvider(CatalogQuery(
-      search: _searchQuery.trim(),
-      category: _selectedCategory == 'all' ? '' : _selectedCategory,
-      level: _selectedLevel,
-      minPrice: _minPrice,
-      maxPrice: _maxPrice,
-      ordering: _selectedOrdering,
-      minRating: _minRating,
-      instructor: _selectedInstructorId,
-    )));
+    final catalogAsync = ref.watch(
+      studentCatalogProvider(
+        CatalogQuery(
+          search: _searchQuery.trim(),
+          category: _selectedCategory == 'all' ? '' : _selectedCategory,
+          level: _selectedLevel,
+          minPrice: _minPrice,
+          maxPrice: _maxPrice,
+          ordering: _selectedOrdering,
+          minRating: _minRating,
+          instructor: _selectedInstructorId,
+        ),
+      ),
+    );
 
     return RefreshIndicator(
       color: const Color(0xFF1B4D2E),
@@ -1332,7 +1524,9 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
 
             // Search Input Field matching Prototype Screen 13
             Text(
-              _selectedTab == 1 ? tr(ref, 'Search e-books') : tr(ref, 'Search courses'),
+              _selectedTab == 1
+                  ? tr(ref, 'Search e-books')
+                  : tr(ref, 'Search courses'),
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
@@ -1384,7 +1578,9 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                             : tr(ref, 'Search wheat, soil, irrigation...'),
                         hintStyle: TextStyle(
                           fontSize: 14,
-                          color: isDark ? Colors.white38 : const Color(0xFF9CA3AF),
+                          color: isDark
+                              ? Colors.white38
+                              : const Color(0xFF9CA3AF),
                         ),
                         border: InputBorder.none,
                         enabledBorder: InputBorder.none,
@@ -1430,131 +1626,176 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
             else
               // Results List of Large Course Cards
               catalogAsync.when(
-              data: (courses) {
-                // Apply language filter (from filter sheet or quick filter)
-                var filteredCourses = courses;
-                final activeLang = _selectedLanguage.isNotEmpty
-                    ? _selectedLanguage
-                    : (_selectedQuickFilter != 'All' ? _selectedQuickFilter : '');
+                data: (courses) {
+                  // Apply language filter (from filter sheet or quick filter)
+                  var filteredCourses = courses;
+                  final activeLang = _selectedLanguage.isNotEmpty
+                      ? _selectedLanguage
+                      : (_selectedQuickFilter != 'All'
+                            ? _selectedQuickFilter
+                            : '');
 
-                if (activeLang.isNotEmpty) {
-                  final lang = activeLang.toLowerCase();
-                  filteredCourses = courses.where((c) {
-                    final t = c.title.toLowerCase();
-                    final desc = (c.shortDescription ?? '').toLowerCase();
-                    if (lang == 'hindi') {
-                      return t.contains('hindi') || t.contains('हिंदी') || t.contains('हिन्दी') || desc.contains('hindi') || desc.contains('हिंदी');
-                    } else if (lang == 'marathi') {
-                      return t.contains('marathi') || t.contains('मराठी') || desc.contains('marathi') || desc.contains('मराठी');
-                    } else if (lang == 'english') {
-                      return t.contains('english') || desc.contains('english') || (!t.contains('hindi') && !t.contains('हिंदी') && !t.contains('marathi') && !t.contains('मराठी'));
-                    } else {
-                      return t.contains(lang) || desc.contains(lang);
-                    }
-                  }).toList();
-                }
+                  if (activeLang.isNotEmpty) {
+                    final lang = activeLang.toLowerCase();
+                    filteredCourses = courses.where((c) {
+                      final t = c.title.toLowerCase();
+                      final desc = (c.shortDescription ?? '').toLowerCase();
+                      if (lang == 'hindi') {
+                        return t.contains('hindi') ||
+                            t.contains('हिंदी') ||
+                            t.contains('हिन्दी') ||
+                            desc.contains('hindi') ||
+                            desc.contains('हिंदी');
+                      } else if (lang == 'marathi') {
+                        return t.contains('marathi') ||
+                            t.contains('मराठी') ||
+                            desc.contains('marathi') ||
+                            desc.contains('मराठी');
+                      } else if (lang == 'english') {
+                        return t.contains('english') ||
+                            desc.contains('english') ||
+                            (!t.contains('hindi') &&
+                                !t.contains('हिंदी') &&
+                                !t.contains('marathi') &&
+                                !t.contains('मराठी'));
+                      } else {
+                        return t.contains(lang) || desc.contains(lang);
+                      }
+                    }).toList();
+                  }
 
-                if (filteredCourses.isEmpty) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 40),
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 80,
-                            height: 80,
-                            decoration: BoxDecoration(
-                              color: isDark ? const Color(0xFF1E2820) : const Color(0xFFE8F3EA),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Center(
-                              child: Icon(
-                                Icons.menu_book_rounded,
-                                size: 38,
-                                color: Color(0xFF1B4D2E),
+                  if (filteredCourses.isEmpty) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 40),
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 80,
+                              height: 80,
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? const Color(0xFF1E2820)
+                                    : const Color(0xFFE8F3EA),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Center(
+                                child: Icon(
+                                  Icons.menu_book_rounded,
+                                  size: 38,
+                                  color: Color(0xFF1B4D2E),
+                                ),
                               ),
                             ),
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            tr(ref, 'No matching courses found'),
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: isDark ? Colors.white : const Color(0xFF1B4D2E),
+                            const SizedBox(height: 16),
+                            Text(
+                              tr(ref, 'No matching courses found'),
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: isDark
+                                    ? Colors.white
+                                    : const Color(0xFF1B4D2E),
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            tr(ref, 'Try adjusting your search terms or filters.'),
-                            style: TextStyle(
-                              fontSize: 12.5,
-                              color: isDark ? Colors.white54 : const Color(0xFF6B7280),
+                            const SizedBox(height: 6),
+                            Text(
+                              tr(
+                                ref,
+                                'Try adjusting your search terms or filters.',
+                              ),
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                color: isDark
+                                    ? Colors.white54
+                                    : const Color(0xFF6B7280),
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 18),
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF1B4D2E),
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-                              elevation: 0,
+                            const SizedBox(height: 18),
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF1B4D2E),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 24,
+                                  vertical: 12,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(24),
+                                ),
+                                elevation: 0,
+                              ),
+                              onPressed: _clearSearchAndFilters,
+                              child: Text(
+                                tr(ref, 'Back to Categories'),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                ),
+                              ),
                             ),
-                            onPressed: _clearSearchAndFilters,
-                            child: Text(
-                              tr(ref, 'Back to Categories'),
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                            ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                  );
-                }
+                    );
+                  }
 
-                return Column(
-                  children: [
-                    for (int i = 0; i < filteredCourses.length; i++) ...[
-                      _PrototypeCourseCard(course: filteredCourses[i], index: i),
-                      if (i < filteredCourses.length - 1) const SizedBox(height: 16),
-                    ],
-                  ],
-                );
-              },
-              loading: () => Column(
-                children: const [
-                  ShimmerCourseCard(),
-                  SizedBox(height: 14),
-                  ShimmerCourseCard(),
-                ],
-              ),
-              error: (err, _) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 30),
-                child: Center(
-                  child: Column(
+                  return Column(
                     children: [
-                      Icon(
-                        isOfflineOrNetworkError(err) ? Icons.wifi_off_rounded : Icons.error_outline_rounded,
-                        size: 36,
-                        color: isOfflineOrNetworkError(err) ? Colors.orange : Colors.redAccent,
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        tr(ref, isOfflineOrNetworkError(err) ? 'No internet connection. Please try again later.' : 'Unable to load results'),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 8),
-                      TextButton(
-                        onPressed: () => ref.invalidate(studentCatalogProvider),
-                        child: Text(tr(ref, 'Try Again')),
-                      ),
+                      for (int i = 0; i < filteredCourses.length; i++) ...[
+                        _PrototypeCourseCard(
+                          course: filteredCourses[i],
+                          index: i,
+                        ),
+                        if (i < filteredCourses.length - 1)
+                          const SizedBox(height: 16),
+                      ],
                     ],
+                  );
+                },
+                loading: () => Column(
+                  children: const [
+                    ShimmerCourseCard(),
+                    SizedBox(height: 14),
+                    ShimmerCourseCard(),
+                  ],
+                ),
+                error: (err, _) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 30),
+                  child: Center(
+                    child: Column(
+                      children: [
+                        Icon(
+                          isOfflineOrNetworkError(err)
+                              ? Icons.wifi_off_rounded
+                              : Icons.error_outline_rounded,
+                          size: 36,
+                          color: isOfflineOrNetworkError(err)
+                              ? Colors.orange
+                              : Colors.redAccent,
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          tr(
+                            ref,
+                            isOfflineOrNetworkError(err)
+                                ? 'No internet connection. Please try again later.'
+                                : 'Unable to load results',
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 8),
+                        TextButton(
+                          onPressed: () =>
+                              ref.invalidate(studentCatalogProvider),
+                          child: Text(tr(ref, 'Try Again')),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
             const SizedBox(height: 30),
           ],
         ),
@@ -1564,19 +1805,27 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
 
   IconData _getCategoryIcon(String name) {
     final lower = name.toLowerCase();
-    if (lower.contains('crop') || lower.contains('plant') || lower.contains('prod')) {
+    if (lower.contains('crop') ||
+        lower.contains('plant') ||
+        lower.contains('prod')) {
       return Icons.agriculture_rounded;
-    } else if (lower.contains('water') || lower.contains('irrig') || lower.contains('hydro')) {
+    } else if (lower.contains('water') ||
+        lower.contains('irrig') ||
+        lower.contains('hydro')) {
       return Icons.water_drop_rounded;
     } else if (lower.contains('pest') || lower.contains('protect')) {
       return Icons.pest_control_rounded;
     } else if (lower.contains('organic') || lower.contains('soil')) {
       return Icons.eco_rounded;
-    } else if (lower.contains('animal') || lower.contains('dairy') || lower.contains('husbandry')) {
+    } else if (lower.contains('animal') ||
+        lower.contains('dairy') ||
+        lower.contains('husbandry')) {
       return Icons.pets_rounded;
     } else if (lower.contains('tech') || lower.contains('machin')) {
       return Icons.precision_manufacturing_rounded;
-    } else if (lower.contains('horticult') || lower.contains('fruit') || lower.contains('veget')) {
+    } else if (lower.contains('horticult') ||
+        lower.contains('fruit') ||
+        lower.contains('veget')) {
       return Icons.local_florist_rounded;
     } else if (lower.contains('climate') || lower.contains('weather')) {
       return Icons.cloud_outlined;
@@ -1618,25 +1867,33 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
 // ═════════════════════════════════════════════════════════════════════════════
 // PROTOTYPE COURSE CARD (Matches Screen 11 & Screen 13 Large Card)
 // ═════════════════════════════════════════════════════════════════════════════
-class _PrototypeCourseCard extends StatelessWidget {
+class _PrototypeCourseCard extends ConsumerWidget {
   const _PrototypeCourseCard({required this.course, required this.index});
 
   final CourseList course;
   final int index;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final isFree = course.price == null ||
+    final isFree =
+        course.price == null ||
         course.price == '0' ||
         course.price == '0.00' ||
         course.price == '0.0';
-    final priceText = isFree ? 'FREE' : '₹${course.price}';
-    final categoryName = course.category?.name ??
+    final priceText = isFree
+        ? tr(ref, 'FREE')
+        : '₹${formatNum(ref, course.price)}';
+    final ratingDisplay = formatNum(ref, '4.8');
+    final reviewCount = formatNum(ref, 248);
+    final categoryName =
+        course.category?.name ??
         CourseCategory.fromValue(course.category?.slug)?.display;
     final badgeLabel = (categoryName != null && categoryName.trim().isNotEmpty)
-        ? categoryName.trim()
-        : (isFree ? 'Free course' : (index % 2 == 0 ? 'Beginner' : 'Bestseller'));
+        ? tr(ref, categoryName.trim())
+        : (isFree
+              ? tr(ref, 'Free course')
+              : (index % 2 == 0 ? tr(ref, 'Beginner') : tr(ref, 'Bestseller')));
 
     return Material(
       color: Colors.transparent,
@@ -1666,15 +1923,21 @@ class _PrototypeCourseCard extends StatelessWidget {
             children: [
               // Top Thumbnail Container with Bestseller/Free Badge
               ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(20),
+                ),
                 child: AspectRatio(
                   aspectRatio: 16 / 9,
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
                       Container(
-                        color: isDark ? const Color(0xFF24242A) : const Color(0xFFE9EFE9),
-                        child: course.thumbnail != null && course.thumbnail!.isNotEmpty
+                        color: isDark
+                            ? const Color(0xFF24242A)
+                            : const Color(0xFFE9EFE9),
+                        child:
+                            course.thumbnail != null &&
+                                course.thumbnail!.isNotEmpty
                             ? Image.network(
                                 course.thumbnail!,
                                 fit: BoxFit.cover,
@@ -1699,9 +1962,14 @@ class _PrototypeCourseCard extends StatelessWidget {
                         top: 12,
                         left: 12,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 5,
+                          ),
                           decoration: BoxDecoration(
-                            color: isDark ? const Color(0xFF1E3A2F) : Colors.white.withValues(alpha: 0.95),
+                            color: isDark
+                                ? const Color(0xFF1E3A2F)
+                                : Colors.white.withValues(alpha: 0.95),
                             borderRadius: BorderRadius.circular(12),
                             boxShadow: [
                               BoxShadow(
@@ -1714,7 +1982,9 @@ class _PrototypeCourseCard extends StatelessWidget {
                           child: Text(
                             badgeLabel,
                             style: TextStyle(
-                              color: isDark ? const Color(0xFF86EFAC) : const Color(0xFF132A13),
+                              color: isDark
+                                  ? const Color(0xFF86EFAC)
+                                  : const Color(0xFF132A13),
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
                             ),
@@ -1753,7 +2023,9 @@ class _PrototypeCourseCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 12.5,
                         fontWeight: FontWeight.w500,
-                        color: isDark ? Colors.white60 : const Color(0xFF6B7280),
+                        color: isDark
+                            ? Colors.white60
+                            : const Color(0xFF6B7280),
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -1773,11 +2045,13 @@ class _PrototypeCourseCard extends StatelessWidget {
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              '4.8 (248)',
+                              '$ratingDisplay ($reviewCount)',
                               style: TextStyle(
                                 fontSize: 12.5,
                                 fontWeight: FontWeight.bold,
-                                color: isDark ? Colors.white70 : const Color(0xFF374151),
+                                color: isDark
+                                    ? Colors.white70
+                                    : const Color(0xFF374151),
                               ),
                             ),
                           ],
@@ -1787,7 +2061,9 @@ class _PrototypeCourseCard extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.w800,
-                            color: isDark ? const Color(0xFF86EFAC) : const Color(0xFF1B4D2E),
+                            color: isDark
+                                ? const Color(0xFF86EFAC)
+                                : const Color(0xFF1B4D2E),
                           ),
                         ),
                       ],

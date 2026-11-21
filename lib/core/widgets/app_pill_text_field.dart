@@ -26,6 +26,7 @@ class AppPillTextField extends StatefulWidget {
   final FormFieldValidator<String>? validator;
   final int? maxLength;
   final List<TextInputFormatter>? inputFormatters;
+  final Widget? prefix;
 
   const AppPillTextField({
     super.key,
@@ -33,6 +34,7 @@ class AppPillTextField extends StatefulWidget {
     this.focusNode,
     required this.hintText,
     required this.prefixIcon,
+    this.prefix,
     this.suffixIcon,
     this.obscureText = false,
     this.keyboardType = TextInputType.text,
@@ -144,6 +146,11 @@ class _AppPillTextFieldState extends State<AppPillTextField> {
                   ),
 
                   const SizedBox(width: 14),
+
+                  if (widget.prefix != null) ...[
+                    widget.prefix!,
+                    const SizedBox(width: 8),
+                  ],
 
                   // Text Input
                   Expanded(

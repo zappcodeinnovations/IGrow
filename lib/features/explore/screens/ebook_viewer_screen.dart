@@ -110,14 +110,14 @@ class _EbookViewerScreenState extends ConsumerState<EbookViewerScreen> {
             children: [
               if (ebook.authorName != null && ebook.authorName!.isNotEmpty) ...[
                 Text(
-                  'Author: ${ebook.authorName}',
+                  '${tr(ref, 'Author')}: ${ebook.authorName}',
                   style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                 ),
                 const SizedBox(height: 8),
               ],
               if (ebook.instructorName != null && ebook.instructorName!.isNotEmpty) ...[
                 Text(
-                  'Published by: ${ebook.instructorName}',
+                  '${tr(ref, 'Published by')}: ${ebook.instructorName}',
                   style: TextStyle(color: AppColors.inkSoft, fontSize: 12),
                 ),
                 const SizedBox(height: 8),
@@ -129,7 +129,7 @@ class _EbookViewerScreenState extends ConsumerState<EbookViewerScreen> {
               ),
               const SizedBox(height: 6),
               Text(
-                ebook.description.isNotEmpty ? ebook.description : 'No description provided.',
+                ebook.description.isNotEmpty ? ebook.description : tr(ref, 'No description provided.'),
                 style: Theme.of(dialogContext).textTheme.bodyMedium?.copyWith(
                       color: AppColors.inkSoft,
                       height: 1.4,
@@ -151,9 +151,9 @@ class _EbookViewerScreenState extends ConsumerState<EbookViewerScreen> {
               elevation: 0,
             ),
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text(
-              'Close',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+            child: Text(
+              tr(ref, 'Close'),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
             ),
           ),
         ],
@@ -177,7 +177,7 @@ class _EbookViewerScreenState extends ConsumerState<EbookViewerScreen> {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
-          orElse: () => const Text('Reading E-Book'),
+          orElse: () => Text(tr(ref, 'Reading E-Book')),
         ),
         backgroundColor: isDark ? AppColors.cardDark : Colors.white,
         elevation: 0.5,
@@ -198,7 +198,7 @@ class _EbookViewerScreenState extends ConsumerState<EbookViewerScreen> {
                           isSaved ? Icons.favorite : Icons.favorite_border,
                           color: isSaved ? Colors.redAccent : null,
                         ),
-                        tooltip: isSaved ? 'Remove from Wishlist' : 'Add to Wishlist',
+                        tooltip: isSaved ? tr(ref, 'Remove from Wishlist') : tr(ref, 'Add to Wishlist'),
                         onPressed: () async {
                           try {
                             final preview = ApiWishlistItem(
@@ -237,7 +237,7 @@ class _EbookViewerScreenState extends ConsumerState<EbookViewerScreen> {
                   ),
                 IconButton(
                   icon: const Icon(Icons.info_outline_rounded, color: AppColors.primaryGreen),
-                  tooltip: 'E-Book Details',
+                  tooltip: tr(ref, 'E-Book Details'),
                   onPressed: () => _showEbookInfoDialog(ebook),
                 ),
               ],
@@ -255,7 +255,7 @@ class _EbookViewerScreenState extends ConsumerState<EbookViewerScreen> {
               const CircularProgressIndicator(color: AppColors.primaryGreen),
               const SizedBox(height: 16),
               Text(
-                'Opening your e-book...',
+                tr(ref, 'Opening your e-book...'),
                 style: TextStyle(
                   color: isDark ? Colors.white70 : AppColors.inkSoft,
                   fontSize: 14,
@@ -281,13 +281,13 @@ class _EbookViewerScreenState extends ConsumerState<EbookViewerScreen> {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'E-Book Not Found or Unavailable',
+                  tr(ref, 'E-Book Not Found or Unavailable'),
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'This e-book may have been updated, unpublished, or is currently unavailable in the library catalog.',
+                  tr(ref, 'This e-book may have been updated, unpublished, or is currently unavailable in the library catalog.'),
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: isDark ? Colors.white70 : AppColors.inkSoft,
@@ -305,7 +305,7 @@ class _EbookViewerScreenState extends ConsumerState<EbookViewerScreen> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                       onPressed: () => ref.invalidate(ebookDetailProvider(widget.ebookId)),
-                      child: const Text('Try Again'),
+                      child: Text(tr(ref, 'Try Again')),
                     ),
                     const SizedBox(width: 12),
                     FilledButton(
@@ -321,7 +321,7 @@ class _EbookViewerScreenState extends ConsumerState<EbookViewerScreen> {
                           context.go('${RouteNames.explore}?tab=ebooks');
                         }
                       },
-                      child: const Text('Browse Library'),
+                      child: Text(tr(ref, 'Browse Library')),
                     ),
                   ],
                 ),
@@ -366,7 +366,7 @@ class _EbookViewerScreenState extends ConsumerState<EbookViewerScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      '₹$rawPrice',
+                      '₹${formatNum(ref, rawPrice)}',
                       style: const TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.w800,
@@ -375,7 +375,7 @@ class _EbookViewerScreenState extends ConsumerState<EbookViewerScreen> {
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      'This premium e-book requires purchase before reading. Unlock lifetime access to all chapters and offline reading.',
+                      tr(ref, 'This premium e-book requires purchase before reading. Unlock lifetime access to all chapters and offline reading.'),
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: isDark ? Colors.white70 : AppColors.inkSoft,
@@ -395,7 +395,7 @@ class _EbookViewerScreenState extends ConsumerState<EbookViewerScreen> {
                         ),
                         onPressed: () => context.push('/checkout?ebookId=$targetId'),
                         icon: const Icon(Icons.shopping_bag_outlined, size: 18),
-                        label: const Text('Buy Now & Read', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                        label: Text(tr(ref, 'Buy Now & Read'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -407,7 +407,7 @@ class _EbookViewerScreenState extends ConsumerState<EbookViewerScreen> {
                           context.go('${RouteNames.explore}?tab=ebooks');
                         }
                       },
-                      child: const Text('Back to Catalog'),
+                      child: Text(tr(ref, 'Back to Catalog')),
                     ),
                   ],
                 ),
@@ -426,12 +426,12 @@ class _EbookViewerScreenState extends ConsumerState<EbookViewerScreen> {
                     const Icon(Icons.picture_as_pdf_outlined, color: AppColors.inkSoft, size: 48),
                     const SizedBox(height: 12),
                     Text(
-                      'PDF File Not Available',
+                      tr(ref, 'PDF File Not Available'),
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      'The publisher has not attached a readable PDF for this e-book yet.',
+                      tr(ref, 'The publisher has not attached a readable PDF for this e-book yet.'),
                       textAlign: TextAlign.center,
                       style: TextStyle(color: AppColors.inkSoft, fontSize: 13),
                     ),
@@ -481,15 +481,15 @@ class _EbookViewerScreenState extends ConsumerState<EbookViewerScreen> {
               if (_isLoadingPdf && _pdfLoadError == null)
                 Container(
                   color: (isDark ? AppColors.cardDark : Colors.white).withValues(alpha: 0.85),
-                  child: const Center(
+                  child: Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        CircularProgressIndicator(color: AppColors.primaryGreen),
-                        SizedBox(height: 14),
+                        const CircularProgressIndicator(color: AppColors.primaryGreen),
+                        const SizedBox(height: 14),
                         Text(
-                          'Streaming e-book pages...',
-                          style: TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+                          tr(ref, 'Streaming e-book pages...'),
+                          style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
                         ),
                       ],
                     ),
@@ -505,9 +505,9 @@ class _EbookViewerScreenState extends ConsumerState<EbookViewerScreen> {
                       children: [
                         const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 42),
                         const SizedBox(height: 12),
-                        const Text(
-                          'Failed to Display PDF',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        Text(
+                          tr(ref, 'Failed to Display PDF'),
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                         ),
                         const SizedBox(height: 6),
                         Text(
@@ -522,7 +522,7 @@ class _EbookViewerScreenState extends ConsumerState<EbookViewerScreen> {
                             foregroundColor: Colors.white,
                           ),
                           icon: const Icon(Icons.refresh_rounded, size: 18),
-                          label: const Text('Reload PDF'),
+                          label: Text(tr(ref, 'Reload PDF')),
                           onPressed: () {
                             setState(() {
                               _isLoadingPdf = true;

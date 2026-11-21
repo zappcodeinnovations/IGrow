@@ -7,7 +7,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../providers/auth_provider.dart';
 import '../widgets/complete_phone_profile_bottom_sheet.dart';
-import '../widgets/dual_role_select_bottom_sheet.dart';
 
 import '../../../core/localization/app_strings.dart';
 import '../../../core/theme/app_colors.dart';
@@ -121,31 +120,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
             onCompleted: () => _handleLoginSuccess(),
           );
         } else {
-          // Outcome A: Existing User -> Show Student or Instructor choice pop up
-          final rawRoles = res['available_roles'] as List<dynamic>?;
-          final availableRoles =
-              rawRoles
-                  ?.map((r) => UserRole.fromApiValue(r.toString()))
-                  .toList() ??
-              [];
-          final user = ref.read(authProvider).user;
-          final granted = (user?.grantedRoles.isNotEmpty == true)
-              ? user!.grantedRoles
-              : (availableRoles.isNotEmpty
-                  ? availableRoles
-                  : const [UserRole.farmer, UserRole.instructor]);
-
-          final chosenRole = await DualRoleSelectBottomSheet.show(
-            context,
-            availableRoles: granted,
-          );
-          if (chosenRole != null) {
-            if (chosenRole == UserRole.instructor && !granted.contains(UserRole.instructor)) {
-              await ref.read(authProvider.notifier).becomeInstructor();
-            } else if (chosenRole != user?.activeRole) {
-              await ref.read(authProvider.notifier).switchRole(chosenRole);
-            }
-          }
+          // Outcome A: Existing User -> Continue to home / selected language
           if (mounted) {
             await _handleLoginSuccess();
           }

@@ -233,7 +233,10 @@ class _CompletePhoneProfileBottomSheetState
                     if (email.isEmpty) {
                       return tr(ref, 'Email address is required');
                     }
-                    final emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+                    if (RegExp(r'[A-Z]').hasMatch(email)) {
+                      return tr(ref, 'Email must contain lowercase letters only');
+                    }
+                    final emailRegex = RegExp(r'^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$');
                     if (!emailRegex.hasMatch(email)) {
                       return tr(ref, 'Please enter a valid email address');
                     }

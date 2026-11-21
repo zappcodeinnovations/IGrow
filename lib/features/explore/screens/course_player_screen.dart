@@ -9,6 +9,7 @@ import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import 'package:video_player/video_player.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import '../../../core/localization/app_strings.dart';
 import '../../../core/services/offline_download_service.dart';
 import '../../../core/services/course_progress_service.dart';
 import '../../../core/services/quiz_service.dart';
@@ -84,6 +85,7 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
   bool _isLoadingVideo = false;
   String? _videoErrorMessage;
   bool _hasAutoCompletedCurrentLecture = false;
+  bool _isVideoEnded = false;
   String? _activeSlug;
   DateTime? _lastProgressUpdateTime;
 
@@ -179,6 +181,17 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
       }
 
       final progressRatio = (position.inMilliseconds / duration.inMilliseconds).clamp(0.0, 1.0);
+
+      // Check if video has reached the end or within 500ms of end
+      final isEnded = duration.inSeconds >= 3 &&
+          (progressRatio >= 0.98 || (duration.inMilliseconds - position.inMilliseconds) <= 800);
+      if (isEnded != _isVideoEnded) {
+        if (mounted) {
+          setState(() {
+            _isVideoEnded = isEnded;
+          });
+        }
+      }
 
       // 1. Auto-complete current lecture when 90% or more is watched (requires real playback of at least 5s)
       if (progressRatio >= 0.90 &&
@@ -528,6 +541,7 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
       _isLoadingVideo = true;
       _videoErrorMessage = null;
       _hasAutoCompletedCurrentLecture = false;
+      _isVideoEnded = false;
     });
 
     final videoUrl = lecture.videoUrl;
@@ -1163,7 +1177,7 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
     _initializePlayer(lecture);
   }
 
-  void _playNextLecture(ApiCourseDetail course) {
+  ({ApiLecture lecture, ApiCourseSection section})? _getNextLectureItem(ApiCourseDetail course) {
     final allLecturesWithSections = <({ApiLecture lecture, ApiCourseSection section})>[];
     for (final sec in course.sections) {
       for (final lec in sec.lectures) {
@@ -1176,7 +1190,14 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
     );
 
     if (currentIndex != -1 && currentIndex < allLecturesWithSections.length - 1) {
-      final nextItem = allLecturesWithSections[currentIndex + 1];
+      return allLecturesWithSections[currentIndex + 1];
+    }
+    return null;
+  }
+
+  void _playNextLecture(ApiCourseDetail course) {
+    final nextItem = _getNextLectureItem(course);
+    if (nextItem != null) {
       _playLecture(nextItem.lecture, nextItem.section);
     }
   }
@@ -1328,8 +1349,133 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
                   children: [
                     if (_chewieController != null &&
                         _chewieController!
-                            .videoPlayerController.value.isInitialized)
-                      Chewie(controller: _chewieController!)
+                            .videoPlayerController.value.isInitialized) ...[
+                      Chewie(controller: _chewieController!),
+                      // End-of-video Next Lecture Overlay
+                      if (_isVideoEnded)
+                        Builder(
+                          builder: (context) {
+                            final nextItem = _getNextLectureItem(course);
+                            return Positioned.fill(
+                              child: Container(
+                                color: Colors.black.withValues(alpha: 0.88),
+                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    if (nextItem != null) ...[
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.primaryGreen.withValues(alpha: 0.2),
+                                          borderRadius: BorderRadius.circular(20),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Icon(Icons.playlist_play_rounded, color: AppColors.primaryGreen, size: 16),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              tr(ref, 'Up Next'),
+                                              style: const TextStyle(
+                                                color: AppColors.primaryGreen,
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.bold,
+                                                letterSpacing: 0.5,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        nextItem.lecture.title,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14.5,
+                                        ),
+                                        maxLines: 2,
+                                        textAlign: TextAlign.center,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      const SizedBox(height: 14),
+                                      FilledButton.icon(
+                                        style: FilledButton.styleFrom(
+                                          backgroundColor: AppColors.primaryGreen,
+                                          foregroundColor: Colors.white,
+                                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                          elevation: 2,
+                                        ),
+                                        icon: const Icon(Icons.play_arrow_rounded, size: 22),
+                                        label: Text(
+                                          tr(ref, 'Play Next Video'),
+                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+                                        ),
+                                        onPressed: () {
+                                          setState(() => _isVideoEnded = false);
+                                          _playNextLecture(course);
+                                        },
+                                      ),
+                                      const SizedBox(height: 8),
+                                      TextButton.icon(
+                                        style: TextButton.styleFrom(
+                                          foregroundColor: Colors.white70,
+                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                        ),
+                                        icon: const Icon(Icons.replay_rounded, size: 16),
+                                        label: Text(
+                                          tr(ref, 'Replay Lesson'),
+                                          style: const TextStyle(fontSize: 12),
+                                        ),
+                                        onPressed: () {
+                                          setState(() => _isVideoEnded = false);
+                                          _videoPlayerController?.seekTo(Duration.zero);
+                                          _videoPlayerController?.play();
+                                        },
+                                      ),
+                                    ] else ...[
+                                      Container(
+                                        padding: const EdgeInsets.all(12),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.primaryGreen.withValues(alpha: 0.2),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(Icons.check_circle_rounded, color: AppColors.primaryGreen, size: 36),
+                                      ),
+                                      const SizedBox(height: 10),
+                                      Text(
+                                        tr(ref, 'You have completed this lecture!'),
+                                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                      const SizedBox(height: 10),
+                                      TextButton.icon(
+                                        style: TextButton.styleFrom(
+                                          foregroundColor: Colors.white,
+                                          backgroundColor: Colors.white12,
+                                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                        ),
+                                        icon: const Icon(Icons.replay_rounded, size: 16),
+                                        label: Text(tr(ref, 'Replay Lesson')),
+                                        onPressed: () {
+                                          setState(() => _isVideoEnded = false);
+                                          _videoPlayerController?.seekTo(Duration.zero);
+                                          _videoPlayerController?.play();
+                                        },
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                    ]
                     else if (_isLoadingVideo)
                       const Column(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -1482,14 +1628,44 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           if (_hasNextLecture(course)) ...[
-                            IconButton(
-                              visualDensity: VisualDensity.compact,
-                              constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
-                              padding: const EdgeInsets.all(4),
-                              tooltip: 'Next Lecture',
-                              icon: const Icon(Icons.skip_next,
-                                  color: AppColors.primaryGreen, size: 22),
-                              onPressed: () => _playNextLecture(course),
+                            Container(
+                              decoration: BoxDecoration(
+                                color: AppColors.primaryGreen.withValues(alpha: _isVideoEnded ? 0.25 : 0.12),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: _isVideoEnded ? AppColors.primaryGreen : AppColors.primaryGreen.withValues(alpha: 0.3),
+                                  width: _isVideoEnded ? 1.5 : 1.0,
+                                ),
+                              ),
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(10),
+                                onTap: () {
+                                  setState(() => _isVideoEnded = false);
+                                  _playNextLecture(course);
+                                },
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        tr(ref, 'Next Lecture'),
+                                        style: TextStyle(
+                                          color: isDark ? const Color(0xFF86EFAC) : AppColors.primaryGreen,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Icon(
+                                        Icons.skip_next_rounded,
+                                        color: isDark ? const Color(0xFF86EFAC) : AppColors.primaryGreen,
+                                        size: 18,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
                             ),
                           ],
                         ],

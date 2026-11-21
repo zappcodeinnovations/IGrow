@@ -712,21 +712,21 @@ class _EBooksTab extends ConsumerWidget {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (c) => AlertDialog(
-        title: const Text('Delete Draft E-Book'),
+        title: Text(tr(ref, 'Delete Draft E-Book')),
         content: Text(
-          'Are you sure you want to permanently delete "${title ?? 'this draft e-book'}"? This action cannot be undone.',
+          '${tr(ref, 'Are you sure you want to permanently delete')} "${title ?? 'this draft e-book'}"? ${tr(ref, 'This action cannot be undone.')}',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(c, false),
-            child: const Text('Cancel'),
+            child: Text(tr(ref, 'Cancel')),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
               backgroundColor: AppColors.error,
             ),
             onPressed: () => Navigator.pop(c, true),
-            child: const Text('Delete'),
+            child: Text(tr(ref, 'Delete')),
           ),
         ],
       ),

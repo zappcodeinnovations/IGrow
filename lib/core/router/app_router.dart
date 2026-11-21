@@ -256,6 +256,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
+        path: RouteNames.instructorQa,
+        parentNavigatorKey: rootNavigatorKey,
+        pageBuilder: (context, state) => _buildSlideRightPage(
+          context: context,
+          state: state,
+          child: const QaManagementScreen(),
+        ),
+      ),
+      GoRoute(
         path: RouteNames.uploadCourse,
         builder: (context, state) => const UploadCourseScreen(),
       ),
@@ -578,10 +587,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: RouteNames.instructorAnalytics,
             builder: (context, state) => const InstructorAnalyticsScreen(),
-          ),
-          GoRoute(
-            path: '/instructor/qa',
-            builder: (context, state) => const QaManagementScreen(),
           ),
           GoRoute(
             path: RouteNames.instructorReviews,

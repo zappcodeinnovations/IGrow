@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/localization/app_strings.dart';
+import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_card.dart';
@@ -170,34 +172,48 @@ class _QaManagementScreenState extends ConsumerState<QaManagementScreen> {
     }
   }
 
+  void _handleBack(BuildContext context) {
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go(RouteNames.instructorHome);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final qaState = ref.watch(instructorQaFilteredProvider(_currentQuery));
     final coursesAsync = ref.watch(instructorCoursesProvider((search: '', ordering: '')));
 
-    return Scaffold(
-      backgroundColor: isDark ? AppColors.editorialSurfaceDark : AppColors.editorialSurface,
-      appBar: AppBar(
-        title: Text(
-          tr(ref, 'Q&A Forum'),
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-            color: isDark ? Colors.white : AppColors.editorialOnSurface,
-          ),
-        ),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _handleBack(context);
+      },
+      child: Scaffold(
         backgroundColor: isDark ? AppColors.editorialSurfaceDark : AppColors.editorialSurface,
-        elevation: 0,
-        scrolledUnderElevation: 0.5,
-        leading: IconButton(
-          icon: Icon(
-            Icons.arrow_back_rounded,
-            color: isDark ? Colors.white : AppColors.editorialOnSurface,
+        appBar: AppBar(
+          title: Text(
+            tr(ref, 'Q&A Forum'),
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+              color: isDark ? Colors.white : AppColors.editorialOnSurface,
+            ),
           ),
-          onPressed: () => Navigator.maybePop(context),
+          backgroundColor: isDark ? AppColors.editorialSurfaceDark : AppColors.editorialSurface,
+          elevation: 0,
+          scrolledUnderElevation: 0.5,
+          leading: IconButton(
+            icon: Icon(
+              Icons.arrow_back_rounded,
+              color: isDark ? Colors.white : AppColors.editorialOnSurface,
+            ),
+            onPressed: () => _handleBack(context),
+          ),
         ),
-      ),
       body: Column(
         children: [
           // Filter Toolbar (Matching Web InstructorQA)
@@ -689,6 +705,7 @@ class _QaManagementScreenState extends ConsumerState<QaManagementScreen> {
           ),
         ],
       ),
+    ),
     );
   }
 

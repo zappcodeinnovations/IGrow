@@ -83,6 +83,11 @@ String _cleanTechnicalErrorString(String raw, {String fallback = 'Something went
     return 'Our server is temporarily unavailable. Please try again shortly.';
   }
 
+  // Django model 404 lookup message sanitization
+  if (lower.contains('matches the given query')) {
+    return 'The requested item was not found or has already been removed.';
+  }
+
   // Remove trailing uri=... if present
   s = s.replaceAll(RegExp(r',?\s*uri\s*=\s*https?://\S+', caseSensitive: false), '').trim();
 

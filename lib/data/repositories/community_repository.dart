@@ -36,10 +36,12 @@ class CommunityRepository {
 
       // Explicit 403 Forbidden / KYC Authorization Guard
       if (response.statusCode == 403) {
-        String errorMessage = 'Access restricted: KYC verification is required before creating a community hub or publishing updates.';
+        String errorMessage =
+            'Access restricted: KYC verification is required before creating a community hub or publishing updates.';
         try {
           final data = jsonDecode(response.body);
-          if (data is Map && (data.containsKey('detail') || data.containsKey('error'))) {
+          if (data is Map &&
+              (data.containsKey('detail') || data.containsKey('error'))) {
             errorMessage = (data['detail'] ?? data['error']).toString();
           }
         } catch (_) {}
@@ -74,7 +76,10 @@ class CommunityRepository {
           }
         }
       } catch (_) {}
-      throw ApiException(statusCode: response.statusCode, message: errorMessage);
+      throw ApiException(
+        statusCode: response.statusCode,
+        message: errorMessage,
+      );
     }
   }
 
@@ -86,9 +91,9 @@ class CommunityRepository {
       if (district != null && district.trim().isNotEmpty) {
         queryParams['district'] = district.trim();
       }
-      final uri = Uri.parse('$baseUrl/hubs/suggestions/').replace(
-        queryParameters: queryParams.isNotEmpty ? queryParams : null,
-      );
+      final uri = Uri.parse(
+        '$baseUrl/hubs/suggestions/',
+      ).replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
       final response = await http
           .get(uri, headers: await _getHeaders())
           .timeout(const Duration(seconds: 15));
@@ -97,10 +102,10 @@ class CommunityRepository {
         final results = data is List
             ? data
             : (data is Map && data.containsKey('results')
-                ? data['results'] as List? ?? []
-                : (data is Map && data.containsKey('data')
-                    ? data['data'] as List? ?? []
-                    : []));
+                  ? data['results'] as List? ?? []
+                  : (data is Map && data.containsKey('data')
+                        ? data['data'] as List? ?? []
+                        : []));
 
         return results
             .whereType<Map<String, dynamic>>()
@@ -128,9 +133,9 @@ class CommunityRepository {
         queryParams['search'] = search;
       }
 
-      final uri = Uri.parse('$baseUrl/hubs/').replace(
-        queryParameters: queryParams.isNotEmpty ? queryParams : null,
-      );
+      final uri = Uri.parse(
+        '$baseUrl/hubs/',
+      ).replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
 
       final response = await http
           .get(uri, headers: await _getHeaders())
@@ -141,10 +146,10 @@ class CommunityRepository {
       final results = data is List
           ? data
           : (data is Map && data.containsKey('results')
-              ? data['results'] as List? ?? []
-              : (data is Map && data.containsKey('data')
-                  ? data['data'] as List? ?? []
-                  : []));
+                ? data['results'] as List? ?? []
+                : (data is Map && data.containsKey('data')
+                      ? data['data'] as List? ?? []
+                      : []));
 
       return results
           .whereType<Map<String, dynamic>>()
@@ -184,12 +189,12 @@ class CommunityRepository {
         final results = data is List
             ? data
             : (data is Map && data.containsKey('results')
-                ? data['results'] as List? ?? []
-                : (data is Map && data.containsKey('members')
-                    ? data['members'] as List? ?? []
-                    : (data is Map && data.containsKey('data')
-                        ? data['data'] as List? ?? []
-                        : [])));
+                  ? data['results'] as List? ?? []
+                  : (data is Map && data.containsKey('members')
+                        ? data['members'] as List? ?? []
+                        : (data is Map && data.containsKey('data')
+                              ? data['data'] as List? ?? []
+                              : [])));
 
         return results
             .whereType<Map<String, dynamic>>()
@@ -205,11 +210,7 @@ class CommunityRepository {
     return _safe(() async {
       final uri = Uri.parse('$baseUrl/hubs/$hubId/join/');
       final response = await http
-          .post(
-            uri,
-            headers: await _getHeaders(),
-            body: jsonEncode({}),
-          )
+          .post(uri, headers: await _getHeaders(), body: jsonEncode({}))
           .timeout(const Duration(seconds: 15));
       _handleError(response);
       return jsonDecode(response.body) as Map<String, dynamic>;
@@ -245,25 +246,29 @@ class CommunityRepository {
         request.fields['is_private'] = isPrivate.toString();
         request.files.add(await http.MultipartFile.fromPath('logo', logoPath));
 
-        final streamed = await request.send().timeout(const Duration(seconds: 30));
+        final streamed = await request.send().timeout(
+          const Duration(seconds: 30),
+        );
         final response = await http.Response.fromStream(streamed);
         _handleError(response);
         final data = jsonDecode(response.body);
         return CommunityHub.fromJson(data as Map<String, dynamic>);
       } else {
-        final response = await http.post(
-          uri,
-          headers: await _getHeaders(),
-          body: jsonEncode({
-            'name': name,
-            'description': description,
-            'state': state,
-            'districts': districts,
-            'farming_topics': farmingTopics,
-            'rules': rules,
-            'is_private': isPrivate,
-          }),
-        ).timeout(const Duration(seconds: 15));
+        final response = await http
+            .post(
+              uri,
+              headers: await _getHeaders(),
+              body: jsonEncode({
+                'name': name,
+                'description': description,
+                'state': state,
+                'districts': districts,
+                'farming_topics': farmingTopics,
+                'rules': rules,
+                'is_private': isPrivate,
+              }),
+            )
+            .timeout(const Duration(seconds: 15));
         _handleError(response);
         final data = jsonDecode(response.body);
         return CommunityHub.fromJson(data as Map<String, dynamic>);
@@ -316,7 +321,9 @@ class CommunityRepository {
 
       final data = jsonDecode(response.body);
       final results = data['results'] as List? ?? (data is List ? data : []);
-      return results.map((json) => CommunityTopic.fromJson(json as Map<String, dynamic>)).toList();
+      return results
+          .map((json) => CommunityTopic.fromJson(json as Map<String, dynamic>))
+          .toList();
     });
   }
 
@@ -343,9 +350,9 @@ class CommunityRepository {
         queryParams['ordering'] = ordering;
       }
 
-      final uri = Uri.parse('$baseUrl/posts/').replace(
-        queryParameters: queryParams.isNotEmpty ? queryParams : null,
-      );
+      final uri = Uri.parse(
+        '$baseUrl/posts/',
+      ).replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
       final response = await http
           .get(uri, headers: await _getHeaders())
           .timeout(const Duration(seconds: 15));
@@ -353,7 +360,9 @@ class CommunityRepository {
 
       final data = jsonDecode(response.body);
       final results = data['results'] as List? ?? (data is List ? data : []);
-      return results.map((json) => CommunityPost.fromJson(json as Map<String, dynamic>)).toList();
+      return results
+          .map((json) => CommunityPost.fromJson(json as Map<String, dynamic>))
+          .toList();
     });
   }
 
@@ -382,19 +391,27 @@ class CommunityRepository {
         request.fields['title'] = title;
         request.fields['content'] = content;
         if (hubId != null && hubId.isNotEmpty) request.fields['hub_id'] = hubId;
-        if (postType != null && postType.isNotEmpty) request.fields['post_type'] = postType;
-        if (topicId != null && topicId.isNotEmpty) request.fields['topic_id'] = topicId;
+        if (postType != null && postType.isNotEmpty)
+          request.fields['post_type'] = postType;
+        if (topicId != null && topicId.isNotEmpty)
+          request.fields['topic_id'] = topicId;
         if (courseId != null && courseId.isNotEmpty) {
           request.fields['course_id'] = courseId;
           request.fields['course'] = courseId;
         }
-        if (eventDate != null) request.fields['event_date'] = eventDate.toUtc().toIso8601String();
-        if (venueAddress != null && venueAddress.isNotEmpty) request.fields['venue_address'] = venueAddress;
+        if (eventDate != null)
+          request.fields['event_date'] = eventDate.toUtc().toIso8601String();
+        if (venueAddress != null && venueAddress.isNotEmpty)
+          request.fields['venue_address'] = venueAddress;
         if (link != null && link.isNotEmpty) request.fields['link'] = link;
 
-        request.files.add(await http.MultipartFile.fromPath('image', imagePath));
+        request.files.add(
+          await http.MultipartFile.fromPath('image', imagePath),
+        );
 
-        final streamed = await request.send().timeout(const Duration(seconds: 30));
+        final streamed = await request.send().timeout(
+          const Duration(seconds: 30),
+        );
         final response = await http.Response.fromStream(streamed);
         _handleError(response);
         final data = jsonDecode(response.body);
@@ -410,16 +427,16 @@ class CommunityRepository {
             'course_id': courseId,
             'course': courseId,
           },
-          if (eventDate != null) 'event_date': eventDate.toUtc().toIso8601String(),
-          if (venueAddress != null && venueAddress.isNotEmpty) 'venue_address': venueAddress,
+          if (eventDate != null)
+            'event_date': eventDate.toUtc().toIso8601String(),
+          if (venueAddress != null && venueAddress.isNotEmpty)
+            'venue_address': venueAddress,
           if (link != null && link.isNotEmpty) 'link': link,
         };
 
-        final response = await http.post(
-          uri,
-          headers: await _getHeaders(),
-          body: jsonEncode(body),
-        ).timeout(const Duration(seconds: 15));
+        final response = await http
+            .post(uri, headers: await _getHeaders(), body: jsonEncode(body))
+            .timeout(const Duration(seconds: 15));
         _handleError(response);
         final data = jsonDecode(response.body);
         return CommunityPost.fromJson(data as Map<String, dynamic>);
@@ -427,7 +444,10 @@ class CommunityRepository {
     });
   }
 
-  Future<Map<String, dynamic>> reactToPost(String postId, String reaction) async {
+  Future<Map<String, dynamic>> reactToPost(
+    String postId,
+    String reaction,
+  ) async {
     return _safe(() async {
       // Normalize reaction to canonical backend choices:
       // Backend expects: LIKE, LOVE, CLAP, HELPFUL, FARM
@@ -437,11 +457,9 @@ class CommunityRepository {
 
       final uri = Uri.parse('$baseUrl/posts/$postId/react/');
       final headers = await _getHeaders();
-      http.Response response = await http.post(
-        uri,
-        headers: headers,
-        body: jsonEncode({'reaction': primary}),
-      ).timeout(const Duration(seconds: 15));
+      http.Response response = await http
+          .post(uri, headers: headers, body: jsonEncode({'reaction': primary}))
+          .timeout(const Duration(seconds: 15));
 
       // Resilient fallback: if 400 Bad Request, try alternate representation
       if (response.statusCode == 400) {
@@ -457,11 +475,13 @@ class CommunityRepository {
         }
 
         if (alternate != null) {
-          final altResponse = await http.post(
-            uri,
-            headers: headers,
-            body: jsonEncode({'reaction': alternate}),
-          ).timeout(const Duration(seconds: 15));
+          final altResponse = await http
+              .post(
+                uri,
+                headers: headers,
+                body: jsonEncode({'reaction': alternate}),
+              )
+              .timeout(const Duration(seconds: 15));
           if (altResponse.statusCode >= 200 && altResponse.statusCode < 300) {
             response = altResponse;
           }
@@ -476,11 +496,9 @@ class CommunityRepository {
   Future<Map<String, dynamic>> incrementPostView(String postId) async {
     try {
       final uri = Uri.parse('$baseUrl/posts/$postId/view/');
-      final response = await http.post(
-        uri,
-        headers: await _getHeaders(),
-        body: jsonEncode({}),
-      ).timeout(const Duration(seconds: 10));
+      final response = await http
+          .post(uri, headers: await _getHeaders(), body: jsonEncode({}))
+          .timeout(const Duration(seconds: 10));
       if (response.statusCode >= 200 && response.statusCode < 300) {
         return jsonDecode(response.body) as Map<String, dynamic>;
       }
@@ -519,17 +537,24 @@ class CommunityRepository {
     try {
       final uri = Uri.parse('$baseUrl/posts/$postId/comments/');
       developer.log('Fetching comments: GET $uri', name: 'Community');
-      final response = await http.get(uri, headers: await _getHeaders()).timeout(const Duration(seconds: 15));
-      developer.log('Fetch comments response (${response.statusCode}): ${response.body}', name: 'Community');
+      final response = await http
+          .get(uri, headers: await _getHeaders())
+          .timeout(const Duration(seconds: 15));
+      developer.log(
+        'Fetch comments response (${response.statusCode}): ${response.body}',
+        name: 'Community',
+      );
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final data = jsonDecode(response.body);
         final results = data is List
             ? data
             : (data is Map && data.containsKey('results')
-                ? data['results'] as List? ?? []
-                : (data is Map && data.containsKey('comments')
-                    ? data['comments'] as List? ?? []
-                    : (data is Map && data.containsKey('data') ? data['data'] as List? ?? [] : [])));
+                  ? data['results'] as List? ?? []
+                  : (data is Map && data.containsKey('comments')
+                        ? data['comments'] as List? ?? []
+                        : (data is Map && data.containsKey('data')
+                              ? data['data'] as List? ?? []
+                              : [])));
         return results
             .whereType<Map<String, dynamic>>()
             .map((json) => CommunityComment.fromJson(json))
@@ -541,7 +566,11 @@ class CommunityRepository {
     return [];
   }
 
-  Future<CommunityComment> addComment(String postId, String content, {String? parentId}) async {
+  Future<CommunityComment> addComment(
+    String postId,
+    String content, {
+    String? parentId,
+  }) async {
     final bodyData = {
       'content': content,
       'comment': content,
@@ -559,13 +588,17 @@ class CommunityRepository {
     for (final url in endpoints) {
       try {
         final uri = Uri.parse(url);
-        developer.log('Posting comment: POST $uri payload: ${jsonEncode(bodyData)}', name: 'Community');
-        final response = await http.post(
-          uri,
-          headers: await _getHeaders(),
-          body: jsonEncode(bodyData),
-        ).timeout(const Duration(seconds: 15));
-        developer.log('Add comment response (${response.statusCode}): ${response.body}', name: 'Community');
+        developer.log(
+          'Posting comment: POST $uri payload: ${jsonEncode(bodyData)}',
+          name: 'Community',
+        );
+        final response = await http
+            .post(uri, headers: await _getHeaders(), body: jsonEncode(bodyData))
+            .timeout(const Duration(seconds: 15));
+        developer.log(
+          'Add comment response (${response.statusCode}): ${response.body}',
+          name: 'Community',
+        );
         if (response.statusCode >= 200 && response.statusCode < 300) {
           final data = jsonDecode(response.body);
           if (data is Map<String, dynamic>) {
@@ -601,7 +634,11 @@ class CommunityRepository {
 
   /// Report Objectionable Post
   /// Reason options: SPAM, HARASSMENT, HATE_SPEECH, INAPPROPRIATE, MISINFORMATION, OTHER
-  Future<bool> reportPost(String postId, {required String reason, String? details}) async {
+  Future<bool> reportPost(
+    String postId, {
+    required String reason,
+    String? details,
+  }) async {
     try {
       final uri = Uri.parse('$baseUrl/posts/$postId/report/');
       final response = await http.post(
@@ -609,7 +646,8 @@ class CommunityRepository {
         headers: await _getHeaders(),
         body: jsonEncode({
           'reason': reason,
-          if (details != null && details.trim().isNotEmpty) 'details': details.trim(),
+          if (details != null && details.trim().isNotEmpty)
+            'details': details.trim(),
         }),
       );
       return response.statusCode >= 200 && response.statusCode < 300;
@@ -619,7 +657,11 @@ class CommunityRepository {
   }
 
   /// Report Objectionable Comment
-  Future<bool> reportComment(String commentId, {required String reason, String? details}) async {
+  Future<bool> reportComment(
+    String commentId, {
+    required String reason,
+    String? details,
+  }) async {
     try {
       final uri = Uri.parse('$baseUrl/comments/$commentId/report/');
       final response = await http.post(
@@ -627,7 +669,8 @@ class CommunityRepository {
         headers: await _getHeaders(),
         body: jsonEncode({
           'reason': reason,
-          if (details != null && details.trim().isNotEmpty) 'details': details.trim(),
+          if (details != null && details.trim().isNotEmpty)
+            'details': details.trim(),
         }),
       );
       return response.statusCode >= 200 && response.statusCode < 300;
@@ -640,14 +683,10 @@ class CommunityRepository {
   Future<bool> blockUser(String userId) async {
     try {
       final uri = Uri.parse('$baseUrl/users/$userId/block/');
-      final response = await http.post(
-        uri,
-        headers: await _getHeaders(),
-      );
+      final response = await http.post(uri, headers: await _getHeaders());
       return response.statusCode >= 200 && response.statusCode < 300;
     } catch (_) {
       return false;
     }
   }
 }
-

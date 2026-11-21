@@ -22,7 +22,6 @@ import '../../../core/services/social_auth_service.dart';
 import '../../../data/models/user_role.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/complete_social_profile_dialog.dart';
-import '../widgets/dual_role_select_bottom_sheet.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key, this.selectedRole});
@@ -64,23 +63,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     var updatedUser = ref.read(authProvider).user ?? user;
     if (updatedUser == null) return;
-
-    // Prompt role choice: whether new or returning, allow user to pick Student or Instructor mode
-    final chosenRole = await DualRoleSelectBottomSheet.show(
-      context,
-      availableRoles: updatedUser.grantedRoles.isNotEmpty
-          ? updatedUser.grantedRoles
-          : const [UserRole.farmer, UserRole.instructor],
-    );
-    if (chosenRole != null) {
-      if (chosenRole == UserRole.instructor && !updatedUser.grantedRoles.contains(UserRole.instructor)) {
-        await ref.read(authProvider.notifier).becomeInstructor();
-      } else if (chosenRole != updatedUser.activeRole) {
-        await ref.read(authProvider.notifier).switchRole(chosenRole);
-      }
-      if (!mounted) return;
-      updatedUser = ref.read(authProvider).user ?? updatedUser;
-    }
 
     final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;

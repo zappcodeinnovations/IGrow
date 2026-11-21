@@ -148,7 +148,13 @@ class _CompleteSocialProfileDialogState
   @override
   void initState() {
     super.initState();
-    _phoneController = TextEditingController(text: widget.user.phone);
+    String initialPhone = widget.user.phone.trim();
+    if (initialPhone.startsWith('+91')) {
+      initialPhone = initialPhone.substring(3).trim();
+    } else if (initialPhone.startsWith('91') && initialPhone.length > 10) {
+      initialPhone = initialPhone.substring(2).trim();
+    }
+    _phoneController = TextEditingController(text: initialPhone);
     _selectedState = widget.user.locationState?.trim();
     if (_selectedState != null && _selectedState!.isEmpty) {
       _selectedState = null;
@@ -176,7 +182,11 @@ class _CompleteSocialProfileDialogState
       return;
     }
 
-    final phone = _phoneController.text.trim();
+    var phone = _phoneController.text.trim().replaceAll(RegExp(r'\D'), '');
+    if (phone.length > 10 && phone.startsWith('91')) {
+      phone = phone.substring(2);
+    }
+    final formattedPhone = phone.isNotEmpty ? '+91$phone' : null;
     final state = _selectedState?.trim() ?? '';
     final district = _selectedDistrict?.trim() ?? '';
 
@@ -184,7 +194,7 @@ class _CompleteSocialProfileDialogState
 
     try {
       final request = PatchedUserProfileRequest(
-        phoneNumber: phone.isNotEmpty ? phone : null,
+        phoneNumber: formattedPhone,
         locationState: state.isNotEmpty ? state : null,
         locationDistrict: district.isNotEmpty ? district : null,
       );
@@ -352,8 +362,23 @@ class _CompleteSocialProfileDialogState
                 AppPillTextField(
                   controller: _phoneController,
                   focusNode: _phoneFocusNode,
-                  hintText: tr(ref, 'Phone Number (10 digits) *'),
+                  hintText: tr(ref, 'Mobile Number (10 digits) *'),
                   prefixIcon: Icons.phone_android_rounded,
+                  prefix: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF223526) : const Color(0xFFE4EDE3),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '+91',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: isDark ? const Color(0xFF4ADE80) : AppColors.greenDark,
+                      ),
+                    ),
+                  ),
                   keyboardType: TextInputType.phone,
                   textInputAction: TextInputAction.next,
                   maxLength: 10,
@@ -362,7 +387,12 @@ class _CompleteSocialProfileDialogState
                     LengthLimitingTextInputFormatter(10),
                   ],
                   validator: (value) {
-                    final digitsOnly = (value ?? '').trim().replaceAll(RegExp(r'\D'), '');
+                    final raw = (value ?? '').trim();
+                    var digitsOnly = raw.replaceAll(RegExp(r'\D'), '');
+                    // Gracefully strip country prefix if user pasted it
+                    if (digitsOnly.length > 10 && digitsOnly.startsWith('91')) {
+                      digitsOnly = digitsOnly.substring(2);
+                    }
                     if (digitsOnly.isEmpty) {
                       return tr(ref, 'Phone number is required');
                     }

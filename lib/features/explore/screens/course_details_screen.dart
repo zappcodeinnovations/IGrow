@@ -889,6 +889,9 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen>
       _videoPlayerController!.pause();
     }
 
+    final user = ref.read(authProvider).user;
+    final isInstructor = user?.isInstructor == true || user?.isAdmin == true;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -897,6 +900,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen>
         course: course,
         lecture: lecture,
         token: token,
+        showEnrollButton: !isInstructor,
         onEnroll: () {
           Navigator.pop(modalCtx);
           _handleBuyNow(context, course);
@@ -2111,12 +2115,12 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen>
         ref.watch(isCourseInCartProvider(widget.courseId)) ||
         (course.slug != null && course.slug!.isNotEmpty && ref.watch(isCourseInCartProvider(course.slug!)));
     final isFreeCourse = course.price == null || course.price == '0' || course.price == '0.00';
-    final priceText = isFreeCourse ? 'Free' : '₹${course.price}';
+    final priceText = isFreeCourse ? tr(ref, 'Free') : '₹${formatNum(ref, course.price)}';
 
     // Rating & reviews
     final ratingValue = course.averageRating ?? 4.8;
-    final ratingDisplay = (ratingValue > 0 ? ratingValue : 4.8).toStringAsFixed(1);
-    final reviewCount = course.reviewCount ?? 248;
+    final ratingDisplay = formatNum(ref, (ratingValue > 0 ? ratingValue : 4.8).toStringAsFixed(1));
+    final reviewCount = formatNum(ref, course.reviewCount ?? 248);
 
     // Language display
     final lang = course.language?.isNotEmpty == true
@@ -2242,7 +2246,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen>
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    '· $reviewCount reviews',
+                    '· $reviewCount ${tr(ref, 'reviews')}',
                     style: TextStyle(
                       fontSize: 13,
                       color: isDark ? Colors.white60 : const Color(0xFF718096),
@@ -2336,7 +2340,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen>
                     ),
                     onPressed: () => _handleBuyNow(context, course),
                     child: Text(
-                      'Enroll now • $priceText',
+                      '${tr(ref, 'Enroll now')} • $priceText',
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 15,
@@ -2482,8 +2486,8 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen>
   }) {
     final priceText =
         course.price == null || course.price == '0' || course.price == '0.00'
-        ? 'Free'
-        : '₹${course.price}';
+        ? tr(ref, 'Free')
+        : '₹${formatNum(ref, course.price)}';
     final isSaved =
         ref.watch(isWishlistedProvider(course.id)) ||
         (course.slug != null &&
@@ -3483,24 +3487,26 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen>
 
 /// Free Preview Video Player Modal Sheet
 /// Provides full mobile playback parity with the Agrilearn web portal.
-class _FreePreviewModalSheet extends StatefulWidget {
+class _FreePreviewModalSheet extends ConsumerStatefulWidget {
   const _FreePreviewModalSheet({
     required this.course,
     required this.lecture,
     required this.onEnroll,
+    this.showEnrollButton = true,
     this.token,
   });
 
   final ApiCourseDetail course;
   final ApiLecture lecture;
   final VoidCallback onEnroll;
+  final bool showEnrollButton;
   final String? token;
 
   @override
-  State<_FreePreviewModalSheet> createState() => _FreePreviewModalSheetState();
+  ConsumerState<_FreePreviewModalSheet> createState() => _FreePreviewModalSheetState();
 }
 
-class _FreePreviewModalSheetState extends State<_FreePreviewModalSheet> {
+class _FreePreviewModalSheetState extends ConsumerState<_FreePreviewModalSheet> {
   Duration get _effectivePreviewLimit {
     // 1. Lecture-specific previewDuration parameter set by instructor
     final lectureSec = widget.lecture.previewDuration;
@@ -3993,12 +3999,10 @@ class _FreePreviewModalSheetState extends State<_FreePreviewModalSheet> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final priceText =
-        widget.course.price == null ||
-            widget.course.price == '0' ||
-            widget.course.price == '0.00'
-        ? 'Free'
-        : '₹${widget.course.price}';
+    final isFree = widget.course.price == null ||
+        widget.course.price == '0' ||
+        widget.course.price == '0.00';
+    final priceText = isFree ? tr(ref, 'Free') : '₹${formatNum(ref, widget.course.price)}';
 
     return Container(
       decoration: BoxDecoration(
@@ -4209,22 +4213,23 @@ class _FreePreviewModalSheetState extends State<_FreePreviewModalSheet> {
                                             style: TextStyle(fontSize: 11),
                                           ),
                                         ),
-                                        ElevatedButton.icon(
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: AppColors.primaryGreen,
-                                            foregroundColor: Colors.white,
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 14,
-                                              vertical: 6,
+                                        if (widget.showEnrollButton)
+                                          ElevatedButton.icon(
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: AppColors.primaryGreen,
+                                              foregroundColor: Colors.white,
+                                              padding: const EdgeInsets.symmetric(
+                                                horizontal: 14,
+                                                vertical: 6,
+                                              ),
+                                            ),
+                                            onPressed: widget.onEnroll,
+                                            icon: const Icon(Icons.shopping_bag_outlined, size: 14),
+                                            label: const Text(
+                                              'Enroll Now',
+                                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
                                             ),
                                           ),
-                                          onPressed: widget.onEnroll,
-                                          icon: const Icon(Icons.shopping_bag_outlined, size: 14),
-                                          label: const Text(
-                                            'Enroll Now',
-                                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
-                                          ),
-                                        ),
                                       ],
                                     ),
                                   ],
@@ -4257,7 +4262,7 @@ class _FreePreviewModalSheetState extends State<_FreePreviewModalSheet> {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          'Price: $priceText',
+                          '${tr(ref, 'Price:')} $priceText',
                           style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
@@ -4267,25 +4272,27 @@ class _FreePreviewModalSheetState extends State<_FreePreviewModalSheet> {
                       ],
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  ElevatedButton(
-                    onPressed: widget.onEnroll,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryGreen,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                  if (widget.showEnrollButton) ...[
+                    const SizedBox(width: 12),
+                    ElevatedButton(
+                      onPressed: widget.onEnroll,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primaryGreen,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 18,
+                          vertical: 12,
+                        ),
                       ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 18,
-                        vertical: 12,
+                      child: Text(
+                        tr(ref, 'Enroll Now'),
+                        style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ),
-                    child: const Text(
-                      'Enroll Now',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ),
+                  ],
                 ],
               ),
             ),

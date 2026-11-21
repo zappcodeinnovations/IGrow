@@ -25,6 +25,7 @@ class DualRoleSelectBottomSheet extends ConsumerWidget {
       context: context,
       isDismissible: false,
       enableDrag: false,
+      isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => DualRoleSelectBottomSheet(
         availableRoles: availableRoles ?? const [UserRole.farmer, UserRole.instructor],
@@ -49,69 +50,72 @@ class DualRoleSelectBottomSheet extends ConsumerWidget {
           ),
         ],
       ),
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
       child: SafeArea(
         top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 44,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 20),
-                decoration: BoxDecoration(
-                  color: isDark ? Colors.white24 : Colors.black12,
-                  borderRadius: BorderRadius.circular(2),
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 14),
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white24 : Colors.black12,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
               ),
-            ),
-            Text(
-              tr(ref, 'Login as Student or Instructor?'),
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-                color: isDark ? Colors.white : AppColors.inkDark,
-                letterSpacing: -0.3,
+              Text(
+                tr(ref, 'Login as Student or Instructor?'),
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 19,
+                  fontWeight: FontWeight.w800,
+                  color: isDark ? Colors.white : AppColors.inkDark,
+                  letterSpacing: -0.3,
+                ),
               ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              tr(ref, 'Choose how you want to continue (you can switch anytime):'),
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 13.5,
-                color: isDark ? Colors.white70 : AppColors.inkSoft,
-                height: 1.35,
+              const SizedBox(height: 4),
+              Text(
+                tr(ref, 'Choose how you want to continue (you can switch anytime):'),
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13,
+                  color: isDark ? Colors.white70 : AppColors.inkSoft,
+                  height: 1.3,
+                ),
               ),
-            ),
-            const SizedBox(height: 22),
+              const SizedBox(height: 16),
 
-            // Role 1: Student
-            _buildRoleOptionCard(
-              context: context,
-              ref: ref,
-              isDark: isDark,
-              title: tr(ref, 'Student Mode 🎓'),
-              subtitle: tr(ref, 'Learn, enroll in courses & read expert agricultural e-books.'),
-              icon: Icons.school_rounded,
-              accentColor: AppColors.primaryGreen,
-              onTap: () => onRoleSelected(UserRole.farmer),
-            ),
-            const SizedBox(height: 14),
+              // Role 1: Student
+              _buildRoleOptionCard(
+                context: context,
+                ref: ref,
+                isDark: isDark,
+                title: tr(ref, 'Student Mode 🎓'),
+                subtitle: tr(ref, 'Learn, enroll in courses & read expert agricultural e-books.'),
+                icon: Icons.school_rounded,
+                accentColor: AppColors.primaryGreen,
+                onTap: () => onRoleSelected(UserRole.farmer),
+              ),
+              const SizedBox(height: 10),
 
-            // Role 2: Instructor
-            _buildRoleOptionCard(
-              context: context,
-              ref: ref,
-              isDark: isDark,
-              title: tr(ref, 'Instructor Mode 👨‍🏫'),
-              subtitle: tr(ref, 'Manage courses, upload e-books, track revenue & students.'),
-              icon: Icons.menu_book_rounded,
-              accentColor: const Color(0xFFD97706),
-              onTap: () => onRoleSelected(UserRole.instructor),
-            ),
-          ],
+              // Role 2: Instructor
+              _buildRoleOptionCard(
+                context: context,
+                ref: ref,
+                isDark: isDark,
+                title: tr(ref, 'Instructor Mode 👨‍🏫'),
+                subtitle: tr(ref, 'Manage courses, upload e-books, track revenue & students.'),
+                icon: Icons.menu_book_rounded,
+                accentColor: const Color(0xFFD97706),
+                onTap: () => onRoleSelected(UserRole.instructor),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -131,12 +135,12 @@ class DualRoleSelectBottomSheet extends ConsumerWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
         child: Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
             color: isDark ? const Color(0xFF141F17) : const Color(0xFFF7FAF6),
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: isDark ? const Color(0xFF2C3E31) : const Color(0xFFE2EBE0),
               width: 1.5,
@@ -145,15 +149,15 @@ class DualRoleSelectBottomSheet extends ConsumerWidget {
           child: Row(
             children: [
               Container(
-                width: 48,
-                height: 48,
+                width: 44,
+                height: 44,
                 decoration: BoxDecoration(
                   color: accentColor.withValues(alpha: 0.15),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(icon, color: accentColor, size: 24),
+                child: Icon(icon, color: accentColor, size: 22),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -161,18 +165,18 @@ class DualRoleSelectBottomSheet extends ConsumerWidget {
                     Text(
                       title,
                       style: GoogleFonts.plusJakartaSans(
-                        fontSize: 16,
+                        fontSize: 15,
                         fontWeight: FontWeight.w700,
                         color: isDark ? Colors.white : AppColors.inkDark,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 3),
                     Text(
                       subtitle,
                       style: GoogleFonts.plusJakartaSans(
-                        fontSize: 12.5,
+                        fontSize: 12,
                         color: isDark ? Colors.white60 : AppColors.inkSoft,
-                        height: 1.3,
+                        height: 1.25,
                       ),
                     ),
                   ],
@@ -181,7 +185,7 @@ class DualRoleSelectBottomSheet extends ConsumerWidget {
               const SizedBox(width: 8),
               Icon(
                 Icons.arrow_forward_ios_rounded,
-                size: 16,
+                size: 15,
                 color: isDark ? Colors.white38 : AppColors.inkSoft,
               ),
             ],

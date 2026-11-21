@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "744016784564-3psdd2i9o59iea3beq1r8plqrrduoogo.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.zappkode.igrow",
+            "certificate_hash": "3684dbc53445a769dd0fa84c52f1e62e6ddcc774"
+          }
+        },
+        {
           "client_id": "744016784564-eqqa7p9no6blm7qsg1ihlfakp5i0jfek.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
@@ -27,6 +35,22 @@
           "android_info": {
             "package_name": "com.zappkode.igrow",
             "certificate_hash": "094601ab1c2213f57ec877426331ad0b10d474e4"
+          }
+        },
+        {
+          "client_id": "744016784564-rj3ci8cv2gokat0os70v2g5l0783q1qv.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.zappkode.igrow",
+            "certificate_hash": "0587eb2a2e2dc83eac61df52a055a367990b3f95"
+          }
+        },
+        {
+          "client_id": "744016784564-tffl8vhl83h6eouaads5o7jkstncb9tp.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.zappkode.igrow",
+            "certificate_hash": "2186a473b57b8d2d80574ca592021ebe38215418"
           }
         },
         {
