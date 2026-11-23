@@ -11,7 +11,6 @@ import '../../../data/models/api_models/instructor_model.dart';
 import '../../../data/models/api_models/course_models.dart' show CourseCategory;
 import '../../auth/providers/auth_provider.dart';
 import '../../notifications/providers/notification_provider.dart';
-import '../../../core/services/quiz_service.dart';
 import '../providers/student_provider.dart';
 import '../providers/weather_provider.dart';
 import '../../news/widgets/home_news_carousel.dart';
@@ -21,6 +20,7 @@ import '../../../data/models/user_role.dart';
 import '../../auth/widgets/become_instructor_bottom_sheet.dart';
 import '../widgets/floating_offer_badge.dart';
 import '../widgets/home_banner_carousel.dart';
+import '../widgets/student_welcome_dialog.dart';
 import '../providers/home_banners_provider.dart';
 import '../../../data/models/home_banner_model.dart';
 
@@ -58,18 +58,18 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
         backgroundColor: isDark ? const Color(0xFF14241A) : Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
-          children: const [
-            Icon(Icons.swap_horiz_rounded, color: Color(0xFF16A34A), size: 28),
-            SizedBox(width: 10),
+          children: [
+            const Icon(Icons.swap_horiz_rounded, color: Color(0xFF16A34A), size: 28),
+            const SizedBox(width: 10),
             Text(
-              'Switch Mode',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              tr(ref, 'Switch Mode'),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
             ),
           ],
         ),
-        content: const Text(
-          'You are switching to Instructor Mode. You will be able to create courses, manage students, and view teaching analytics.',
-          style: TextStyle(fontSize: 14, height: 1.4),
+        content: Text(
+          tr(ref, 'You are switching to Instructor Mode. You will be able to create courses, manage students, and view teaching analytics.'),
+          style: const TextStyle(fontSize: 14, height: 1.4),
         ),
         actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
         actions: [
@@ -130,33 +130,24 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
     );
   }
 
-  // Quiz history initialized clean for the farmer account, dynamically loaded from QuizService
-  final List<Map<String, dynamic>> _quizHistory = [];
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
-    _loadQuizHistory();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        final user = ref.read(authProvider).user;
+        StudentWelcomeDialog.checkAndShow(context, userId: user?.id ?? user?.email);
+      }
+    });
   }
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
-  }
-
-  Future<void> _loadQuizHistory() async {
-    final user = ref.read(authProvider).user;
-    final userId = user?.id ?? user?.email;
-    final history = await QuizService.getQuizHistory(userId: userId);
-    if (mounted) {
-      setState(() {
-        _quizHistory.clear();
-        _quizHistory.addAll(history);
-      });
-    }
   }
 
   Future<void> _refreshDashboard() async {
@@ -167,8 +158,6 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
     ref.invalidate(studentCategoriesProvider);
     ref.invalidate(topInstructorsProvider);
     ref.invalidate(studentCartProvider);
-    // Reload quiz history from local storage
-    await _loadQuizHistory();
     // Refresh real-time weather data
     ref.read(weatherProvider.notifier).refresh();
     // Wait for enrollments to finish re-fetching before completing
@@ -1321,18 +1310,44 @@ class _CourseCard extends ConsumerWidget {
                     ),
                     const SizedBox(height: 6),
 
-                    // Instructor Row
-                    Text(
-                      'By ${course.instructorName ?? "IAGROW Agriculture Experts"}',
-                      style: TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w500,
-                        color: isDark
-                            ? Colors.white60
-                            : const Color(0xFF6B7280),
+                    // Instructor Row (Clickable to Instructor Profile)
+                    InkWell(
+                      onTap: () {
+                        final instName = course.instructorName;
+                        if (instName != null && instName.trim().isNotEmpty) {
+                          context.push('/farmer/instructor/${Uri.encodeComponent(instName.trim())}');
+                        }
+                      },
+                      borderRadius: BorderRadius.circular(6),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              '${tr(ref, 'Created By')} ',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: isDark ? Colors.white60 : const Color(0xFF6B7280),
+                              ),
+                            ),
+                            Flexible(
+                              child: Text(
+                                course.instructorName ?? "IAGROW Agriculture Experts",
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.primaryGreen,
+                                  decoration: TextDecoration.underline,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 12),
 

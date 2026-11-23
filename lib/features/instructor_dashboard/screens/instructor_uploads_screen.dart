@@ -423,7 +423,7 @@ class _CoursesTab extends ConsumerWidget {
                                   ),
                                   const SizedBox(width: 4),
                                   Text(
-                                    '${course.enrollmentCount ?? 0} Students',
+                                    '${formatNum(ref, course.enrollmentCount ?? 0)} ${tr(ref, 'Students')}',
                                     style: Theme.of(context)
                                         .textTheme
                                         .bodySmall
@@ -432,7 +432,9 @@ class _CoursesTab extends ConsumerWidget {
                                 ],
                               ),
                               Text(
-                                course.price == '0.00' ? 'Free' : 'Paid',
+                                (course.price == '0.00' || course.price == '0' || course.price == null)
+                                    ? tr(ref, 'Free')
+                                    : tr(ref, 'Paid'),
                                 style: Theme.of(context)
                                     .textTheme
                                     .labelSmall

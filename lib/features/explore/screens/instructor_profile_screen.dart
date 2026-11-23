@@ -216,7 +216,7 @@ class InstructorProfileScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 24),
 
-          // ── 3. Stats Card (Rating & Students) ──
+          // ── 3. Stats Card (Rating & Students & Courses) ──
           Container(
             padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
             decoration: BoxDecoration(
@@ -240,9 +240,9 @@ class InstructorProfileScreen extends ConsumerWidget {
                   child: Column(
                     children: [
                       Text(
-                        rating.toStringAsFixed(1),
+                        formatNum(ref, rating.toStringAsFixed(1)),
                         style: GoogleFonts.plusJakartaSans(
-                          fontSize: 22,
+                          fontSize: 20,
                           fontWeight: FontWeight.w800,
                           color: isDark ? Colors.white : AppColors.inkDark,
                         ),
@@ -267,9 +267,9 @@ class InstructorProfileScreen extends ConsumerWidget {
                   child: Column(
                     children: [
                       Text(
-                        studentsFormatted,
+                        formatNum(ref, studentsFormatted),
                         style: GoogleFonts.plusJakartaSans(
-                          fontSize: 22,
+                          fontSize: 20,
                           fontWeight: FontWeight.w800,
                           color: isDark ? Colors.white : AppColors.inkDark,
                         ),
@@ -277,6 +277,33 @@ class InstructorProfileScreen extends ConsumerWidget {
                       const SizedBox(height: 4),
                       Text(
                         tr(ref, 'Students'),
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12,
+                          color: isDark ? Colors.white60 : Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  width: 1,
+                  height: 38,
+                  color: isDark ? Colors.white12 : Colors.grey.shade200,
+                ),
+                Expanded(
+                  child: Column(
+                    children: [
+                      Text(
+                        formatNum(ref, (detail?.totalCourses ?? courses.length).toString()),
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: isDark ? Colors.white : AppColors.inkDark,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        tr(ref, 'Courses'),
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 12,
                           color: isDark ? Colors.white60 : Colors.grey.shade600,
@@ -396,8 +423,8 @@ class InstructorProfileScreen extends ConsumerWidget {
                                 children: [
                                   Text(
                                     c.price != null && double.tryParse(c.price!) != 0
-                                        ? '₹${c.price}'
-                                        : 'Free',
+                                        ? '₹${formatNum(ref, c.price)}'
+                                        : tr(ref, 'Free'),
                                     style: GoogleFonts.plusJakartaSans(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w800,
@@ -518,8 +545,8 @@ class InstructorProfileScreen extends ConsumerWidget {
                                 children: [
                                   Text(
                                     eb.price != null && double.tryParse(eb.price!) != 0
-                                        ? '₹${eb.price}'
-                                        : 'Free',
+                                        ? '₹${formatNum(ref, eb.price)}'
+                                        : tr(ref, 'Free'),
                                     style: GoogleFonts.plusJakartaSans(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w800,

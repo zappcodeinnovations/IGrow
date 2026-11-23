@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:krushi_siksha/data/models/support_ticket_model.dart';
 import 'package:krushi_siksha/features/auth/providers/auth_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/localization/app_strings.dart';
 import '../../../core/theme/app_colors.dart';
@@ -13,17 +14,11 @@ class SupportCategoryItem {
   final String label;
   final IconData icon;
 
-  const SupportCategoryItem({
-    required this.label,
-    required this.icon,
-  });
+  const SupportCategoryItem({required this.label, required this.icon});
 }
 
 const List<SupportCategoryItem> kSupportCategories = [
-  SupportCategoryItem(
-    label: 'General Query',
-    icon: Icons.help_outline_rounded,
-  ),
+  SupportCategoryItem(label: 'General Query', icon: Icons.help_outline_rounded),
   SupportCategoryItem(
     label: 'Technical Issue / App Crash',
     icon: Icons.bug_report_outlined,
@@ -88,10 +83,7 @@ const List<SupportPriorityOption> kSupportPriorities = [
 class SupportScreen extends ConsumerStatefulWidget {
   final int initialTabIndex;
 
-  const SupportScreen({
-    super.key,
-    this.initialTabIndex = 0,
-  });
+  const SupportScreen({super.key, this.initialTabIndex = 0});
 
   @override
   ConsumerState<SupportScreen> createState() => _SupportScreenState();
@@ -146,8 +138,11 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
   void initState() {
     super.initState();
     final safeIndex = widget.initialTabIndex.clamp(0, 1);
-    _tabController =
-        TabController(length: 2, vsync: this, initialIndex: safeIndex);
+    _tabController = TabController(
+      length: 2,
+      vsync: this,
+      initialIndex: safeIndex,
+    );
     _tabController.addListener(() {
       if (_tabController.indexIsChanging && _tabController.index == 1) {
         _fetchTickets();
@@ -206,15 +201,17 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
       http.Response? response;
       for (final uri in endpoints) {
         try {
-          final res = await http.get(
-            uri,
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-              if (token != null && token.isNotEmpty)
-                'Authorization': 'Bearer $token',
-            },
-          ).timeout(const Duration(seconds: 10));
+          final res = await http
+              .get(
+                uri,
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Accept': 'application/json',
+                  if (token != null && token.isNotEmpty)
+                    'Authorization': 'Bearer $token',
+                },
+              )
+              .timeout(const Duration(seconds: 10));
 
           if (res.statusCode >= 200 && res.statusCode < 300) {
             response = res;
@@ -370,16 +367,18 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
       http.Response? response;
       for (final uri in endpoints) {
         try {
-          final res = await http.post(
-            uri,
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-              if (token != null && token.isNotEmpty)
-                'Authorization': 'Bearer $token',
-            },
-            body: jsonEncode(payload),
-          ).timeout(const Duration(seconds: 12));
+          final res = await http
+              .post(
+                uri,
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Accept': 'application/json',
+                  if (token != null && token.isNotEmpty)
+                    'Authorization': 'Bearer $token',
+                },
+                body: jsonEncode(payload),
+              )
+              .timeout(const Duration(seconds: 12));
 
           if (res.statusCode >= 200 && res.statusCode < 300) {
             response = res;
@@ -480,11 +479,23 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
     if (dt == null) return '';
     final local = dt.toLocal();
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     final month = months[local.month - 1];
-    final hour = local.hour > 12 ? local.hour - 12 : (local.hour == 0 ? 12 : local.hour);
+    final hour = local.hour > 12
+        ? local.hour - 12
+        : (local.hour == 0 ? 12 : local.hour);
     final ampm = local.hour >= 12 ? 'PM' : 'AM';
     final minute = local.minute.toString().padLeft(2, '0');
     return '$month ${local.day}, ${local.year} • $hour:$minute $ampm';
@@ -495,7 +506,9 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
     if (lower.contains('tech') || lower.contains('crash')) {
       return Icons.bug_report_outlined;
     }
-    if (lower.contains('bill') || lower.contains('pay') || lower.contains('refund')) {
+    if (lower.contains('bill') ||
+        lower.contains('pay') ||
+        lower.contains('refund')) {
       return Icons.payments_outlined;
     }
     if (lower.contains('course') || lower.contains('content')) {
@@ -533,15 +546,24 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
               indicatorWeight: 3,
               labelColor: AppColors.editorialSecondary,
               unselectedLabelColor: isDark ? Colors.white60 : AppColors.inkSoft,
-              labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-              unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
+              labelStyle: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+              unselectedLabelStyle: const TextStyle(
+                fontWeight: FontWeight.w500,
+                fontSize: 14,
+              ),
               tabs: [
                 Tab(
                   icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
                   text: tr(ref, 'Raise Ticket'),
                 ),
                 Tab(
-                  icon: const Icon(Icons.confirmation_number_outlined, size: 18),
+                  icon: const Icon(
+                    Icons.confirmation_number_outlined,
+                    size: 18,
+                  ),
                   text: tr(ref, 'My Tickets'),
                 ),
               ],
@@ -579,12 +601,16 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
                   color: isDark ? AppColors.cardDark : Colors.white,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: isDark ? AppColors.lineDark : const Color(0xFFE2E8F0),
+                    color: isDark
+                        ? AppColors.lineDark
+                        : const Color(0xFFE2E8F0),
                     width: 1.2,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: isDark ? Colors.black26 : const Color(0xFF0F172A).withValues(alpha: 0.05),
+                      color: isDark
+                          ? Colors.black26
+                          : const Color(0xFF0F172A).withValues(alpha: 0.05),
                       blurRadius: 10,
                       offset: const Offset(0, 3),
                     ),
@@ -596,7 +622,9 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: AppColors.editorialSecondary.withValues(alpha: 0.12),
+                        color: AppColors.editorialSecondary.withValues(
+                          alpha: 0.12,
+                        ),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Icon(
@@ -612,16 +640,25 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
                         children: [
                           Text(
                             tr(ref, 'Create Support Ticket'),
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(
                                   fontWeight: FontWeight.bold,
-                                  color: isDark ? Colors.white : AppColors.inkDark,
+                                  color: isDark
+                                      ? Colors.white
+                                      : AppColors.inkDark,
                                 ),
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            tr(ref, 'Choose an issue category and explain your query. Our agri specialists and technical team will assist you.'),
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: isDark ? Colors.white70 : AppColors.inkSoft,
+                            tr(
+                              ref,
+                              'Choose an issue category and explain your query. Our agri specialists and technical team will assist you.',
+                            ),
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  color: isDark
+                                      ? Colors.white70
+                                      : AppColors.inkSoft,
                                   height: 1.4,
                                 ),
                           ),
@@ -632,7 +669,226 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
                 ),
               ),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
+
+              // ── Direct Help & WhatsApp Support Card (Matches Web Desk) ──
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? const Color(0xFF14241A)
+                      : const Color(0xFFF0FDF4),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: isDark
+                        ? const Color(0xFF22543D)
+                        : const Color(0xFFBBF7D0),
+                    width: 1.2,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(
+                              0xFF16A34A,
+                            ).withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(
+                            Icons.contact_support_rounded,
+                            color: Color(0xFF16A34A),
+                            size: 20,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                tr(ref, 'Direct Help & WhatsApp Support'),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14.5,
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                tr(
+                                  ref,
+                                  'Reach out to our official support team directly via email or call/WhatsApp.',
+                                ),
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  color: isDark
+                                      ? Colors.white70
+                                      : AppColors.inkSoft,
+                                  height: 1.35,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: [
+                        // Email Pill Button
+                        InkWell(
+                          onTap: () async {
+                            final uri = Uri.parse(
+                              'mailto:ashupachghare89@gmail.com',
+                            );
+                            if (await canLaunchUrl(uri)) {
+                              await launchUrl(uri);
+                            }
+                          },
+                          borderRadius: BorderRadius.circular(20),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? const Color(0xFF1A3324)
+                                  : Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: isDark
+                                    ? const Color(0xFF2E6145)
+                                    : const Color(0xFF86EFAC),
+                                width: 1,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.mail_outline_rounded,
+                                  size: 16,
+                                  color: Color(0xFF16A34A),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'ashupachghare89@gmail.com',
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: isDark
+                                        ? Colors.white
+                                        : AppColors.inkDark,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        // Phone / WhatsApp Pill Button
+                        InkWell(
+                          onTap: () async {
+                            final uri = Uri.parse('https://wa.me/917588247719');
+                            if (await canLaunchUrl(uri)) {
+                              await launchUrl(
+                                uri,
+                                mode: LaunchMode.externalApplication,
+                              );
+                            }
+                          },
+                          borderRadius: BorderRadius.circular(20),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? const Color(0xFF1A3324)
+                                  : Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: isDark
+                                    ? const Color(0xFF2E6145)
+                                    : const Color(0xFF86EFAC),
+                                width: 1,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.chat_outlined,
+                                  size: 16,
+                                  color: Color(0xFF16A34A),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '+91 7588247719',
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: isDark
+                                        ? Colors.white
+                                        : AppColors.inkDark,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              // Divider with 'OR RAISE A TICKET HERE'
+              Row(
+                children: [
+                  Expanded(
+                    child: Divider(
+                      color: isDark
+                          ? AppColors.lineDark
+                          : const Color(0xFFE2E8F0),
+                      thickness: 1,
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Text(
+                      tr(ref, 'OR RAISE A TICKET HERE'),
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.8,
+                        color: isDark ? Colors.white38 : AppColors.inkSoft,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Divider(
+                      color: isDark
+                          ? AppColors.lineDark
+                          : const Color(0xFFE2E8F0),
+                      thickness: 1,
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 20),
 
               // Category Dropdown Field
               Text(
@@ -656,17 +912,24 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
                 decoration: InputDecoration(
                   filled: true,
                   fillColor: isDark ? AppColors.cardDark : Colors.white,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide(
-                      color: isDark ? AppColors.lineDark : const Color(0xFFCBD5E1),
+                      color: isDark
+                          ? AppColors.lineDark
+                          : const Color(0xFFCBD5E1),
                     ),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide(
-                      color: isDark ? AppColors.lineDark : const Color(0xFFCBD5E1),
+                      color: isDark
+                          ? AppColors.lineDark
+                          : const Color(0xFFCBD5E1),
                       width: 1.2,
                     ),
                   ),
@@ -727,17 +990,24 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
                 decoration: InputDecoration(
                   filled: true,
                   fillColor: isDark ? AppColors.cardDark : Colors.white,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide(
-                      color: isDark ? AppColors.lineDark : const Color(0xFFCBD5E1),
+                      color: isDark
+                          ? AppColors.lineDark
+                          : const Color(0xFFCBD5E1),
                     ),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide(
-                      color: isDark ? AppColors.lineDark : const Color(0xFFCBD5E1),
+                      color: isDark
+                          ? AppColors.lineDark
+                          : const Color(0xFFCBD5E1),
                       width: 1.2,
                     ),
                   ),
@@ -760,7 +1030,11 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
                             color: priority.color.withValues(alpha: 0.15),
                             shape: BoxShape.circle,
                           ),
-                          child: Icon(priority.icon, size: 14, color: priority.color),
+                          child: Icon(
+                            priority.icon,
+                            size: 14,
+                            color: priority.color,
+                          ),
                         ),
                         const SizedBox(width: 10),
                         Expanded(
@@ -804,7 +1078,9 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
                   }
                   return null;
                 },
-                style: TextStyle(color: isDark ? Colors.white : AppColors.inkDark),
+                style: TextStyle(
+                  color: isDark ? Colors.white : AppColors.inkDark,
+                ),
                 decoration: InputDecoration(
                   hintText: tr(ref, 'e.g. Video player error in module 2'),
                   hintStyle: TextStyle(
@@ -813,17 +1089,24 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
                   ),
                   filled: true,
                   fillColor: isDark ? AppColors.cardDark : Colors.white,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide(
-                      color: isDark ? AppColors.lineDark : const Color(0xFFCBD5E1),
+                      color: isDark
+                          ? AppColors.lineDark
+                          : const Color(0xFFCBD5E1),
                     ),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide(
-                      color: isDark ? AppColors.lineDark : const Color(0xFFCBD5E1),
+                      color: isDark
+                          ? AppColors.lineDark
+                          : const Color(0xFFCBD5E1),
                       width: 1.2,
                     ),
                   ),
@@ -857,13 +1140,21 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
                     return tr(ref, 'Please describe your issue');
                   }
                   if (value.trim().length < 8) {
-                    return tr(ref, 'Please provide more details (at least 8 characters)');
+                    return tr(
+                      ref,
+                      'Please provide more details (at least 8 characters)',
+                    );
                   }
                   return null;
                 },
-                style: TextStyle(color: isDark ? Colors.white : AppColors.inkDark),
+                style: TextStyle(
+                  color: isDark ? Colors.white : AppColors.inkDark,
+                ),
                 decoration: InputDecoration(
-                  hintText: tr(ref, 'Describe what happened, error message, or steps to reproduce...'),
+                  hintText: tr(
+                    ref,
+                    'Describe what happened, error message, or steps to reproduce...',
+                  ),
                   hintStyle: TextStyle(
                     color: isDark ? Colors.white38 : Colors.grey.shade400,
                     fontSize: 14,
@@ -875,13 +1166,17 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide(
-                      color: isDark ? AppColors.lineDark : const Color(0xFFCBD5E1),
+                      color: isDark
+                          ? AppColors.lineDark
+                          : const Color(0xFFCBD5E1),
                     ),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide(
-                      color: isDark ? AppColors.lineDark : const Color(0xFFCBD5E1),
+                      color: isDark
+                          ? AppColors.lineDark
+                          : const Color(0xFFCBD5E1),
                       width: 1.2,
                     ),
                   ),
@@ -938,7 +1233,10 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
               // Direct Email Hint
               Center(
                 child: Text(
-                  tr(ref, 'Need urgent help? Reach us at support@agrilearn.com'),
+                  tr(
+                    ref,
+                    'Need urgent help? Reach us at support@agrilearn.com',
+                  ),
                   style: TextStyle(
                     fontSize: 12,
                     color: isDark ? Colors.white54 : AppColors.inkSoft,
@@ -961,7 +1259,10 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const CircularProgressIndicator(color: AppColors.primaryGreen, strokeWidth: 2.5),
+            const CircularProgressIndicator(
+              color: AppColors.primaryGreen,
+              strokeWidth: 2.5,
+            ),
             const SizedBox(height: 16),
             Text(
               tr(ref, 'Loading your tickets...'),
@@ -988,7 +1289,11 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
                   color: Colors.redAccent.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 36),
+                child: const Icon(
+                  Icons.error_outline_rounded,
+                  color: Colors.redAccent,
+                  size: 36,
+                ),
               ),
               const SizedBox(height: 16),
               Text(
@@ -1050,7 +1355,10 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
             ),
             const SizedBox(height: 8),
             Text(
-              tr(ref, 'When you submit an inquiry, technical issue, or payment query, you can track the status and view admin replies here.'),
+              tr(
+                ref,
+                'When you submit an inquiry, technical issue, or payment query, you can track the status and view admin replies here.',
+              ),
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 13,
@@ -1065,7 +1373,10 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primaryGreen,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -1101,17 +1412,30 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.cloud_off_rounded, color: Colors.amber, size: 18),
+                  const Icon(
+                    Icons.cloud_off_rounded,
+                    color: Colors.amber,
+                    size: 18,
+                  ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      tr(ref, 'Showing saved tickets (offline). Pull down to refresh.'),
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                      tr(
+                        ref,
+                        'Showing saved tickets (offline). Pull down to refresh.',
+                      ),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                   TextButton(
                     onPressed: _fetchTickets,
-                    child: Text(tr(ref, 'Retry'), style: const TextStyle(fontSize: 12)),
+                    child: Text(
+                      tr(ref, 'Retry'),
+                      style: const TextStyle(fontSize: 12),
+                    ),
                   ),
                 ],
               ),
@@ -1128,7 +1452,11 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
   // ──────────────────────────────────────────────────────────────────────────
   // HIGHLIGHTED TICKET CARD (HIGH CONTRAST IN LIGHT MODE)
   // ──────────────────────────────────────────────────────────────────────────
-  Widget _buildTicketCard(BuildContext context, SupportTicket ticket, bool isDark) {
+  Widget _buildTicketCard(
+    BuildContext context,
+    SupportTicket ticket,
+    bool isDark,
+  ) {
     return Container(
       decoration: BoxDecoration(
         color: isDark ? AppColors.cardDark : Colors.white,
@@ -1147,7 +1475,9 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
             offset: const Offset(0, 4),
           ),
           BoxShadow(
-            color: AppColors.primaryGreen.withValues(alpha: isDark ? 0.05 : 0.03),
+            color: AppColors.primaryGreen.withValues(
+              alpha: isDark ? 0.05 : 0.03,
+            ),
             blurRadius: 1,
             offset: const Offset(0, 1),
           ),
@@ -1165,7 +1495,10 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
                 // Category Pill
                 Flexible(
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
                     decoration: BoxDecoration(
                       color: isDark
                           ? AppColors.primaryGreen.withValues(alpha: 0.16)
@@ -1211,7 +1544,10 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
                   children: [
                     // Priority Badge
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3.5),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 3.5,
+                      ),
                       decoration: BoxDecoration(
                         color: isDark
                             ? ticket.priorityBgColor.withValues(alpha: 0.18)
@@ -1219,7 +1555,9 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
                           color: isDark
-                              ? ticket.priorityBorderColor.withValues(alpha: 0.4)
+                              ? ticket.priorityBorderColor.withValues(
+                                  alpha: 0.4,
+                                )
                               : ticket.priorityBorderColor,
                           width: 1,
                         ),
@@ -1248,7 +1586,10 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
 
                     // Status Badge
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 9,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: isDark
                             ? ticket.statusBgColor.withValues(alpha: 0.18)
@@ -1412,14 +1753,19 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
               // Awaiting response indicator
               Container(
                 margin: const EdgeInsets.only(top: 12),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: isDark
                       ? Colors.white.withValues(alpha: 0.04)
                       : const Color(0xFFF8FAFC),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: isDark ? AppColors.lineDark : const Color(0xFFE2E8F0),
+                    color: isDark
+                        ? AppColors.lineDark
+                        : const Color(0xFFE2E8F0),
                     width: 1,
                   ),
                 ),
@@ -1437,7 +1783,9 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
                         style: TextStyle(
                           fontSize: 12,
                           fontStyle: FontStyle.italic,
-                          color: isDark ? Colors.white54 : const Color(0xFF64748B),
+                          color: isDark
+                              ? Colors.white54
+                              : const Color(0xFF64748B),
                         ),
                       ),
                     ),

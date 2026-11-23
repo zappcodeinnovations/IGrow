@@ -4,7 +4,6 @@ import '../../../core/network/swagger_generated/app_api.swagger.dart';
 import '../../../data/models/api_models/instructor_model.dart';
 import '../../../data/repositories/student_repository.dart';
 import '../../../core/services/course_progress_service.dart';
-import '../../../core/services/quiz_service.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../cart/providers/cart_provider.dart';
 import '../../home_instructor/providers/instructor_home_provider.dart';
@@ -375,7 +374,7 @@ final studentEnrollmentsProvider = FutureProvider.autoDispose<List<Enrollment>>(
     if (localPercent != null && localPercent > 0.0) {
       effectivePercentage = localPercent > effectivePercentage ? localPercent : effectivePercentage;
     } else if (localCompleted.isNotEmpty && effectivePercentage == 0.0) {
-      effectivePercentage = 50.0; // Videos completed, quiz still pending
+      effectivePercentage = 100.0;
     }
 
     final isCompleted = effectivePercentage >= 100.0;
@@ -445,17 +444,6 @@ final courseQaProvider = FutureProvider.autoDispose.family<List<Map<String, dyna
 final courseNotesProvider = FutureProvider.autoDispose.family<List<Map<String, dynamic>>, String>((ref, slug) async {
   final repo = ref.watch(studentRepositoryProvider);
   return await repo.getCourseNotes(slug);
-});
-
-/// Provider for fetching a section's quiz.
-final sectionQuizProvider = FutureProvider.autoDispose.family<Map<String, dynamic>?, String>((ref, sectionId) async {
-  final repo = ref.watch(studentRepositoryProvider);
-  return await repo.getSectionQuiz(sectionId);
-});
-
-/// Provider for checking if a section's quiz has been passed locally.
-final sectionQuizPassedProvider = FutureProvider.autoDispose.family<bool, String>((ref, sectionId) async {
-  return await QuizService.isSectionQuizPassed(sectionId);
 });
 
 /// Provider for fetching raw course progress map.
@@ -617,6 +605,12 @@ final coursePercentageProvider = FutureProvider.autoDispose.family<double, Strin
 final topInstructorsProvider = FutureProvider.autoDispose<List<ApiTopInstructor>>((ref) async {
   final repo = ref.watch(studentRepositoryProvider);
   return await repo.getTopInstructors();
+});
+
+/// Provider for fetching all instructors list.
+final allInstructorsProvider = FutureProvider.autoDispose<List<ApiTopInstructor>>((ref) async {
+  final repo = ref.watch(studentRepositoryProvider);
+  return await repo.getAllInstructors();
 });
 
 /// Provider for fetching a single public instructor profile with their courses.

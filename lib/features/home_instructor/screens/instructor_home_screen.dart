@@ -41,18 +41,18 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
         backgroundColor: isDark ? const Color(0xFF14241A) : Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
-          children: const [
-            Icon(Icons.swap_horiz_rounded, color: Color(0xFF16A34A), size: 28),
-            SizedBox(width: 10),
+          children: [
+            const Icon(Icons.swap_horiz_rounded, color: Color(0xFF16A34A), size: 28),
+            const SizedBox(width: 10),
             Text(
-              'Switch Mode',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              tr(ref, 'Switch Mode'),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
             ),
           ],
         ),
-        content: const Text(
-          'You are switching to Student Mode. You will be able to browse courses, read eBooks, and learn farming techniques.',
-          style: TextStyle(fontSize: 14, height: 1.4),
+        content: Text(
+          tr(ref, 'You are switching to Student Mode. You will be able to browse courses, read eBooks, and learn farming techniques.'),
+          style: const TextStyle(fontSize: 14, height: 1.4),
         ),
         actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
         actions: [

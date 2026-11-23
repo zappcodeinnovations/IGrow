@@ -37,7 +37,6 @@ import '../../features/home_instructor/screens/instructor_home_screen.dart';
 import '../../features/learning/screens/my_learning_screen.dart';
 import '../../features/profile/screens/privacy_screen.dart';
 import '../../features/profile/screens/profile_screen.dart';
-import '../../features/explore/screens/quiz_player_screen.dart';
 import '../../features/profile/screens/edit_profile_screen.dart';
 import '../../features/profile/screens/support_screen.dart';
 import '../../features/explore/screens/course_details_screen.dart';
@@ -307,13 +306,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           return CoursePlayerScreen(courseId: id, fromCheckout: fromCheckout);
         },
       ),
-      GoRoute(
-        path: '/quiz/:id',
-        builder: (context, state) {
-          final id = state.pathParameters['id']!;
-          return QuizPlayerScreen(sectionId: id);
-        },
-      ),
       
       // ─── Cart & Orders ──────────────────────────────────────────────
       GoRoute(
@@ -510,6 +502,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               final search = state.uri.queryParameters['search'];
               final category = state.uri.queryParameters['category'];
               final tabParam = state.uri.queryParameters['tab'];
+              final priceParam = state.uri.queryParameters['price'] ?? state.uri.queryParameters['pricePreset'];
               final instructorId = state.uri.queryParameters['instructor_id'] ??
                   state.uri.queryParameters['instructorId'] ??
                   state.uri.queryParameters['instructor'];
@@ -522,6 +515,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                   initialCategory: category,
                   initialTab: initialTab,
                   initialInstructorId: instructorId,
+                  initialPricePreset: priceParam,
                 ),
               );
             },

@@ -151,8 +151,7 @@ class CourseProgressService {
   }
 
   /// Updates watched progress for a lecture and computes overall granular course progress percentage.
-  /// If the course has quizzes, progress combines lectures and quizzes.
-  /// If the course has no quizzes, video lectures account for 100% of progress.
+  /// Video lectures account for 100% of course progress.
   Future<double> updateLectureWatchAndRecalculate({
     required String courseSlugOrId,
     String? secondaryKey,
@@ -161,7 +160,7 @@ class CourseProgressService {
     int? positionSeconds,
     required List<String> allLectureIds,
     bool quizPassed = false,
-    bool hasQuiz = true,
+    bool hasQuiz = false,
   }) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -209,14 +208,7 @@ class CourseProgressService {
         }
       }
 
-      final double percent;
-      if (hasQuiz) {
-        final videoPercent = ((totalUnits / effectiveLectures.length) * 50.0).clamp(0.0, 50.0);
-        final quizPercent = quizPassed ? 50.0 : 0.0;
-        percent = (videoPercent + quizPercent).clamp(0.0, 100.0);
-      } else {
-        percent = ((totalUnits / effectiveLectures.length) * 100.0).clamp(0.0, 100.0);
-      }
+      final percent = ((totalUnits / effectiveLectures.length) * 100.0).clamp(0.0, 100.0);
       await saveCoursePercentage(courseSlugOrId, percent, secondaryKey: secondaryKey);
       return percent;
     } catch (_) {
@@ -224,14 +216,14 @@ class CourseProgressService {
     }
   }
 
-  /// Compute course progress percentage based on completed lectures and quizzes.
+  /// Compute course progress percentage based on completed lectures (100% video-based).
   Future<double> calculateAndSaveProgress(
     String courseSlugOrId, {
     required int totalLectures,
     Set<String>? currentCompletedLectures,
     List<String>? allLectureIds,
     bool quizPassed = false,
-    bool hasQuiz = true,
+    bool hasQuiz = false,
   }) async {
     final completed = currentCompletedLectures ?? await getCompletedLectures(courseSlugOrId);
 
@@ -246,18 +238,16 @@ class CourseProgressService {
           totalUnits += r.clamp(0.0, 1.0);
         }
       }
-      videoPercent = ((totalUnits / allLectureIds.length) * (hasQuiz ? 50.0 : 100.0)).clamp(0.0, hasQuiz ? 50.0 : 100.0);
+      videoPercent = ((totalUnits / allLectureIds.length) * 100.0).clamp(0.0, 100.0);
     } else {
       if (totalLectures <= 1) {
-        videoPercent = completed.isNotEmpty ? (hasQuiz ? 50.0 : 100.0) : 0.0;
+        videoPercent = completed.isNotEmpty ? 100.0 : 0.0;
       } else {
-        videoPercent = ((completed.length / totalLectures) * (hasQuiz ? 50.0 : 100.0)).clamp(0.0, hasQuiz ? 50.0 : 100.0);
+        videoPercent = ((completed.length / totalLectures) * 100.0).clamp(0.0, 100.0);
       }
     }
 
-    final quizPercent = hasQuiz ? (quizPassed ? 50.0 : 0.0) : 0.0;
-    final percent = (videoPercent + quizPercent).clamp(0.0, 100.0);
-
+    final percent = videoPercent.clamp(0.0, 100.0);
     await saveCoursePercentage(courseSlugOrId, percent);
     return percent;
   }

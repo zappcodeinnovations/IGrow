@@ -229,6 +229,8 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen>
   // Track expanded state for sections
   final Map<String, bool> _sectionExpanded = {};
 
+  final GlobalKey _videoPreviewKey = GlobalKey();
+
   @override
   void initState() {
     super.initState();
@@ -264,6 +266,22 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen>
       _videoPlayerController!.pause();
       if (mounted) {
         setState(() => _isPlayingVideo = false);
+      }
+    }
+  }
+
+  void _checkVideoVisibilityOnScroll() {
+    if (_videoPlayerController == null || !_videoPlayerController!.value.isPlaying) {
+      return;
+    }
+    final renderBox = _videoPreviewKey.currentContext?.findRenderObject() as RenderBox?;
+    if (renderBox != null && renderBox.hasSize && renderBox.attached) {
+      final position = renderBox.localToGlobal(Offset.zero);
+      final height = renderBox.size.height;
+      // If the bottom of the video player has scrolled above the visible viewport (e.g. past the top AppBar),
+      // or if it scrolled completely below the screen, pause playback.
+      if (position.dy + height <= 0 || position.dy >= MediaQuery.of(context).size.height) {
+        _pauseVideoPlayback();
       }
     }
   }
@@ -1369,52 +1387,60 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen>
                 }
 
                 // Mobile Layout
-                return RefreshIndicator(
-                  onRefresh: () async {
-                    ref.invalidate(courseDetailProvider(widget.courseId));
-                    ref.invalidate(studentEnrollmentsProvider);
-                    // Wait briefly so Riverpod re-builds after invalidation
-                    await Future.delayed(const Duration(milliseconds: 500));
+                return NotificationListener<ScrollNotification>(
+                  onNotification: (notification) {
+                    if (notification is ScrollUpdateNotification) {
+                      _checkVideoVisibilityOnScroll();
+                    }
+                    return false;
                   },
-                  color: AppColors.primaryGreen,
-                  child: ListView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: EdgeInsets.zero,
-                    children: [
-                      // Video at the very top, followed by course info, pricing, and action buttons
-                      _buildUdemyCourseOverview(
-                        context,
-                        course,
-                        isDark,
-                        isEnrolled,
-                        totalLectures,
-                        previewVideoUrl: videoUrl,
-                        previewBunnyId: previewLecture?.bunnyVideoId,
-                        previewLecture: previewLecture,
-                        isInstructor: isInstructor,
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 90),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Divider(height: 32),
-                            _buildWhatYouLearnCard(course, isDark),
-                            const Divider(height: 32),
-                            _buildCourseContent(course, isDark, isEnrolled),
-                            const Divider(height: 32),
-                            _buildDescriptionSection(course, isDark),
-                            const Divider(height: 32),
-                            _buildFeedbackSection(
-                              context,
-                              course,
-                              isDark,
-                              isEnrolled,
-                            ),
-                          ],
+                  child: RefreshIndicator(
+                    onRefresh: () async {
+                      ref.invalidate(courseDetailProvider(widget.courseId));
+                      ref.invalidate(studentEnrollmentsProvider);
+                      // Wait briefly so Riverpod re-builds after invalidation
+                      await Future.delayed(const Duration(milliseconds: 500));
+                    },
+                    color: AppColors.primaryGreen,
+                    child: ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: EdgeInsets.zero,
+                      children: [
+                        // Video at the very top, followed by course info, pricing, and action buttons
+                        _buildUdemyCourseOverview(
+                          context,
+                          course,
+                          isDark,
+                          isEnrolled,
+                          totalLectures,
+                          previewVideoUrl: videoUrl,
+                          previewBunnyId: previewLecture?.bunnyVideoId,
+                          previewLecture: previewLecture,
+                          isInstructor: isInstructor,
                         ),
-                      ),
-                    ],
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 90),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Divider(height: 32),
+                              _buildWhatYouLearnCard(course, isDark),
+                              const Divider(height: 32),
+                              _buildCourseContent(course, isDark, isEnrolled),
+                              const Divider(height: 32),
+                              _buildDescriptionSection(course, isDark),
+                              const Divider(height: 32),
+                              _buildFeedbackSection(
+                                context,
+                                course,
+                                isDark,
+                                isEnrolled,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 );
               },
@@ -1731,7 +1757,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen>
           InkWell(
             onTap: () {
               if (instructor.isNotEmpty && instructor != 'Instructor') {
-                context.push('${RouteNames.explore}?search=${Uri.encodeComponent(instructor)}');
+                context.push('/farmer/instructor/${Uri.encodeComponent(instructor)}');
               }
             },
             borderRadius: BorderRadius.circular(10),
@@ -1767,7 +1793,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Created by',
+                        tr(ref, 'Created by'),
                         style: TextStyle(
                           fontSize: 11,
                           color: Colors.white.withValues(alpha: 0.6),
@@ -1818,14 +1844,16 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen>
         course.resolvedCategoryName ??
         CourseCategory.fromValue(course.category)?.display;
 
-    return ClipRRect(
-      borderRadius: borderRadius ?? BorderRadius.zero,
-      child: AspectRatio(
-        aspectRatio: 16 / 9,
-        child: _isPlayingVideo &&
-                _chewieController != null &&
-                _chewieController!.videoPlayerController.value.isInitialized
-            ? Stack(
+    return KeyedSubtree(
+      key: _videoPreviewKey,
+      child: ClipRRect(
+        borderRadius: borderRadius ?? BorderRadius.zero,
+        child: AspectRatio(
+          aspectRatio: 16 / 9,
+          child: _isPlayingVideo &&
+                  _chewieController != null &&
+                  _chewieController!.videoPlayerController.value.isInitialized
+              ? Stack(
                 fit: StackFit.expand,
                 children: [
                   Chewie(controller: _chewieController!),
@@ -2072,9 +2100,9 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen>
                                   ),
                                 ),
                                 const SizedBox(height: 10),
-                                const Text(
-                                  'Preview this course',
-                                  style: TextStyle(
+                                Text(
+                                  tr(ref, 'Preview this course'),
+                                  style: const TextStyle(
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold,
                                     fontSize: 14,
@@ -2095,6 +2123,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen>
                 ],
               ),
       ),
+    ),
     );
   }
 
@@ -2174,7 +2203,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen>
                         ),
                       ),
                       child: Text(
-                        categoryText.trim(),
+                        tr(ref, categoryText.trim()),
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
@@ -2191,9 +2220,9 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen>
                       color: const Color(0xFFFEF3C7),
                       borderRadius: BorderRadius.circular(6),
                     ),
-                    child: const Text(
-                      'BESTSELLER',
-                      style: TextStyle(
+                    child: Text(
+                      tr(ref, 'BESTSELLER'),
+                      style: const TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
                         color: Color(0xFFB45309),
@@ -2262,7 +2291,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen>
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
-                      lang,
+                      tr(ref, lang),
                       style: const TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
@@ -2272,7 +2301,53 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen>
                   ),
                 ],
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 12),
+
+              // Created By Row (Clickable to Instructor Profile)
+              if (course.instructorName != null &&
+                  course.instructorName!.trim().isNotEmpty &&
+                  course.instructorName != 'Instructor')
+                InkWell(
+                  onTap: () {
+                    context.push('/farmer/instructor/${Uri.encodeComponent(course.instructorName!.trim())}');
+                  },
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '${tr(ref, 'Created By')} ',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w500,
+                            color: isDark ? Colors.white60 : const Color(0xFF6B7280),
+                          ),
+                        ),
+                        Flexible(
+                          child: Text(
+                            course.instructorName!.trim(),
+                            style: const TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.primaryGreen,
+                              decoration: TextDecoration.underline,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        const Icon(
+                          Icons.open_in_new_rounded,
+                          size: 13,
+                          color: AppColors.primaryGreen,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              const SizedBox(height: 14),
 
               // Primary Action Buttons Inline:
               if (isInstructor) ...[
@@ -2293,9 +2368,9 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen>
                       context.push('/instructor/manage-course/$targetId');
                     },
                     icon: const Icon(Icons.settings_outlined, size: 18),
-                    label: const Text(
-                      'Manage Course',
-                      style: TextStyle(
+                    label: Text(
+                      tr(ref, 'Manage Course'),
+                      style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.bold,
                       ),
@@ -2317,9 +2392,9 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen>
                       '/player/${course.slug ?? widget.courseId}',
                     ),
                     icon: const Icon(Icons.play_circle_fill, color: Colors.white),
-                    label: const Text(
-                      'Start Learning (Enrolled)',
-                      style: TextStyle(
+                    label: Text(
+                      tr(ref, 'Start Learning (Enrolled)'),
+                      style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 15,
                         color: Colors.white,
@@ -2456,7 +2531,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen>
                       }
                     },
                     child: Text(
-                      'Preview free lesson',
+                      tr(ref, 'Preview free lesson'),
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 14,
@@ -3012,59 +3087,73 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen>
 
         const SizedBox(height: 10),
         // "Meet your Instructor" Card Matching Mockup
-        Container(
-          decoration: BoxDecoration(
-            color: isDark ? AppColors.cardDark : Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: isDark ? AppColors.lineDark : AppColors.lineLight,
+        InkWell(
+          onTap: () {
+            final inst = course.instructorName;
+            if (inst != null && inst.trim().isNotEmpty && inst != 'Instructor') {
+              context.push('/farmer/instructor/${Uri.encodeComponent(inst.trim())}');
+            }
+          },
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.cardDark : Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isDark ? AppColors.lineDark : AppColors.lineLight,
+              ),
             ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 19,
-                  backgroundColor: isDark
-                      ? AppColors.surfaceContainerHighDark
-                      : const Color(0xFFE8F3EB),
-                  backgroundImage: course.instructorAvatar != null && course.instructorAvatar!.isNotEmpty
-                      ? NetworkImage(course.instructorAvatar!)
-                      : null,
-                  child: course.instructorAvatar == null || course.instructorAvatar!.isEmpty
-                      ? const Icon(
-                          Icons.person_rounded,
-                          size: 20,
-                          color: Color(0xFF1B4D2E),
-                        )
-                      : null,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        tr(ref, 'Meet your Instructor'),
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                          color: isDark ? Colors.white : const Color(0xFF132A13),
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        course.instructorName ?? 'Agriculture specialist',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: isDark ? Colors.white60 : const Color(0xFF718096),
-                        ),
-                      ),
-                    ],
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 19,
+                    backgroundColor: isDark
+                        ? AppColors.surfaceContainerHighDark
+                        : const Color(0xFFE8F3EB),
+                    backgroundImage: course.instructorAvatar != null && course.instructorAvatar!.isNotEmpty
+                        ? NetworkImage(course.instructorAvatar!)
+                        : null,
+                    child: course.instructorAvatar == null || course.instructorAvatar!.isEmpty
+                        ? const Icon(
+                            Icons.person_rounded,
+                            size: 20,
+                            color: Color(0xFF1B4D2E),
+                          )
+                        : null,
                   ),
-                ),
-              ],
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          tr(ref, 'Meet your Instructor'),
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            color: isDark ? Colors.white : const Color(0xFF132A13),
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          course.instructorName ?? tr(ref, 'Agriculture Specialist'),
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: isDark ? Colors.white60 : const Color(0xFF718096),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    color: Colors.grey,
+                    size: 20,
+                  ),
+                ],
+              ),
             ),
           ),
         ),

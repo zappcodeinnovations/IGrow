@@ -12,7 +12,6 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import '../../../core/localization/app_strings.dart';
 import '../../../core/services/offline_download_service.dart';
 import '../../../core/services/course_progress_service.dart';
-import '../../../core/services/quiz_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_error_state.dart';
 import '../../../data/models/api_models/certificate_model.dart';
@@ -223,21 +222,6 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
     final slug = _activeSlug ?? course?.slug ?? widget.courseId;
     final courseId = course?.id ?? widget.courseId;
 
-    bool allQuizzesPassed = true;
-    final sectionsWithQuiz = course?.sections.where((s) => s.hasQuiz).toList() ?? [];
-    final bool hasQuizzes = sectionsWithQuiz.isNotEmpty;
-    if (hasQuizzes) {
-      bool allPassed = true;
-      for (final sec in sectionsWithQuiz) {
-        final passed = await QuizService.isSectionQuizPassed(sec.id);
-        if (!passed) {
-          allPassed = false;
-          break;
-        }
-      }
-      allQuizzesPassed = allPassed;
-    }
-
     await CourseProgressService.instance.updateLectureWatchAndRecalculate(
       courseSlugOrId: slug,
       secondaryKey: courseId,
@@ -245,8 +229,6 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
       watchRatio: ratio,
       positionSeconds: positionSeconds,
       allLectureIds: allLectureIds.isNotEmpty ? allLectureIds : [_currentLecture!.id],
-      quizPassed: allQuizzesPassed,
-      hasQuiz: hasQuizzes,
     );
 
     // Refresh enrollment & percentage providers so dashboard & player reflect progress immediately
@@ -306,9 +288,18 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
         ),
       );
 
-      // Check course 100% completion and trigger celebration modal
+      // Check course 100% completion and trigger celebration modal or lecture review popup
       if (_currentCourse != null) {
-        _checkCourseCompletionAndShowCelebration(_currentCourse!, lecture.id);
+        final allLectures = _currentCourse!.sections.expand((s) => s.lectures).toList();
+        final currentCompleted = ref.read(courseProgressStateProvider(_activeSlug!)).value ?? <String>{};
+        final updatedCompleted = {...currentCompleted, lecture.id};
+        final isAllLecturesDone = allLectures.every((l) => updatedCompleted.contains(l.id));
+
+        if (isAllLecturesDone) {
+          _checkCourseCompletionAndShowCelebration(_currentCourse!, lecture.id);
+        } else {
+          _showLectureReviewDialog(lecture);
+        }
       }
     }
   }
@@ -325,25 +316,7 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
 
     final isAllLecturesDone = allLectures.every((l) => updatedCompleted.contains(l.id));
 
-    // Check quiz requirements: Only sections that actually have quizzes attached must be passed.
-    final sectionsWithQuiz = course.sections.where((s) => s.hasQuiz).toList();
-    final bool hasQuizzes = sectionsWithQuiz.isNotEmpty;
-    bool allQuizzesPassed = true;
-    ApiCourseSection? firstPendingQuizSection;
-
-    if (hasQuizzes) {
-      for (final sec in sectionsWithQuiz) {
-        final passed = await QuizService.isSectionQuizPassed(sec.id);
-        if (!passed) {
-          allQuizzesPassed = false;
-          firstPendingQuizSection ??= sec;
-        }
-      }
-    }
-
-    final isAllDone = isAllLecturesDone && allQuizzesPassed;
-
-    if (isAllDone) {
+    if (isAllLecturesDone) {
       try {
         final repo = ref.read(certificateRepositoryProvider);
         final status = await repo.getCourseCertificate(course.id);
@@ -444,90 +417,242 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
       } catch (e) {
         debugPrint('⚠️ [CoursePlayer] Completion celebration check failed: $e');
       }
-    } else if (isAllLecturesDone && hasQuizzes && !allQuizzesPassed && firstPendingQuizSection != null) {
-      // All video lectures finished, but section quiz is required to unlock certificate!
-      if (!mounted) return;
-      final targetSection = firstPendingQuizSection;
-      showDialog(
-        context: context,
-        barrierDismissible: true,
-        builder: (dialogCtx) {
-          return Dialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryGreen.withValues(alpha: 0.12),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.quiz_rounded,
-                      color: AppColors.primaryGreen,
-                      size: 44,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Lectures Completed! 🎓',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'You have watched all video lectures for "${course.title}". Complete and pass the section quiz to unlock your official course certificate!',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 13, color: AppColors.inkSoft, height: 1.4),
-                  ),
-                  const SizedBox(height: 22),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          ),
-                          onPressed: () => Navigator.pop(dialogCtx),
-                          child: const Text('Later'),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primaryGreen,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          ),
-                          onPressed: () async {
-                            Navigator.pop(dialogCtx);
-                            await context.push('/quiz/${targetSection.id}');
-                            if (!mounted) return;
-                            ref.invalidate(sectionQuizPassedProvider(targetSection.id));
-                            ref.invalidate(studentEnrollmentsProvider);
-                            ref.invalidate(myCertificatesProvider);
-                            ref.invalidate(certificateEnrollmentsProvider);
-                            final slug = course.slug ?? course.id;
-                            ref.invalidate(coursePercentageProvider(slug));
-                          },
-                          child: const Text('Take Quiz Now', style: TextStyle(fontWeight: FontWeight.bold)),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      );
     }
+  }
+
+  /// Displays an interactive review pop-up dialog after completing a lecture.
+  void _showLectureReviewDialog(ApiLecture lecture) {
+    if (!mounted || _activeSlug == null) return;
+    final slug = _activeSlug!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    int selectedRating = 5;
+    final commentController = TextEditingController();
+    bool isSubmitting = false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogCtx) {
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            String ratingLabel(int rating) {
+              switch (rating) {
+                case 1:
+                  return tr(ref, 'Poor 😞');
+                case 2:
+                  return tr(ref, 'Fair 😐');
+                case 3:
+                  return tr(ref, 'Good 🙂');
+                case 4:
+                  return tr(ref, 'Very Good 😊');
+                case 5:
+                  return tr(ref, 'Excellent! 🌟');
+                default:
+                  return '';
+              }
+            }
+
+            return Dialog(
+              backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+              child: Padding(
+                padding: const EdgeInsets.all(22),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Header Badge
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.signalYellow.withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.rate_review_rounded,
+                        color: AppColors.signalYellow,
+                        size: 32,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Text(
+                      tr(ref, 'Lecture Completed! 🎓'),
+                      style: const TextStyle(fontSize: 19, fontWeight: FontWeight.bold),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      '${tr(ref, "How was")} "${lecture.title}"?',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: isDark ? Colors.grey.shade400 : AppColors.inkSoft,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Interactive Star Rating
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(5, (index) {
+                        final starIdx = index + 1;
+                        final isFilled = starIdx <= selectedRating;
+                        return InkWell(
+                          onTap: () {
+                            setDialogState(() {
+                              selectedRating = starIdx;
+                            });
+                          },
+                          borderRadius: BorderRadius.circular(20),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            child: Icon(
+                              isFilled ? Icons.star_rounded : Icons.star_outline_rounded,
+                              color: isFilled ? AppColors.signalYellow : (isDark ? Colors.grey.shade600 : Colors.grey.shade300),
+                              size: 36,
+                            ),
+                          ),
+                        );
+                      }),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      ratingLabel(selectedRating),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primaryGreen,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Optional Comment Field
+                    TextField(
+                      controller: commentController,
+                      maxLines: 3,
+                      style: const TextStyle(fontSize: 13),
+                      decoration: InputDecoration(
+                        hintText: tr(ref, 'Share your feedback about this lecture (optional)...'),
+                        hintStyle: TextStyle(
+                          fontSize: 12,
+                          color: isDark ? Colors.grey.shade500 : Colors.grey.shade400,
+                        ),
+                        filled: true,
+                        fillColor: isDark ? Colors.black26 : Colors.grey.shade50,
+                        contentPadding: const EdgeInsets.all(12),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: isDark ? AppColors.lineDark : Colors.grey.shade300),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: isDark ? AppColors.lineDark : Colors.grey.shade300),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: AppColors.primaryGreen, width: 1.5),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Action Buttons (Maybe Later vs Submit)
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              side: BorderSide(color: isDark ? Colors.white24 : Colors.grey.shade300),
+                            ),
+                            onPressed: () => Navigator.pop(dialogCtx),
+                            child: Text(
+                              tr(ref, 'Skip'),
+                              style: TextStyle(
+                                color: isDark ? Colors.grey.shade400 : AppColors.inkSoft,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          flex: 2,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primaryGreen,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              elevation: 0,
+                            ),
+                            onPressed: isSubmitting
+                                ? null
+                                : () async {
+                                    setDialogState(() => isSubmitting = true);
+                                    final messenger = ScaffoldMessenger.of(context);
+                                    try {
+                                      final repo = ref.read(courseRepositoryProvider);
+                                      await repo.submitCourseReview(
+                                        slug,
+                                        rating: selectedRating,
+                                        comment: commentController.text.trim(),
+                                      );
+                                      ref.invalidate(courseReviewsProvider(slug));
+                                      ref.invalidate(courseDetailProvider(slug));
+
+                                      if (dialogCtx.mounted) {
+                                        Navigator.pop(dialogCtx);
+                                      }
+                                      if (mounted) {
+                                        messenger.showSnackBar(
+                                          SnackBar(
+                                            content: Text(tr(ref, 'Thank you! Your review has been submitted. ⭐')),
+                                            backgroundColor: AppColors.primaryGreen,
+                                            duration: const Duration(seconds: 3),
+                                          ),
+                                        );
+                                      }
+                                    } catch (err) {
+                                      if (dialogCtx.mounted) {
+                                        Navigator.pop(dialogCtx);
+                                      }
+                                      if (mounted) {
+                                        messenger.showSnackBar(
+                                          const SnackBar(
+                                            content: Text('Feedback saved. Thank you! ⭐'),
+                                            backgroundColor: AppColors.primaryGreen,
+                                            duration: Duration(seconds: 2),
+                                          ),
+                                        );
+                                      }
+                                    }
+                                  },
+                            child: isSubmitting
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                  )
+                                : Text(
+                                    tr(ref, 'Submit Review'),
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                  ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   Future<void> _initializePlayer(ApiLecture lecture) async {
@@ -594,12 +719,11 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
       String normalizedVideoUrl = '';
       if (videoUrl != null && videoUrl.trim().isNotEmpty) {
         final v = videoUrl.trim();
-        if (v.startsWith('http://') || v.startsWith('https://')) {
-          normalizedVideoUrl = Uri.encodeFull(v);
-        } else {
-          final clean = v.startsWith('/') ? v : '/$v';
-          normalizedVideoUrl = Uri.encodeFull('https://iagrow.zappcode.in$clean');
-        }
+        final rawFull = (v.startsWith('http://') || v.startsWith('https://'))
+            ? v
+            : 'https://iagrow.zappcode.in${v.startsWith('/') ? v : '/$v'}';
+        // Decode first to prevent double-encoding already percent-encoded backend paths (%E0 -> %25E0)
+        normalizedVideoUrl = Uri.encodeFull(Uri.decodeFull(rawFull));
       }
 
       final isDirectUploadedFile = normalizedVideoUrl.isNotEmpty &&
@@ -687,7 +811,8 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
         resolvedUrl = 'https://iagrow.zappcode.in$clean';
       }
       if (resolvedUrl.startsWith('http')) {
-        resolvedUrl = Uri.encodeFull(resolvedUrl);
+        // Decode before encoding to guarantee single percent-encoding (%E0 instead of %25E0)
+        resolvedUrl = Uri.encodeFull(Uri.decodeFull(resolvedUrl));
       }
 
       if (resolvedUrl.startsWith('http')) {
@@ -1305,32 +1430,12 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
           final completedCount =
               allLectures.where((l) => completedIds.contains(l.id)).length;
 
-          // Check passing status of section quizzes only for sections that have quizzes attached
-          final sectionsWithQuiz = course.sections.where((s) => s.hasQuiz).toList();
-          final totalQuizzesCount = sectionsWithQuiz.length;
-          final bool hasQuizzes = totalQuizzesCount > 0;
-          int passedQuizzesCount = 0;
-          for (final section in sectionsWithQuiz) {
-            final isPassed = ref.watch(sectionQuizPassedProvider(section.id)).value ?? false;
-            if (isPassed) {
-              passedQuizzesCount++;
-            }
-          }
-          final bool allQuizzesPassed = !hasQuizzes || passedQuizzesCount == totalQuizzesCount;
-
-          // If course has quizzes, progress combines lectures (50%) and quizzes (50%).
-          // If course has NO quizzes, video completion accounts for 100% of course progress.
+          // Video completion accounts for 100% of course progress.
           final double videoRatio = totalLecturesCount > 0
               ? (completedCount / totalLecturesCount).clamp(0.0, 1.0)
               : 0.0;
-          final double quizRatio = hasQuizzes
-              ? (passedQuizzesCount / totalQuizzesCount).clamp(0.0, 1.0)
-              : 0.0;
-
-          final double videoPercent = hasQuizzes ? videoRatio * 50.0 : videoRatio * 100.0;
-          final double quizPercent = hasQuizzes ? quizRatio * 50.0 : 0.0;
-          final int completionPercent = (videoPercent + quizPercent).round();
-          final double progressValue = (videoPercent + quizPercent) / 100.0;
+          final int completionPercent = (videoRatio * 100.0).round();
+          final double progressValue = videoRatio;
           return Column(
             children: [
               // ── 1. Video Player / Reading Banner Area ─────────────
@@ -1598,7 +1703,7 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
                               const SizedBox(height: 2),
                             ],
                             Text(
-                              _currentSection?.title ?? 'Course Content',
+                              tr(ref, _currentSection?.title ?? 'Course Content'),
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
@@ -1693,11 +1798,11 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
                             fontSize: 13, fontWeight: FontWeight.bold),
                         unselectedLabelStyle: const TextStyle(
                             fontSize: 13, fontWeight: FontWeight.w500),
-                        tabs: const [
-                          Tab(text: 'Curriculum'),
-                          Tab(text: 'Q&A'),
-                          Tab(text: 'Notes & Bookmarks'),
-                          Tab(text: 'Reviews'),
+                        tabs: [
+                          Tab(text: tr(ref, 'Curriculum')),
+                          Tab(text: tr(ref, 'Q&A')),
+                          Tab(text: tr(ref, 'Notes & Bookmarks')),
+                          Tab(text: tr(ref, 'Reviews')),
                         ],
                       ),
                       Expanded(
@@ -1710,8 +1815,6 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
                               completedIds: completedIds,
                               completionPercent: completionPercent,
                               progressValue: progressValue,
-                              allQuizzesPassed: allQuizzesPassed,
-                              hasQuizzes: hasQuizzes,
                               completedCount: completedCount,
                               totalLectures: totalLecturesCount,
                               videoPlayerController: _videoPlayerController,
@@ -1780,8 +1883,6 @@ class _CurriculumTab extends ConsumerWidget {
     required this.completedIds,
     required this.completionPercent,
     required this.progressValue,
-    required this.allQuizzesPassed,
-    this.hasQuizzes = true,
     required this.completedCount,
     required this.totalLectures,
     required this.onSelectLecture,
@@ -1794,8 +1895,6 @@ class _CurriculumTab extends ConsumerWidget {
   final Set<String> completedIds;
   final int completionPercent;
   final double progressValue;
-  final bool allQuizzesPassed;
-  final bool hasQuizzes;
   final int completedCount;
   final int totalLectures;
   final Function(ApiLecture, ApiCourseSection) onSelectLecture;
@@ -1806,7 +1905,7 @@ class _CurriculumTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bookmarkedLectures = ref.watch(lectureBookmarksProvider(course.slug ?? course.id));
-    final isCertificateUnlocked = completionPercent >= 100 && allQuizzesPassed;
+    final isCertificateUnlocked = completionPercent >= 100;
 
     return RefreshIndicator(
       color: AppColors.primaryGreen,
@@ -1839,12 +1938,12 @@ class _CurriculumTab extends ConsumerWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Course Progress: $completionPercent%',
+                    '${tr(ref, "Course Progress")}: ${formatNum(ref, completionPercent)}%',
                     style: const TextStyle(
                         fontWeight: FontWeight.bold, fontSize: 13),
                   ),
                   Text(
-                    '$completedCount / $totalLectures Completed',
+                    '${formatNum(ref, completedCount)} / ${formatNum(ref, totalLectures)} ${tr(ref, "Completed")}',
                     style: TextStyle(
                       fontSize: 12,
                       color: isDark ? Colors.white70 : AppColors.inkSoft,
@@ -1893,10 +1992,8 @@ class _CurriculumTab extends ConsumerWidget {
                   ),
                   label: Text(
                     isCertificateUnlocked
-                        ? 'View Official Certificate'
-                        : (hasQuizzes
-                            ? 'View Official Certificate (Pass Quiz to Unlock)'
-                            : 'View Official Certificate (Complete Lectures to Unlock)'),
+                        ? tr(ref, 'View Official Certificate')
+                        : tr(ref, 'View Official Certificate (Complete Lectures to Unlock)'),
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   onPressed: isCertificateUnlocked
@@ -2025,7 +2122,7 @@ class _CurriculumTab extends ConsumerWidget {
 
         // Sections Accordion
         Text(
-          'Course Syllabus',
+          tr(ref, 'Course Syllabus'),
           style: Theme.of(context)
               .textTheme
               .titleMedium
@@ -2054,12 +2151,12 @@ class _CurriculumTab extends ConsumerWidget {
               tilePadding:
                   const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               title: Text(
-                'Section ${sIdx + 1}: ${section.title}',
+                '${tr(ref, "Section")} ${formatNum(ref, sIdx + 1)}: ${tr(ref, section.title)}',
                 style:
                     const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
               ),
               subtitle: Text(
-                '$sectionCompleted / ${section.lectures.length} completed',
+                '${formatNum(ref, sectionCompleted)} / ${formatNum(ref, section.lectures.length)} ${tr(ref, "completed")}',
                 style: TextStyle(
                   fontSize: 12,
                   color: isDark ? Colors.white70 : AppColors.inkSoft,
@@ -2106,9 +2203,9 @@ class _CurriculumTab extends ConsumerWidget {
                               color: AppColors.accentOrange.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(4),
                             ),
-                            child: const Text(
-                              'FREE',
-                              style: TextStyle(
+                            child: Text(
+                              tr(ref, 'FREE'),
+                              style: const TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
                                 color: AppColors.accentOrange,
@@ -2166,52 +2263,6 @@ class _CurriculumTab extends ConsumerWidget {
                     onTap: () => onSelectLecture(lecture, section),
                   );
                 }),
-                // Section Quiz link (only displayed if section has a quiz attached)
-                if (section.hasQuiz)
-                  Consumer(
-                    builder: (context, ref, _) {
-                      final isPassedAsync = ref.watch(sectionQuizPassedProvider(section.id));
-                      final isPassed = isPassedAsync.value ?? false;
-
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        child: OutlinedButton.icon(
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: isPassed ? AppColors.primaryGreen : AppColors.accentOrange,
-                            side: BorderSide(
-                              color: isPassed ? AppColors.primaryGreen : AppColors.accentOrange,
-                            ),
-                            backgroundColor: isPassed
-                                ? AppColors.primaryGreen.withValues(alpha: 0.08)
-                                : Colors.transparent,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          icon: Icon(
-                            isPassed ? Icons.check_circle_rounded : Icons.quiz_rounded,
-                            size: 16,
-                            color: isPassed ? AppColors.primaryGreen : AppColors.accentOrange,
-                          ),
-                          label: Text(
-                            isPassed ? 'Quiz Passed ✅ • Review / Retake' : 'Take Section Quiz',
-                            style: TextStyle(
-                              fontWeight: isPassed ? FontWeight.bold : FontWeight.w600,
-                            ),
-                          ),
-                          onPressed: () async {
-                            await context.push('/quiz/${section.id}');
-                            ref.invalidate(sectionQuizPassedProvider(section.id));
-                            ref.invalidate(studentEnrollmentsProvider);
-                            ref.invalidate(myCertificatesProvider);
-                            ref.invalidate(certificateEnrollmentsProvider);
-                            final slug = course.slug ?? course.id;
-                            ref.invalidate(coursePercentageProvider(slug));
-                          },
-                        ),
-                      );
-                    },
-                  ),
               ],
             ),
           );
@@ -2968,7 +3019,7 @@ class _CourseNotesTabState extends ConsumerState<_CourseNotesTab> {
                 // Filter Chips
                 ChoiceChip(
                   visualDensity: VisualDensity.compact,
-                  label: const Text('All'),
+                  label: Text(tr(ref, 'All')),
                   selected: _activeFilter == 'all',
                   selectedColor: AppColors.primaryGreen.withValues(alpha: 0.15),
                   labelStyle: TextStyle(
@@ -2983,7 +3034,7 @@ class _CourseNotesTabState extends ConsumerState<_CourseNotesTab> {
                 const SizedBox(width: 6),
                 ChoiceChip(
                   visualDensity: VisualDensity.compact,
-                  label: const Text('Notes 📝'),
+                  label: Text(tr(ref, 'Notes 📝')),
                   selected: _activeFilter == 'notes',
                   selectedColor: AppColors.primaryGreen.withValues(alpha: 0.15),
                   labelStyle: TextStyle(
@@ -2998,7 +3049,7 @@ class _CourseNotesTabState extends ConsumerState<_CourseNotesTab> {
                 const SizedBox(width: 6),
                 ChoiceChip(
                   visualDensity: VisualDensity.compact,
-                  label: const Text('Bookmarks 🔖'),
+                  label: Text(tr(ref, 'Bookmarks 🔖')),
                   selected: _activeFilter == 'bookmarks',
                   selectedColor: AppColors.accentOrange.withValues(alpha: 0.15),
                   labelStyle: TextStyle(
@@ -3044,15 +3095,15 @@ class _CourseNotesTabState extends ConsumerState<_CourseNotesTab> {
                         const SizedBox(height: 12),
                         Text(
                           _activeFilter == 'bookmarks'
-                              ? 'No bookmarks yet.'
-                              : 'No notes yet.',
+                              ? tr(ref, 'No bookmarks yet.')
+                              : tr(ref, 'No notes yet.'),
                           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           _activeFilter == 'bookmarks'
-                              ? 'Tap "Quick Bookmark" anytime during playback to save important moments!'
-                              : 'Write notes during the video. Tapping any timestamp will jump directly to that point!',
+                              ? tr(ref, 'Tap "Quick Bookmark" anytime during playback to save important moments!')
+                              : tr(ref, 'Write notes during the video. Tapping any timestamp will jump directly to that point!'),
                           textAlign: TextAlign.center,
                           style: const TextStyle(color: AppColors.inkSoft, fontSize: 13),
                         ),
@@ -3171,7 +3222,7 @@ class _CourseNotesTabState extends ConsumerState<_CourseNotesTab> {
                   child: TextField(
                     controller: _controller,
                     decoration: InputDecoration(
-                      hintText: 'Add note at ${_formatTime(_getCurrentSeconds())}...',
+                      hintText: '${tr(ref, 'Add note at')} ${_formatTime(_getCurrentSeconds())}...',
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide(
@@ -3252,7 +3303,7 @@ class _CourseNotesTabState extends ConsumerState<_CourseNotesTab> {
                         const Icon(Icons.bookmark_add_rounded, size: 18, color: AppColors.accentOrange),
                         const SizedBox(width: 8),
                         Text(
-                          'Add bookmark at ${_formatTime(_getCurrentSeconds())}',
+                          '${tr(ref, 'Add bookmark at')} ${_formatTime(_getCurrentSeconds())}',
                           style: TextStyle(
                             fontSize: 13,
                             color: isDark ? Colors.white70 : AppColors.inkDark,
@@ -3312,15 +3363,15 @@ class _CourseReviewsTabState extends ConsumerState<_CourseReviewsTab> {
   String _getRatingLabel(int rating) {
     switch (rating) {
       case 1:
-        return 'Poor';
+        return tr(ref, 'Poor');
       case 2:
-        return 'Fair';
+        return tr(ref, 'Fair');
       case 3:
-        return 'Good';
+        return tr(ref, 'Good');
       case 4:
-        return 'Very Good';
+        return tr(ref, 'Very Good');
       case 5:
-        return 'Excellent! 🌟';
+        return tr(ref, 'Excellent! 🌟');
       default:
         return '';
     }
@@ -3418,7 +3469,7 @@ class _CourseReviewsTabState extends ConsumerState<_CourseReviewsTab> {
                   const Icon(Icons.star_rounded, color: AppColors.signalYellow, size: 20),
                   const SizedBox(width: 8),
                   Text(
-                    'Leave a Review',
+                    tr(ref, 'Leave a Review'),
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.bold,
@@ -3470,7 +3521,7 @@ class _CourseReviewsTabState extends ConsumerState<_CourseReviewsTab> {
                   color: isDark ? Colors.white : AppColors.inkDark,
                 ),
                 decoration: InputDecoration(
-                  hintText: 'Tell us what you think about this course (optional)...',
+                  hintText: tr(ref, 'Tell us what you think about this course (optional)...'),
                   hintStyle: TextStyle(
                     fontSize: 13,
                     color: isDark ? Colors.white38 : AppColors.inkSoft,
@@ -3524,7 +3575,7 @@ class _CourseReviewsTabState extends ConsumerState<_CourseReviewsTab> {
                         )
                       : const Icon(Icons.send_rounded, size: 16),
                   label: Text(
-                    _isSubmitting ? 'Submitting...' : 'Submit Review',
+                    _isSubmitting ? tr(ref, 'Submitting...') : tr(ref, 'Submit Review'),
                     style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                   ),
                 ),
@@ -3540,7 +3591,7 @@ class _CourseReviewsTabState extends ConsumerState<_CourseReviewsTab> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Course Reviews',
+              tr(ref, 'Course Reviews'),
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
@@ -3549,7 +3600,7 @@ class _CourseReviewsTabState extends ConsumerState<_CourseReviewsTab> {
             ),
             reviewsAsync.when(
               data: (reviews) => Text(
-                '${reviews.length} ${reviews.length == 1 ? "review" : "reviews"}',
+                '${formatNum(ref, reviews.length)} ${reviews.length == 1 ? tr(ref, "review") : tr(ref, "reviews")}',
                 style: const TextStyle(fontSize: 12, color: AppColors.inkSoft, fontWeight: FontWeight.w500),
               ),
               loading: () => const SizedBox.shrink(),

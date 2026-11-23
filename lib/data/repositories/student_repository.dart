@@ -857,12 +857,70 @@ class StudentRepository {
     return ApiTopInstructor.fallbacks;
   }
 
+  /// Fetch all registered instructors list from `/api/v1/instructors/`
+  Future<List<ApiTopInstructor>> getAllInstructors() async {
+    try {
+      final token = await tokenStorage.getAccessToken();
+      final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/instructors/');
+      final response = await http.get(
+        uri,
+        headers: {
+          if (token != null) 'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      );
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final decoded = jsonDecode(response.body);
+        List list = [];
+        if (decoded is Map && decoded['results'] is List) {
+          list = decoded['results'] as List;
+        } else if (decoded is List) {
+          list = decoded;
+        }
+
+        if (list.isNotEmpty) {
+          return list
+              .whereType<Map>()
+              .map((item) => ApiTopInstructor.fromJson(Map<String, dynamic>.from(item)))
+              .toList();
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ [StudentRepository] getAllInstructors error: $e');
+    }
+    return [];
+  }
+
   /// Fetch detailed public profile of an instructor including their active courses.
+  /// If [instructorId] is not a UUID, attempts lookup by instructor name first.
   Future<ApiPublicInstructorDetail?> getInstructorDetail(String instructorId) async {
     debugPrint('👨‍🏫 [StudentRepository] getInstructorDetail: id=$instructorId');
     try {
       final token = await tokenStorage.getAccessToken();
-      final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/instructors/$instructorId/');
+
+      // Check if instructorId is an actual UUID
+      String targetId = instructorId.trim();
+      final isUuid = RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$').hasMatch(targetId);
+
+      if (!isUuid) {
+        // Resolve instructor ID by name
+        final all = await getAllInstructors();
+        final match = all.firstWhere(
+          (inst) => inst.fullName.trim().toLowerCase() == targetId.toLowerCase() || inst.id.toLowerCase() == targetId.toLowerCase(),
+          orElse: () => all.firstWhere(
+            (inst) => inst.fullName.toLowerCase().contains(targetId.toLowerCase()),
+            orElse: () => const ApiTopInstructor(id: '', fullName: '', experience: ''),
+          ),
+        );
+        if (match.id.isNotEmpty) {
+          targetId = match.id;
+        }
+      }
+
+      if (targetId.isEmpty) return null;
+
+      final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/instructors/$targetId/');
       final response = await http.get(
         uri,
         headers: {

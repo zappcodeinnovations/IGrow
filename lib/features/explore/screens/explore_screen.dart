@@ -21,12 +21,14 @@ class ExploreScreen extends ConsumerStatefulWidget {
     this.initialCategory,
     this.initialTab = 0,
     this.initialInstructorId,
+    this.initialPricePreset,
   });
 
   final String? initialSearch;
   final String? initialCategory;
   final int initialTab;
   final String? initialInstructorId;
+  final String? initialPricePreset;
 
   @override
   ConsumerState<ExploreScreen> createState() => _ExploreScreenState();
@@ -98,6 +100,16 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
       _searchQuery = widget.initialSearch!;
       _searchController.text = widget.initialSearch!;
     }
+    if (widget.initialPricePreset != null && widget.initialPricePreset!.isNotEmpty) {
+      _selectedPricePreset = widget.initialPricePreset!;
+      if (_selectedPricePreset == 'free') {
+        _minPrice = 0;
+        _maxPrice = 0;
+      } else if (_selectedPricePreset == 'paid') {
+        _minPrice = 1;
+        _maxPrice = null;
+      }
+    }
   }
 
   bool _handleBackPress() {
@@ -133,6 +145,19 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
       setState(() {
         _searchQuery = widget.initialSearch ?? '';
         _searchController.text = widget.initialSearch ?? '';
+      });
+    }
+    if (widget.initialPricePreset != oldWidget.initialPricePreset &&
+        widget.initialPricePreset != null) {
+      setState(() {
+        _selectedPricePreset = widget.initialPricePreset!;
+        if (_selectedPricePreset == 'free') {
+          _minPrice = 0;
+          _maxPrice = 0;
+        } else if (_selectedPricePreset == 'paid') {
+          _minPrice = 1;
+          _maxPrice = null;
+        }
       });
     }
   }
@@ -2017,18 +2042,44 @@ class _PrototypeCourseCard extends ConsumerWidget {
                     ),
                     const SizedBox(height: 6),
 
-                    // Instructor Row
-                    Text(
-                      'By ${course.instructorName ?? "IAGROW Agriculture Experts"}',
-                      style: TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w500,
-                        color: isDark
-                            ? Colors.white60
-                            : const Color(0xFF6B7280),
+                    // Instructor Row (Clickable to Instructor Profile)
+                    InkWell(
+                      onTap: () {
+                        final instName = course.instructorName;
+                        if (instName != null && instName.trim().isNotEmpty) {
+                          context.push('/farmer/instructor/${Uri.encodeComponent(instName.trim())}');
+                        }
+                      },
+                      borderRadius: BorderRadius.circular(6),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              '${tr(ref, 'Created By')} ',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: isDark ? Colors.white60 : const Color(0xFF6B7280),
+                              ),
+                            ),
+                            Flexible(
+                              child: Text(
+                                course.instructorName ?? "IAGROW Agriculture Experts",
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.primaryGreen,
+                                  decoration: TextDecoration.underline,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 12),
 
