@@ -422,12 +422,14 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
 
   /// Displays an interactive review pop-up dialog after completing a lecture.
   void _showLectureReviewDialog(ApiLecture lecture) {
-    if (!mounted || _activeSlug == null) return;
-    final slug = _activeSlug!;
+    if (!mounted) return;
+    final slug = _activeSlug ?? _currentCourse?.slug ?? widget.courseId;
+    if (slug.isEmpty) return;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     int selectedRating = 5;
     final commentController = TextEditingController();
     bool isSubmitting = false;
+    String? localError;
 
     showDialog(
       context: context,
@@ -456,7 +458,7 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
               backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
               insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-              child: Padding(
+              child: SingleChildScrollView(
                 padding: const EdgeInsets.all(22),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -556,9 +558,21 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
                         ),
                       ),
                     ),
+                    if (localError != null) ...[
+                      const SizedBox(height: 10),
+                      Text(
+                        localError!,
+                        style: const TextStyle(
+                          color: AppColors.error,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
                     const SizedBox(height: 20),
 
-                    // Action Buttons (Maybe Later vs Submit)
+                    // Action Buttons (Skip vs Submit)
                     Row(
                       children: [
                         Expanded(
@@ -592,17 +606,32 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
                             onPressed: isSubmitting
                                 ? null
                                 : () async {
-                                    setDialogState(() => isSubmitting = true);
+                                    setDialogState(() {
+                                      isSubmitting = true;
+                                      localError = null;
+                                    });
                                     final messenger = ScaffoldMessenger.of(context);
                                     try {
                                       final repo = ref.read(courseRepositoryProvider);
+                                      final courseId = _currentCourse?.id ?? widget.courseId;
                                       await repo.submitCourseReview(
                                         slug,
                                         rating: selectedRating,
                                         comment: commentController.text.trim(),
                                       );
+
+                                      // Invalidate all related providers using both slug and ID
                                       ref.invalidate(courseReviewsProvider(slug));
+                                      if (courseId.isNotEmpty && courseId != slug) {
+                                        ref.invalidate(courseReviewsProvider(courseId));
+                                      }
+                                      if (_activeSlug != null && _activeSlug != slug) {
+                                        ref.invalidate(courseReviewsProvider(_activeSlug!));
+                                      }
                                       ref.invalidate(courseDetailProvider(slug));
+                                      if (widget.courseId.isNotEmpty && widget.courseId != slug) {
+                                        ref.invalidate(courseDetailProvider(widget.courseId));
+                                      }
 
                                       if (dialogCtx.mounted) {
                                         Navigator.pop(dialogCtx);
@@ -617,17 +646,13 @@ class _CoursePlayerScreenState extends ConsumerState<CoursePlayerScreen>
                                         );
                                       }
                                     } catch (err) {
+                                      debugPrint('❌ [CoursePlayer] submitLectureReview error: $err');
+                                      final cleanMsg = err.toString().replaceAll('Exception: ', '').trim();
                                       if (dialogCtx.mounted) {
-                                        Navigator.pop(dialogCtx);
-                                      }
-                                      if (mounted) {
-                                        messenger.showSnackBar(
-                                          const SnackBar(
-                                            content: Text('Feedback saved. Thank you! ⭐'),
-                                            backgroundColor: AppColors.primaryGreen,
-                                            duration: Duration(seconds: 2),
-                                          ),
-                                        );
+                                        setDialogState(() {
+                                          isSubmitting = false;
+                                          localError = cleanMsg.isNotEmpty ? cleanMsg : 'Failed to submit review.';
+                                        });
                                       }
                                     }
                                   },
