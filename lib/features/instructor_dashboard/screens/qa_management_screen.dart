@@ -663,13 +663,14 @@ class _QaManagementScreenState extends ConsumerState<QaManagementScreen> {
                                   contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                                 ),
                               ),
-                              const SizedBox(height: 10),
+                              const SizedBox(height: 12),
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.end,
                                 children: [
                                   OutlinedButton(
                                     style: OutlinedButton.styleFrom(
-                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                      minimumSize: const Size(0, 42),
+                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                                       side: BorderSide(
                                         color: isDark ? Colors.white24 : Colors.grey.shade300,
@@ -682,18 +683,20 @@ class _QaManagementScreenState extends ConsumerState<QaManagementScreen> {
                                       tr(ref, 'Cancel'),
                                       style: TextStyle(
                                         color: isDark ? Colors.grey.shade300 : AppColors.editorialOnSurface,
-                                        fontSize: 12.5,
+                                        fontSize: 13,
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(width: 8),
+                                  const SizedBox(width: 10),
                                   FilledButton(
                                     style: FilledButton.styleFrom(
+                                      minimumSize: const Size(0, 42),
                                       backgroundColor: AppColors.primaryGreen,
                                       foregroundColor: Colors.white,
-                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                      elevation: 0,
                                     ),
                                     onPressed: isSubmitting ? null : () => _submitAnswer(qId),
                                     child: isSubmitting
@@ -708,7 +711,7 @@ class _QaManagementScreenState extends ConsumerState<QaManagementScreen> {
                                         : Text(
                                             tr(ref, 'Post Answer'),
                                             style: const TextStyle(
-                                              fontSize: 12.5,
+                                              fontSize: 13,
                                               fontWeight: FontWeight.bold,
                                             ),
                                           ),
