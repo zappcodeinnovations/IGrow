@@ -628,11 +628,16 @@ class _QaManagementScreenState extends ConsumerState<QaManagementScreen> {
                               TextField(
                                 controller: _replyControllers[qId],
                                 maxLines: 3,
+                                minLines: 2,
+                                style: TextStyle(
+                                  color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                                  fontSize: 13.5,
+                                ),
                                 decoration: InputDecoration(
                                   hintText: tr(ref, 'Type your answer here...'),
                                   hintStyle: TextStyle(
                                     color: isDark ? Colors.white54 : AppColors.editorialOnSurfaceVariant,
-                                    fontSize: 12.5,
+                                    fontSize: 13,
                                   ),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10),
@@ -640,25 +645,73 @@ class _QaManagementScreenState extends ConsumerState<QaManagementScreen> {
                                       color: isDark ? AppColors.lineDark : AppColors.editorialOutlineVariant,
                                     ),
                                   ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                    borderSide: BorderSide(
+                                      color: isDark ? AppColors.lineDark : AppColors.editorialOutlineVariant,
+                                    ),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                    borderSide: const BorderSide(
+                                      color: AppColors.primaryGreen,
+                                      width: 1.5,
+                                    ),
+                                  ),
                                   filled: true,
-                                  fillColor: isDark ? AppColors.cardDark : Colors.white,
+                                  fillColor: isDark ? const Color(0xFF162319) : Colors.white,
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                                 ),
                               ),
-                              const SizedBox(height: 8),
+                              const SizedBox(height: 10),
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.end,
                                 children: [
-                                  TextButton(
+                                  OutlinedButton(
+                                    style: OutlinedButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                      side: BorderSide(
+                                        color: isDark ? Colors.white24 : Colors.grey.shade300,
+                                      ),
+                                    ),
                                     onPressed: isSubmitting
                                         ? null
                                         : () => setState(() => _openReplyBoxes[qId] = false),
-                                    child: Text(tr(ref, 'Cancel')),
+                                    child: Text(
+                                      tr(ref, 'Cancel'),
+                                      style: TextStyle(
+                                        color: isDark ? Colors.grey.shade300 : AppColors.editorialOnSurface,
+                                        fontSize: 12.5,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
                                   ),
-                                  const SizedBox(width: 6),
-                                  AppButton(
-                                    label: tr(ref, 'Post Answer'),
-                                    isLoading: isSubmitting,
+                                  const SizedBox(width: 8),
+                                  FilledButton(
+                                    style: FilledButton.styleFrom(
+                                      backgroundColor: AppColors.primaryGreen,
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                    ),
                                     onPressed: isSubmitting ? null : () => _submitAnswer(qId),
+                                    child: isSubmitting
+                                        ? const SizedBox(
+                                            width: 16,
+                                            height: 16,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: Colors.white,
+                                            ),
+                                          )
+                                        : Text(
+                                            tr(ref, 'Post Answer'),
+                                            style: const TextStyle(
+                                              fontSize: 12.5,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
                                   ),
                                 ],
                               ),
