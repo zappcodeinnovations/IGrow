@@ -6,20 +6,44 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/localization/app_strings.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../data/models/user_model.dart';
+import '../../auth/providers/auth_provider.dart';
+import '../../auth/widgets/complete_phone_profile_bottom_sheet.dart';
+import '../../auth/widgets/complete_social_profile_dialog.dart';
+import 'welcome_diorama_asset.dart';
 
 /// Welcome promotional popup for students highlighting free courses and free e-books.
 class StudentWelcomeDialog extends ConsumerWidget {
   const StudentWelcomeDialog({super.key});
 
-  static const String _kWelcomeDismissedKey = 'has_seen_student_free_welcome_popup';
+  static const String _kWelcomeDismissedKey =
+      'has_seen_student_free_welcome_popup';
 
-  /// Checks if the popup should be shown (first time student lands on home)
-  static Future<void> checkAndShow(BuildContext context, {String? userId}) async {
+  /// Checks if the popup should be shown (first time student lands on home).
+  /// If the complete profile dialog or sheet is open or profile is incomplete,
+  /// waits until it is completed and dismissed, then waits 1 second before showing.
+  static Future<void> checkAndShow(
+    BuildContext context, {
+    String? userId,
+    UserModel? user,
+    required WidgetRef ref,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
-    final key = userId != null ? '${_kWelcomeDismissedKey}_$userId' : _kWelcomeDismissedKey;
+    final effectiveUserId = userId ?? user?.id ?? user?.email;
+    final key = effectiveUserId != null
+        ? '${_kWelcomeDismissedKey}_$effectiveUserId'
+        : _kWelcomeDismissedKey;
     final hasSeen = prefs.getBool(key) ?? false;
 
-    if (!hasSeen) {
+    if (hasSeen) return;
+
+    // Give a brief delay after landing on home screen before welcoming
+    await Future.delayed(const Duration(milliseconds: 1000));
+    if (!context.mounted) return;
+
+    // Re-verify if already shown in the interim
+    final seenAfterWait = prefs.getBool(key) ?? false;
+    if (!seenAfterWait) {
       await prefs.setBool(key, true);
       if (context.mounted) {
         showDialog(
@@ -33,253 +57,213 @@ class StudentWelcomeDialog extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Dialog(
       backgroundColor: Colors.transparent,
+      elevation: 0,
       insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-      child: Container(
-        constraints: const BoxConstraints(maxWidth: 380),
-        decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF14241A) : Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(
-            color: isDark ? const Color(0xFF22543D) : const Color(0xFFBBF7D0),
-            width: 1.5,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.5 : 0.15),
-              blurRadius: 24,
-              offset: const Offset(0, 10),
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(24),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 360),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // ── Header Graphic with Close Button ──
+              // Main Floating Pop-up Card
               Stack(
+                clipBehavior: Clip.none,
+                alignment: Alignment.center,
                 children: [
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 24),
+                    padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: isDark
-                            ? [const Color(0xFF1B4D2E), const Color(0xFF0D2818)]
-                            : [const Color(0xFFDCFCE7), const Color(0xFFBBF7D0)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
+                      color: const Color(0xFF0F172A), // Deep Slate
+                      borderRadius: BorderRadius.circular(28),
+                      border: Border.all(
+                        color: const Color(0xFF10B981).withOpacity(0.35),
+                        width: 1.5,
                       ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.65),
+                          blurRadius: 36,
+                          offset: const Offset(0, 16),
+                        ),
+                        BoxShadow(
+                          color: const Color(0xFF10B981).withOpacity(0.18),
+                          blurRadius: 40,
+                          spreadRadius: 2,
+                        ),
+                      ],
                     ),
                     child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
+                        // Header Text: Congratulations & Free Badge
+                        ShaderMask(
+                          shaderCallback: (bounds) => const LinearGradient(
+                            colors: [
+                              Color(0xFFFEF08A),
+                              Color(0xFFFBBF24),
+                              Color(0xFFF59E0B),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ).createShader(bounds),
+                          child: Text(
+                            tr(ref, '🎉 Congratulations!').toUpperCase(),
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 19,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.8,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          tr(ref, '100% Free Courses & E-Books Unlocked'),
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                            letterSpacing: -0.2,
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+
+                        // 3D Scene Diorama Image
                         Container(
-                          padding: const EdgeInsets.all(14),
+                          width: double.infinity,
+                          height: 200,
                           decoration: BoxDecoration(
-                            color: isDark ? const Color(0xFF14241A) : Colors.white,
-                            shape: BoxShape.circle,
+                            borderRadius: BorderRadius.circular(20),
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFF16A34A).withValues(alpha: 0.25),
-                                blurRadius: 16,
-                                offset: const Offset(0, 4),
+                                color: const Color(
+                                  0xFF10B981,
+                                ).withOpacity(0.25),
+                                blurRadius: 20,
+                                offset: const Offset(0, 8),
                               ),
                             ],
                           ),
-                          child: const Icon(
-                            Icons.card_giftcard_rounded,
-                            color: Color(0xFF16A34A),
-                            size: 38,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(20),
+                            child: Image.memory(
+                              kFarmerWelcomeDioramaBytes,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Image.asset(
+                                'assets/images/banners/farmer_welcome_diorama.png',
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Container(
+                                  color: const Color(0xFF1B4D2E),
+                                  child: const Center(
+                                    child: Icon(
+                                      Icons.agriculture_rounded,
+                                      size: 64,
+                                      color: Color(0xFF34D399),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 22),
+
+                        // Vibrant Pill Action Button (Matches the Yellow-Orange Gradient in Ref Image 2)
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                          width: double.infinity,
+                          height: 52,
                           decoration: BoxDecoration(
-                            color: const Color(0xFF16A34A),
-                            borderRadius: BorderRadius.circular(12),
+                            gradient: const LinearGradient(
+                              colors: [
+                                Color(0xFFFDE047), // Vibrant yellow
+                                Color(0xFFF59E0B), // Warm amber
+                                Color(0xFFF43F5E), // Rose coral accent
+                              ],
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
+                            ),
+                            borderRadius: BorderRadius.circular(28),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(
+                                  0xFFF59E0B,
+                                ).withOpacity(0.45),
+                                blurRadius: 18,
+                                offset: const Offset(0, 6),
+                              ),
+                            ],
                           ),
-                          child: Text(
-                            tr(ref, '100% FREE ACCESS').toUpperCase(),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 0.6,
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(28),
+                              onTap: () {
+                                Navigator.of(context).pop();
+                                // Navigate straight to Explore page filtered for Free
+                                context.go('${RouteNames.explore}?price=free');
+                              },
+                              child: Center(
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      tr(ref, 'Unveil Free Courses'),
+                                      style: const TextStyle(
+                                        color: Color(0xFF0F172A),
+                                        fontSize: 16.5,
+                                        fontWeight: FontWeight.w900,
+                                        letterSpacing: 0.3,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    const Icon(
+                                      Icons.arrow_forward_rounded,
+                                      size: 20,
+                                      color: Color(0xFF0F172A),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
                           ),
                         ),
                       ],
                     ),
                   ),
-                  Positioned(
-                    top: 10,
-                    right: 10,
-                    child: IconButton(
-                      icon: Icon(
-                        Icons.close_rounded,
-                        color: isDark ? Colors.white60 : Colors.black45,
-                        size: 22,
-                      ),
-                      onPressed: () => Navigator.of(context).pop(),
-                    ),
-                  ),
                 ],
               ),
+              const SizedBox(height: 20),
 
-              // ── Body Content ──
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
-                child: Column(
-                  children: [
-                    Text(
-                      tr(ref, 'Welcome to iAgrow!'),
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: isDark ? Colors.white : AppColors.inkDark,
-                      ),
+              // Bottom Circular Dismiss / Close Button (Exact match with reference image)
+              InkWell(
+                onTap: () => Navigator.of(context).pop(),
+                borderRadius: BorderRadius.circular(24),
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.55),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.35),
+                      width: 1.5,
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      tr(ref, 'Explore certified agricultural courses and practical e-books crafted by top farming experts completely free!'),
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 13.5,
-                        height: 1.4,
-                        color: isDark ? Colors.white70 : AppColors.inkSoft,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-
-                    // Feature highlights row
-                    Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                      decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF1A3324) : const Color(0xFFF0FDF4),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: isDark ? const Color(0xFF2E6145) : const Color(0xFF86EFAC),
-                          width: 1,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        children: [
-                          _buildFeatureItem(
-                            icon: Icons.video_collection_rounded,
-                            label: tr(ref, 'Free Courses'),
-                            isDark: isDark,
-                          ),
-                          Container(
-                            height: 28,
-                            width: 1,
-                            color: isDark ? const Color(0xFF2E6145) : const Color(0xFF86EFAC),
-                          ),
-                          _buildFeatureItem(
-                            icon: Icons.menu_book_rounded,
-                            label: tr(ref, 'Free E-Books'),
-                            isDark: isDark,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 22),
-
-                    // ── Primary Action: Explore Free Courses ──
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF16A34A),
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                        ),
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                          // Navigate to explore with price=free
-                          context.go('${RouteNames.explore}?price=free');
-                        },
-                        icon: const Icon(Icons.school_rounded, size: 20),
-                        label: Text(
-                          tr(ref, 'Explore Free Courses'),
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14.5,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-
-                    // ── Secondary Action: Explore Free E-Books ──
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: isDark ? Colors.white : AppColors.inkDark,
-                          side: BorderSide(
-                            color: isDark ? const Color(0xFF2C3E31) : const Color(0xFFD1DDD0),
-                            width: 1.2,
-                          ),
-                          padding: const EdgeInsets.symmetric(vertical: 13),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                        ),
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                          // Navigate to explore E-books tab
-                          context.go('${RouteNames.explore}?tab=ebooks');
-                        },
-                        icon: const Icon(Icons.auto_stories_rounded, size: 18),
-                        label: Text(
-                          tr(ref, 'Browse Free E-Books'),
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13.5,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
+                  child: const Icon(
+                    Icons.close_rounded,
+                    size: 22,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ],
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildFeatureItem({
-    required IconData icon,
-    required String label,
-    required bool isDark,
-  }) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 18, color: const Color(0xFF16A34A)),
-        const SizedBox(width: 8),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12.5,
-            fontWeight: FontWeight.bold,
-            color: isDark ? Colors.white : AppColors.inkDark,
-          ),
-        ),
-      ],
     );
   }
 }

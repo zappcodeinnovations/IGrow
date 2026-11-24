@@ -68,19 +68,22 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
     if (_selectedTab == 1) {
       int count = 0;
       if (_selectedEbookPricePreset != 'all') count++;
-      if (_selectedInstructorId != null && _selectedInstructorId!.isNotEmpty)
+      if (_selectedInstructorId != null && _selectedInstructorId!.isNotEmpty) {
         count++;
+      }
       return count;
     }
     int count = 0;
     if (_selectedLevel.isNotEmpty) count++;
     if (_selectedLanguage.isNotEmpty) count++;
-    if (_selectedOrdering.isNotEmpty && _selectedOrdering != '-created_at')
+    if (_selectedOrdering.isNotEmpty && _selectedOrdering != '-created_at') {
       count++;
+    }
     if (_selectedPricePreset != 'all') count++;
     if (_minRating != null && _minRating! > 0) count++;
-    if (_selectedInstructorId != null && _selectedInstructorId!.isNotEmpty)
+    if (_selectedInstructorId != null && _selectedInstructorId!.isNotEmpty) {
       count++;
+    }
     return count;
   }
 
@@ -100,7 +103,8 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
       _searchQuery = widget.initialSearch!;
       _searchController.text = widget.initialSearch!;
     }
-    if (widget.initialPricePreset != null && widget.initialPricePreset!.isNotEmpty) {
+    if (widget.initialPricePreset != null &&
+        widget.initialPricePreset!.isNotEmpty) {
       _selectedPricePreset = widget.initialPricePreset!;
       if (_selectedPricePreset == 'free') {
         _minPrice = 0;
@@ -277,8 +281,9 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
               int count = 0;
               if (tempLevel.isNotEmpty) count++;
               if (tempLanguage.isNotEmpty) count++;
-              if (tempOrdering.isNotEmpty && tempOrdering != '-created_at')
+              if (tempOrdering.isNotEmpty && tempOrdering != '-created_at') {
                 count++;
+              }
               if (tempPricePreset != 'all') count++;
               if (tempMinRating != null && tempMinRating! > 0) count++;
               return count;
@@ -697,8 +702,9 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                                   isSelected: tempLevel.isEmpty,
                                   isDark: isDark,
                                   onSelected: (val) {
-                                    if (val)
+                                    if (val) {
                                       setModalState(() => tempLevel = '');
+                                    }
                                   },
                                 ),
                                 buildFilterChip(
@@ -767,8 +773,9 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                                   isSelected: tempLanguage.isEmpty,
                                   isDark: isDark,
                                   onSelected: (val) {
-                                    if (val)
+                                    if (val) {
                                       setModalState(() => tempLanguage = '');
+                                    }
                                   },
                                 ),
                                 buildFilterChip(
@@ -838,10 +845,11 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                                       tempOrdering == '',
                                   isDark: isDark,
                                   onSelected: (val) {
-                                    if (val)
+                                    if (val) {
                                       setModalState(
                                         () => tempOrdering = '-created_at',
                                       );
+                                    }
                                   },
                                 ),
                                 buildFilterChip(
@@ -849,10 +857,11 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                                   isSelected: tempOrdering == '-views_count',
                                   isDark: isDark,
                                   onSelected: (val) {
-                                    if (val)
+                                    if (val) {
                                       setModalState(
                                         () => tempOrdering = '-views_count',
                                       );
+                                    }
                                   },
                                 ),
                               ],
@@ -1231,9 +1240,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                   itemCount: categories.length,
                   itemBuilder: (context, index) {
                     final cat = categories[index];
-                    final iconData = _getCategoryIcon(cat.name);
-                    final iconBg = _getCategoryBg(index, isDark);
-                    final iconColor = _getCategoryColor(index, isDark);
+                    final imagePath = _getCategoryImagePath(cat.name, cat.slug);
 
                     return InkWell(
                       onTap: () {
@@ -1246,8 +1253,8 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                       borderRadius: BorderRadius.circular(18),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 12,
+                          horizontal: 10,
+                          vertical: 10,
                         ),
                         decoration: BoxDecoration(
                           color: isDark ? AppColors.cardDark : Colors.white,
@@ -1271,21 +1278,36 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                         child: Row(
                           children: [
                             Container(
-                              width: 44,
-                              height: 44,
+                              width: 52,
+                              height: 52,
                               decoration: BoxDecoration(
-                                color: iconBg,
                                 borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: isDark
+                                      ? Colors.white24
+                                      : const Color(0xFFD1E7DD),
+                                  width: 1.2,
+                                ),
                               ),
-                              child: Center(
-                                child: Icon(
-                                  iconData,
-                                  size: 22,
-                                  color: iconColor,
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(12.8),
+                                child: Image.asset(
+                                  imagePath,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => Container(
+                                    color: const Color(0xFFE8F5E9),
+                                    child: const Center(
+                                      child: Icon(
+                                        Icons.agriculture_rounded,
+                                        color: AppColors.primaryGreen,
+                                        size: 24,
+                                      ),
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 12),
+                            const SizedBox(width: 10),
                             Expanded(
                               child: Text(
                                 tr(ref, cat.name),
@@ -1828,64 +1850,71 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
     );
   }
 
-  IconData _getCategoryIcon(String name) {
-    final lower = name.toLowerCase();
-    if (lower.contains('crop') ||
-        lower.contains('plant') ||
-        lower.contains('prod')) {
-      return Icons.agriculture_rounded;
-    } else if (lower.contains('water') ||
-        lower.contains('irrig') ||
-        lower.contains('hydro')) {
-      return Icons.water_drop_rounded;
-    } else if (lower.contains('pest') || lower.contains('protect')) {
-      return Icons.pest_control_rounded;
-    } else if (lower.contains('organic') || lower.contains('soil')) {
-      return Icons.eco_rounded;
-    } else if (lower.contains('animal') ||
-        lower.contains('dairy') ||
-        lower.contains('husbandry')) {
-      return Icons.pets_rounded;
-    } else if (lower.contains('tech') || lower.contains('machin')) {
-      return Icons.precision_manufacturing_rounded;
-    } else if (lower.contains('horticult') ||
-        lower.contains('fruit') ||
-        lower.contains('veget')) {
-      return Icons.local_florist_rounded;
-    } else if (lower.contains('climate') || lower.contains('weather')) {
-      return Icons.cloud_outlined;
+  String _getCategoryImagePath(String name, [String? slug]) {
+    final key = '${name.toLowerCase()} ${slug?.toLowerCase() ?? ''}';
+    if (key.contains('crop') ||
+        key.contains('agronomy') ||
+        key.contains('फसल') ||
+        key.contains('पिके')) {
+      return 'assets/images/categories/crop_production.jpg';
+    } else if (key.contains('dairy') ||
+        key.contains('cow') ||
+        key.contains('milk') ||
+        key.contains('दुग्ध')) {
+      return 'assets/images/categories/dairy_farming.jpg';
+    } else if (key.contains('food') ||
+        key.contains('process') ||
+        key.contains('storage') ||
+        key.contains('खाद्य') ||
+        key.contains('अन्न')) {
+      return 'assets/images/categories/food_processing.jpg';
+    } else if (key.contains('horticult') ||
+        key.contains('fruit') ||
+        key.contains('veget') ||
+        key.contains('बागवानी') ||
+        key.contains('फलोत्पादन')) {
+      return 'assets/images/categories/horticulture.jpg';
+    } else if (key.contains('water') ||
+        key.contains('irrigat') ||
+        key.contains('सिंचाई') ||
+        key.contains('सिंचन')) {
+      return 'assets/images/categories/irrigation.jpg';
+    } else if (key.contains('livestock') ||
+        key.contains('animal') ||
+        key.contains('husbandry') ||
+        key.contains('पशुधन') ||
+        key.contains('poultry') ||
+        key.contains('aquaculture')) {
+      return 'assets/images/categories/livestock.jpg';
+    } else if (key.contains('organic') ||
+        key.contains('जैविक') ||
+        key.contains('सेंद्रिय')) {
+      return 'assets/images/categories/organic_farming.jpg';
+    } else if (key.contains('pest') ||
+        key.contains('disease') ||
+        key.contains('protect') ||
+        key.contains('कीट') ||
+        key.contains('कीड')) {
+      return 'assets/images/categories/pest_management.jpg';
+    } else if (key.contains('precision') ||
+        key.contains('tech') ||
+        key.contains('machin') ||
+        key.contains('यंत्र') ||
+        key.contains('अवजारे')) {
+      return 'assets/images/categories/precision_agriculture.jpg';
+    } else if (key.contains('soil') ||
+        key.contains('मृदा') ||
+        key.contains('माती')) {
+      return 'assets/images/categories/soil_science.jpg';
+    } else if (key.contains('sustainable') || key.contains('शाश्वत')) {
+      return 'assets/images/categories/sustainable_farming.jpg';
+    } else if (key.contains('agroforestry') ||
+        key.contains('forestry') ||
+        key.contains('वानिकी') ||
+        key.contains('वनशेती')) {
+      return 'assets/images/categories/agroforestry.jpg';
     }
-    return Icons.eco_outlined;
-  }
-
-  Color _getCategoryBg(int index, bool isDark) {
-    if (isDark) return const Color(0xFF1F2D24);
-    const tints = [
-      Color(0xFFE8F5E9), // Crops / light green
-      Color(0xFFE1F5FE), // Water / light cyan
-      Color(0xFFE8F8F5), // Pests / light teal
-      Color(0xFFF1F8E9), // Organic / light lime
-      Color(0xFFFFF3E0), // Animal / light orange
-      Color(0xFFF3E5F5), // Tech / light purple
-      Color(0xFFFFEBEE), // Horticulture / light pink
-      Color(0xFFECEFF1), // Climate / light blue-grey
-    ];
-    return tints[index % tints.length];
-  }
-
-  Color _getCategoryColor(int index, bool isDark) {
-    if (isDark) return const Color(0xFF86EFAC);
-    const colors = [
-      Color(0xFF2E7D32), // Crops
-      Color(0xFF0288D1), // Water
-      Color(0xFF00897B), // Pests
-      Color(0xFF558B2F), // Organic
-      Color(0xFFE65100), // Animal
-      Color(0xFF7B1FA2), // Tech
-      Color(0xFFC2185B), // Horticulture
-      Color(0xFF455A64), // Climate
-    ];
-    return colors[index % colors.length];
+    return 'assets/images/categories/crop_production.jpg';
   }
 }
 
@@ -2047,7 +2076,9 @@ class _PrototypeCourseCard extends ConsumerWidget {
                       onTap: () {
                         final instName = course.instructorName;
                         if (instName != null && instName.trim().isNotEmpty) {
-                          context.push('/farmer/instructor/${Uri.encodeComponent(instName.trim())}');
+                          context.push(
+                            '/farmer/instructor/${Uri.encodeComponent(instName.trim())}',
+                          );
                         }
                       },
                       borderRadius: BorderRadius.circular(6),
@@ -2061,12 +2092,15 @@ class _PrototypeCourseCard extends ConsumerWidget {
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w500,
-                                color: isDark ? Colors.white60 : const Color(0xFF6B7280),
+                                color: isDark
+                                    ? Colors.white60
+                                    : const Color(0xFF6B7280),
                               ),
                             ),
                             Flexible(
                               child: Text(
-                                course.instructorName ?? "IAGROW Agriculture Experts",
+                                course.instructorName ??
+                                    "IAGROW Agriculture Experts",
                                 style: const TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,

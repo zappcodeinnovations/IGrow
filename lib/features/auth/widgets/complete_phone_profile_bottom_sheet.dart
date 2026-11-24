@@ -22,27 +22,35 @@ class CompletePhoneProfileBottomSheet extends ConsumerStatefulWidget {
   final String verificationToken;
   final VoidCallback onCompleted;
 
+  /// Whether a CompletePhoneProfileBottomSheet is currently visible on screen.
+  static bool isOpen = false;
+
   static Future<void> show(
     BuildContext context, {
     required String phoneNumber,
     required String verificationToken,
     required VoidCallback onCompleted,
-  }) {
-    return showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      isDismissible: false,
-      enableDrag: false,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
-        child: CompletePhoneProfileBottomSheet(
-          phoneNumber: phoneNumber,
-          verificationToken: verificationToken,
-          onCompleted: onCompleted,
+  }) async {
+    isOpen = true;
+    try {
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        isDismissible: false,
+        enableDrag: false,
+        backgroundColor: Colors.transparent,
+        builder: (ctx) => Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+          child: CompletePhoneProfileBottomSheet(
+            phoneNumber: phoneNumber,
+            verificationToken: verificationToken,
+            onCompleted: onCompleted,
+          ),
         ),
-      ),
-    );
+      );
+    } finally {
+      isOpen = false;
+    }
   }
 
   @override

@@ -11,6 +11,8 @@ class AppConfig {
   final bool showCoupons;
   final bool enableAppleIap;
   final bool showAppleIap;
+  final bool enablePhoneLogin;
+  final bool showPhoneLogin;
 
   const AppConfig({
     required this.enablePaymentGateway,
@@ -19,6 +21,8 @@ class AppConfig {
     required this.showCoupons,
     this.enableAppleIap = false,
     this.showAppleIap = false,
+    this.enablePhoneLogin = true,
+    this.showPhoneLogin = true,
   });
 
   factory AppConfig.fromJson(Map<String, dynamic> json) {
@@ -44,10 +48,15 @@ class AppConfig {
     final dynamic appleIapVal = json['enable_apple_iap'] ??
         json['show_apple_iap'] ??
         json['apple_iap_enabled'];
+    final dynamic phoneLoginVal = json['enable_phone_login'] ??
+        json['show_phone_login'] ??
+        json['phone_login_enabled'] ??
+        json['allow_phone_login'];
 
     final bool enablePayment = parseFlag(paymentVal, defaultValue: true);
     final bool enableCoupon = parseFlag(couponVal, defaultValue: true);
     final bool enableAppleIap = parseFlag(appleIapVal, defaultValue: false);
+    final bool enablePhone = parseFlag(phoneLoginVal, defaultValue: true);
 
     return AppConfig(
       enablePaymentGateway: enablePayment,
@@ -56,6 +65,8 @@ class AppConfig {
       showCoupons: parseFlag(json['show_coupons'], defaultValue: enableCoupon),
       enableAppleIap: enableAppleIap,
       showAppleIap: parseFlag(json['show_apple_iap'], defaultValue: enableAppleIap),
+      enablePhoneLogin: enablePhone,
+      showPhoneLogin: parseFlag(json['show_phone_login'], defaultValue: enablePhone),
     );
   }
 
@@ -71,6 +82,8 @@ class AppConfig {
       showCoupons: !isIos,
       enableAppleIap: isIos,
       showAppleIap: isIos,
+      enablePhoneLogin: true,
+      showPhoneLogin: true,
     );
   }
 
@@ -108,6 +121,13 @@ class AppConfig {
       return true;
     }
     return enableCoupons && showCoupons;
+  }
+
+  /// Helper to check if phone number login should be displayed on the login page.
+  /// Controlled remotely by backend flag (e.g. `enable_phone_login` or `show_phone_login`).
+  /// If backend sends 0 / false, phone login is hidden.
+  bool get canShowPhoneLogin {
+    return enablePhoneLogin && showPhoneLogin;
   }
 }
 

@@ -66,8 +66,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       _checkAppVersion();
     });
 
-    // Minimum delay for the splash screen animation.
-    Future.delayed(const Duration(milliseconds: 2500), () {
+    // Delay for the welcome screen so user can read it (3 seconds).
+    Future.delayed(const Duration(milliseconds: 3000), () {
       if (mounted) {
         _minDelayPassed = true;
         _navigateIfNeeded();
@@ -148,12 +148,18 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       context.go('/');
     } else {
       final prefs = await SharedPreferences.getInstance();
-      final hasCompletedOnboarding = prefs.getBool('has_completed_onboarding') ?? false;
+      final hasCompletedInitialSetup = prefs.getBool('has_completed_initial_setup') ?? 
+          (prefs.getBool('has_selected_language') ?? false);
       if (mounted) {
-        if (hasCompletedOnboarding) {
-          context.go(RouteNames.login);
+        if (hasCompletedInitialSetup) {
+          final savedRole = prefs.getString('selected_auth_role') ?? 'farmer';
+          if (savedRole == 'instructor') {
+            context.go(RouteNames.instructorHome);
+          } else {
+            context.go(RouteNames.farmerHome);
+          }
         } else {
-          context.go(RouteNames.onboarding);
+          context.go(RouteNames.languageSelection);
         }
       }
     }
@@ -196,11 +202,11 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
               children: [
                 // App logo image.
                 Container(
-                  width: 220,
-                  height: 220,
+                  width: 170,
+                  height: 170,
                   decoration: BoxDecoration(
                     color: AppColors.white,
-                    borderRadius: BorderRadius.circular(40),
+                    borderRadius: BorderRadius.circular(36),
                     boxShadow: AppColors.greenShadow(
                       blurRadius: 30,
                       offset: const Offset(0, 12),
@@ -212,25 +218,34 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                     'assets/images/logo.png',
                     fit: BoxFit.cover,
                     errorBuilder: (context, error, stackTrace) =>
-                        const Icon(Icons.eco_rounded, size: 80, color: AppColors.primaryGreen),
+                        const Icon(Icons.eco_rounded, size: 70, color: AppColors.primaryGreen),
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 22),
                 Text(
-                  'iAgrow',
-                  style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                  'Welcome to iAgrow',
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                         color: isDark ? Colors.white : AppColors.greenDark,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.3,
                       ),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Learn • Grow • Achieve',
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  'Empowering Agriculture with Knowledge',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: isDark ? AppColors.greenLight : const Color(0xFF2E6E34),
                         fontWeight: FontWeight.w600,
-                        letterSpacing: 1.1,
+                        letterSpacing: 0.5,
+                      ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Learn • Grow • Achieve',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: isDark ? Colors.white60 : AppColors.inkSoft,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: 1.2,
                       ),
                 ),
               ],

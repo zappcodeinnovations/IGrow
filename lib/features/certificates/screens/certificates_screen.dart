@@ -190,9 +190,12 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
             const SizedBox(height: 80),
             EmptyState(
               icon: Icons.workspace_premium_outlined,
-              title: 'No Certificates Earned Yet',
-              subtitle: 'Complete 100% of lectures in your enrolled courses to automatically unlock official verified certificates.',
-              actionLabel: 'Explore Courses',
+              title: tr(ref, 'No Certificates Earned Yet'),
+              subtitle: tr(
+                ref,
+                'Complete 100% of lectures in your enrolled courses to automatically unlock official verified certificates.',
+              ),
+              actionLabel: tr(ref, 'Explore Courses'),
               onAction: () => context.go('/farmer/explore'),
             ),
           ],
@@ -211,7 +214,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
           final cert = items[index];
           final issuedDate = cert.issuedAt != null
               ? DateFormat.yMMMMd().format(cert.issuedAt!)
-              : 'Recently Issued';
+              : tr(ref, 'Recently Issued');
 
           return Card(
             elevation: 0,

@@ -457,10 +457,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   /// Update Basic Profile.
-  Future<void> updateProfile(PatchedUserProfileRequest request) async {
+  Future<void> updateProfile(
+    PatchedUserProfileRequest request, {
+    String? email,
+  }) async {
     state = state.copyWith(status: AuthStatus.loading);
     try {
-      final user = await _repo.updateProfile(request);
+      final user = await _repo.updateProfile(request, email: email);
       state = AuthState(status: AuthStatus.authenticated, user: user);
     } catch (e) {
       state = state.copyWith(status: AuthStatus.authenticated, error: ApiException.userFriendlyMessage(e));

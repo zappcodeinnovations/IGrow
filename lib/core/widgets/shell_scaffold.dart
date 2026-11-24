@@ -10,6 +10,7 @@ import 'custom_bottom_nav_bar.dart';
 import '../../data/models/user_role.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/auth/widgets/complete_social_profile_dialog.dart';
+import '../services/auto_location_service.dart';
 import '../localization/app_strings.dart';
 import '../router/route_names.dart';
 import '../theme/app_colors.dart';
@@ -44,18 +45,14 @@ class _ShellScaffoldState extends ConsumerState<ShellScaffold> {
 
   void _checkIncompleteProfilePrompt() {
     if (!mounted || _checkedProfileCompletion) return;
-    final currentLoc = GoRouterState.of(context).uri.toString();
-    // Do not show profile popup over direct notification destinations like course/ebook view
-    if (currentLoc.contains('/course/') || currentLoc.contains('/ebook/')) {
-      return;
-    }
     _checkedProfileCompletion = true;
     final user = ref.read(authProvider).user;
-    if (user != null &&
-        (user.phone.trim().isEmpty ||
-            (user.locationState == null ||
-                user.locationState!.trim().isEmpty))) {
-      CompleteSocialProfileDialog.show(context, user);
+    if (user != null) {
+      // Auto-fetch city & state silently in background and update profile
+      AutoLocationService.instance.resolveAndSyncLocation(
+        ref.read(authProvider.notifier),
+        user,
+      );
     }
   }
 

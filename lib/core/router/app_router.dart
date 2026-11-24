@@ -90,8 +90,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       }
       
       if (authState.status == AuthStatus.unauthenticated) {
-        if (!isAuthRoute && !isSplash) {
-          return RouteNames.login;
+        // Unauthenticated users can browse courses, home, explore, community, etc.
+        // If they navigate directly to splash or onboarding after setup, route to home
+        if (state.matchedLocation == RouteNames.splash || state.matchedLocation == '/') {
+          return RouteNames.farmerHome;
         }
         return null;
       }

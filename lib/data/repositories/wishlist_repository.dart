@@ -13,14 +13,18 @@ class WishlistRepository {
 
   /// Get authenticated user's wishlist items (courses and ebooks).
   Future<List<ApiWishlistItem>> getWishlist() async {
-    debugPrint('❤️ [WishlistRepository] getWishlist: fetching saved items');
     final token = await tokenStorage.getAccessToken();
+    if (token == null || token.isEmpty) {
+      debugPrint('ℹ️ [WishlistRepository] getWishlist: guest user, returning empty wishlist');
+      return [];
+    }
+    debugPrint('❤️ [WishlistRepository] getWishlist: fetching saved items');
 
     try {
       final response = await http.get(
         Uri.parse('$_baseUrl/wishlist/'),
         headers: {
-          if (token != null) 'Authorization': 'Bearer $token',
+          'Authorization': 'Bearer $token',
           'Accept': 'application/json',
         },
       );

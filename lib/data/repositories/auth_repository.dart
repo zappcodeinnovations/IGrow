@@ -70,7 +70,10 @@ abstract class AuthRepository {
   Future<void> deleteAccount();
   Future<bool> hasSession();
 
-  Future<UserModel> updateProfile(PatchedUserProfileRequest request);
+  Future<UserModel> updateProfile(
+    PatchedUserProfileRequest request, {
+    String? email,
+  });
   Future<UserModel> updateInstructorProfile(
     PatchedInstructorProfileRequest request,
   );
@@ -955,7 +958,24 @@ class ApiAuthRepository implements AuthRepository {
 
   @override
   Future<UserModel> switchRole(UserRole newRole) async {
-    if (_currentUser == null) throw Exception('Not authenticated');
+    // If not authenticated or in guest mode, create or switch local guest profile
+    if (_currentUser == null) {
+      _currentUser = UserModel(
+        id: 'guest_${DateTime.now().millisecondsSinceEpoch}',
+        fullName: newRole == UserRole.instructor ? 'Guest Instructor' : 'Guest Student',
+        email: '',
+        phone: '',
+        activeRole: newRole,
+        grantedRoles: [newRole],
+      );
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('active_user_role', newRole.name);
+        await prefs.setString('selected_auth_role', newRole.name);
+        await prefs.setStringList('user_available_roles', [newRole.apiValue]);
+      } catch (_) {}
+      return _currentUser!;
+    }
 
     // Call backend switch-mode endpoint if user has token
     final accessToken = await tokenStorage.getAccessToken();
@@ -1230,7 +1250,10 @@ class ApiAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<UserModel> updateProfile(PatchedUserProfileRequest request) async {
+  Future<UserModel> updateProfile(
+    PatchedUserProfileRequest request, {
+    String? email,
+  }) async {
     final token = await tokenStorage.getAccessToken();
     if (token == null) throw ApiException.unauthorized();
 
@@ -1238,6 +1261,9 @@ class ApiAuthRepository implements AuthRepository {
 
     // Only send non-null and provided fields in PATCH payload to avoid overwriting with nulls
     final body = <String, dynamic>{};
+    if (email != null && email.trim().isNotEmpty) {
+      body['email'] = email.trim();
+    }
     if (request.fullName != null && request.fullName!.trim().isNotEmpty) {
       body['full_name'] = request.fullName!.trim();
     }

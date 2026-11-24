@@ -6,6 +6,8 @@ import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/app_toast.dart';
 import '../../../core/widgets/app_error_state.dart';
+import '../../auth/providers/auth_provider.dart';
+import '../../auth/widgets/quick_auth_dialog.dart';
 import '../../cart/providers/cart_provider.dart';
 import '../../home_farmer/providers/student_provider.dart';
 import '../../../core/widgets/shimmer_placeholders.dart';
@@ -231,7 +233,7 @@ class EbooksTab extends ConsumerWidget {
                           ],
                         ],
                       ),
-                      // Action Button (Read Now or Buy Now)
+                      // Action Button (Read for Free, Read Now, or Buy Now)
                       if (isPurchased || isFree)
                         FilledButton.icon(
                           style: FilledButton.styleFrom(
@@ -244,12 +246,14 @@ class EbooksTab extends ConsumerWidget {
                           ),
                           icon: const Icon(Icons.menu_book_rounded, size: 14),
                           label: Text(
-                            tr(ref, 'Read Now'),
+                            isPurchased
+                                ? tr(ref, 'Read Now')
+                                : tr(ref, 'Read for Free'),
                             style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold),
                           ),
                           onPressed: () {
                             if (identifier.isNotEmpty) {
-                              context.push('/farmer/ebook/$identifier');
+                              context.push('/farmer/ebook/');
                             }
                           },
                         )
@@ -391,7 +395,13 @@ class EbooksTab extends ConsumerWidget {
                                 minimumSize: Size.zero,
                                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                               ),
-                              onPressed: () {
+                              onPressed: () async {
+                                final authState = ref.read(authProvider);
+                                if (!authState.isAuthenticated) {
+                                  final loggedIn = await QuickAuthDialog.show(context);
+                                  if (!loggedIn) return;
+                                }
+                                if (!context.mounted) return;
                                 final targetId = ebook.id ?? identifier;
                                 context.push('/checkout?ebookId=$targetId');
                               },

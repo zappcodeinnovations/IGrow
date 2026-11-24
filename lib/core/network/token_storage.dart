@@ -36,7 +36,15 @@ class TokenStorage {
   static DateTime? _lastNotificationTime;
 
   /// Notify listeners that the user's session has expired and force a logout redirect.
-  static void notifySessionExpired([String? reason]) {
+  static Future<void> notifySessionExpired([String? reason]) async {
+    // If user is already a guest / unauthenticated with no tokens, do not trigger forceLogout
+    final token = await TokenStorage().getAccessToken();
+    final refresh = await TokenStorage().getRefreshToken();
+    if ((token == null || token.isEmpty) && (refresh == null || refresh.isEmpty)) {
+      debugPrint('ℹ️ [TokenStorage] notifySessionExpired ignored: Guest user has no tokens.');
+      return;
+    }
+
     final now = DateTime.now();
     if (_lastNotificationTime != null &&
         now.difference(_lastNotificationTime!) < const Duration(seconds: 2)) {

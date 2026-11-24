@@ -12,6 +12,8 @@ import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_text_field.dart';
 import '../../../core/widgets/image_crop_rotate_screen.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../auth/widgets/quick_auth_dialog.dart';
+import '../../auth/widgets/instructor_contact_info_sheet.dart';
 import '../../home_instructor/providers/instructor_home_provider.dart';
 import '../../../core/services/app_config_service.dart';
 
@@ -154,6 +156,23 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
     if (_selectedFile == null) {
       AppToast.showWarning(context, 'Please select a file to upload');
       return;
+    }
+
+    final token = await ref.read(tokenStorageProvider).getAccessToken();
+    if (token == null || token.isEmpty) {
+      final loggedIn = await QuickAuthDialog.show(context);
+      if (!loggedIn || !mounted) return;
+    }
+
+    final currentUser = ref.read(authProvider).user;
+    final hasValidPhone = currentUser != null && currentUser.phone.trim().isNotEmpty;
+    final hasValidEmail = currentUser != null && currentUser.email.trim().isNotEmpty;
+    if (!hasValidPhone || !hasValidEmail) {
+      final updated = await InstructorContactInfoBottomSheet.show(
+        context,
+        onSuccess: () {},
+      );
+      if (updated != true || !mounted) return;
     }
 
     setState(() {

@@ -11,7 +11,7 @@ class AppElevatedBackButton extends StatelessWidget {
   const AppElevatedBackButton({
     super.key,
     this.onTap,
-    this.fallbackRoute = '/onboarding',
+    this.fallbackRoute = '/language-selection',
   });
 
   @override

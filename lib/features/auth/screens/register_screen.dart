@@ -106,16 +106,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   Future<void> _handleSocialSuccess() async {
     if (!mounted) return;
 
+    // Profile popup is not shown on login. Phone is requested during course purchase/checkout.
     final user = ref.read(authProvider).user;
-    final needsDetails = user != null &&
-        (user.phone.trim().isEmpty ||
-            (user.locationState == null || user.locationState!.trim().isEmpty));
-
-    if (needsDetails) {
-      await CompleteSocialProfileDialog.show(context, user);
-      if (!mounted) return;
-    }
-
     final updatedUser = ref.read(authProvider).user ?? user;
     if (updatedUser == null) return;
 

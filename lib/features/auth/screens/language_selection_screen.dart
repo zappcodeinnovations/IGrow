@@ -10,8 +10,13 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/responsive_layout.dart';
 import '../../../core/widgets/app_gradient_button.dart';
 import '../../../core/widgets/organic_background.dart';
+import '../../../data/models/user_role.dart';
+import '../providers/auth_provider.dart';
 
-/// Language selection screen — grid of language options.
+/// Unified Language & Role Selection screen.
+///
+/// Presents language selection and role selection on the same page before
+/// routing directly to the login page.
 class LanguageSelectionScreen extends ConsumerStatefulWidget {
   const LanguageSelectionScreen({super.key, this.selectedRole});
 
@@ -21,8 +26,11 @@ class LanguageSelectionScreen extends ConsumerStatefulWidget {
   ConsumerState<LanguageSelectionScreen> createState() =>
       _LanguageSelectionScreenState();
 }
+
 class _LanguageSelectionScreenState extends ConsumerState<LanguageSelectionScreen> {
-  String? _selected;
+  String? _selectedLanguage;
+  UserRole _selectedRole = UserRole.farmer;
+  bool _isLoading = false;
 
   static const _languages = [
     _Language('English', 'English', 'A', 'Universal / Official'),
@@ -40,14 +48,60 @@ class _LanguageSelectionScreenState extends ConsumerState<LanguageSelectionScree
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    _loadPreferences();
+  }
+
+  Future<void> _loadPreferences() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final activeCode = ref.read(languageProvider);
+      final savedRole = widget.selectedRole ??
+          prefs.getString('selected_auth_role') ??
+          prefs.getString('active_user_role');
+
       if (mounted) {
-        final activeCode = ref.read(languageProvider);
         setState(() {
-          _selected = _codeToName(activeCode);
+          _selectedLanguage = _codeToName(activeCode);
+          if (savedRole != null && savedRole.toLowerCase() == 'instructor') {
+            _selectedRole = UserRole.instructor;
+          } else {
+            _selectedRole = UserRole.farmer;
+          }
         });
       }
-    });
+    } catch (_) {}
+  }
+
+  Future<void> _onContinue() async {
+    if (_isLoading) return;
+    setState(() => _isLoading = true);
+
+    try {
+      final chosenLang = _selectedLanguage ?? _codeToName(ref.read(languageProvider));
+      await ref.read(languageProvider.notifier).setLanguage(chosenLang);
+
+      // Persist onboarding & selection choices
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('has_completed_onboarding', true);
+      await prefs.setBool('has_selected_language', true);
+      await prefs.setBool('has_completed_initial_setup', true);
+      await prefs.setString('selected_auth_role', _selectedRole.name);
+      await prefs.setString('active_user_role', _selectedRole.name);
+
+      ref.read(authProvider.notifier).setOnboardingRole(_selectedRole);
+
+      if (mounted) {
+        if (_selectedRole == UserRole.instructor) {
+          context.go(RouteNames.instructorHome);
+        } else {
+          context.go(RouteNames.farmerHome);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   @override
@@ -58,76 +112,157 @@ class _LanguageSelectionScreenState extends ConsumerState<LanguageSelectionScree
       child: SafeArea(
         child: ResponsiveContentConstraint(
           maxWidth: 500,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 24),
-                Text(
-                  tr(ref, 'Choose Your\nLanguage'),
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 32,
-                    fontWeight: FontWeight.w800,
-                    color: isDark
-                        ? AppColors.organicHeadingDark
-                        : AppColors.organicHeadingGreen,
-                    height: 1.15,
-                    letterSpacing: -0.6,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  tr(ref, 'Select the language you\'re most comfortable with.'),
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 14.5,
-                    fontWeight: FontWeight.w400,
-                    color: isDark
-                        ? AppColors.organicSubtitleDark
-                        : AppColors.organicSubtitleGreen,
-                    height: 1.35,
-                  ),
-                ),
-                const SizedBox(height: 32),
-                
-                // 3 Exclusive Language Cards
-                ..._languages.map((lang) {
-                  final activeLangName = _selected ?? _codeToName(ref.watch(languageProvider));
-                  final isSelected = lang.codeName.toLowerCase() == activeLangName.toLowerCase() ||
-                      lang.nativeName == activeLangName;
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: _LanguageCard(
-                      language: lang,
-                      isSelected: isSelected,
-                      isDark: isDark,
-                      onTap: () async {
-                        setState(() => _selected = lang.codeName);
-                        await ref.read(languageProvider.notifier).setLanguage(lang.codeName);
-                      },
-                    ),
-                  );
-                }),
+          child: Column(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 24),
+                      // App logo & welcome badge
+                      Row(
+                        children: [
+                          Container(
+                            width: 38,
+                            height: 38,
+                            decoration: BoxDecoration(
+                              color: AppColors.white,
+                              borderRadius: BorderRadius.circular(10),
+                              boxShadow: AppColors.greenShadow(
+                                blurRadius: 10,
+                                offset: const Offset(0, 3),
+                                opacity: 0.15,
+                              ),
+                            ),
+                            clipBehavior: Clip.antiAlias,
+                            child: Image.asset(
+                              'assets/images/logo.png',
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  const Icon(Icons.eco_rounded, size: 24, color: AppColors.primaryGreen),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            'iAgrow',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              color: isDark ? AppColors.white : AppColors.primaryGreen,
+                              letterSpacing: 0.2,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 18),
 
-                const Spacer(),
+                      // Section 1 Header: Language Selection
+                      Text(
+                        tr(ref, 'Choose Your Language'),
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 21,
+                          fontWeight: FontWeight.w800,
+                          color: isDark
+                              ? AppColors.organicHeadingDark
+                              : AppColors.organicHeadingGreen,
+                          letterSpacing: -0.4,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
 
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 28),
-                  child: AppGradientButton(
-                    label: tr(ref, 'Continue'),
-                    onPressed: () async {
-                      final chosenLang = _selected ?? _codeToName(ref.read(languageProvider));
-                      await ref.read(languageProvider.notifier).setLanguage(chosenLang);
-                      final prefs = await SharedPreferences.getInstance();
-                      await prefs.setBool('has_selected_language', true);
-                      if (context.mounted) {
-                        context.go(RouteNames.login);
-                      }
-                    },
+                      // Language Cards (compact)
+                      ..._languages.map((lang) {
+                        final activeLangName = _selectedLanguage ?? _codeToName(ref.watch(languageProvider));
+                        final isSelected = lang.codeName.toLowerCase() == activeLangName.toLowerCase() ||
+                            lang.nativeName == activeLangName;
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: _LanguageCard(
+                            language: lang,
+                            isSelected: isSelected,
+                            isDark: isDark,
+                            onTap: () async {
+                              setState(() => _selectedLanguage = lang.codeName);
+                              await ref.read(languageProvider.notifier).setLanguage(lang.codeName);
+                            },
+                          ),
+                        );
+                      }),
+
+                      const SizedBox(height: 18),
+
+                      // Section 2 Header: Role Selection
+                      Text(
+                        tr(ref, 'Choose Your Role'),
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 21,
+                          fontWeight: FontWeight.w800,
+                          color: isDark
+                              ? AppColors.organicHeadingDark
+                              : AppColors.organicHeadingGreen,
+                          letterSpacing: -0.4,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Role Card 1: Student / Learner
+                      _RoleCard(
+                        title: tr(ref, 'Student / Learner'),
+                        description: tr(
+                          ref,
+                          'Access courses, ebooks, community, and expert guidance.',
+                        ),
+                        icon: Icons.school_rounded,
+                        isSelected: _selectedRole == UserRole.farmer,
+                        isDark: isDark,
+                        onTap: () => setState(() => _selectedRole = UserRole.farmer),
+                      ),
+                      const SizedBox(height: 8),
+
+                      // Role Card 2: Instructor / Educator
+                      _RoleCard(
+                        title: tr(ref, 'Instructor / Educator'),
+                        description: tr(
+                          ref,
+                          'Publish courses, guides, and share your agricultural expertise.',
+                        ),
+                        icon: Icons.psychology_rounded,
+                        isSelected: _selectedRole == UserRole.instructor,
+                        isDark: isDark,
+                        onTap: () => setState(() => _selectedRole = UserRole.instructor),
+                      ),
+
+                      const SizedBox(height: 12),
+                      Center(
+                        child: Text(
+                          tr(ref, 'You can switch roles anytime from your profile.'),
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w500,
+                            color: isDark ? Colors.white54 : AppColors.inkSoft,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                    ],
                   ),
                 ),
-              ],
-            ),
+              ),
+
+              // Bottom Continue Button
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 12, 24, 20),
+                child: AppGradientButton(
+                  label: tr(ref, 'Continue to iAgrow'),
+                  isLoading: _isLoading,
+                  icon: Icons.arrow_forward_rounded,
+                  onPressed: _onContinue,
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -161,45 +296,45 @@ class _LanguageCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
         decoration: BoxDecoration(
           color: isSelected
               ? (isDark ? const Color(0xFF16251A) : const Color(0xFFE8F5E9))
               : (isDark ? AppColors.cardDark : Colors.white),
-          borderRadius: BorderRadius.circular(22),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: isSelected
                 ? AppColors.primaryGreen
                 : (isDark ? AppColors.lineDark : AppColors.lineLight),
-            width: isSelected ? 2.0 : 1.0,
+            width: isSelected ? 1.8 : 1.0,
           ),
           boxShadow: [
             BoxShadow(
               color: isSelected
-                  ? AppColors.primaryGreen.withValues(alpha: isDark ? 0.25 : 0.15)
-                  : Colors.black.withValues(alpha: isDark ? 0.3 : 0.04),
-              blurRadius: 18,
-              offset: const Offset(0, 6),
+                  ? AppColors.primaryGreen.withValues(alpha: isDark ? 0.25 : 0.12)
+                  : Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
             ),
           ],
         ),
         child: Row(
           children: [
             Container(
-              width: 50,
-              height: 50,
+              width: 36,
+              height: 36,
               decoration: BoxDecoration(
                 color: isSelected
                     ? AppColors.primaryGreen
                     : (isDark ? const Color(0xFF202026) : const Color(0xFFEBF3E8)),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(10),
               ),
               child: Center(
                 child: Text(
                   language.glyph,
                   style: TextStyle(
-                    fontSize: 24,
+                    fontSize: 17,
                     fontWeight: FontWeight.w700,
                     color: isSelected
                         ? Colors.white
@@ -208,7 +343,7 @@ class _LanguageCard extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -218,17 +353,17 @@ class _LanguageCard extends StatelessWidget {
                       Text(
                         language.nativeName,
                         style: GoogleFonts.plusJakartaSans(
-                          fontSize: 16.5,
+                          fontSize: 14,
                           fontWeight: FontWeight.w700,
                           color: isDark ? Colors.white : AppColors.inkDark,
                         ),
                       ),
                       if (language.codeName != language.nativeName) ...[
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 5),
                         Text(
                           '(${language.codeName})',
                           style: GoogleFonts.plusJakartaSans(
-                            fontSize: 13,
+                            fontSize: 12,
                             fontWeight: FontWeight.w500,
                             color: isDark ? Colors.white60 : AppColors.inkSoft,
                           ),
@@ -236,11 +371,11 @@ class _LanguageCard extends StatelessWidget {
                       ],
                     ],
                   ),
-                  const SizedBox(height: 3),
+                  const SizedBox(height: 1),
                   Text(
                     language.subtitle,
                     style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12,
+                      fontSize: 11,
                       fontWeight: FontWeight.w400,
                       color: isDark ? Colors.white70 : AppColors.inkSoft,
                     ),
@@ -248,11 +383,11 @@ class _LanguageCard extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 8),
             AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              width: 24,
-              height: 24,
+              width: 20,
+              height: 20,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: isSelected ? AppColors.primaryGreen : Colors.transparent,
@@ -260,13 +395,134 @@ class _LanguageCard extends StatelessWidget {
                   color: isSelected
                       ? AppColors.primaryGreen
                       : (isDark ? AppColors.lineDark : AppColors.lineLight),
-                  width: 2,
+                  width: 1.8,
                 ),
               ),
               child: isSelected
                   ? const Icon(
                       Icons.check,
-                      size: 15,
+                      size: 13,
+                      color: Colors.white,
+                    )
+                  : null,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RoleCard extends StatelessWidget {
+  const _RoleCard({
+    required this.title,
+    required this.description,
+    required this.icon,
+    required this.isSelected,
+    required this.isDark,
+    required this.onTap,
+  });
+
+  final String title;
+  final String description;
+  final IconData icon;
+  final bool isSelected;
+  final bool isDark;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? (isDark ? const Color(0xFF16251A) : const Color(0xFFE8F5E9))
+              : (isDark ? AppColors.cardDark : Colors.white),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isSelected
+                ? AppColors.primaryGreen
+                : (isDark ? AppColors.lineDark : AppColors.lineLight),
+            width: isSelected ? 1.8 : 1.0,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: isSelected
+                  ? AppColors.primaryGreen.withValues(alpha: isDark ? 0.25 : 0.12)
+                  : Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? AppColors.primaryGreen
+                    : (isDark ? const Color(0xFF202026) : const Color(0xFFEBF3E8)),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                icon,
+                size: 20,
+                color: isSelected
+                    ? Colors.white
+                    : (isDark ? Colors.white70 : AppColors.primaryGreen),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: isDark ? Colors.white : AppColors.inkDark,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    description,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w400,
+                      color: isDark ? Colors.white70 : AppColors.inkSoft,
+                      height: 1.25,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: 20,
+              height: 20,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isSelected ? AppColors.primaryGreen : Colors.transparent,
+                border: Border.all(
+                  color: isSelected
+                      ? AppColors.primaryGreen
+                      : (isDark ? AppColors.lineDark : AppColors.lineLight),
+                  width: 1.8,
+                ),
+              ),
+              child: isSelected
+                  ? const Icon(
+                      Icons.check,
+                      size: 13,
                       color: Colors.white,
                     )
                   : null,

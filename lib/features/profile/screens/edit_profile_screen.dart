@@ -15,6 +15,7 @@ import '../../../core/widgets/image_crop_rotate_screen.dart';
 import '../../../data/models/user_role.dart';
 import '../../../data/models/user_model.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../auth/widgets/quick_auth_dialog.dart';
 
 class EditProfileScreen extends ConsumerStatefulWidget {
   const EditProfileScreen({super.key});
@@ -449,6 +450,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   }
 
   Future<void> _saveProfile() async {
+    final token = await ref.read(tokenStorageProvider).getAccessToken();
+    if (token == null || token.isEmpty) {
+      final loggedIn = await QuickAuthDialog.show(context);
+      if (!loggedIn || !mounted) return;
+    }
+
     if (!_formKey.currentState!.validate()) {
       final messenger = ScaffoldMessenger.of(context);
       messenger.clearSnackBars();
@@ -605,170 +612,22 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final translatedLabel = tr(ref, label);
-    final searchInputController = TextEditingController();
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (bottomSheetContext) {
-        String searchQuery = '';
-        return StatefulBuilder(
-          builder: (modalContext, setModalState) {
-            final filteredSuggestions = suggestions.where((item) {
-              final query = searchQuery.toLowerCase().trim();
-              if (query.isEmpty) return true;
-              return item.toLowerCase().contains(query) ||
-                  AppStrings.tr(item, languageCode: 'hi').toLowerCase().contains(query) ||
-                  AppStrings.tr(item, languageCode: 'mr').toLowerCase().contains(query);
-            }).toList();
-
-            final hasCustomQuery = searchQuery.trim().isNotEmpty &&
-                !suggestions.any((s) => s.toLowerCase() == searchQuery.trim().toLowerCase());
-
-            void selectAndClose(String selectedValue) {
-              FocusScope.of(modalContext).unfocus();
-              setState(() {
-                controller.text = selectedValue;
-              });
-              Navigator.of(bottomSheetContext).pop();
-            }
-
-            return Container(
-              constraints: BoxConstraints(
-                maxHeight: MediaQuery.of(modalContext).size.height * 0.75,
-              ),
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF1E2620) : Colors.white,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-              ),
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(modalContext).viewInsets.bottom + 16,
-              ),
-              child: SafeArea(
-                top: false,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Handle Bar
-                    Container(
-                      margin: const EdgeInsets.only(top: 12, bottom: 8),
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: Colors.grey.withValues(alpha: 0.3),
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-
-                    // Header
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            '${tr(ref, 'Select')} $translatedLabel',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: isDark ? Colors.white : AppColors.inkDark,
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.close, size: 20),
-                            onPressed: () => Navigator.of(bottomSheetContext).pop(),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // Search Input
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                      child: TextField(
-                        controller: searchInputController,
-                        autofocus: false,
-                        decoration: InputDecoration(
-                          hintText: '${tr(ref, 'Search...')} ($translatedLabel)',
-                          prefixIcon: const Icon(Icons.search, size: 20),
-                          suffixIcon: searchQuery.isNotEmpty
-                              ? IconButton(
-                                  icon: const Icon(Icons.clear, size: 18),
-                                  onPressed: () {
-                                    searchInputController.clear();
-                                    setModalState(() {
-                                      searchQuery = '';
-                                    });
-                                  },
-                                )
-                              : null,
-                          filled: true,
-                          fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade100,
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
-                          ),
-                        ),
-                        onChanged: (val) {
-                          setModalState(() {
-                            searchQuery = val;
-                          });
-                        },
-                      ),
-                    ),
-
-                    const Divider(height: 16),
-
-                    // Options List
-                    Flexible(
-                      child: ListView(
-                        shrinkWrap: true,
-                        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-                        children: [
-                          if (hasCustomQuery)
-                            ListTile(
-                              leading: const Icon(Icons.add_circle_outline, color: AppColors.editorialSecondary),
-                              title: Text(
-                                '${tr(ref, 'Use')} "${searchQuery.trim()}"',
-                                style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.editorialSecondary),
-                              ),
-                              onTap: () => selectAndClose(searchQuery.trim()),
-                            ),
-                          if (filteredSuggestions.isEmpty && !hasCustomQuery)
-                            Padding(
-                              padding: const EdgeInsets.all(24.0),
-                              child: Center(
-                                child: Text(tr(ref, 'No matching options found')),
-                              ),
-                            )
-                          else
-                            ...filteredSuggestions.map((item) {
-                              final isSelected = controller.text.trim().toLowerCase() == item.toLowerCase();
-                              return ListTile(
-                                title: Text(
-                                  tr(ref, item),
-                                  style: TextStyle(
-                                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                    color: isSelected
-                                        ? AppColors.editorialSecondary
-                                        : (isDark ? Colors.white : AppColors.inkDark),
-                                  ),
-                                ),
-                                trailing: isSelected
-                                    ? const Icon(Icons.check_circle, color: AppColors.editorialSecondary, size: 20)
-                                    : null,
-                                onTap: () => selectAndClose(item),
-                              );
-                            }),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
+        return _SearchableSelectionSheetContent(
+          label: label,
+          translatedLabel: translatedLabel,
+          controller: controller,
+          suggestions: suggestions,
+          isDark: isDark,
+          onSelected: (selectedValue) {
+            setState(() {
+              controller.text = selectedValue;
+            });
           },
         );
       },
@@ -1352,4 +1211,216 @@ String? formatFarmingExperienceForApi(String? exp) {
 
   // Always fallback to a valid backend choice enum string rather than an arbitrary value
   return 'BEGINNER';
+}
+
+/// Dedicated stateful bottom sheet widget for searchable selection.
+/// Keeps search text persistent across keyboard open/close and prevents mis-taps.
+class _SearchableSelectionSheetContent extends ConsumerStatefulWidget {
+  const _SearchableSelectionSheetContent({
+    required this.label,
+    required this.translatedLabel,
+    required this.controller,
+    required this.suggestions,
+    required this.isDark,
+    required this.onSelected,
+  });
+
+  final String label;
+  final String translatedLabel;
+  final TextEditingController controller;
+  final List<String> suggestions;
+  final bool isDark;
+  final ValueChanged<String> onSelected;
+
+  @override
+  ConsumerState<_SearchableSelectionSheetContent> createState() =>
+      _SearchableSelectionSheetContentState();
+}
+
+class _SearchableSelectionSheetContentState
+    extends ConsumerState<_SearchableSelectionSheetContent> {
+  late final TextEditingController _searchController;
+  String _searchQuery = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final query = _searchQuery.toLowerCase().trim();
+    final filtered = widget.suggestions.where((item) {
+      if (query.isEmpty) return true;
+      return item.toLowerCase().contains(query) ||
+          AppStrings.tr(item, languageCode: 'hi').toLowerCase().contains(query) ||
+          AppStrings.tr(item, languageCode: 'mr').toLowerCase().contains(query);
+    }).toList();
+
+    void selectAndClose(String val) {
+      widget.onSelected(val);
+      Navigator.of(context).pop();
+    }
+
+    return Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.78,
+      ),
+      decoration: BoxDecoration(
+        color: widget.isDark ? const Color(0xFF1E2620) : Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom + 12,
+      ),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle Bar
+            Container(
+              margin: const EdgeInsets.only(top: 12, bottom: 8),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+
+            // Header
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '${tr(ref, 'Select')} ${widget.translatedLabel}',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: widget.isDark ? Colors.white : AppColors.inkDark,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 20),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
+            ),
+
+            // Search Input
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              child: TextField(
+                controller: _searchController,
+                autofocus: false,
+                decoration: InputDecoration(
+                  hintText: '${tr(ref, 'Search...')} (${widget.translatedLabel})',
+                  prefixIcon: const Icon(Icons.search, size: 20),
+                  suffixIcon: _searchQuery.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear, size: 18),
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() {
+                              _searchQuery = '';
+                            });
+                          },
+                        )
+                      : null,
+                  filled: true,
+                  fillColor: widget.isDark
+                      ? Colors.white.withValues(alpha: 0.05)
+                      : Colors.grey.shade100,
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+                onChanged: (val) {
+                  setState(() {
+                    _searchQuery = val;
+                  });
+                },
+              ),
+            ),
+
+            const Divider(height: 16),
+
+            // Options List
+            Flexible(
+              child: filtered.isEmpty
+                  ? Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Center(
+                        child: Text(tr(ref, 'No matching options found')),
+                      ),
+                    )
+                  : ListView.builder(
+                      shrinkWrap: true,
+                      keyboardDismissBehavior:
+                          ScrollViewKeyboardDismissBehavior.onDrag,
+                      itemCount: filtered.length,
+                      itemBuilder: (context, index) {
+                        final item = filtered[index];
+                        final isSelected = widget.controller.text
+                                .trim()
+                                .toLowerCase() ==
+                            item.toLowerCase();
+
+                        return InkWell(
+                          onTap: () => selectAndClose(item),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 14,
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    tr(ref, item),
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: isSelected
+                                          ? FontWeight.bold
+                                          : FontWeight.normal,
+                                      color: isSelected
+                                          ? AppColors.editorialSecondary
+                                          : (widget.isDark
+                                              ? Colors.white
+                                              : AppColors.inkDark),
+                                    ),
+                                  ),
+                                ),
+                                if (isSelected)
+                                  const Icon(
+                                    Icons.check_circle,
+                                    color: AppColors.editorialSecondary,
+                                    size: 20,
+                                  ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

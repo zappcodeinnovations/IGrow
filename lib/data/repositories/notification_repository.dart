@@ -24,6 +24,9 @@ class NotificationRepository {
   }) async {
     debugPrint('🔔 [NotificationRepository] getNotifications: isStudent=$isStudent');
     final token = await tokenStorage.getAccessToken();
+    if (token == null || token.isEmpty) {
+      return [];
+    }
     String lang = 'en';
     try {
       final prefs = await SharedPreferences.getInstance();

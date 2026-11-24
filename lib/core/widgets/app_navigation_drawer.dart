@@ -8,7 +8,6 @@ import '../../core/theme/app_colors.dart';
 import '../../core/widgets/logout_dialog.dart';
 import '../../data/models/user_role.dart';
 import '../../features/auth/providers/auth_provider.dart';
-import '../../features/auth/widgets/become_instructor_bottom_sheet.dart';
 import '../../features/cart/providers/cart_provider.dart';
 
 /// Editorial EdTech Drawer navigation sidebar matching Stitch design specifications
@@ -236,31 +235,19 @@ class AppNavigationDrawer extends ConsumerWidget {
                             child: InkWell(
                               onTap: () async {
                                 Navigator.of(context).pop();
-                                if (hasBothRoles) {
-                                  final targetRole = isCurrentlyInstructor
-                                      ? UserRole.farmer
-                                      : UserRole.instructor;
-                                  await ref
-                                      .read(authProvider.notifier)
-                                      .switchRole(targetRole);
-                                  if (context.mounted) {
-                                    // Cache invalidation and route swap
-                                    ref.invalidate(cartProvider);
-                                    context.go(
-                                      targetRole == UserRole.instructor
-                                          ? RouteNames.instructorHome
-                                          : RouteNames.farmerHome,
-                                    );
-                                  }
-                                } else {
-                                  // User is not yet registered as instructor -> ask name & phone
-                                  BecomeInstructorBottomSheet.show(
-                                    context,
-                                    onSuccess: () {
-                                      if (context.mounted) {
-                                        context.go(RouteNames.instructorHome);
-                                      }
-                                    },
+                                final targetRole = isCurrentlyInstructor
+                                    ? UserRole.farmer
+                                    : UserRole.instructor;
+                                await ref
+                                    .read(authProvider.notifier)
+                                    .switchRole(targetRole);
+                                if (context.mounted) {
+                                  // Cache invalidation and route swap
+                                  ref.invalidate(cartProvider);
+                                  context.go(
+                                    targetRole == UserRole.instructor
+                                        ? RouteNames.instructorHome
+                                        : RouteNames.farmerHome,
                                   );
                                 }
                               },

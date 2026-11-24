@@ -53,13 +53,19 @@ class CourseRepository {
     try {
       final uri = Uri.parse('$_baseUrl/courses/$slug/');
       debugPrint('📚 [CourseRepository] getCourseDetail: fetching $uri');
-      final response = await http.get(uri, headers: headers).timeout(const Duration(seconds: 8));
-      debugPrint('📚 [CourseRepository] getCourseDetail HTTP status: ${response.statusCode}');
+      final response = await http
+          .get(uri, headers: headers)
+          .timeout(const Duration(seconds: 8));
+      debugPrint(
+        '📚 [CourseRepository] getCourseDetail HTTP status: ${response.statusCode}',
+      );
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final decoded = jsonDecode(response.body);
         if (decoded is Map<String, dynamic>) {
           final detail = ApiCourseDetail.fromJson(decoded);
-          debugPrint('✅ [CourseRepository] getCourseDetail SUCCESS: ${detail.title} (sections: ${detail.sections.length})');
+          debugPrint(
+            '✅ [CourseRepository] getCourseDetail SUCCESS: ${detail.title} (sections: ${detail.sections.length})',
+          );
           return detail;
         }
       }
@@ -74,15 +80,20 @@ class CourseRepository {
     if (token != null && token.isNotEmpty) {
       try {
         final instructorUri = Uri.parse('$_baseUrl/instructor/courses/$slug/');
-        final instructorResponse = await http.get(instructorUri, headers: headers).timeout(const Duration(seconds: 8));
-        if (instructorResponse.statusCode >= 200 && instructorResponse.statusCode < 300) {
+        final instructorResponse = await http
+            .get(instructorUri, headers: headers)
+            .timeout(const Duration(seconds: 8));
+        if (instructorResponse.statusCode >= 200 &&
+            instructorResponse.statusCode < 300) {
           final decoded = jsonDecode(instructorResponse.body);
           if (decoded is Map<String, dynamic>) {
             return ApiCourseDetail.fromJson(decoded);
           }
         }
       } catch (e) {
-        debugPrint('⚠️ [CourseRepository] instructor getCourseDetail error: $e');
+        debugPrint(
+          '⚠️ [CourseRepository] instructor getCourseDetail error: $e',
+        );
         if (ApiException.from(e).isNetwork) {
           throw ApiException.network();
         }
@@ -125,7 +136,9 @@ class CourseRepository {
         final fallbackSlug = match.slug ?? match.id;
         if (fallbackSlug.isNotEmpty && fallbackSlug != slug) {
           final uri = Uri.parse('$_baseUrl/courses/$fallbackSlug/');
-          final response = await http.get(uri, headers: headers).timeout(const Duration(seconds: 8));
+          final response = await http
+              .get(uri, headers: headers)
+              .timeout(const Duration(seconds: 8));
           if (response.statusCode >= 200 && response.statusCode < 300) {
             final decoded = jsonDecode(response.body);
             if (decoded is Map<String, dynamic>) {
@@ -166,13 +179,15 @@ class CourseRepository {
   /// Check if the current user is enrolled in a specific course.
   Future<bool> checkEnrollment(String courseId) async {
     try {
-      final response = await appApi.apiV1EnrollmentsCheckCourseIdGet(courseId: courseId);
+      final response = await appApi.apiV1EnrollmentsCheckCourseIdGet(
+        courseId: courseId,
+      );
       final dynamic data = response.body;
       if (data is Map && data.containsKey('enrolled')) {
         return data['enrolled'] as bool;
       }
       if (data != null && (data as dynamic).enrolled != null) {
-         return (data as dynamic).enrolled as bool;
+        return (data as dynamic).enrolled as bool;
       }
       return false;
     } catch (_) {
@@ -184,7 +199,9 @@ class CourseRepository {
   Future<List<ApiCourseReview>> getCourseReviews(String slugOrId) async {
     final cleanSlug = slugOrId.trim();
     if (cleanSlug.isEmpty) {
-      debugPrint('⚠️ [CourseRepository] getCourseReviews: empty course slug/id provided. Returning empty.');
+      debugPrint(
+        '⚠️ [CourseRepository] getCourseReviews: empty course slug/id provided. Returning empty.',
+      );
       return [];
     }
     debugPrint('⭐ [CourseRepository] getCourseReviews: slug=$cleanSlug');
@@ -214,11 +231,15 @@ class CourseRepository {
               .whereType<Map<String, dynamic>>()
               .map(ApiCourseReview.fromJson)
               .toList();
-          debugPrint('✅ [CourseRepository] getCourseReviews: loaded ${reviews.length} reviews');
+          debugPrint(
+            '✅ [CourseRepository] getCourseReviews: loaded ${reviews.length} reviews',
+          );
           return reviews;
         }
       } else {
-        debugPrint('⚠️ [CourseRepository] getCourseReviews HTTP ${response.statusCode}: ${response.body}');
+        debugPrint(
+          '⚠️ [CourseRepository] getCourseReviews HTTP ${response.statusCode}: ${response.body}',
+        );
       }
     } catch (e) {
       debugPrint('❌ [CourseRepository] getCourseReviews error: $e');
@@ -236,28 +257,31 @@ class CourseRepository {
     if (cleanSlug.isEmpty) {
       throw Exception('Course identifier is missing');
     }
-    debugPrint('⭐ [CourseRepository] submitCourseReview: slug=$cleanSlug, rating=$rating');
+    debugPrint(
+      '⭐ [CourseRepository] submitCourseReview: slug=$cleanSlug, rating=$rating',
+    );
     final token = await tokenStorage?.getAccessToken();
 
     http.Response response;
     try {
-      response = await http.post(
-        Uri.parse('$_baseUrl/courses/$cleanSlug/reviews/'),
-        headers: {
-          if (token != null) 'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: jsonEncode({
-          'rating': rating,
-          'comment': comment,
-        }),
-      ).timeout(const Duration(seconds: 15));
+      response = await http
+          .post(
+            Uri.parse('$_baseUrl/courses/$cleanSlug/reviews/'),
+            headers: {
+              if (token != null) 'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: jsonEncode({'rating': rating, 'comment': comment}),
+          )
+          .timeout(const Duration(seconds: 15));
     } catch (e) {
       throw ApiException.from(e);
     }
 
-    debugPrint('⭐ [CourseRepository] submit review status: ${response.statusCode}, body: ${response.body}');
+    debugPrint(
+      '⭐ [CourseRepository] submit review status: ${response.statusCode}, body: ${response.body}',
+    );
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       try {
@@ -290,7 +314,8 @@ class CourseRepository {
         if (response.statusCode == 404) {
           errorMsg = 'Course not found or review endpoint unavailable (404).';
         } else if (response.statusCode >= 500) {
-          errorMsg = 'Server error occurred while submitting review. Please try again later.';
+          errorMsg =
+              'Server error occurred while submitting review. Please try again later.';
         }
       }
       throw Exception(errorMsg);
@@ -304,7 +329,9 @@ class CourseRepository {
     if (cleanSlug.isEmpty || cleanRevId.isEmpty) {
       throw Exception('Course slug or review id is missing');
     }
-    debugPrint('🗑️ [CourseRepository] deleteCourseReview: slug=$cleanSlug, reviewId=$cleanRevId');
+    debugPrint(
+      '🗑️ [CourseRepository] deleteCourseReview: slug=$cleanSlug, reviewId=$cleanRevId',
+    );
     final token = await tokenStorage?.getAccessToken();
     final headers = {
       if (token != null) 'Authorization': 'Bearer $token',
@@ -324,8 +351,12 @@ class CourseRepository {
 
     for (final uri in candidates) {
       try {
-        final res = await http.delete(uri, headers: headers).timeout(const Duration(seconds: 10));
-        debugPrint('🗑️ [CourseRepository] deleteReview at $uri -> ${res.statusCode}');
+        final res = await http
+            .delete(uri, headers: headers)
+            .timeout(const Duration(seconds: 10));
+        debugPrint(
+          '🗑️ [CourseRepository] deleteReview at $uri -> ${res.statusCode}',
+        );
         if (res.statusCode >= 200 && res.statusCode < 300) {
           succeeded = true;
           break;
@@ -340,15 +371,67 @@ class CourseRepository {
     }
 
     if (!succeeded) {
-      debugPrint('❌ [CourseRepository] All candidate endpoints returned error/404: $lastError');
-      if (lastError.contains('403') || lastError.toLowerCase().contains('permission')) {
+      debugPrint(
+        '❌ [CourseRepository] All candidate endpoints returned error/404: $lastError',
+      );
+      if (lastError.contains('403') ||
+          lastError.toLowerCase().contains('permission')) {
         throw Exception('You do not have permission to delete this review.');
       } else if (lastError.contains('404')) {
-        throw Exception('Review could not be found or has already been removed.');
-      } else if (lastError.toLowerCase().contains('socket') || lastError.toLowerCase().contains('network')) {
-        throw Exception('Network error. Please check your internet connection.');
+        throw Exception(
+          'Review could not be found or has already been removed.',
+        );
+      } else if (lastError.toLowerCase().contains('socket') ||
+          lastError.toLowerCase().contains('network')) {
+        throw Exception(
+          'Network error. Please check your internet connection.',
+        );
       }
-      throw Exception('Unable to delete review at this time. Please try again later.');
+      throw Exception(
+        'Unable to delete review at this time. Please try again later.',
+      );
+    }
+  }
+
+  /// Enroll in a free course with 1-click instant enrollment.
+  /// POST /api/v1/courses/{course_id}/enroll-free/
+  Future<Map<String, dynamic>> enrollFree(String courseId) async {
+    final token = await tokenStorage?.getAccessToken();
+    final headers = {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+      if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+    };
+
+    final uri = Uri.parse('$_baseUrl/courses/$courseId/enroll-free/');
+    debugPrint('🎓 [CourseRepository] enrollFree: POST $uri');
+
+    try {
+      final response = await http
+          .post(uri, headers: headers)
+          .timeout(const Duration(seconds: 15));
+      debugPrint(
+        '🎓 [CourseRepository] enrollFree HTTP status: ${response.statusCode}, body: ${response.body}',
+      );
+
+      final decoded = jsonDecode(response.body);
+      final data = decoded is Map<String, dynamic>
+          ? decoded
+          : <String, dynamic>{};
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return data;
+      }
+
+      final errorMsg =
+          data['message'] ??
+          data['detail'] ??
+          data['error'] ??
+          'Failed to enroll in free course';
+      throw Exception(errorMsg.toString());
+    } catch (e) {
+      debugPrint('❌ [CourseRepository] enrollFree ERROR: $e');
+      rethrow;
     }
   }
 }

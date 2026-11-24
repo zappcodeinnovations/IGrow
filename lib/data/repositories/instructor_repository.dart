@@ -41,10 +41,18 @@ class InstructorRepository {
 
   /// Get instructor dashboard stats.
   Future<Map<String, dynamic>> getStats() async {
-    final response = await appApi.apiV1AuthInstructorStatsGet();
-    final dynamic data = response.body;
-    if (data is Map<String, dynamic>) return data;
-    return data?.toJson() as Map<String, dynamic>? ?? {};
+    final token = await tokenStorage.getAccessToken();
+    if (token == null || token.isEmpty) {
+      return {};
+    }
+    try {
+      final response = await appApi.apiV1AuthInstructorStatsGet();
+      final dynamic data = response.body;
+      if (data is Map<String, dynamic>) return data;
+      return data?.toJson() as Map<String, dynamic>? ?? {};
+    } catch (_) {
+      return {};
+    }
   }
 
   /// Get instructor transactions.
@@ -88,6 +96,10 @@ class InstructorRepository {
     String? search,
     String? ordering,
   }) async {
+    final token = await tokenStorage.getAccessToken();
+    if (token == null || token.isEmpty) {
+      return PaginatedResponse<ApiCourseList>(count: 0, results: []);
+    }
     // 1. Direct HTTP call to avoid Chopper generated serializer TypeErrors
     try {
       final token = await tokenStorage.getAccessToken();
@@ -649,6 +661,10 @@ class InstructorRepository {
 
   /// List instructor's ebooks.
   Future<PaginatedEBookList> getEBooks({int? page}) async {
+    final token = await tokenStorage.getAccessToken();
+    if (token == null || token.isEmpty) {
+      return PaginatedEBookList(count: 0, results: []);
+    }
     // 1. Direct HTTP call to capture price and custom fields
     try {
       final token = await tokenStorage.getAccessToken();

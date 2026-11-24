@@ -17,7 +17,6 @@ import '../../news/widgets/home_news_carousel.dart';
 import '../../../core/widgets/shell_scaffold.dart';
 import '../../../core/localization/app_strings.dart';
 import '../../../data/models/user_role.dart';
-import '../../auth/widgets/become_instructor_bottom_sheet.dart';
 import '../widgets/floating_offer_badge.dart';
 import '../widgets/home_banner_carousel.dart';
 import '../widgets/student_welcome_dialog.dart';
@@ -34,23 +33,6 @@ class FarmerHomeScreen extends ConsumerStatefulWidget {
 
 class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
   void _showSwitchRoleDialog(BuildContext context) {
-    final user = ref.read(authProvider).user;
-    final hasInstructorRole =
-        user?.grantedRoles.contains(UserRole.instructor) == true;
-
-    // If user has not yet unlocked Instructor role, show the Become Instructor flow (Name + Phone)
-    if (!hasInstructorRole) {
-      BecomeInstructorBottomSheet.show(
-        context,
-        onSuccess: () {
-          if (context.mounted) {
-            context.go(RouteNames.instructorHome);
-          }
-        },
-      );
-      return;
-    }
-
     final isDark = Theme.of(context).brightness == Brightness.dark;
     showDialog(
       context: context,
@@ -59,7 +41,11 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
-            const Icon(Icons.swap_horiz_rounded, color: Color(0xFF16A34A), size: 28),
+            const Icon(
+              Icons.swap_horiz_rounded,
+              color: Color(0xFF16A34A),
+              size: 28,
+            ),
             const SizedBox(width: 10),
             Text(
               tr(ref, 'Switch Mode'),
@@ -68,7 +54,10 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
           ],
         ),
         content: Text(
-          tr(ref, 'You are switching to Instructor Mode. You will be able to create courses, manage students, and view teaching analytics.'),
+          tr(
+            ref,
+            'You are switching to Instructor Mode. You will be able to create courses, manage students, and view teaching analytics.',
+          ),
           style: const TextStyle(fontSize: 14, height: 1.4),
         ),
         actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
@@ -78,9 +67,13 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
               Expanded(
                 child: OutlinedButton(
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: isDark ? Colors.white70 : AppColors.inkDark,
+                    foregroundColor: isDark
+                        ? Colors.white70
+                        : AppColors.inkDark,
                     side: BorderSide(
-                      color: isDark ? const Color(0xFF2C3E31) : const Color(0xFFD1DDD0),
+                      color: isDark
+                          ? const Color(0xFF2C3E31)
+                          : const Color(0xFFD1DDD0),
                       width: 1.2,
                     ),
                     shape: RoundedRectangleBorder(
@@ -91,7 +84,10 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                   onPressed: () => Navigator.pop(dialogCtx),
                   child: Text(
                     tr(ref, 'Cancel'),
-                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13.5,
+                    ),
                   ),
                 ),
               ),
@@ -119,7 +115,10 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                   },
                   child: Text(
                     tr(ref, 'OK, Switch'),
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13.5,
+                    ),
                   ),
                 ),
               ),
@@ -139,7 +138,12 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         final user = ref.read(authProvider).user;
-        StudentWelcomeDialog.checkAndShow(context, userId: user?.id ?? user?.email);
+        StudentWelcomeDialog.checkAndShow(
+          context,
+          userId: user?.id ?? user?.email,
+          user: user,
+          ref: ref,
+        );
       }
     });
   }
@@ -409,7 +413,7 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                                     return const SizedBox.shrink();
                                   }
                                   return SizedBox(
-                                    height: 98,
+                                    height: 112,
                                     child: ListView.separated(
                                       scrollDirection: Axis.horizontal,
                                       itemCount: categories.length,
@@ -417,15 +421,9 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                                           const SizedBox(width: 14),
                                       itemBuilder: (context, index) {
                                         final cat = categories[index];
-                                        final iconData = _getCategoryIcon(
+                                        final imagePath = _getCategoryImagePath(
                                           cat.name,
                                           cat.slug,
-                                        );
-                                        final visual = _getCategoryVisual(
-                                          cat.name,
-                                          cat.slug,
-                                          isDark,
-                                          index,
                                         );
 
                                         return InkWell(
@@ -435,52 +433,78 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                                             );
                                           },
                                           borderRadius: BorderRadius.circular(
-                                            18,
+                                            20,
                                           ),
                                           child: Column(
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
                                               Container(
-                                                width: 62,
-                                                height: 62,
+                                                width: 76,
+                                                height: 76,
                                                 decoration: BoxDecoration(
-                                                  gradient: LinearGradient(
-                                                    colors: visual.gradient,
-                                                    begin: Alignment.topLeft,
-                                                    end: Alignment.bottomRight,
-                                                  ),
                                                   borderRadius:
-                                                      BorderRadius.circular(18),
+                                                      BorderRadius.circular(20),
                                                   border: Border.all(
-                                                    color: visual.borderColor,
-                                                    width: 1.2,
+                                                    color: isDark
+                                                        ? Colors.white24
+                                                        : const Color(
+                                                            0xFFD1E7DD,
+                                                          ),
+                                                    width: 1.5,
                                                   ),
                                                   boxShadow: [
                                                     BoxShadow(
-                                                      color: visual.shadowColor,
-                                                      blurRadius: 8,
+                                                      color: Colors.black
+                                                          .withValues(
+                                                            alpha: isDark
+                                                                ? 0.35
+                                                                : 0.08,
+                                                          ),
+                                                      blurRadius: 10,
                                                       offset: const Offset(
                                                         0,
-                                                        3,
+                                                        4,
                                                       ),
                                                     ),
                                                   ],
                                                 ),
-                                                child: Center(
-                                                  child: Icon(
-                                                    iconData,
-                                                    size: 26,
-                                                    color: visual.iconColor,
+                                                child: ClipRRect(
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                        18.5,
+                                                      ),
+                                                  child: Image.asset(
+                                                    imagePath,
+                                                    fit: BoxFit.cover,
+                                                    errorBuilder:
+                                                        (
+                                                          _,
+                                                          __,
+                                                          ___,
+                                                        ) => Container(
+                                                          color: const Color(
+                                                            0xFFE8F5E9,
+                                                          ),
+                                                          child: const Center(
+                                                            child: Icon(
+                                                              Icons
+                                                                  .agriculture_rounded,
+                                                              color: AppColors
+                                                                  .primaryGreen,
+                                                              size: 32,
+                                                            ),
+                                                          ),
+                                                        ),
                                                   ),
                                                 ),
                                               ),
-                                              const SizedBox(height: 6),
+                                              const SizedBox(height: 8),
                                               SizedBox(
-                                                width: 68,
+                                                width: 78,
                                                 child: Text(
                                                   cat.name,
                                                   style: TextStyle(
-                                                    fontSize: 11.5,
+                                                    fontSize: 12,
                                                     fontWeight: FontWeight.w600,
                                                     letterSpacing: -0.2,
                                                     color: isDark
@@ -506,7 +530,7 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                                   );
                                 },
                                 loading: () => SizedBox(
-                                  height: 98,
+                                  height: 112,
                                   child: ListView.separated(
                                     scrollDirection: Axis.horizontal,
                                     itemCount: 4,
@@ -515,14 +539,14 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
                                     itemBuilder: (context, index) => Column(
                                       children: const [
                                         ShimmerContainer(
-                                          width: 62,
-                                          height: 62,
-                                          borderRadius: 16,
+                                          width: 76,
+                                          height: 76,
+                                          borderRadius: 20,
                                         ),
-                                        SizedBox(height: 6),
+                                        SizedBox(height: 8),
                                         ShimmerContainer(
-                                          width: 48,
-                                          height: 10,
+                                          width: 65,
+                                          height: 12,
                                           borderRadius: 4,
                                         ),
                                       ],
@@ -932,233 +956,72 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
   }
 }
 
-// ── Professional Category Visual Configurations ─────────────────────────────
-class _CategoryVisualConfig {
-  final List<Color> gradient;
-  final Color borderColor;
-  final Color shadowColor;
-  final Color iconColor;
-
-  const _CategoryVisualConfig({
-    required this.gradient,
-    required this.borderColor,
-    required this.shadowColor,
-    required this.iconColor,
-  });
-}
-
-IconData _getCategoryIcon(String name, [String? slug]) {
+// ── Category Real Image Mapping ──────────────────────────────────────────────
+String _getCategoryImagePath(String name, [String? slug]) {
   final key = '${name.toLowerCase()} ${slug?.toLowerCase() ?? ''}';
   if (key.contains('crop') ||
       key.contains('agronomy') ||
       key.contains('फसल') ||
       key.contains('पिके')) {
-    return Icons.agriculture_rounded;
-  } else if (key.contains('organic') ||
-      key.contains('sustainable') ||
-      key.contains('जैविक') ||
-      key.contains('सेंद्रिय')) {
-    return Icons.eco_rounded;
-  } else if (key.contains('water') ||
-      key.contains('irrigat') ||
-      key.contains('सिंचाई') ||
-      key.contains('सिंचन')) {
-    return Icons.water_drop_rounded;
-  } else if (key.contains('pest') ||
-      key.contains('disease') ||
-      key.contains('protect') ||
-      key.contains('कीट') ||
-      key.contains('कीड')) {
-    return Icons.shield_outlined;
+    return 'assets/images/categories/crop_production.jpg';
   } else if (key.contains('dairy') ||
       key.contains('cow') ||
       key.contains('milk') ||
       key.contains('दुग्ध')) {
-    return Icons.local_drink_rounded;
-  } else if (key.contains('livestock') ||
-      key.contains('animal') ||
-      key.contains('husbandry') ||
-      key.contains('पशुधन')) {
-    return Icons.pets_rounded;
-  } else if (key.contains('poultry') ||
-      key.contains('मुर्गी') ||
-      key.contains('कुक्कुट')) {
-    return Icons.egg_outlined;
-  } else if (key.contains('aquaculture') ||
-      key.contains('fish') ||
-      key.contains('मछली') ||
-      key.contains('मत्स्य')) {
-    return Icons.set_meal_rounded;
-  } else if (key.contains('horticult') ||
-      key.contains('fruit') ||
-      key.contains('veget') ||
-      key.contains('बागवानी') ||
-      key.contains('फलोत्पादन')) {
-    return Icons.local_florist_rounded;
-  } else if (key.contains('agroforestry') ||
-      key.contains('forestry') ||
-      key.contains('वानिकी') ||
-      key.contains('वनशेती')) {
-    return Icons.park_rounded;
+    return 'assets/images/categories/dairy_farming.jpg';
   } else if (key.contains('food') ||
       key.contains('process') ||
       key.contains('storage') ||
       key.contains('खाद्य') ||
       key.contains('अन्न')) {
-    return Icons.inventory_2_outlined;
-  } else if (key.contains('business') ||
-      key.contains('market') ||
-      key.contains('व्यवसाय') ||
-      key.contains('विपणन')) {
-    return Icons.storefront_rounded;
+    return 'assets/images/categories/food_processing.jpg';
+  } else if (key.contains('horticult') ||
+      key.contains('fruit') ||
+      key.contains('veget') ||
+      key.contains('बागवानी') ||
+      key.contains('फलोत्पादन')) {
+    return 'assets/images/categories/horticulture.jpg';
+  } else if (key.contains('water') ||
+      key.contains('irrigat') ||
+      key.contains('सिंचाई') ||
+      key.contains('सिंचन')) {
+    return 'assets/images/categories/irrigation.jpg';
+  } else if (key.contains('livestock') ||
+      key.contains('animal') ||
+      key.contains('husbandry') ||
+      key.contains('पशुधन') ||
+      key.contains('poultry') ||
+      key.contains('aquaculture')) {
+    return 'assets/images/categories/livestock.jpg';
+  } else if (key.contains('organic') ||
+      key.contains('जैविक') ||
+      key.contains('सेंद्रिय')) {
+    return 'assets/images/categories/organic_farming.jpg';
+  } else if (key.contains('pest') ||
+      key.contains('disease') ||
+      key.contains('protect') ||
+      key.contains('कीट') ||
+      key.contains('कीड')) {
+    return 'assets/images/categories/pest_management.jpg';
   } else if (key.contains('precision') ||
       key.contains('tech') ||
       key.contains('machin') ||
       key.contains('यंत्र') ||
       key.contains('अवजारे')) {
-    return Icons.precision_manufacturing_rounded;
+    return 'assets/images/categories/precision_agriculture.jpg';
   } else if (key.contains('soil') ||
       key.contains('मृदा') ||
       key.contains('माती')) {
-    return Icons.landscape_rounded;
-  } else if (key.contains('climate') ||
-      key.contains('weather') ||
-      key.contains('मौसम')) {
-    return Icons.wb_sunny_rounded;
+    return 'assets/images/categories/soil_science.jpg';
+  } else if (key.contains('sustainable') || key.contains('शाश्वत')) {
+    return 'assets/images/categories/sustainable_farming.jpg';
+  } else if (key.contains('agroforestry') ||
+      key.contains('forestry') ||
+      key.contains('वानिकी') ||
+      key.contains('वनशेती')) {
+    return 'assets/images/categories/agroforestry.jpg';
   }
-  return Icons.spa_rounded;
-}
-
-_CategoryVisualConfig _getCategoryVisual(
-  String name,
-  String? slug,
-  bool isDark,
-  int index,
-) {
-  final key = '${name.toLowerCase()} ${slug?.toLowerCase() ?? ''}';
-
-  if (isDark) {
-    if (key.contains('crop') ||
-        key.contains('agronomy') ||
-        key.contains('organic') ||
-        key.contains('sustainable')) {
-      return _CategoryVisualConfig(
-        gradient: [const Color(0xFF143E24), const Color(0xFF1B4D2E)],
-        borderColor: const Color(0xFF22C55E).withValues(alpha: 0.35),
-        shadowColor: const Color(0xFF22C55E).withValues(alpha: 0.15),
-        iconColor: const Color(0xFF86EFAC),
-      );
-    } else if (key.contains('water') ||
-        key.contains('irrigat') ||
-        key.contains('aquaculture')) {
-      return _CategoryVisualConfig(
-        gradient: [const Color(0xFF0F314D), const Color(0xFF134E74)],
-        borderColor: const Color(0xFF38BDF8).withValues(alpha: 0.35),
-        shadowColor: const Color(0xFF38BDF8).withValues(alpha: 0.15),
-        iconColor: const Color(0xFF7DD3FC),
-      );
-    } else if (key.contains('pest') ||
-        key.contains('disease') ||
-        key.contains('protect')) {
-      return _CategoryVisualConfig(
-        gradient: [const Color(0xFF422020), const Color(0xFF6B2D2D)],
-        borderColor: const Color(0xFFF87171).withValues(alpha: 0.35),
-        shadowColor: const Color(0xFFF87171).withValues(alpha: 0.15),
-        iconColor: const Color(0xFFFCA5A5),
-      );
-    } else if (key.contains('dairy') ||
-        key.contains('livestock') ||
-        key.contains('poultry')) {
-      return _CategoryVisualConfig(
-        gradient: [const Color(0xFF3E2D12), const Color(0xFF5E431B)],
-        borderColor: const Color(0xFFFBBF24).withValues(alpha: 0.35),
-        shadowColor: const Color(0xFFFBBF24).withValues(alpha: 0.15),
-        iconColor: const Color(0xFFFDE68A),
-      );
-    } else if (key.contains('horticult') || key.contains('agroforestry')) {
-      return _CategoryVisualConfig(
-        gradient: [const Color(0xFF183B32), const Color(0xFF235447)],
-        borderColor: const Color(0xFF34D399).withValues(alpha: 0.35),
-        shadowColor: const Color(0xFF34D399).withValues(alpha: 0.15),
-        iconColor: const Color(0xFFA7F3D0),
-      );
-    } else if (key.contains('food') || key.contains('business')) {
-      return _CategoryVisualConfig(
-        gradient: [const Color(0xFF452B14), const Color(0xFF663E1C)],
-        borderColor: const Color(0xFFFB923C).withValues(alpha: 0.35),
-        shadowColor: const Color(0xFFFB923C).withValues(alpha: 0.15),
-        iconColor: const Color(0xFFFED7AA),
-      );
-    } else {
-      return _CategoryVisualConfig(
-        gradient: [const Color(0xFF272A3D), const Color(0xFF3A3F5C)],
-        borderColor: const Color(0xFF818CF8).withValues(alpha: 0.35),
-        shadowColor: const Color(0xFF818CF8).withValues(alpha: 0.15),
-        iconColor: const Color(0xFFC7D2FE),
-      );
-    }
-  }
-
-  // Light Mode (Clean, subtle pastel tints with crisp professional icon colors)
-  if (key.contains('crop') ||
-      key.contains('agronomy') ||
-      key.contains('organic') ||
-      key.contains('sustainable')) {
-    return _CategoryVisualConfig(
-      gradient: [const Color(0xFFF0FDF4), const Color(0xFFDCFCE7)],
-      borderColor: const Color(0xFFBBF7D0),
-      shadowColor: const Color(0xFF16A34A).withValues(alpha: 0.10),
-      iconColor: const Color(0xFF15803D),
-    );
-  } else if (key.contains('water') ||
-      key.contains('irrigat') ||
-      key.contains('aquaculture')) {
-    return _CategoryVisualConfig(
-      gradient: [const Color(0xFFF0F9FF), const Color(0xFFE0F2FE)],
-      borderColor: const Color(0xFFBAE6FD),
-      shadowColor: const Color(0xFF0284C7).withValues(alpha: 0.10),
-      iconColor: const Color(0xFF0369A1),
-    );
-  } else if (key.contains('pest') ||
-      key.contains('disease') ||
-      key.contains('protect')) {
-    return _CategoryVisualConfig(
-      gradient: [const Color(0xFFFEF2F2), const Color(0xFFFEE2E2)],
-      borderColor: const Color(0xFFFECACA),
-      shadowColor: const Color(0xFFDC2626).withValues(alpha: 0.10),
-      iconColor: const Color(0xFFB91C1C),
-    );
-  } else if (key.contains('dairy') ||
-      key.contains('livestock') ||
-      key.contains('poultry')) {
-    return _CategoryVisualConfig(
-      gradient: [const Color(0xFFFFFBEB), const Color(0xFFFEF3C7)],
-      borderColor: const Color(0xFFFDE68A),
-      shadowColor: const Color(0xFFD97706).withValues(alpha: 0.10),
-      iconColor: const Color(0xFFB45309),
-    );
-  } else if (key.contains('horticult') || key.contains('agroforestry')) {
-    return _CategoryVisualConfig(
-      gradient: [const Color(0xFFECFDF5), const Color(0xFFD1FAE5)],
-      borderColor: const Color(0xFFA7F3D0),
-      shadowColor: const Color(0xFF059669).withValues(alpha: 0.10),
-      iconColor: const Color(0xFF047857),
-    );
-  } else if (key.contains('food') || key.contains('business')) {
-    return _CategoryVisualConfig(
-      gradient: [const Color(0xFFFFF7ED), const Color(0xFFFFEDD5)],
-      borderColor: const Color(0xFFFED7AA),
-      shadowColor: const Color(0xFFEA580C).withValues(alpha: 0.10),
-      iconColor: const Color(0xFFC2410C),
-    );
-  } else {
-    return _CategoryVisualConfig(
-      gradient: [const Color(0xFFF5F3FF), const Color(0xFFEDE9FE)],
-      borderColor: const Color(0xFFDDD6FE),
-      shadowColor: const Color(0xFF7C3AED).withValues(alpha: 0.10),
-      iconColor: const Color(0xFF6D28D9),
-    );
-  }
+  return 'assets/images/categories/crop_production.jpg';
 }
 
 // ── Course Card Component (Matching Prototype Screen 11 Large Card) ───────────────
@@ -1176,7 +1039,9 @@ class _CourseCard extends ConsumerWidget {
         course.price == '0' ||
         course.price == '0.00' ||
         course.price == '0.0';
-    final priceText = isFree ? tr(ref, 'FREE') : '₹${formatNum(ref, course.price)}';
+    final priceText = isFree
+        ? tr(ref, 'FREE')
+        : '₹${formatNum(ref, course.price)}';
     final ratingDisplay = formatNum(ref, '4.8');
     final reviewCount = formatNum(ref, 248);
     final categoryName =
@@ -1315,7 +1180,9 @@ class _CourseCard extends ConsumerWidget {
                       onTap: () {
                         final instName = course.instructorName;
                         if (instName != null && instName.trim().isNotEmpty) {
-                          context.push('/farmer/instructor/${Uri.encodeComponent(instName.trim())}');
+                          context.push(
+                            '/farmer/instructor/${Uri.encodeComponent(instName.trim())}',
+                          );
                         }
                       },
                       borderRadius: BorderRadius.circular(6),
@@ -1329,12 +1196,15 @@ class _CourseCard extends ConsumerWidget {
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w500,
-                                color: isDark ? Colors.white60 : const Color(0xFF6B7280),
+                                color: isDark
+                                    ? Colors.white60
+                                    : const Color(0xFF6B7280),
                               ),
                             ),
                             Flexible(
                               child: Text(
-                                course.instructorName ?? "IAGROW Agriculture Experts",
+                                course.instructorName ??
+                                    "IAGROW Agriculture Experts",
                                 style: const TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,

@@ -16,6 +16,8 @@ import '../../../data/models/api_models/course_models.dart';
 import '../../../data/models/api_models/order_models.dart';
 import '../../../core/services/app_config_service.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../auth/widgets/complete_social_profile_dialog.dart';
+import '../../auth/widgets/quick_auth_dialog.dart';
 import '../../explore/providers/explore_provider.dart';
 import '../../home_farmer/providers/student_provider.dart';
 import '../providers/cart_provider.dart';
@@ -204,6 +206,21 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     required double discountAmount,
     required List<dynamic> items,
   }) async {
+    // 1. If not authenticated, prompt in-app login/OTP popup first
+    final authState = ref.read(authProvider);
+    if (!authState.isAuthenticated) {
+      final loggedIn = await QuickAuthDialog.show(context);
+      if (!loggedIn) return;
+    }
+
+    // Check if user has phone number set
+    final user = ref.read(authProvider).user;
+    if (user != null && user.phone.trim().isEmpty) {
+      final completed = await CompleteSocialProfileDialog.show(context, user);
+      if (!completed) return;
+    }
+
+    if (!mounted) return;
     setState(() => _isProcessing = true);
 
     // Snapshot order details

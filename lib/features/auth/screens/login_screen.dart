@@ -19,6 +19,7 @@ import '../../../core/widgets/app_social_button.dart';
 import '../../../core/widgets/eula_terms_dialog.dart';
 import '../../../core/widgets/organic_background.dart';
 import '../../../core/services/social_auth_service.dart';
+import '../../../core/services/app_config_service.dart';
 import '../../../data/models/user_role.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/complete_social_profile_dialog.dart';
@@ -51,16 +52,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (!mounted) return;
 
     final user = ref.read(authProvider).user;
-    final needsDetails =
-        user != null &&
-        (user.phone.trim().isEmpty ||
-            (user.locationState == null || user.locationState!.trim().isEmpty));
-
-    if (needsDetails) {
-      await CompleteSocialProfileDialog.show(context, user);
-      if (!mounted) return;
-    }
-
+    // Profile popup is not shown on login. Phone is requested during course purchase/checkout.
     var updatedUser = ref.read(authProvider).user ?? user;
     if (updatedUser == null) return;
 
@@ -209,6 +201,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bool isAnyLoading =
         _isGoogleLoading || _isAppleLoading || _isPhoneLoading;
+    final bool canShowPhoneLogin = ref.watch(appConfigProvider).canShowPhoneLogin;
 
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
@@ -303,65 +296,67 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                     const SizedBox(height: 24),
 
-                    // Divider with "OR"
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Divider(
-                            color: isDark
-                                ? AppColors.lineDark
-                                : AppColors.organicBorderLight,
-                            thickness: 1,
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 14),
-                          child: Text(
-                            tr(ref, 'OR CONTINUE WITH PHONE').toUpperCase(),
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w700,
+                    if (canShowPhoneLogin) ...[
+  // Divider with "OR"
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Divider(
                               color: isDark
-                                  ? AppColors.organicSubtitleDark
-                                  : AppColors.organicSubtitleGreen,
-                              letterSpacing: 1.1,
+                                  ? AppColors.lineDark
+                                  : AppColors.organicBorderLight,
+                              thickness: 1,
                             ),
                           ),
-                        ),
-                        Expanded(
-                          child: Divider(
-                            color: isDark
-                                ? AppColors.lineDark
-                                : AppColors.organicBorderLight,
-                            thickness: 1,
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 14),
+                            child: Text(
+                              tr(ref, 'OR CONTINUE WITH PHONE').toUpperCase(),
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w700,
+                                color: isDark
+                                    ? AppColors.organicSubtitleDark
+                                    : AppColors.organicSubtitleGreen,
+                                letterSpacing: 1.1,
+                              ),
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // 2. SIGN IN WITH MOBILE NUMBER
-                    AppPillTextField(
-                      controller: _phoneController,
-                      hintText: tr(ref, 'Enter 10-digit mobile number'),
-                      prefixIcon: Icons.phone_android_rounded,
-                      keyboardType: TextInputType.phone,
-                      textInputAction: TextInputAction.done,
-                      maxLength: 10,
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      onSubmitted: (_) => _sendPhoneOtp(),
-                    ),
-
-                    const SizedBox(height: 14),
-
-                    AppGradientButton(
-                      label: tr(ref, 'Get OTP'),
-                      isLoading: _isPhoneLoading,
-                      onPressed: isAnyLoading ? () {} : () => _sendPhoneOtp(),
-                    ),
-
-                    const SizedBox(height: 36),
+                          Expanded(
+                            child: Divider(
+                              color: isDark
+                                  ? AppColors.lineDark
+                                  : AppColors.organicBorderLight,
+                              thickness: 1,
+                            ),
+                          ),
+                        ],
+                      ),
+  
+                      const SizedBox(height: 20),
+  
+                      // 2. SIGN IN WITH MOBILE NUMBER
+                      AppPillTextField(
+                        controller: _phoneController,
+                        hintText: tr(ref, 'Enter 10-digit mobile number'),
+                        prefixIcon: Icons.phone_android_rounded,
+                        keyboardType: TextInputType.phone,
+                        textInputAction: TextInputAction.done,
+                        maxLength: 10,
+                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                        onSubmitted: (_) => _sendPhoneOtp(),
+                      ),
+  
+                      const SizedBox(height: 14),
+  
+                      AppGradientButton(
+                        label: tr(ref, 'Get OTP'),
+                        isLoading: _isPhoneLoading,
+                        onPressed: isAnyLoading ? () {} : () => _sendPhoneOtp(),
+                      ),
+  
+                      const SizedBox(height: 36),
+                    ],
 
                     // 3. EULA & TERMS & PRIVACY POLICY (MANDATORY FOR PLAY STORE / APP STORE COMPLIANCE)
                     GestureDetector(

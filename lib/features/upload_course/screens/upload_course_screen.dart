@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -18,6 +17,8 @@ import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/image_crop_rotate_screen.dart';
 import '../../../data/models/api_models/certificate_model.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../auth/widgets/quick_auth_dialog.dart';
+import '../../auth/widgets/instructor_contact_info_sheet.dart';
 import '../../certificates/widgets/certificate_viewer_dialog.dart';
 import '../../home_instructor/providers/instructor_home_provider.dart';
 import '../../home_farmer/providers/student_provider.dart';
@@ -82,11 +83,7 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
       id: 1,
       title: 'Module 1: Introduction',
       lectures: [
-        _WizardLecture(
-          id: 101,
-          title: 'Course Overview',
-          isPreview: true,
-        ),
+        _WizardLecture(id: 101, title: 'Course Overview', isPreview: true),
       ],
     ),
   ];
@@ -95,8 +92,9 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
   bool _issueCertificate = true;
   File? _signatureImage;
   final String _selectedTemplate = 'modern';
-  final _instructorTitleController =
-      TextEditingController(text: 'Lead Instructor & Agricultural Specialist');
+  final _instructorTitleController = TextEditingController(
+    text: 'Lead Instructor & Agricultural Specialist',
+  );
 
   // ── Submission State ──────────────────────────────────────────────────────
   bool _isSubmitting = false;
@@ -181,7 +179,9 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
             persistentFile = await sourceFile.copy(persistentPath);
           }
         } catch (copyErr) {
-          debugPrint('⚠️ Could not persist cover image to app storage: $copyErr');
+          debugPrint(
+            '⚠️ Could not persist cover image to app storage: $copyErr',
+          );
         }
         if (mounted) {
           setState(() => _coverImage = persistentFile);
@@ -290,7 +290,6 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
     });
   }
 
-
   Future<void> _pickLectureVideo(_WizardLecture lecture) async {
     FocusManager.instance.primaryFocus?.unfocus();
     await Future.delayed(const Duration(milliseconds: 120));
@@ -307,25 +306,6 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
     }
   }
 
-  Future<void> _pickLectureResource(_WizardLecture lecture) async {
-    FocusManager.instance.primaryFocus?.unfocus();
-    await Future.delayed(const Duration(milliseconds: 120));
-    try {
-      final result = await FilePicker.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['pdf', 'docx', 'xlsx'],
-      );
-      if (result != null && result.files.single.path != null) {
-        setState(() {
-          lecture.resourceFile = File(result.files.single.path!);
-          lecture.resourceName = result.files.single.name;
-        });
-      }
-    } catch (e) {
-      _showErrorSnackbar('Failed to pick document: $e');
-    }
-  }
-
   bool _validateStep2() {
     if (_curriculum.isEmpty) {
       _showErrorSnackbar('Please add at least one module.');
@@ -338,13 +318,17 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
         return false;
       }
       if (mod.lectures.isEmpty) {
-        _showErrorSnackbar('Module "${mod.title}" must have at least one lecture.');
+        _showErrorSnackbar(
+          'Module "${mod.title}" must have at least one lecture.',
+        );
         return false;
       }
       for (int j = 0; j < mod.lectures.length; j++) {
         final lec = mod.lectures[j];
         if (lec.titleController.text.trim().isEmpty) {
-          _showErrorSnackbar('Lecture ${j + 1} in "${mod.title}" needs a title.');
+          _showErrorSnackbar(
+            'Lecture ${j + 1} in "${mod.title}" needs a title.',
+          );
           return false;
         }
       }
@@ -388,7 +372,9 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
             persistentFile = await sourceFile.copy(persistentPath);
           }
         } catch (copyErr) {
-          debugPrint('⚠️ Could not persist signature image to app storage: $copyErr');
+          debugPrint(
+            '⚠️ Could not persist signature image to app storage: $copyErr',
+          );
         }
         if (mounted) {
           setState(() => _signatureImage = persistentFile);
@@ -415,6 +401,23 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
   // ── Final Submission (Create Course Draft Pipeline) ────────────────────────
 
   Future<void> _submitCreateCourseDraft() async {
+    final token = await ref.read(tokenStorageProvider).getAccessToken();
+    if (token == null || token.isEmpty) {
+      final loggedIn = await QuickAuthDialog.show(context);
+      if (!loggedIn || !mounted) return;
+    }
+
+    final currentUser = ref.read(authProvider).user;
+    final hasValidPhone = currentUser != null && currentUser.phone.trim().isNotEmpty;
+    final hasValidEmail = currentUser != null && currentUser.email.trim().isNotEmpty;
+    if (!hasValidPhone || !hasValidEmail) {
+      final updated = await InstructorContactInfoBottomSheet.show(
+        context,
+        onSuccess: () {},
+      );
+      if (updated != true || !mounted) return;
+    }
+
     NotificationService.markCourseUploadStarted();
 
     setState(() {
@@ -440,25 +443,24 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
         if (await _coverImage!.exists()) {
           validCoverImagePath = _coverImage!.path;
         } else {
-          debugPrint('⚠️ [UploadCourse] Cached cover image path disappeared: ${_coverImage!.path}');
+          debugPrint(
+            '⚠️ [UploadCourse] Cached cover image path disappeared: ${_coverImage!.path}',
+          );
           setState(() => _coverImage = null);
         }
       }
 
-      final courseRes = await repo.createCourse(
-        {
-          'title': _titleController.text.trim(),
-          'short_description': _shortDescController.text.trim(),
-          'description': _descController.text.trim(),
-          if (_selectedCategoryId != null && _selectedCategoryId!.isNotEmpty)
-            'category_id': _selectedCategoryId!,
-          'category': _selectedCategory.toLowerCase().replaceAll(' ', '_'),
-          'level': _selectedLevel.toLowerCase(),
-          'price': priceNum.toStringAsFixed(2),
-          'language': _selectedLanguage,
-        },
-        imagePath: validCoverImagePath,
-      );
+      final courseRes = await repo.createCourse({
+        'title': _titleController.text.trim(),
+        'short_description': _shortDescController.text.trim(),
+        'description': _descController.text.trim(),
+        if (_selectedCategoryId != null && _selectedCategoryId!.isNotEmpty)
+          'category_id': _selectedCategoryId!,
+        'category': _selectedCategory.toLowerCase().replaceAll(' ', '_'),
+        'level': _selectedLevel.toLowerCase(),
+        'price': priceNum.toStringAsFixed(2),
+        'language': _selectedLanguage,
+      }, imagePath: validCoverImagePath);
 
       final courseId = courseRes['id']?.toString() ?? '';
       if (courseId.isEmpty) {
@@ -496,7 +498,8 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
         if (sectionId.isNotEmpty && mod.lectures.isNotEmpty) {
           for (int lIdx = 0; lIdx < mod.lectures.length; lIdx++) {
             final lec = mod.lectures[lIdx];
-            final previewSec = int.tryParse(lec.previewDurationController.text.trim()) ?? 30;
+            final previewSec =
+                int.tryParse(lec.previewDurationController.text.trim()) ?? 30;
             final lecRes = await repo.createLecture(courseId, sectionId, {
               'title': lec.titleController.text.trim(),
               'description': lec.descController.text.trim(),
@@ -511,7 +514,8 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
             if (lectureId.isNotEmpty && lec.videoFile != null) {
               mediaUploaded++;
               setState(() {
-                _submissionPercent = 0.3 + ((mediaUploaded / (totalMedia + 1)) * 0.55);
+                _submissionPercent =
+                    0.3 + ((mediaUploaded / (totalMedia + 1)) * 0.55);
                 _submissionProgressText =
                     'Uploading Video $mediaUploaded/$totalMedia: ${lec.titleController.text.trim()}...';
               });
@@ -531,7 +535,8 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
             if (lectureId.isNotEmpty && lec.resourceFile != null) {
               mediaUploaded++;
               setState(() {
-                _submissionPercent = 0.3 + ((mediaUploaded / (totalMedia + 1)) * 0.55);
+                _submissionPercent =
+                    0.3 + ((mediaUploaded / (totalMedia + 1)) * 0.55);
                 _submissionProgressText =
                     'Attaching Study Material: ${lec.resourceName ?? "PDF"}...';
               });
@@ -553,7 +558,8 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
       if (_signatureImage != null && await _signatureImage!.exists()) {
         setState(() {
           _submissionPercent = 0.95;
-          _submissionProgressText = 'Attaching Certificate Digital Signature...';
+          _submissionProgressText =
+              'Attaching Certificate Digital Signature...';
         });
         try {
           await repo.uploadCertificateTemplate(
@@ -623,7 +629,9 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
         final friendlyMsg = _getFriendlyErrorMessage(e);
         _showErrorSnackbar(
           friendlyMsg,
-          icon: isOffline ? Icons.wifi_off_rounded : Icons.error_outline_rounded,
+          icon: isOffline
+              ? Icons.wifi_off_rounded
+              : Icons.error_outline_rounded,
           onRetry: () => _submitCreateCourseDraft(),
           isCritical: true,
         );
@@ -669,7 +677,8 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
           if (decoded['detail'] != null) return decoded['detail'].toString();
           if (decoded['message'] != null) return decoded['message'].toString();
           if (decoded['error'] != null) return decoded['error'].toString();
-          if (decoded['non_field_errors'] is List && (decoded['non_field_errors'] as List).isNotEmpty) {
+          if (decoded['non_field_errors'] is List &&
+              (decoded['non_field_errors'] as List).isNotEmpty) {
             return (decoded['non_field_errors'] as List).first.toString();
           }
           for (final entry in decoded.entries) {
@@ -696,7 +705,9 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
     if (clean.startsWith('Failed to create course:')) {
       clean = clean.replaceFirst('Failed to create course:', '').trim();
     }
-    return clean.isNotEmpty ? clean : 'Failed to create course draft. Please try again.';
+    return clean.isNotEmpty
+        ? clean
+        : 'Failed to create course draft. Please try again.';
   }
 
   void _showErrorSnackbar(
@@ -742,8 +753,8 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
             _currentStep == 1
                 ? tr(ref, 'Create a New Course')
                 : _currentStep == 2
-                    ? tr(ref, 'Build Curriculum')
-                    : tr(ref, 'Course Certificate'),
+                ? tr(ref, 'Build Curriculum')
+                : tr(ref, 'Course Certificate'),
             style: const TextStyle(fontWeight: FontWeight.bold),
           ),
           centerTitle: true,
@@ -762,22 +773,34 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
           children: [
             SafeArea(
               child: SingleChildScrollView(
-                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 16,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     // Subtitle
                     Text(
                       _currentStep == 1
-                          ? tr(ref, 'Fill out the basic details of your agricultural course.')
+                          ? tr(
+                              ref,
+                              'Fill out the basic details of your agricultural course.',
+                            )
                           : _currentStep == 2
-                              ? tr(ref, 'Add your video lectures and chapters.')
-                              : tr(ref, 'Upload your signature to issue valid certificates upon completion.'),
+                          ? tr(ref, 'Add your video lectures and chapters.')
+                          : tr(
+                              ref,
+                              'Upload your signature to issue valid certificates upon completion.',
+                            ),
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 14,
-                        color: isDark ? Colors.grey.shade400 : AppColors.inkSoft,
+                        color: isDark
+                            ? Colors.grey.shade400
+                            : AppColors.inkSoft,
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -838,7 +861,9 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 13,
-                          color: isDark ? Colors.grey.shade400 : AppColors.inkSoft,
+                          color: isDark
+                              ? Colors.grey.shade400
+                              : AppColors.inkSoft,
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -958,7 +983,10 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
             controller: _shortDescController,
             maxLines: 2,
             decoration: InputDecoration(
-              hintText: tr(ref, 'A brief 1-2 sentence overview of the course...'),
+              hintText: tr(
+                ref,
+                'A brief 1-2 sentence overview of the course...',
+              ),
               border: const OutlineInputBorder(),
             ),
           ),
@@ -970,7 +998,10 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
             controller: _descController,
             maxLines: 4,
             decoration: InputDecoration(
-              hintText: tr(ref, 'Provide a detailed description of what students will learn...'),
+              hintText: tr(
+                ref,
+                'Provide a detailed description of what students will learn...',
+              ),
               border: const OutlineInputBorder(),
             ),
           ),
@@ -1010,8 +1041,13 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                             backgroundColor: Colors.black54,
                             child: IconButton(
                               padding: EdgeInsets.zero,
-                              icon: const Icon(Icons.close, size: 16, color: Colors.white),
-                              onPressed: () => setState(() => _coverImage = null),
+                              icon: const Icon(
+                                Icons.close,
+                                size: 16,
+                                color: Colors.white,
+                              ),
+                              onPressed: () =>
+                                  setState(() => _coverImage = null),
                             ),
                           ),
                         ),
@@ -1034,9 +1070,13 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : const Icon(Icons.cloud_upload_outlined, size: 18),
-                      label: Text(_isPickingCoverImage
-                          ? 'Opening...'
-                          : (_coverImage != null ? 'Change Thumbnail' : tr(ref, 'Upload Thumbnail'))),
+                      label: Text(
+                        _isPickingCoverImage
+                            ? 'Opening...'
+                            : (_coverImage != null
+                                  ? 'Change Thumbnail'
+                                  : tr(ref, 'Upload Thumbnail')),
+                      ),
                     ),
                     if (_coverImage != null)
                       OutlinedButton.icon(
@@ -1052,7 +1092,9 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                       tr(ref, '16:9 (1280x720), JPG/PNG'),
                       style: TextStyle(
                         fontSize: 11,
-                        color: isDark ? Colors.grey.shade400 : AppColors.inkSoft,
+                        color: isDark
+                            ? Colors.grey.shade400
+                            : AppColors.inkSoft,
                       ),
                     ),
                   ],
@@ -1066,7 +1108,9 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
           _buildFieldLabel(tr(ref, 'Category')),
           Consumer(
             builder: (context, ref, _) {
-              final backendCategoriesAsync = ref.watch(studentCategoriesProvider);
+              final backendCategoriesAsync = ref.watch(
+                studentCategoriesProvider,
+              );
               final backendCategories = backendCategoriesAsync.value ?? [];
 
               // Map category names or fallback to defaults
@@ -1082,12 +1126,22 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
               }
 
               // Ensure initial selected value matches one of the items
-              final hasMatch = catItems.any((item) => item.$2.toLowerCase() == _selectedCategory.toLowerCase());
+              final hasMatch = catItems.any(
+                (item) =>
+                    item.$2.toLowerCase() == _selectedCategory.toLowerCase(),
+              );
               if (!hasMatch && catItems.isNotEmpty) {
                 _selectedCategory = catItems.first.$2;
-                _selectedCategoryId = catItems.first.$1.isNotEmpty ? catItems.first.$1 : null;
-              } else if (hasMatch && (_selectedCategoryId == null || _selectedCategoryId!.isEmpty)) {
-                final matched = catItems.firstWhere((item) => item.$2.toLowerCase() == _selectedCategory.toLowerCase());
+                _selectedCategoryId = catItems.first.$1.isNotEmpty
+                    ? catItems.first.$1
+                    : null;
+              } else if (hasMatch &&
+                  (_selectedCategoryId == null ||
+                      _selectedCategoryId!.isEmpty)) {
+                final matched = catItems.firstWhere(
+                  (item) =>
+                      item.$2.toLowerCase() == _selectedCategory.toLowerCase(),
+                );
                 if (matched.$1.isNotEmpty) {
                   _selectedCategoryId = matched.$1;
                 }
@@ -1114,7 +1168,9 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                         (item) => item.$2.toLowerCase() == val.toLowerCase(),
                         orElse: () => ('', val),
                       );
-                      _selectedCategoryId = found.$1.isNotEmpty ? found.$1 : null;
+                      _selectedCategoryId = found.$1.isNotEmpty
+                          ? found.$1
+                          : null;
                     });
                   }
                 },
@@ -1155,24 +1211,36 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                     TextField(
                       controller: _priceController,
                       focusNode: _priceFocusNode,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
                       inputFormatters: [
-                        FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                        FilteringTextInputFormatter.allow(
+                          RegExp(r'^\d*\.?\d*'),
+                        ),
                       ],
                       decoration: const InputDecoration(
                         hintText: 'e.g., 499 (0 for Free)',
                         prefixText: '₹ ',
-                        helperText: 'Enter any custom course price (or 0 for Free).',
+                        helperText:
+                            'Enter any custom course price (or 0 for Free).',
                         border: OutlineInputBorder(),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
                       ),
                       onChanged: (val) {
-                        if (val.length > 1 && val.startsWith('0') && !val.startsWith('0.')) {
+                        if (val.length > 1 &&
+                            val.startsWith('0') &&
+                            !val.startsWith('0.')) {
                           final cleaned = val.replaceFirst(RegExp(r'^0+'), '');
                           final target = cleaned.isEmpty ? '0' : cleaned;
                           _priceController.value = TextEditingValue(
                             text: target,
-                            selection: TextSelection.collapsed(offset: target.length),
+                            selection: TextSelection.collapsed(
+                              offset: target.length,
+                            ),
                           );
                         }
                       },
@@ -1186,31 +1254,55 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                 children: [
                   _buildFieldLabel(tr(ref, 'Course Price Tier *')),
                   DropdownButtonFormField<String>(
-                    initialValue: const ['0', '249', '499', '999', '1499'].contains(_priceController.text.trim())
+                    initialValue:
+                        const [
+                          '0',
+                          '249',
+                          '499',
+                          '999',
+                          '1499',
+                        ].contains(_priceController.text.trim())
                         ? _priceController.text.trim()
                         : '0',
                     decoration: InputDecoration(
-                      helperText: tr(ref, 'Select one of the standard price tiers.'),
+                      helperText: tr(
+                        ref,
+                        'Select one of the standard price tiers.',
+                      ),
                       border: const OutlineInputBorder(),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
                     ),
                     items: [
-                      DropdownMenuItem(value: '0', child: Text(tr(ref, 'Free'))),
+                      DropdownMenuItem(
+                        value: '0',
+                        child: Text(tr(ref, 'Free')),
+                      ),
                       DropdownMenuItem(
                         value: '249',
-                        child: Text('₹${formatNum(ref, '249')} — ${tr(ref, 'Tier 1')}'),
+                        child: Text(
+                          '₹${formatNum(ref, '249')} — ${tr(ref, 'Tier 1')}',
+                        ),
                       ),
                       DropdownMenuItem(
                         value: '499',
-                        child: Text('₹${formatNum(ref, '499')} — ${tr(ref, 'Tier 1.5')}'),
+                        child: Text(
+                          '₹${formatNum(ref, '499')} — ${tr(ref, 'Tier 1.5')}',
+                        ),
                       ),
                       DropdownMenuItem(
                         value: '999',
-                        child: Text('₹${formatNum(ref, '999')} — ${tr(ref, 'Tier 2')}'),
+                        child: Text(
+                          '₹${formatNum(ref, '999')} — ${tr(ref, 'Tier 2')}',
+                        ),
                       ),
                       DropdownMenuItem(
                         value: '1499',
-                        child: Text('₹${formatNum(ref, '1,499')} — ${tr(ref, 'Tier 3')}'),
+                        child: Text(
+                          '₹${formatNum(ref, '1,499')} — ${tr(ref, 'Tier 3')}',
+                        ),
                       ),
                     ],
                     onChanged: (val) {
@@ -1259,7 +1351,9 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                     ),
                   ),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: isDark ? Colors.white70 : AppColors.inkDark,
+                    foregroundColor: isDark
+                        ? Colors.white70
+                        : AppColors.inkDark,
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
@@ -1293,7 +1387,10 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                     icon: const Icon(Icons.arrow_forward_rounded, size: 18),
                     label: Text(
                       tr(ref, 'Next'),
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
                     ),
                   ),
                 ),
@@ -1308,8 +1405,6 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
   // ── Step 2: Curriculum View ───────────────────────────────────────────────
 
   Widget _buildStep2Curriculum(bool isDark) {
-    final ebooksAsync = ref.watch(instructorEbooksProvider);
-
     return Column(
       children: [
         // Info Banner
@@ -1328,7 +1423,10 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  tr(ref, 'Organize your course into Modules (Chapters). Each module can contain multiple video lectures and study materials.'),
+                  tr(
+                    ref,
+                    'Organize your course into Modules (Chapters). Each module can contain multiple video lectures and study materials.',
+                  ),
                   style: TextStyle(fontSize: 13, color: Colors.blue.shade900),
                 ),
               ),
@@ -1338,7 +1436,10 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
         const SizedBox(height: 18),
 
         // Modules List
-        ..._curriculum.map((module) {
+        ..._curriculum.asMap().entries.map((modEntry) {
+          final modIndex = modEntry.key;
+          final module = modEntry.value;
+          final isFirstModule = modIndex == 0;
           // module item
           return Container(
             margin: const EdgeInsets.only(bottom: 20),
@@ -1355,32 +1456,58 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
               children: [
                 // Module Header
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
-                    color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade50,
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.05)
+                        : Colors.grey.shade50,
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(14),
+                    ),
                     border: Border(
                       bottom: BorderSide(
-                        color: isDark ? AppColors.lineDark : Colors.grey.shade200,
+                        color: isDark
+                            ? AppColors.lineDark
+                            : Colors.grey.shade200,
                       ),
                     ),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.folder_open_rounded, color: AppColors.primaryGreen, size: 20),
+                      const Icon(
+                        Icons.folder_open_rounded,
+                        color: AppColors.primaryGreen,
+                        size: 20,
+                      ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           tr(ref, module.title),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                          ),
                         ),
                       ),
                       TextButton.icon(
                         onPressed: () => _deleteModule(module.id),
-                        icon: const Icon(Icons.delete_outline, color: AppColors.error, size: 16),
-                        label: Text(tr(ref, 'Delete'), style: const TextStyle(color: AppColors.error, fontSize: 12)),
+                        icon: const Icon(
+                          Icons.delete_outline,
+                          color: AppColors.error,
+                          size: 16,
+                        ),
+                        label: Text(
+                          tr(ref, 'Delete'),
+                          style: const TextStyle(
+                            color: AppColors.error,
+                            fontSize: 12,
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -1399,7 +1526,9 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                             color: isDark ? Colors.black26 : Colors.white,
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: isDark ? AppColors.lineDark : Colors.grey.shade200,
+                              color: isDark
+                                  ? AppColors.lineDark
+                                  : Colors.grey.shade200,
                             ),
                           ),
                           child: Column(
@@ -1408,16 +1537,26 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                               // Lecture Title & Remove button
                               Row(
                                 children: [
-                                  const Icon(Icons.play_circle_outline, color: AppColors.primaryGreen, size: 20),
+                                  const Icon(
+                                    Icons.play_circle_outline,
+                                    color: AppColors.primaryGreen,
+                                    size: 20,
+                                  ),
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: TextField(
                                       controller: lecture.titleController,
-                                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 14,
+                                      ),
                                       decoration: InputDecoration(
                                         hintText: tr(ref, 'Lecture Title'),
                                         isDense: true,
-                                        contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                                        contentPadding:
+                                            const EdgeInsets.symmetric(
+                                              vertical: 8,
+                                            ),
                                         border: InputBorder.none,
                                       ),
                                     ),
@@ -1425,8 +1564,13 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                                   IconButton(
                                     padding: EdgeInsets.zero,
                                     constraints: const BoxConstraints(),
-                                    icon: const Icon(Icons.close, size: 18, color: Colors.grey),
-                                    onPressed: () => _deleteLecture(module.id, lecture.id),
+                                    icon: const Icon(
+                                      Icons.close,
+                                      size: 18,
+                                      color: Colors.grey,
+                                    ),
+                                    onPressed: () =>
+                                        _deleteLecture(module.id, lecture.id),
                                     tooltip: tr(ref, 'Remove'),
                                   ),
                                 ],
@@ -1438,36 +1582,52 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                                 controller: lecture.descController,
                                 style: const TextStyle(fontSize: 12),
                                 decoration: InputDecoration(
-                                  hintText: tr(ref, 'Add a short description or notes for this video...'),
+                                  hintText: tr(
+                                    ref,
+                                    'Add a short description or notes for this video...',
+                                  ),
                                   filled: true,
-                                  fillColor: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.grey.shade50,
+                                  fillColor: isDark
+                                      ? Colors.white.withValues(alpha: 0.04)
+                                      : Colors.grey.shade50,
                                   isDense: true,
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 8,
+                                  ),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(8),
-                                    borderSide: BorderSide(color: Colors.grey.shade300),
+                                    borderSide: BorderSide(
+                                      color: Colors.grey.shade300,
+                                    ),
                                   ),
                                 ),
                               ),
                               const SizedBox(height: 10),
 
-                              // Free Preview Toggle
-                              Row(
-                                children: [
-                                  Switch(
-                                    value: lecture.isPreview,
-                                    activeThumbColor: AppColors.primaryGreen,
-                                    onChanged: (val) => setState(() => lecture.isPreview = val),
-                                  ),
-                                  Text(
-                                    tr(ref, 'Free Preview Video'),
-                                    style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
-                                  ),
-                                ],
-                              ),
+                              // Free Preview Toggle (Only available for Module 1)
+                              if (isFirstModule)
+                                Row(
+                                  children: [
+                                    Switch(
+                                      value: lecture.isPreview,
+                                      activeThumbColor: AppColors.primaryGreen,
+                                      onChanged: (val) => setState(
+                                        () => lecture.isPreview = val,
+                                      ),
+                                    ),
+                                    Text(
+                                      tr(ref, 'Free Preview Video'),
+                                      style: const TextStyle(
+                                        fontSize: 12.5,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               const SizedBox(height: 8),
 
-                              // Video & Study Material Attachments (Responsive Wrap)
+                              // Video Attachment (Responsive Wrap)
                               Wrap(
                                 spacing: 8,
                                 runSpacing: 8,
@@ -1475,23 +1635,39 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                                 children: [
                                   if (lecture.videoFile != null)
                                     Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 6,
+                                      ),
                                       decoration: BoxDecoration(
                                         color: Colors.green.shade50,
                                         borderRadius: BorderRadius.circular(8),
-                                        border: Border.all(color: Colors.green.shade200),
+                                        border: Border.all(
+                                          color: Colors.green.shade200,
+                                        ),
                                       ),
                                       child: Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          const Icon(Icons.check_circle, color: Colors.green, size: 14),
+                                          const Icon(
+                                            Icons.check_circle,
+                                            color: Colors.green,
+                                            size: 14,
+                                          ),
                                           const SizedBox(width: 6),
                                           ConstrainedBox(
-                                            constraints: const BoxConstraints(maxWidth: 120),
+                                            constraints: const BoxConstraints(
+                                              maxWidth: 120,
+                                            ),
                                             child: Text(
-                                              lecture.videoName ?? tr(ref, 'Video attached'),
+                                              lecture.videoName ??
+                                                  tr(ref, 'Video attached'),
                                               overflow: TextOverflow.ellipsis,
-                                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.green.shade900),
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w600,
+                                                color: Colors.green.shade900,
+                                              ),
                                             ),
                                           ),
                                           const SizedBox(width: 4),
@@ -1500,65 +1676,41 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                                               lecture.videoFile = null;
                                               lecture.videoName = null;
                                             }),
-                                            child: const Icon(Icons.close, size: 14, color: Colors.red),
-                                          ),
-                                        ],
-                                      ),
-                                    )
-                                  else
-                                    OutlinedButton.icon(
-                                      style: OutlinedButton.styleFrom(
-                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                        minimumSize: Size.zero,
-                                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                      ),
-                                      onPressed: () => _pickLectureVideo(lecture),
-                                      icon: const Icon(Icons.video_call_outlined, size: 15, color: AppColors.primaryGreen),
-                                      label: Text(tr(ref, 'Upload Video'), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primaryGreen)),
-                                    ),
-
-                                  if (lecture.resourceFile != null)
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                      decoration: BoxDecoration(
-                                        color: Colors.blue.shade50,
-                                        borderRadius: BorderRadius.circular(8),
-                                        border: Border.all(color: Colors.blue.shade200),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          const Icon(Icons.picture_as_pdf, color: Colors.blue, size: 14),
-                                          const SizedBox(width: 6),
-                                          ConstrainedBox(
-                                            constraints: const BoxConstraints(maxWidth: 120),
-                                            child: Text(
-                                              lecture.resourceName ?? tr(ref, 'Document attached'),
-                                              overflow: TextOverflow.ellipsis,
-                                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.blue.shade900),
+                                            child: const Icon(
+                                              Icons.close,
+                                              size: 14,
+                                              color: Colors.red,
                                             ),
                                           ),
-                                          const SizedBox(width: 4),
-                                          InkWell(
-                                            onTap: () => setState(() {
-                                              lecture.resourceFile = null;
-                                              lecture.resourceName = null;
-                                            }),
-                                            child: const Icon(Icons.close, size: 14, color: Colors.red),
-                                          ),
                                         ],
                                       ),
                                     )
                                   else
                                     OutlinedButton.icon(
                                       style: OutlinedButton.styleFrom(
-                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 6,
+                                        ),
                                         minimumSize: Size.zero,
-                                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                        tapTargetSize:
+                                            MaterialTapTargetSize.shrinkWrap,
                                       ),
-                                      onPressed: () => _pickLectureResource(lecture),
-                                      icon: const Icon(Icons.attach_file, size: 14, color: Colors.blue),
-                                      label: Text(tr(ref, 'Attach PDF Notes'), style: const TextStyle(fontSize: 11, color: Colors.blue)),
+                                      onPressed: () =>
+                                          _pickLectureVideo(lecture),
+                                      icon: const Icon(
+                                        Icons.video_call_outlined,
+                                        size: 15,
+                                        color: AppColors.primaryGreen,
+                                      ),
+                                      label: Text(
+                                        tr(ref, 'Upload Video'),
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                          color: AppColors.primaryGreen,
+                                        ),
+                                      ),
                                     ),
                                 ],
                               ),
@@ -1567,77 +1719,22 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                         );
                       }),
 
-                      // Attach E-Book Dropdown (Optional, Full-width responsive)
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        margin: const EdgeInsets.only(top: 6, bottom: 12),
-                        decoration: BoxDecoration(
-                          color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.grey.shade50,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: isDark ? AppColors.lineDark : Colors.grey.shade200),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                const Icon(Icons.menu_book, size: 16, color: Colors.purple),
-                                const SizedBox(width: 6),
-                                Expanded(
-                                  child: Text(
-                                    tr(ref, 'Attach E-Book to this Module (Optional):'),
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                      color: isDark ? Colors.grey.shade300 : AppColors.inkDark,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            ebooksAsync.when(
-                              data: (ebooks) {
-                                return DropdownButtonFormField<String>(
-                                  initialValue: module.attachedEbookId,
-                                  isExpanded: true,
-                                  decoration: InputDecoration(
-                                    isDense: true,
-                                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                      borderSide: BorderSide(color: Colors.grey.shade300),
-                                    ),
-                                  ),
-                                  hint: Text(tr(ref, '-- No E-Book Attached --'), style: const TextStyle(fontSize: 12)),
-                                  items: [
-                                    DropdownMenuItem(value: null, child: Text(tr(ref, '-- No E-Book Attached --'), style: const TextStyle(fontSize: 12))),
-                                    ...ebooks.map((eb) {
-                                      return DropdownMenuItem(
-                                        value: eb.id,
-                                        child: Text(
-                                          eb.title ?? 'E-Book',
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(fontSize: 12),
-                                        ),
-                                      );
-                                    }),
-                                  ],
-                                  onChanged: (val) => setState(() => module.attachedEbookId = val),
-                                );
-                              },
-                              loading: () => const LinearProgressIndicator(),
-                              error: (_, __) => Text(tr(ref, 'Could not load e-books'), style: const TextStyle(fontSize: 11)),
-                            ),
-                          ],
-                        ),
-                      ),
-
                       // Action button: Add Lecture
                       TextButton.icon(
                         onPressed: () => _addLecture(module.id),
-                        icon: const Icon(Icons.add_circle_outline, size: 16, color: AppColors.primaryGreen),
-                        label: Text(tr(ref, 'Add Lecture'), style: const TextStyle(color: AppColors.primaryGreen, fontSize: 13, fontWeight: FontWeight.bold)),
+                        icon: const Icon(
+                          Icons.add_circle_outline,
+                          size: 16,
+                          color: AppColors.primaryGreen,
+                        ),
+                        label: Text(
+                          tr(ref, 'Add Lecture'),
+                          style: const TextStyle(
+                            color: AppColors.primaryGreen,
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -1666,7 +1763,11 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.add_circle, color: AppColors.primaryGreen, size: 20),
+                const Icon(
+                  Icons.add_circle,
+                  color: AppColors.primaryGreen,
+                  size: 20,
+                ),
                 const SizedBox(width: 8),
                 Text(
                   tr(ref, 'Add New Module'),
@@ -1688,7 +1789,11 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
           width: double.infinity,
           child: OutlinedButton.icon(
             onPressed: () => _showCourseCurriculumPreview(isDark),
-            icon: const Icon(Icons.remove_red_eye_outlined, size: 18, color: AppColors.primaryGreen),
+            icon: const Icon(
+              Icons.remove_red_eye_outlined,
+              size: 18,
+              color: AppColors.primaryGreen,
+            ),
             label: Text(
               tr(ref, 'Preview Course'),
               style: const TextStyle(
@@ -1699,7 +1804,9 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
             ),
             style: OutlinedButton.styleFrom(
               foregroundColor: AppColors.primaryGreen,
-              backgroundColor: isDark ? Colors.white.withValues(alpha: 0.05) : AppColors.primaryGreen.withValues(alpha: 0.06),
+              backgroundColor: isDark
+                  ? Colors.white.withValues(alpha: 0.05)
+                  : AppColors.primaryGreen.withValues(alpha: 0.06),
               padding: const EdgeInsets.symmetric(horizontal: 16),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
@@ -1731,7 +1838,9 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                     ),
                   ),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: isDark ? Colors.white70 : AppColors.inkDark,
+                    foregroundColor: isDark
+                        ? Colors.white70
+                        : AppColors.inkDark,
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
@@ -1766,7 +1875,10 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                   icon: const Icon(Icons.arrow_forward_rounded, size: 18),
                   label: Text(
                     tr(ref, 'Save & Continue'),
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
                   ),
                 ),
               ),
@@ -1786,14 +1898,19 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
         return Container(
           height: MediaQuery.of(context).size.height * 0.88,
           decoration: BoxDecoration(
-            color: isDark ? AppColors.editorialSurfaceDark : AppColors.editorialSurface,
+            color: isDark
+                ? AppColors.editorialSurfaceDark
+                : AppColors.editorialSurface,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           ),
           child: Column(
             children: [
               // Modal Header
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 16,
+                ),
                 decoration: BoxDecoration(
                   border: Border(
                     bottom: BorderSide(
@@ -1809,7 +1926,11 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                         color: AppColors.primaryGreen.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(Icons.remove_red_eye_rounded, color: AppColors.primaryGreen, size: 22),
+                      child: const Icon(
+                        Icons.remove_red_eye_rounded,
+                        color: AppColors.primaryGreen,
+                        size: 22,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -1832,7 +1953,9 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               fontSize: 12,
-                              color: isDark ? Colors.grey.shade400 : AppColors.inkSoft,
+                              color: isDark
+                                  ? Colors.grey.shade400
+                                  : AppColors.inkSoft,
                             ),
                           ),
                         ],
@@ -1860,9 +1983,14 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                           Row(
                             children: [
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 4,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: AppColors.primaryGreen.withValues(alpha: 0.12),
+                                  color: AppColors.primaryGreen.withValues(
+                                    alpha: 0.12,
+                                  ),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Text(
@@ -1876,7 +2004,10 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                               ),
                               const SizedBox(width: 8),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 4,
+                                ),
                                 decoration: BoxDecoration(
                                   color: Colors.blue.withValues(alpha: 0.12),
                                   borderRadius: BorderRadius.circular(8),
@@ -1892,7 +2023,8 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                               ),
                               const Spacer(),
                               Text(
-                                _priceController.text.trim().isEmpty || _priceController.text.trim() == '0'
+                                _priceController.text.trim().isEmpty ||
+                                        _priceController.text.trim() == '0'
                                     ? 'FREE'
                                     : '₹${_priceController.text.trim()}',
                                 style: const TextStyle(
@@ -1919,20 +2051,30 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                               _shortDescController.text.trim(),
                               style: TextStyle(
                                 fontSize: 13,
-                                color: isDark ? Colors.grey.shade400 : AppColors.inkSoft,
+                                color: isDark
+                                    ? Colors.grey.shade400
+                                    : AppColors.inkSoft,
                               ),
                             ),
                           ],
                           const SizedBox(height: 12),
                           Row(
                             children: [
-                              Icon(Icons.video_library_outlined, size: 16, color: isDark ? Colors.grey.shade400 : AppColors.inkSoft),
+                              Icon(
+                                Icons.video_library_outlined,
+                                size: 16,
+                                color: isDark
+                                    ? Colors.grey.shade400
+                                    : AppColors.inkSoft,
+                              ),
                               const SizedBox(width: 6),
                               Text(
                                 '${_curriculum.length} Modules • ${_curriculum.fold<int>(0, (sum, m) => sum + m.lectures.length)} Lectures',
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: isDark ? Colors.grey.shade400 : AppColors.inkSoft,
+                                  color: isDark
+                                      ? Colors.grey.shade400
+                                      : AppColors.inkSoft,
                                 ),
                               ),
                             ],
@@ -1944,7 +2086,10 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
 
                     Text(
                       tr(ref, 'Curriculum Outline'),
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 12),
 
@@ -1959,16 +2104,21 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                           color: isDark ? AppColors.cardDark : Colors.white,
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
-                            color: isDark ? AppColors.lineDark : Colors.grey.shade200,
+                            color: isDark
+                                ? AppColors.lineDark
+                                : Colors.grey.shade200,
                           ),
                         ),
                         child: Theme(
-                          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                          data: Theme.of(
+                            context,
+                          ).copyWith(dividerColor: Colors.transparent),
                           child: ExpansionTile(
                             initiallyExpanded: true,
                             leading: CircleAvatar(
                               radius: 14,
-                              backgroundColor: AppColors.primaryGreen.withValues(alpha: 0.15),
+                              backgroundColor: AppColors.primaryGreen
+                                  .withValues(alpha: 0.15),
                               child: Text(
                                 '${modIdx + 1}',
                                 style: const TextStyle(
@@ -1979,14 +2129,21 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                               ),
                             ),
                             title: Text(
-                              mod.title.trim().isNotEmpty ? mod.title.trim() : 'Module ${modIdx + 1}',
-                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                              mod.title.trim().isNotEmpty
+                                  ? mod.title.trim()
+                                  : 'Module ${modIdx + 1}',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                             subtitle: Text(
                               '${mod.lectures.length} ${mod.lectures.length == 1 ? 'lecture' : 'lectures'}',
                               style: TextStyle(
                                 fontSize: 11,
-                                color: isDark ? Colors.grey.shade400 : AppColors.inkSoft,
+                                color: isDark
+                                    ? Colors.grey.shade400
+                                    : AppColors.inkSoft,
                               ),
                             ),
                             children: [
@@ -1994,27 +2151,43 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                               ...mod.lectures.asMap().entries.map((lecEntry) {
                                 final lecIdx = lecEntry.key;
                                 final lec = lecEntry.value;
-                                final lecTitle = lec.titleController.text.trim().isNotEmpty
+                                final lecTitle =
+                                    lec.titleController.text.trim().isNotEmpty
                                     ? lec.titleController.text.trim()
                                     : 'Lecture ${lecIdx + 1}';
 
                                 return ListTile(
                                   dense: true,
                                   leading: Icon(
-                                    lec.isPreview ? Icons.play_circle_fill_rounded : Icons.play_circle_outline_rounded,
+                                    lec.isPreview
+                                        ? Icons.play_circle_fill_rounded
+                                        : Icons.play_circle_outline_rounded,
                                     size: 20,
-                                    color: lec.isPreview ? AppColors.primaryGreen : (isDark ? Colors.grey.shade400 : AppColors.inkSoft),
+                                    color: lec.isPreview
+                                        ? AppColors.primaryGreen
+                                        : (isDark
+                                              ? Colors.grey.shade400
+                                              : AppColors.inkSoft),
                                   ),
                                   title: Text(
                                     lecTitle,
-                                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                    ),
                                   ),
                                   trailing: lec.isPreview
                                       ? Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 2,
+                                          ),
                                           decoration: BoxDecoration(
-                                            color: AppColors.primaryGreen.withValues(alpha: 0.12),
-                                            borderRadius: BorderRadius.circular(6),
+                                            color: AppColors.primaryGreen
+                                                .withValues(alpha: 0.12),
+                                            borderRadius: BorderRadius.circular(
+                                              6,
+                                            ),
                                           ),
                                           child: Text(
                                             tr(ref, 'Free Preview'),
@@ -2063,11 +2236,18 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.card_membership_rounded, color: Colors.blue.shade700, size: 20),
+                Icon(
+                  Icons.card_membership_rounded,
+                  color: Colors.blue.shade700,
+                  size: 20,
+                ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    tr(ref, 'iAgrow automatically issues certificates to students who complete 100% of the lectures in your course.'),
+                    tr(
+                      ref,
+                      'iAgrow automatically issues certificates to students who complete 100% of the lectures in your course.',
+                    ),
                     style: TextStyle(fontSize: 13, color: Colors.blue.shade900),
                   ),
                 ),
@@ -2080,7 +2260,9 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              border: Border.all(color: AppColors.primaryGreen.withValues(alpha: 0.3)),
+              border: Border.all(
+                color: AppColors.primaryGreen.withValues(alpha: 0.3),
+              ),
               borderRadius: BorderRadius.circular(12),
               color: AppColors.primaryGreen.withValues(alpha: 0.04),
             ),
@@ -2092,9 +2274,13 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                 contentPadding: EdgeInsets.zero,
                 title: Text(
                   tr(ref, 'Issue Certificate of Completion for this Course'),
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
                 ),
-                onChanged: (val) => setState(() => _issueCertificate = val ?? true),
+                onChanged: (val) =>
+                    setState(() => _issueCertificate = val ?? true),
               ),
             ),
           ),
@@ -2103,7 +2289,10 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
           // Digital Signature Upload
           _buildFieldLabel(tr(ref, 'Your Digital Signature')),
           Text(
-            tr(ref, 'Upload an image of your signature with a transparent background (.png) to be printed on the certificate.'),
+            tr(
+              ref,
+              'Upload an image of your signature with a transparent background (.png) to be printed on the certificate.',
+            ),
             style: TextStyle(
               fontSize: 12,
               color: isDark ? Colors.grey.shade400 : AppColors.inkSoft,
@@ -2130,7 +2319,11 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                   ? Stack(
                       alignment: Alignment.center,
                       children: [
-                        Image.file(_signatureImage!, fit: BoxFit.contain, height: 100),
+                        Image.file(
+                          _signatureImage!,
+                          fit: BoxFit.contain,
+                          height: 100,
+                        ),
                         Positioned(
                           top: 6,
                           left: 6,
@@ -2140,7 +2333,11 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                             child: IconButton(
                               padding: EdgeInsets.zero,
                               tooltip: tr(ref, 'Crop & Rotate'),
-                              icon: const Icon(Icons.crop_rotate_rounded, size: 16, color: Colors.white),
+                              icon: const Icon(
+                                Icons.crop_rotate_rounded,
+                                size: 16,
+                                color: Colors.white,
+                              ),
                               onPressed: _cropAndRotateCurrentSignature,
                             ),
                           ),
@@ -2153,8 +2350,13 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                             backgroundColor: Colors.black54,
                             child: IconButton(
                               padding: EdgeInsets.zero,
-                              icon: const Icon(Icons.close, size: 16, color: Colors.white),
-                              onPressed: () => setState(() => _signatureImage = null),
+                              icon: const Icon(
+                                Icons.close,
+                                size: 16,
+                                color: Colors.white,
+                              ),
+                              onPressed: () =>
+                                  setState(() => _signatureImage = null),
                             ),
                           ),
                         ),
@@ -2163,16 +2365,26 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                   : Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.draw_rounded, size: 32, color: Colors.grey.shade500),
+                        Icon(
+                          Icons.draw_rounded,
+                          size: 32,
+                          color: Colors.grey.shade500,
+                        ),
                         const SizedBox(height: 6),
                         Text(
                           tr(ref, 'Click to upload signature'),
-                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
                         ),
                         const SizedBox(height: 2),
                         Text(
                           tr(ref, 'PNG, max 2MB'),
-                          style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey.shade500,
+                          ),
                         ),
                       ],
                     ),
@@ -2216,22 +2428,37 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
             controller: _instructorTitleController,
             onChanged: (_) => setState(() {}),
             decoration: InputDecoration(
-              hintText: tr(ref, 'e.g. Lead Instructor & Agricultural Specialist'),
+              hintText: tr(
+                ref,
+                'e.g. Lead Instructor & Agricultural Specialist',
+              ),
               filled: true,
-              fillColor: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.grey.shade50,
+              fillColor: isDark
+                  ? Colors.white.withValues(alpha: 0.04)
+                  : Colors.grey.shade50,
               isDense: true,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 12,
+              ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide(color: isDark ? AppColors.lineDark : Colors.grey.shade300),
+                borderSide: BorderSide(
+                  color: isDark ? AppColors.lineDark : Colors.grey.shade300,
+                ),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide(color: isDark ? AppColors.lineDark : Colors.grey.shade300),
+                borderSide: BorderSide(
+                  color: isDark ? AppColors.lineDark : Colors.grey.shade300,
+                ),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: AppColors.primaryGreen, width: 1.5),
+                borderSide: const BorderSide(
+                  color: AppColors.primaryGreen,
+                  width: 1.5,
+                ),
               ),
             ),
           ),
@@ -2258,7 +2485,9 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                     ),
                   ),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: isDark ? Colors.white70 : AppColors.inkDark,
+                    foregroundColor: isDark
+                        ? Colors.white70
+                        : AppColors.inkDark,
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
@@ -2288,7 +2517,10 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                     icon: const Icon(Icons.assignment_outlined, size: 18),
                     label: Text(
                       tr(ref, 'Create Course Draft'),
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -2305,7 +2537,8 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
     final courseTitle = _titleController.text.trim().isNotEmpty
         ? _titleController.text.trim()
         : 'Advance course';
-    final instructorDesignation = _instructorTitleController.text.trim().isNotEmpty
+    final instructorDesignation =
+        _instructorTitleController.text.trim().isNotEmpty
         ? _instructorTitleController.text.trim()
         : 'Lead Instructor & Agricultural Specialist';
 
@@ -2347,21 +2580,29 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                         certificateCode: 'IG-DEMO-SAMPLE',
                         studentName: '[Student Full Name]',
                         courseTitle: courseTitle,
-                        instructorName: ref.read(authProvider).user?.fullName ?? 'Instructor',
+                        instructorName:
+                            ref.read(authProvider).user?.fullName ??
+                            'Instructor',
                         instructorTitle: instructorDesignation,
                         templateStyle: _selectedTemplate,
                         issuedAt: DateTime.now(),
-                        verificationUrl: 'https://iagrow.zappcode.in/verify/IG-DEMO-SAMPLE',
+                        verificationUrl:
+                            'https://iagrow.zappcode.in/verify/IG-DEMO-SAMPLE',
                       ),
                     );
                   },
                   borderRadius: BorderRadius.circular(20),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.primaryGreen.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: AppColors.primaryGreen.withValues(alpha: 0.3)),
+                      border: Border.all(
+                        color: AppColors.primaryGreen.withValues(alpha: 0.3),
+                      ),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -2375,7 +2616,11 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                           ),
                         ),
                         const SizedBox(width: 4),
-                        const Icon(Icons.open_in_new_rounded, size: 12, color: AppColors.primaryGreen),
+                        const Icon(
+                          Icons.open_in_new_rounded,
+                          size: 12,
+                          color: AppColors.primaryGreen,
+                        ),
                       ],
                     ),
                   ),
@@ -2386,7 +2631,10 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Text(
-              tr(ref, 'This is a live preview of the certificate awarded to students who complete 100% of this course.'),
+              tr(
+                ref,
+                'This is a live preview of the certificate awarded to students who complete 100% of this course.',
+              ),
               style: TextStyle(
                 fontSize: 12,
                 color: isDark ? Colors.grey.shade400 : AppColors.inkSoft,
@@ -2405,11 +2653,13 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                   certificateCode: 'IG-DEMO-SAMPLE',
                   studentName: '[Student Full Name]',
                   courseTitle: courseTitle,
-                  instructorName: ref.read(authProvider).user?.fullName ?? 'Instructor',
+                  instructorName:
+                      ref.read(authProvider).user?.fullName ?? 'Instructor',
                   instructorTitle: instructorDesignation,
                   templateStyle: _selectedTemplate,
                   issuedAt: DateTime.now(),
-                  verificationUrl: 'https://iagrow.zappcode.in/verify/IG-DEMO-SAMPLE',
+                  verificationUrl:
+                      'https://iagrow.zappcode.in/verify/IG-DEMO-SAMPLE',
                 ),
               );
             },
@@ -2417,7 +2667,9 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
               margin: const EdgeInsets.fromLTRB(14, 0, 14, 16),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF121712) : const Color(0xFFFCFDF9),
+                color: isDark
+                    ? const Color(0xFF121712)
+                    : const Color(0xFFFCFDF9),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                   color: AppColors.primaryGreen.withValues(alpha: 0.5),
@@ -2432,7 +2684,10 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                 ],
               ),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   border: Border.all(
                     color: const Color(0xFF22C55E).withValues(alpha: 0.3),
@@ -2451,7 +2706,9 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                           width: 22,
                           height: 22,
                           decoration: BoxDecoration(
-                            color: AppColors.primaryGreen.withValues(alpha: 0.15),
+                            color: AppColors.primaryGreen.withValues(
+                              alpha: 0.15,
+                            ),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: const Icon(
@@ -2470,7 +2727,9 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                                 fontSize: 12,
                                 fontWeight: FontWeight.w900,
                                 letterSpacing: 1.5,
-                                color: isDark ? Colors.white : AppColors.inkDark,
+                                color: isDark
+                                    ? Colors.white
+                                    : AppColors.inkDark,
                               ),
                             ),
                             Text(
@@ -2479,7 +2738,9 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                                 fontSize: 7,
                                 letterSpacing: 1.2,
                                 fontWeight: FontWeight.bold,
-                                color: isDark ? Colors.grey.shade400 : AppColors.inkSoft,
+                                color: isDark
+                                    ? Colors.grey.shade400
+                                    : AppColors.inkSoft,
                               ),
                             ),
                           ],
@@ -2497,7 +2758,9 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                         fontSize: 14,
                         fontWeight: FontWeight.w900,
                         letterSpacing: 1.2,
-                        color: isDark ? const Color(0xFFFDE68A) : const Color(0xFF1E3A1E),
+                        color: isDark
+                            ? const Color(0xFFFDE68A)
+                            : const Color(0xFF1E3A1E),
                       ),
                     ),
                     const SizedBox(height: 3),
@@ -2506,7 +2769,9 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                       style: TextStyle(
                         fontSize: 9.5,
                         fontStyle: FontStyle.italic,
-                        color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                        color: isDark
+                            ? Colors.grey.shade400
+                            : Colors.grey.shade600,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -2534,14 +2799,19 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 9,
-                        color: isDark ? Colors.grey.shade400 : Colors.grey.shade700,
+                        color: isDark
+                            ? Colors.grey.shade400
+                            : Colors.grey.shade700,
                       ),
                     ),
                     const SizedBox(height: 8),
 
                     // Course Title Pill
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 5,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xFFFEF3C7),
                         borderRadius: BorderRadius.circular(6),
@@ -2580,18 +2850,27 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                                 ),
                               ),
                               Text(
-                                DateFormat('MMMM d, yyyy').format(DateTime.now()),
+                                DateFormat(
+                                  'MMMM d, yyyy',
+                                ).format(DateTime.now()),
                                 style: TextStyle(
                                   fontSize: 8.5,
                                   fontWeight: FontWeight.w600,
-                                  color: isDark ? Colors.grey.shade300 : AppColors.inkDark,
+                                  color: isDark
+                                      ? Colors.grey.shade300
+                                      : AppColors.inkDark,
                                 ),
                               ),
                               const SizedBox(height: 2),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 4,
+                                  vertical: 2,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade100,
+                                  color: isDark
+                                      ? Colors.white.withValues(alpha: 0.05)
+                                      : Colors.grey.shade100,
                                   borderRadius: BorderRadius.circular(3),
                                 ),
                                 child: Text(
@@ -2614,7 +2893,10 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             color: const Color(0xFFFEF3C7),
-                            border: Border.all(color: const Color(0xFFF59E0B), width: 1.5),
+                            border: Border.all(
+                              color: const Color(0xFFF59E0B),
+                              width: 1.5,
+                            ),
                           ),
                           child: const Icon(
                             Icons.verified_rounded,
@@ -2660,7 +2942,9 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                                 style: TextStyle(
                                   fontSize: 7.5,
                                   fontWeight: FontWeight.w500,
-                                  color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                                  color: isDark
+                                      ? Colors.grey.shade400
+                                      : Colors.grey.shade600,
                                 ),
                               ),
                             ],
@@ -2711,9 +2995,11 @@ class _WizardLecture {
     String description = '',
     this.isPreview = false,
     int previewDuration = 30,
-  })  : titleController = TextEditingController(text: title),
-        descController = TextEditingController(text: description),
-        previewDurationController = TextEditingController(text: previewDuration.toString());
+  }) : titleController = TextEditingController(text: title),
+       descController = TextEditingController(text: description),
+       previewDurationController = TextEditingController(
+         text: previewDuration.toString(),
+       );
 
   final int id;
   final TextEditingController titleController;

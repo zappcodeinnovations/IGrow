@@ -27,6 +27,7 @@ class AppPillTextField extends StatefulWidget {
   final int? maxLength;
   final List<TextInputFormatter>? inputFormatters;
   final Widget? prefix;
+  final TextStyle? hintStyle;
 
   const AppPillTextField({
     super.key,
@@ -44,6 +45,7 @@ class AppPillTextField extends StatefulWidget {
     this.validator,
     this.maxLength,
     this.inputFormatters,
+    this.hintStyle,
   });
 
   @override
@@ -191,13 +193,14 @@ class _AppPillTextFieldState extends State<AppPillTextField> {
                         disabledBorder: InputBorder.none,
                         contentPadding: EdgeInsets.zero,
                         hintText: widget.hintText,
-                        hintStyle: GoogleFonts.plusJakartaSans(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w400,
-                          color: isDark
-                              ? AppColors.organicHintDark
-                              : AppColors.organicHintLight,
-                        ),
+                        hintStyle: widget.hintStyle ??
+                            GoogleFonts.plusJakartaSans(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w400,
+                              color: isDark
+                                  ? AppColors.organicHintDark
+                                  : AppColors.organicHintLight,
+                            ),
                       ),
                     ),
                   ),

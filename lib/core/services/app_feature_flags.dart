@@ -10,16 +10,19 @@ import '../theme/theme_provider.dart';
 class AppFeatureFlags {
   final bool enablePaymentGateway; // 1 = show Razorpay/payments, 0 = hide
   final bool enableCoupons;        // 1 = show coupons, 0 = hide
+  final bool enablePhoneLogin;     // 1 = show phone login, 0 = hide
 
   const AppFeatureFlags({
     this.enablePaymentGateway = true,
     this.enableCoupons = true,
+    this.enablePhoneLogin = true,
   });
 
   factory AppFeatureFlags.fromJson(Map<String, dynamic> json) {
     // Supports boolean or 0/1 integer flags
     final paymentVal = json['enable_payment_gateway'] ?? json['show_payments'] ?? json['payment_enabled'] ?? json['status'];
     final couponVal = json['enable_coupons'] ?? json['show_coupons'] ?? json['coupon_enabled'];
+    final phoneVal = json['enable_phone_login'] ?? json['show_phone_login'] ?? json['phone_login_enabled'] ?? json['allow_phone_login'];
 
     bool parseFlag(dynamic val, {bool defaultValue = true}) {
       if (val == null) return defaultValue;
@@ -36,6 +39,7 @@ class AppFeatureFlags {
     return AppFeatureFlags(
       enablePaymentGateway: parseFlag(paymentVal, defaultValue: true),
       enableCoupons: parseFlag(couponVal, defaultValue: true),
+      enablePhoneLogin: parseFlag(phoneVal, defaultValue: true),
     );
   }
 }
@@ -78,10 +82,11 @@ class AppFeatureFlagsNotifier extends StateNotifier<AppFeatureFlags> {
     }
   }
 
-  void updateManually({bool? enablePaymentGateway, bool? enableCoupons}) {
+  void updateManually({bool? enablePaymentGateway, bool? enableCoupons, bool? enablePhoneLogin}) {
     state = AppFeatureFlags(
       enablePaymentGateway: enablePaymentGateway ?? state.enablePaymentGateway,
       enableCoupons: enableCoupons ?? state.enableCoupons,
+      enablePhoneLogin: enablePhoneLogin ?? state.enablePhoneLogin,
     );
   }
 }

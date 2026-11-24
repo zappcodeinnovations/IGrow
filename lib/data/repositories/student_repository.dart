@@ -241,6 +241,10 @@ class StudentRepository {
 
   /// Fetch student enrollments (My Courses).
   Future<PaginatedEnrollmentList> getEnrollments({int? page}) async {
+    final token = await tokenStorage.getAccessToken();
+    if (token == null || token.isEmpty) {
+      return PaginatedEnrollmentList(count: 0, results: []);
+    }
     try {
       final response = await appApi.apiV1EnrollmentsGet(page: page);
       if (response.isSuccessful && response.body != null) {
@@ -312,6 +316,72 @@ class StudentRepository {
       }
     } catch (_) {}
     return false;
+  }
+
+  /// Enroll in a free course with 1-click instant enrollment.
+  /// POST /api/v1/courses/{course_id}/enroll-free/
+  Future<Map<String, dynamic>> enrollFreeCourse(String courseId) async {
+    final token = await tokenStorage.getAccessToken();
+    final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/courses/$courseId/enroll-free/');
+    debugPrint('🎓 [StudentRepository] enrollFreeCourse: POST $uri');
+
+    try {
+      final response = await http.post(
+        uri,
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 15));
+
+      debugPrint('🎓 [StudentRepository] enrollFreeCourse HTTP status: ${response.statusCode}, body: ${response.body}');
+      final decoded = jsonDecode(response.body);
+      final data = decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return data;
+      }
+
+      final errorMsg = data['message'] ?? data['detail'] ?? data['error'] ?? 'Failed to enroll in free course';
+      throw Exception(errorMsg.toString());
+    } catch (e) {
+      debugPrint('❌ [StudentRepository] enrollFreeCourse ERROR: $e');
+      rethrow;
+    }
+  }
+
+  /// Claim a free E-Book with 1-click instant unlock.
+  /// POST /api/v1/ebooks/{slug_or_id}/claim-free/
+  Future<Map<String, dynamic>> claimFreeEbook(String slugOrId) async {
+    final token = await tokenStorage.getAccessToken();
+    final uri = Uri.parse('https://iagrow.zappcode.in/api/v1/ebooks/$slugOrId/claim-free/');
+    debugPrint('📖 [StudentRepository] claimFreeEbook: POST $uri');
+
+    try {
+      final response = await http.post(
+        uri,
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 15));
+
+      debugPrint('📖 [StudentRepository] claimFreeEbook HTTP status: ${response.statusCode}, body: ${response.body}');
+      final decoded = jsonDecode(response.body);
+      final data = decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return data;
+      }
+
+      final errorMsg = data['message'] ?? data['detail'] ?? data['error'] ?? 'Failed to unlock free E-Book';
+      throw Exception(errorMsg.toString());
+    } catch (e) {
+      debugPrint('❌ [StudentRepository] claimFreeEbook ERROR: $e');
+      rethrow;
+    }
   }
 
   // ── Cart ──────────────────────────────────────────────────────
