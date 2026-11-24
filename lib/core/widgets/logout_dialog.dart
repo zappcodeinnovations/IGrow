@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../localization/app_strings.dart';
+import '../router/route_names.dart';
 import '../theme/app_colors.dart';
 import '../utils/app_toast.dart';
 import '../../data/models/user_role.dart';
@@ -16,7 +18,7 @@ import '../../features/wishlist/providers/wishlist_provider.dart';
 /// If confirmed:
 /// - Unregisters the FCM device token on the server and deletes the local FCM token.
 /// - Clears local auth tokens and active user session.
-/// - Shows feedback SnackBar and routes to '/login'.
+/// - Shows feedback SnackBar and routes to '/language-selection' (for guests) or '/login'.
 ///
 /// If cancelled:
 /// - Closes dialog with zero side effects.
@@ -46,7 +48,10 @@ class _LogoutConfirmationDialogState extends ConsumerState<LogoutConfirmationDia
     setState(() => _isLoading = true);
 
     try {
-      final activeRole = ref.read(authProvider).user?.activeRole ?? UserRole.farmer;
+      final authState = ref.read(authProvider);
+      final isGuestUser = !authState.isAuthenticated;
+      final activeRole = authState.user?.activeRole ?? UserRole.farmer;
+
       await ref.read(authProvider.notifier).logout();
 
       // Reset and invalidate user-specific cached state across the app
@@ -54,6 +59,16 @@ class _LogoutConfirmationDialogState extends ConsumerState<LogoutConfirmationDia
       ref.invalidate(cartProvider);
       ref.invalidate(studentEnrollmentsProvider);
       ref.invalidate(studentCartProvider);
+
+      if (isGuestUser) {
+        // Clear setup preferences so next app open or flow starts fresh at language selection
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.remove('has_completed_initial_setup');
+          await prefs.remove('has_selected_language');
+          await prefs.remove('has_completed_onboarding');
+        } catch (_) {}
+      }
 
       if (nav.canPop()) {
         nav.pop();
@@ -67,7 +82,11 @@ class _LogoutConfirmationDialogState extends ConsumerState<LogoutConfirmationDia
         duration: const Duration(milliseconds: 1800),
       );
 
-      context.go('/login?role=${activeRole.name}');
+      if (isGuestUser) {
+        context.go(RouteNames.languageSelection);
+      } else {
+        context.go('/login?role=${activeRole.name}');
+      }
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
