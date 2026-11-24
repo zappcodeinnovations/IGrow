@@ -316,37 +316,43 @@ class _QuickAuthDialogState extends ConsumerState<QuickAuthDialog> {
 
                 if (!_isOtpSent) ...[
                   // Phone Number Input
-                  AppPillTextField(
-                    controller: _phoneController,
-                    hintText: tr(ref, 'Mobile Number'),
-                    hintStyle: GoogleFonts.plusJakartaSans(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w400,
-                      color: isDark ? Colors.white24 : Colors.black26,
-                    ),
-                    prefixIcon: Icons.phone_android_rounded,
-                    prefix: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF223526) : const Color(0xFFE4EDE3),
-                        borderRadius: BorderRadius.circular(7),
+                  AutofillGroup(
+                    child: AppPillTextField(
+                      controller: _phoneController,
+                      hintText: tr(ref, 'Mobile Number'),
+                      hintStyle: GoogleFonts.plusJakartaSans(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w400,
+                        color: isDark ? Colors.white24 : Colors.black26,
                       ),
-                      child: Text(
-                        '+91',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: isDark ? const Color(0xFF4ADE80) : AppColors.greenDark,
+                      prefixIcon: Icons.phone_android_rounded,
+                      prefix: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF223526) : const Color(0xFFE4EDE3),
+                          borderRadius: BorderRadius.circular(7),
+                        ),
+                        child: Text(
+                          '+91',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: isDark ? const Color(0xFF4ADE80) : AppColors.greenDark,
+                          ),
                         ),
                       ),
+                      keyboardType: TextInputType.phone,
+                      autofillHints: const [
+                        AutofillHints.telephoneNumber,
+                        AutofillHints.telephoneNumberNational,
+                      ],
+                      textInputAction: TextInputAction.done,
+                      maxLength: 10,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                        LengthLimitingTextInputFormatter(10),
+                      ],
                     ),
-                    keyboardType: TextInputType.phone,
-                    textInputAction: TextInputAction.done,
-                    maxLength: 10,
-                    inputFormatters: [
-                      FilteringTextInputFormatter.digitsOnly,
-                      LengthLimitingTextInputFormatter(10),
-                    ],
                   ),
                   const SizedBox(height: 14),
 
