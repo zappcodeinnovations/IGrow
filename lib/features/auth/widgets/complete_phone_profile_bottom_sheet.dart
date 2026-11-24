@@ -43,7 +43,9 @@ class CompletePhoneProfileBottomSheet extends ConsumerStatefulWidget {
         enableDrag: false,
         backgroundColor: Colors.transparent,
         builder: (ctx) => Padding(
-          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom,
+          ),
           child: CompletePhoneProfileBottomSheet(
             phoneNumber: phoneNumber,
             verificationToken: verificationToken,
@@ -77,7 +79,8 @@ class _CompletePhoneProfileBottomSheetState
   }
 
   String _generateSecureRandomPassword() {
-    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#%^&*';
+    const chars =
+        'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#%^&*';
     final rnd = Random.secure();
     return List.generate(14, (_) => chars[rnd.nextInt(chars.length)]).join();
   }
@@ -99,7 +102,9 @@ class _CompletePhoneProfileBottomSheetState
 
     final generatedPassword = _generateSecureRandomPassword();
 
-    final success = await ref.read(authProvider.notifier).completePhoneProfile(
+    final success = await ref
+        .read(authProvider.notifier)
+        .completePhoneProfile(
           phoneNumber: widget.phoneNumber,
           verificationToken: widget.verificationToken,
           fullName: _nameController.text.trim(),
@@ -115,7 +120,8 @@ class _CompletePhoneProfileBottomSheetState
         Navigator.of(context).pop();
         widget.onCompleted();
       } else {
-        final err = ref.read(authProvider).error ?? 'Failed to complete profile.';
+        final err =
+            ref.read(authProvider).error ?? 'Failed to complete profile.';
         AppToast.show(context, err, isError: true);
       }
     }
@@ -170,7 +176,10 @@ class _CompletePhoneProfileBottomSheetState
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    tr(ref, 'Phone verified! Just a few quick details to personalize your account.'),
+                    tr(
+                      ref,
+                      'Phone verified! Just a few quick details to personalize your account.',
+                    ),
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 13.5,
                       color: isDark ? Colors.white70 : AppColors.inkSoft,
@@ -180,9 +189,14 @@ class _CompletePhoneProfileBottomSheetState
 
                   // Verified Phone Number Badge
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
                     decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF142418) : const Color(0xFFEBF6EC),
+                      color: isDark
+                          ? const Color(0xFF142418)
+                          : const Color(0xFFEBF6EC),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: AppColors.primaryGreen.withValues(alpha: 0.3),
@@ -228,10 +242,16 @@ class _CompletePhoneProfileBottomSheetState
                       hintText: tr(ref, 'e.g. Ramesh Patil'),
                       prefixIcon: const Icon(Icons.person_outline_rounded),
                       filled: true,
-                      fillColor: isDark ? const Color(0xFF162319) : const Color(0xFFF7FAF6),
+                      fillColor: isDark
+                          ? const Color(0xFF162319)
+                          : const Color(0xFFF7FAF6),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(14),
-                        borderSide: BorderSide(color: isDark ? const Color(0xFF2C3E31) : const Color(0xFFE2EBE0)),
+                        borderSide: BorderSide(
+                          color: isDark
+                              ? const Color(0xFF2C3E31)
+                              : const Color(0xFFE2EBE0),
+                        ),
                       ),
                     ),
                     validator: (val) {
@@ -253,10 +273,16 @@ class _CompletePhoneProfileBottomSheetState
                       hintText: tr(ref, 'e.g. ramesh@gmail.com'),
                       prefixIcon: const Icon(Icons.email_outlined),
                       filled: true,
-                      fillColor: isDark ? const Color(0xFF162319) : const Color(0xFFF7FAF6),
+                      fillColor: isDark
+                          ? const Color(0xFF162319)
+                          : const Color(0xFFF7FAF6),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(14),
-                        borderSide: BorderSide(color: isDark ? const Color(0xFF2C3E31) : const Color(0xFFE2EBE0)),
+                        borderSide: BorderSide(
+                          color: isDark
+                              ? const Color(0xFF2C3E31)
+                              : const Color(0xFFE2EBE0),
+                        ),
                       ),
                     ),
                     validator: (val) {
@@ -265,9 +291,14 @@ class _CompletePhoneProfileBottomSheetState
                         return tr(ref, 'Email address is required');
                       }
                       if (RegExp(r'[A-Z]').hasMatch(email)) {
-                        return tr(ref, 'Email must contain lowercase letters only');
+                        return tr(
+                          ref,
+                          'Email must contain lowercase letters only',
+                        );
                       }
-                      final emailRegex = RegExp(r'^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$');
+                      final emailRegex = RegExp(
+                        r'^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$',
+                      );
                       if (!emailRegex.hasMatch(email)) {
                         return tr(ref, 'Please enter a valid email address');
                       }

@@ -478,6 +478,7 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
     BuildContext parentContext, {
     required String sectionId,
     ApiLecture? existingLecture,
+    bool isFirstLectureOfCourse = false,
   }) async {
     final isEditing = existingLecture != null;
     final titleController = TextEditingController(text: existingLecture?.title ?? '');
@@ -601,27 +602,29 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                             ),
                           ),
                         ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Row(
-                            children: [
-                              Switch(
-                                value: isPreview,
-                                activeThumbColor: AppColors.primaryGreen,
-                                onChanged: (val) => setModalState(() => isPreview = val),
-                              ),
-                              const Expanded(
-                                child: Text(
-                                  'Free Preview',
-                                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                        if (isFirstLectureOfCourse) ...[
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Row(
+                              children: [
+                                Switch(
+                                  value: isPreview,
+                                  activeThumbColor: AppColors.primaryGreen,
+                                  onChanged: (val) => setModalState(() => isPreview = val),
                                 ),
-                              ),
-                            ],
+                                const Expanded(
+                                  child: Text(
+                                    'Free Preview',
+                                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
+                        ],
                       ],
                     ),
-                    if (isPreview) ...[
+                    if (isFirstLectureOfCourse && isPreview) ...[
                       const SizedBox(height: 14),
                       TextField(
                         controller: previewDurationController,
@@ -830,7 +833,8 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                           }
 
                           final duration = int.tryParse(durationController.text.trim()) ?? 10;
-                          final previewDuration = isPreview
+                          final effectiveIsPreview = isFirstLectureOfCourse && isPreview;
+                          final previewDuration = effectiveIsPreview
                               ? (int.tryParse(previewDurationController.text.trim()) ?? 30)
                               : null;
                           Navigator.pop(modalContext); // Close sheet
@@ -841,7 +845,7 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                             title: title,
                             description: descController.text.trim(),
                             duration: duration,
-                            isPreview: isPreview,
+                            isPreview: effectiveIsPreview,
                             previewDuration: previewDuration,
                             pickedVideo: pickedVideo,
                             pickedResource: pickedResource,
@@ -1566,7 +1570,7 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
             ...course.sections.asMap().entries.map((entry) {
               final sIdx = entry.key;
               final section = entry.value;
-              return _buildSectionCard(section, sIdx + 1, isLocked);
+              return _buildSectionCard(section, sIdx + 1, isLocked, isFirstSection: sIdx == 0);
             }),
           ],
         ],
@@ -1704,7 +1708,7 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
     );
   }
 
-  Widget _buildSectionCard(ApiCourseSection section, int sectionIndex, bool isLocked) {
+  Widget _buildSectionCard(ApiCourseSection section, int sectionIndex, bool isLocked, {bool isFirstSection = false}) {
     final isExpanded = _sectionExpanded[section.id] ?? true;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -1779,7 +1783,7 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                       onSelected: (value) {
                         if (value == 'edit') _editSection(context, section);
                         if (value == 'delete') _deleteSection(context, section.id);
-                        if (value == 'add_lecture') _showLectureBottomSheet(context, sectionId: section.id);
+                        if (value == 'add_lecture') _showLectureBottomSheet(context, sectionId: section.id, isFirstLectureOfCourse: isFirstSection && section.lectures.isEmpty);
                       },
                       itemBuilder: (c) => [
                         const PopupMenuItem(value: 'add_lecture', child: Row(children: [Icon(Icons.add, size: 18), SizedBox(width: 8), Text('Add Lecture')])),
@@ -1813,7 +1817,7 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                       if (!isLocked) ...[
                         const SizedBox(height: 8),
                         TextButton.icon(
-                          onPressed: () => _showLectureBottomSheet(context, sectionId: section.id),
+                          onPressed: () => _showLectureBottomSheet(context, sectionId: section.id, isFirstLectureOfCourse: isFirstSection && section.lectures.isEmpty),
                           icon: const Icon(Icons.add_circle_outline, size: 16),
                           label: const Text('Add Lecture', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                           style: TextButton.styleFrom(foregroundColor: AppColors.primaryGreen),
@@ -1831,7 +1835,8 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                 separatorBuilder: (_, __) => Divider(height: 1, color: isDark ? AppColors.lineDark : Colors.grey.shade100),
                 itemBuilder: (context, lIdx) {
                   final lecture = section.lectures[lIdx];
-                  return _buildLectureTile(section, lecture, lIdx + 1, isLocked);
+                  final isFirstLectureOfCourse = isFirstSection && lIdx == 0;
+                  return _buildLectureTile(section, lecture, lIdx + 1, isLocked, isFirstLectureOfCourse: isFirstLectureOfCourse);
                 },
               ),
               if (!isLocked) ...[
@@ -1840,7 +1845,7 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                   padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
                   child: Center(
                     child: InkWell(
-                      onTap: () => _showLectureBottomSheet(context, sectionId: section.id),
+                      onTap: () => _showLectureBottomSheet(context, sectionId: section.id, isFirstLectureOfCourse: isFirstSection && section.lectures.isEmpty),
                       child: const Padding(
                         padding: EdgeInsets.symmetric(vertical: 6, horizontal: 8),
                         child: Row(
@@ -1866,7 +1871,7 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
     );
   }
 
-  Widget _buildLectureTile(ApiCourseSection section, ApiLecture lecture, int lectureIndex, bool isLocked) {
+  Widget _buildLectureTile(ApiCourseSection section, ApiLecture lecture, int lectureIndex, bool isLocked, {bool isFirstLectureOfCourse = false}) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final hasVideo = (lecture.videoUrl != null && lecture.videoUrl!.isNotEmpty) ||
         (lecture.bunnyVideoId != null && lecture.bunnyVideoId!.isNotEmpty) ||
@@ -1985,7 +1990,7 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
             IconButton(
               icon: const Icon(Icons.settings_outlined, size: 18, color: Colors.grey),
               tooltip: 'Edit Lecture & Attachments',
-              onPressed: () => _showLectureBottomSheet(context, sectionId: section.id, existingLecture: lecture),
+              onPressed: () => _showLectureBottomSheet(context, sectionId: section.id, existingLecture: lecture, isFirstLectureOfCourse: isFirstLectureOfCourse),
             ),
             IconButton(
               icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.error),

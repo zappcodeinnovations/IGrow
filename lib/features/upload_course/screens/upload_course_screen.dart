@@ -1518,7 +1518,10 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                   padding: const EdgeInsets.all(16),
                   child: Column(
                     children: [
-                      ...module.lectures.map((lecture) {
+                      ...module.lectures.asMap().entries.map((lecEntry) {
+                        final lecIndex = lecEntry.key;
+                        final lecture = lecEntry.value;
+                        final isFirstVideoOfCourse = isFirstModule && lecIndex == 0;
                         return Container(
                           margin: const EdgeInsets.only(bottom: 12),
                           padding: const EdgeInsets.all(12),
@@ -1605,8 +1608,8 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                               ),
                               const SizedBox(height: 10),
 
-                              // Free Preview Toggle (Only available for Module 1)
-                              if (isFirstModule)
+                              // Free Preview Toggle (Only available for the first video of the course)
+                              if (isFirstVideoOfCourse)
                                 Row(
                                   children: [
                                     Switch(
