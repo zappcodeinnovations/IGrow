@@ -15,7 +15,7 @@ workflows:
           flutter packages pub get
       - name: Install CocoaPods dependencies
         script: |
-          find . -name "Podfile" -execdir pod install \;
+          cd ios && pod install --repo-update
       - name: Set up code signing settings on Xcode project
         script: |
           keychain initialize
@@ -23,7 +23,7 @@ workflows:
             --type IOS_APP_STORE \
             --create
           keychain add-certificates
-          xcode-project use-profiles
+          xcode-project use-profiles --archive-method=app-store
       - name: Build IPA for App Store / TestFlight
         script: |
           flutter build ipa --release \
