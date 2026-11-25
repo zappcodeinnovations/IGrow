@@ -123,14 +123,12 @@ class AppConfig {
     return enableCoupons && showCoupons;
   }
 
-  /// Helper to check if phone number login should be displayed on the login page.
-  /// On Android/Web, this ALWAYS returns true.
-  /// On iOS, it respects the remote feature flag (e.g. `enable_phone_login` or `show_phone_login`).
-  /// If backend sends 0 / false on iOS, phone login is hidden.
+  /// Helper to check if phone number login should be displayed.
+  /// Controlled remotely by backend flag (e.g. `enable_phone_login` or `show_phone_login`).
+  /// Works symmetrically across Android and iOS:
+  /// - If backend sends false / 0, phone login is hidden on both platforms.
+  /// - If backend sends true / 1, phone login is shown on both platforms.
   bool get canShowPhoneLogin {
-    if (!kIsWeb && !Platform.isIOS) {
-      return true;
-    }
     return enablePhoneLogin && showPhoneLogin;
   }
 }
