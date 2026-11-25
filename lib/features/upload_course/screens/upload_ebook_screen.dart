@@ -15,6 +15,7 @@ import '../../auth/providers/auth_provider.dart';
 import '../../auth/widgets/quick_auth_dialog.dart';
 import '../../auth/widgets/instructor_contact_info_sheet.dart';
 import '../../home_instructor/providers/instructor_home_provider.dart';
+import '../../../data/models/user_role.dart';
 import '../../../core/services/app_config_service.dart';
 
 class UploadEbookScreen extends ConsumerStatefulWidget {
@@ -162,6 +163,11 @@ class _UploadEbookScreenState extends ConsumerState<UploadEbookScreen> {
     if (token == null || token.isEmpty) {
       final loggedIn = await QuickAuthDialog.show(context);
       if (!loggedIn || !mounted) return;
+      // Ensure user maintains Instructor role and does not get kicked to farmer screen
+      final auth = ref.read(authProvider);
+      if (auth.user != null && auth.user!.activeRole != UserRole.instructor) {
+        await ref.read(authProvider.notifier).becomeInstructor();
+      }
     }
 
     final currentUser = ref.read(authProvider).user;

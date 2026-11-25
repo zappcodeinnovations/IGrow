@@ -15,7 +15,6 @@ import '../../../core/widgets/app_error_state.dart';
 import '../../../core/widgets/app_gradient_button.dart';
 import '../../../core/widgets/app_pill_text_field.dart';
 import '../../../core/widgets/app_social_button.dart';
-import '../../../data/models/user_role.dart';
 import '../providers/auth_provider.dart';
 import 'complete_phone_profile_bottom_sheet.dart';
 
@@ -46,7 +45,8 @@ class _QuickAuthDialogState extends ConsumerState<QuickAuthDialog> {
 
   bool _isOtpSent = false;
   bool _isLoading = false;
-  bool _isSocialLoading = false;
+  bool _isGoogleLoading = false;
+  bool _isAppleLoading = false;
   String _targetPhone = '';
 
   @override
@@ -158,11 +158,12 @@ class _QuickAuthDialogState extends ConsumerState<QuickAuthDialog> {
 
   Future<void> _loginWithGoogle() async {
     FocusScope.of(context).unfocus();
-    setState(() => _isSocialLoading = true);
+    if (_isGoogleLoading || _isAppleLoading || _isLoading) return;
+    setState(() => _isGoogleLoading = true);
     try {
       final payload = await SocialAuthService.instance.signInWithGoogle();
       if (payload == null) {
-        if (mounted) setState(() => _isSocialLoading = false);
+        if (mounted) setState(() => _isGoogleLoading = false);
         return;
       }
 
@@ -180,11 +181,11 @@ class _QuickAuthDialogState extends ConsumerState<QuickAuthDialog> {
         AppToast.show(context, tr(ref, 'Logged in with Google!'));
         Navigator.of(context, rootNavigator: true).pop(true);
       } else {
-        setState(() => _isSocialLoading = false);
+        setState(() => _isGoogleLoading = false);
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _isSocialLoading = false);
+        setState(() => _isGoogleLoading = false);
         AppToast.show(context, getUserFriendlyErrorMessage(e), isError: true);
       }
     }
@@ -192,11 +193,12 @@ class _QuickAuthDialogState extends ConsumerState<QuickAuthDialog> {
 
   Future<void> _loginWithApple() async {
     FocusScope.of(context).unfocus();
-    setState(() => _isSocialLoading = true);
+    if (_isGoogleLoading || _isAppleLoading || _isLoading) return;
+    setState(() => _isAppleLoading = true);
     try {
       final payload = await SocialAuthService.instance.signInWithApple();
       if (payload == null) {
-        if (mounted) setState(() => _isSocialLoading = false);
+        if (mounted) setState(() => _isAppleLoading = false);
         return;
       }
 
@@ -214,11 +216,11 @@ class _QuickAuthDialogState extends ConsumerState<QuickAuthDialog> {
         AppToast.show(context, tr(ref, 'Logged in with Apple!'));
         Navigator.of(context, rootNavigator: true).pop(true);
       } else {
-        setState(() => _isSocialLoading = false);
+        setState(() => _isAppleLoading = false);
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _isSocialLoading = false);
+        setState(() => _isAppleLoading = false);
         AppToast.show(context, getUserFriendlyErrorMessage(e), isError: true);
       }
     }
@@ -390,8 +392,8 @@ class _QuickAuthDialogState extends ConsumerState<QuickAuthDialog> {
                   AppSocialButton.google(
                     text: tr(ref, 'Continue with Google'),
                     isDark: isDark,
-                    isLoading: _isSocialLoading,
-                    onPressed: _isSocialLoading ? null : _loginWithGoogle,
+                    isLoading: _isGoogleLoading,
+                    onPressed: (_isGoogleLoading || _isAppleLoading || _isLoading) ? null : _loginWithGoogle,
                   ),
 
                   if (!kIsWeb && Platform.isIOS) ...[
@@ -399,8 +401,8 @@ class _QuickAuthDialogState extends ConsumerState<QuickAuthDialog> {
                     AppSocialButton.apple(
                       text: tr(ref, 'Continue with Apple'),
                       isDark: isDark,
-                      isLoading: _isSocialLoading,
-                      onPressed: _isSocialLoading ? null : _loginWithApple,
+                      isLoading: _isAppleLoading,
+                      onPressed: (_isGoogleLoading || _isAppleLoading || _isLoading) ? null : _loginWithApple,
                     ),
                   ],
                 ] else ...[
