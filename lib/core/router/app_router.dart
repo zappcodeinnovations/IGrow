@@ -60,20 +60,23 @@ import 'route_names.dart';
 
 final rootNavigatorKey = GlobalKey<NavigatorState>();
 final shellNavigatorKey = GlobalKey<NavigatorState>();
-final RouteObserver<ModalRoute<void>> appRouteObserver = RouteObserver<ModalRoute<void>>();
+final RouteObserver<ModalRoute<void>> appRouteObserver =
+    RouteObserver<ModalRoute<void>>();
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     navigatorKey: rootNavigatorKey,
     observers: [appRouteObserver],
     initialLocation: RouteNames.splash,
-    refreshListenable: GoRouterRefreshStream(ref.read(authProvider.notifier).stream),
-    errorBuilder: (context, state) => NotFoundScreen(
-      errorMessage: state.error?.message,
+    refreshListenable: GoRouterRefreshStream(
+      ref.read(authProvider.notifier).stream,
     ),
+    errorBuilder: (context, state) =>
+        NotFoundScreen(errorMessage: state.error?.message),
     redirect: (context, state) {
       final authState = ref.read(authProvider);
-      final isAuthRoute = state.matchedLocation.startsWith('/login') ||
+      final isAuthRoute =
+          state.matchedLocation.startsWith('/login') ||
           state.matchedLocation.startsWith('/register') ||
           state.matchedLocation.startsWith('/otp') ||
           state.matchedLocation.startsWith('/forgot') ||
@@ -82,25 +85,28 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           state.matchedLocation.startsWith('/language') ||
           state.matchedLocation.startsWith('/choose') ||
           state.matchedLocation.startsWith('/auth');
-          
-      final isSplash = state.matchedLocation == RouteNames.splash || state.matchedLocation == '/';
-      
+
+      final isSplash =
+          state.matchedLocation == RouteNames.splash ||
+          state.matchedLocation == '/';
+
       if (authState.status == AuthStatus.initial) {
         return RouteNames.splash;
       }
-      
+
       if (authState.status == AuthStatus.unauthenticated) {
         // Unauthenticated users can browse courses, home, explore, community, etc.
         // If they navigate directly to splash or onboarding after setup, route to home
-        if (state.matchedLocation == RouteNames.splash || state.matchedLocation == '/') {
+        if (state.matchedLocation == RouteNames.splash ||
+            state.matchedLocation == '/') {
           return RouteNames.farmerHome;
         }
         return null;
       }
-      
+
       if (authState.status == AuthStatus.authenticated) {
         final role = authState.user?.activeRole;
-        
+
         if (isAuthRoute || isSplash) {
           final pendingRoute = NotificationService.pendingLaunchRoute;
           if (pendingRoute != null && pendingRoute.isNotEmpty) {
@@ -108,15 +114,25 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             String resolvedRoute = pendingRoute;
             if (role == UserRole.instructor || role == UserRole.admin) {
               if (resolvedRoute.startsWith('/farmer/community')) {
-                resolvedRoute = resolvedRoute.replaceFirst('/farmer/community', RouteNames.instructorCommunity);
-              } else if (resolvedRoute == '/community' || resolvedRoute.startsWith('/community?')) {
-                resolvedRoute = resolvedRoute.replaceFirst('/community', RouteNames.instructorCommunity);
+                resolvedRoute = resolvedRoute.replaceFirst(
+                  '/farmer/community',
+                  RouteNames.instructorCommunity,
+                );
+              } else if (resolvedRoute == '/community' ||
+                  resolvedRoute.startsWith('/community?')) {
+                resolvedRoute = resolvedRoute.replaceFirst(
+                  '/community',
+                  RouteNames.instructorCommunity,
+                );
               } else if (resolvedRoute.startsWith('/farmer/course')) {
                 resolvedRoute = RouteNames.instructorUploads;
               }
             } else {
               if (resolvedRoute.startsWith('/instructor/community')) {
-                resolvedRoute = resolvedRoute.replaceFirst('/instructor/community', RouteNames.farmerCommunity);
+                resolvedRoute = resolvedRoute.replaceFirst(
+                  '/instructor/community',
+                  RouteNames.farmerCommunity,
+                );
               }
             }
             return resolvedRoute;
@@ -128,12 +144,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             return RouteNames.farmerHome;
           }
         }
-        
+
         // Guard against cross-role navigation
-        if (role == UserRole.farmer && state.matchedLocation.startsWith('/instructor')) {
+        if (role == UserRole.farmer &&
+            state.matchedLocation.startsWith('/instructor')) {
           return RouteNames.farmerHome;
         }
-        
+
         if (role == UserRole.instructor &&
             state.matchedLocation.startsWith('/farmer') &&
             !state.matchedLocation.startsWith('/farmer/course') &&
@@ -141,20 +158,17 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           return RouteNames.instructorHome;
         }
       }
-      
+
       return null;
     },
     routes: [
       // ─── Splash ────────────────────────────────────────────────────────
-      GoRoute(
-        path: '/',
-        redirect: (context, state) => RouteNames.splash,
-      ),
+      GoRoute(path: '/', redirect: (context, state) => RouteNames.splash),
       GoRoute(
         path: RouteNames.splash,
         builder: (context, state) => const SplashScreen(),
       ),
-      
+
       // ─── Auth ────────────────────────────────────────────────────────
       GoRoute(
         path: RouteNames.onboarding,
@@ -206,7 +220,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           return CreatePasswordScreen(token: token);
         },
       ),
-      
+
       // ─── Player & Details ─────────────────────────────────────────────
       GoRoute(
         name: RouteNames.courseDetails,
@@ -232,7 +246,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             } catch (_) {}
           } else if (extra is Map) {
             try {
-              fallback = ApiTopInstructor.fromJson(Map<String, dynamic>.from(extra));
+              fallback = ApiTopInstructor.fromJson(
+                Map<String, dynamic>.from(extra),
+              );
             } catch (_) {}
           }
           return InstructorProfileScreen(
@@ -243,9 +259,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/instructor/manage-course/:id',
-        builder: (context, state) => ManageCourseScreen(
-          courseId: state.pathParameters['id']!,
-        ),
+        builder: (context, state) =>
+            ManageCourseScreen(courseId: state.pathParameters['id']!),
       ),
       GoRoute(
         path: RouteNames.instructorKyc,
@@ -279,15 +294,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/course/:id',
-        redirect: (context, state) => '/farmer/course/${state.pathParameters['id']}',
+        redirect: (context, state) =>
+            '/farmer/course/${state.pathParameters['id']}',
       ),
       GoRoute(
         path: '/farmer/courses/:id',
-        redirect: (context, state) => '/farmer/course/${state.pathParameters['id']}',
+        redirect: (context, state) =>
+            '/farmer/course/${state.pathParameters['id']}',
       ),
       GoRoute(
         path: '/instructor/course/:id',
-        redirect: (context, state) => '/farmer/course/${state.pathParameters['id']}',
+        redirect: (context, state) =>
+            '/farmer/course/${state.pathParameters['id']}',
       ),
       GoRoute(
         path: '/farmer/ebook/:id',
@@ -298,22 +316,21 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/farmer/ebooks/:id',
-        redirect: (context, state) => '/farmer/ebook/${state.pathParameters['id']}',
+        redirect: (context, state) =>
+            '/farmer/ebook/${state.pathParameters['id']}',
       ),
       GoRoute(
         path: '/player/:id',
         builder: (context, state) {
           final id = state.pathParameters['id']!;
-          final fromCheckout = state.uri.queryParameters['fromCheckout'] == 'true';
+          final fromCheckout =
+              state.uri.queryParameters['fromCheckout'] == 'true';
           return CoursePlayerScreen(courseId: id, fromCheckout: fromCheckout);
         },
       ),
-      
+
       // ─── Cart & Orders ──────────────────────────────────────────────
-      GoRoute(
-        path: '/cart',
-        builder: (context, state) => const CartScreen(),
-      ),
+      GoRoute(path: '/cart', builder: (context, state) => const CartScreen()),
       GoRoute(
         path: RouteNames.cart,
         builder: (context, state) => const CartScreen(),
@@ -337,20 +354,25 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           final extra = state.extra as Map<String, dynamic>? ?? {};
           final qp = state.uri.queryParameters;
 
-          final originalTotal = (extra['originalTotal'] as num?)?.toDouble() ??
+          final originalTotal =
+              (extra['originalTotal'] as num?)?.toDouble() ??
               double.tryParse(qp['originalTotal'] ?? '') ??
               0.0;
-          final finalTotal = (extra['finalTotal'] as num?)?.toDouble() ??
+          final finalTotal =
+              (extra['finalTotal'] as num?)?.toDouble() ??
               double.tryParse(qp['finalTotal'] ?? '') ??
               0.0;
-          final discountAmount = (extra['discountAmount'] as num?)?.toDouble() ??
+          final discountAmount =
+              (extra['discountAmount'] as num?)?.toDouble() ??
               double.tryParse(qp['discountAmount'] ?? '') ??
               0.0;
           final couponCode = extra['couponCode'] as String? ?? qp['couponCode'];
-          final paymentMethod = extra['paymentMethod'] as String? ??
+          final paymentMethod =
+              extra['paymentMethod'] as String? ??
               qp['paymentMethod'] ??
               'DUMMY_CARD';
-          final purchasedItems = extra['purchasedItems'] as List<dynamic>? ?? [];
+          final purchasedItems =
+              extra['purchasedItems'] as List<dynamic>? ?? [];
 
           return CheckoutSuccessScreen(
             orderResult: (extra['orderResult'] as Map<String, dynamic>?) ?? {},
@@ -365,7 +387,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/payment-success',
-        redirect: (context, state) => state.uri.toString().replaceFirst('/payment-success', RouteNames.paymentSuccess),
+        redirect: (context, state) => state.uri.toString().replaceFirst(
+          '/payment-success',
+          RouteNames.paymentSuccess,
+        ),
       ),
       GoRoute(
         path: '/orders',
@@ -473,7 +498,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/downloads',
         builder: (context, state) => const DownloadsScreen(),
       ),
-      
+
       // ─── Shell Router (Bottom Navigation) ────────────────────────────
       ShellRoute(
         navigatorKey: shellNavigatorKey,
@@ -504,11 +529,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               final search = state.uri.queryParameters['search'];
               final category = state.uri.queryParameters['category'];
               final tabParam = state.uri.queryParameters['tab'];
-              final priceParam = state.uri.queryParameters['price'] ?? state.uri.queryParameters['pricePreset'];
-              final instructorId = state.uri.queryParameters['instructor_id'] ??
+              final priceParam =
+                  state.uri.queryParameters['price'] ??
+                  state.uri.queryParameters['pricePreset'];
+              final instructorId =
+                  state.uri.queryParameters['instructor_id'] ??
                   state.uri.queryParameters['instructorId'] ??
                   state.uri.queryParameters['instructor'];
-              final initialTab = (tabParam == 'ebooks' || tabParam == '1') ? 1 : 0;
+              final initialTab = (tabParam == 'ebooks' || tabParam == '1')
+                  ? 1
+                  : 0;
               return _buildSlideRightPage(
                 context: context,
                 state: state,
@@ -525,7 +555,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: RouteNames.farmerCommunity,
             pageBuilder: (context, state) {
-              final postId = state.uri.queryParameters['postId'] ?? state.uri.queryParameters['post_id'];
+              final postId =
+                  state.uri.queryParameters['postId'] ??
+                  state.uri.queryParameters['post_id'];
               return _buildSlideRightPage(
                 context: context,
                 state: state,
@@ -541,7 +573,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               child: const ProfileScreen(),
             ),
           ),
-          
+
           // ─── Instructor Routes ───────────────────────────────────────
           GoRoute(
             path: RouteNames.instructorHome,
@@ -554,7 +586,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: RouteNames.instructorCommunity,
             pageBuilder: (context, state) {
-              final postId = state.uri.queryParameters['postId'] ?? state.uri.queryParameters['post_id'];
+              final postId =
+                  state.uri.queryParameters['postId'] ??
+                  state.uri.queryParameters['post_id'];
               return _buildSlideRightPage(
                 context: context,
                 state: state,
@@ -573,7 +607,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: RouteNames.instructorUploads,
             builder: (context, state) {
-              final tab = int.tryParse(state.uri.queryParameters['tab'] ?? '') ?? 0;
+              final tab =
+                  int.tryParse(state.uri.queryParameters['tab'] ?? '') ?? 0;
               return InstructorUploadsScreen(
                 key: ValueKey('instructor_uploads_tab_$tab'),
                 initialTabIndex: tab,
@@ -632,16 +667,14 @@ Page<T> _buildSlideRightPage<T>({
   final isDark = Theme.of(context).brightness == Brightness.dark;
   final surfaceColor = isDark ? Colors.black : const Color(0xFFFBF9F9);
 
-  final isApplePlatform = defaultTargetPlatform == TargetPlatform.iOS ||
+  final isApplePlatform =
+      defaultTargetPlatform == TargetPlatform.iOS ||
       defaultTargetPlatform == TargetPlatform.macOS;
 
   if (isApplePlatform) {
     return CupertinoPage<T>(
       key: state.pageKey,
-      child: ColoredBox(
-        color: surfaceColor,
-        child: child,
-      ),
+      child: ColoredBox(color: surfaceColor, child: child),
     );
   }
 
@@ -649,10 +682,7 @@ Page<T> _buildSlideRightPage<T>({
     key: state.pageKey,
     transitionDuration: const Duration(milliseconds: 320),
     reverseTransitionDuration: const Duration(milliseconds: 280),
-    child: ColoredBox(
-      color: surfaceColor,
-      child: child,
-    ),
+    child: ColoredBox(color: surfaceColor, child: child),
     transitionsBuilder: (context, animation, secondaryAnimation, child) {
       final curvedAnimation = CurvedAnimation(
         parent: animation,
@@ -665,10 +695,7 @@ Page<T> _buildSlideRightPage<T>({
         end: Offset.zero,
       ).animate(curvedAnimation);
 
-      return SlideTransition(
-        position: offsetAnimation,
-        child: child,
-      );
+      return SlideTransition(position: offsetAnimation, child: child);
     },
   );
 }
