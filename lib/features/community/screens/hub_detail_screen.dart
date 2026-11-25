@@ -32,7 +32,9 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
     // Silent polling every 15 seconds to update like counts, reactions, view counts, and comments in real-time
     _silentPollTimer = Timer.periodic(const Duration(seconds: 15), (_) {
       if (!mounted) return;
-      ref.read(communityHubPostsProvider(widget.hubId).notifier).fetchPosts(silent: true);
+      ref
+          .read(communityHubPostsProvider(widget.hubId).notifier)
+          .fetchPosts(silent: true);
     });
   }
 
@@ -41,6 +43,7 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
     _silentPollTimer?.cancel();
     super.dispose();
   }
+
   void _confirmLeave(BuildContext context, CommunityHub hub) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     showDialog(
@@ -56,11 +59,21 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                 color: Colors.red.withValues(alpha: 0.12),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.exit_to_app_rounded, color: Colors.red, size: 20),
+              child: const Icon(
+                Icons.exit_to_app_rounded,
+                color: Colors.red,
+                size: 20,
+              ),
             ),
             const SizedBox(width: 10),
             Expanded(
-              child: Text(tr(ref, 'Leave Community?'), style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+              child: Text(
+                tr(ref, 'Leave Community?'),
+                style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
           ],
         ),
@@ -75,17 +88,27 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text(tr(ref, 'Cancel'), style: TextStyle(color: isDark ? Colors.white60 : Colors.grey, fontWeight: FontWeight.w600)),
+            child: Text(
+              tr(ref, 'Cancel'),
+              style: TextStyle(
+                color: isDark ? Colors.white60 : Colors.grey,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
               backgroundColor: Colors.red,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
             onPressed: () async {
               Navigator.pop(ctx);
               try {
-                await ref.read(communityHubsProvider.notifier).toggleJoin(
+                await ref
+                    .read(communityHubsProvider.notifier)
+                    .toggleJoin(
                       hub.id,
                       currentIsMember: true,
                       currentMemberCount: hub.memberCount,
@@ -101,16 +124,24 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                         textColor: const Color(0xFF4ADE80),
                         onPressed: () async {
                           try {
-                            await ref.read(communityHubsProvider.notifier).toggleJoin(
+                            await ref
+                                .read(communityHubsProvider.notifier)
+                                .toggleJoin(
                                   hub.id,
                                   currentIsMember: false,
-                                  currentMemberCount: hub.memberCount > 0 ? hub.memberCount - 1 : 0,
+                                  currentMemberCount: hub.memberCount > 0
+                                      ? hub.memberCount - 1
+                                      : 0,
                                 );
                             ref.invalidate(suggestedHubsProvider);
                             ref.invalidate(hubDetailsProvider(hub.id));
                           } catch (e) {
                             if (context.mounted) {
-                              AppToast.showFriendlyError(context, e, prefix: tr(ref, 'Failed to join'));
+                              AppToast.showFriendlyError(
+                                context,
+                                e,
+                                prefix: tr(ref, 'Failed to join'),
+                              );
                             }
                           }
                         },
@@ -120,11 +151,18 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                 }
               } catch (e) {
                 if (context.mounted) {
-                  AppToast.showFriendlyError(context, e, prefix: tr(ref, 'Failed to leave'));
+                  AppToast.showFriendlyError(
+                    context,
+                    e,
+                    prefix: tr(ref, 'Failed to leave'),
+                  );
                 }
               }
             },
-            child: Text(tr(ref, 'Leave'), style: const TextStyle(fontWeight: FontWeight.bold)),
+            child: Text(
+              tr(ref, 'Leave'),
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),
@@ -170,12 +208,16 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                         color: AppColors.primaryGreen.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(Icons.info_outline_rounded, color: AppColors.primaryGreen, size: 22),
+                      child: const Icon(
+                        Icons.info_outline_rounded,
+                        color: AppColors.primaryGreen,
+                        size: 22,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        'Community Rules & Guidelines',
+                        tr(ref, 'About & Guidelines'),
                         style: TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.bold,
@@ -189,13 +231,68 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 14),
+                if (hub.description.trim().isNotEmpty) ...[
+                  const SizedBox(height: 14),
+                  Text(
+                    tr(ref, 'About Community'),
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.3,
+                      color: isDark
+                          ? const Color(0xFF86EFAC)
+                          : AppColors.primaryGreen,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.black26 : const Color(0xFFF7FAF6),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: isDark
+                            ? AppColors.lineDark
+                            : const Color(0xFFDCE8DA),
+                      ),
+                    ),
+                    child: Text(
+                      hub.description.trim(),
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        height: 1.45,
+                        color: isDark
+                            ? Colors.white70
+                            : const Color(0xFF2D3748),
+                      ),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 16),
+                Text(
+                  tr(ref, 'Community Rules & Guidelines'),
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.3,
+                    color: isDark
+                        ? const Color(0xFF86EFAC)
+                        : AppColors.primaryGreen,
+                  ),
+                ),
+                const SizedBox(height: 6),
                 Container(
+                  width: double.infinity,
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: isDark ? Colors.black26 : const Color(0xFFF7FAF6),
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: isDark ? AppColors.lineDark : const Color(0xFFDCE8DA)),
+                    border: Border.all(
+                      color: isDark
+                          ? AppColors.lineDark
+                          : const Color(0xFFDCE8DA),
+                    ),
                   ),
                   child: Text(
                     hub.rules.isNotEmpty
@@ -224,9 +321,14 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                     runSpacing: 6,
                     children: hub.farmingTopics.map((topic) {
                       return Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF263B2B) : const Color(0xFFEAF5E7),
+                          color: isDark
+                              ? const Color(0xFF263B2B)
+                              : const Color(0xFFEAF5E7),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Text(
@@ -257,18 +359,27 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF111C15) : const Color(0xFFF7FAF6),
+      backgroundColor: isDark
+          ? const Color(0xFF111C15)
+          : const Color(0xFFF7FAF6),
       body: hubAsync.when(
         data: (hub) {
-          final isAuthorOrInstructor = (currentUser?.isInstructor == true || currentUser?.isAdmin == true) &&
-              ((hub.instructorId.isNotEmpty && currentUser?.id == hub.instructorId) ||
-               (hub.instructorName.trim().isNotEmpty && currentUser?.fullName.trim().toLowerCase() == hub.instructorName.trim().toLowerCase()));
+          final isAuthorOrInstructor =
+              (currentUser?.isInstructor == true ||
+                  currentUser?.isAdmin == true) &&
+              ((hub.instructorId.isNotEmpty &&
+                      currentUser?.id == hub.instructorId) ||
+                  (hub.instructorName.trim().isNotEmpty &&
+                      currentUser?.fullName.trim().toLowerCase() ==
+                          hub.instructorName.trim().toLowerCase()));
 
           return RefreshIndicator(
             color: AppColors.primaryGreen,
             onRefresh: () async {
               ref.invalidate(hubDetailsProvider(widget.hubId));
-              await ref.read(communityHubPostsProvider(widget.hubId).notifier).fetchPosts();
+              await ref
+                  .read(communityHubPostsProvider(widget.hubId).notifier)
+                  .fetchPosts();
             },
             child: CustomScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
@@ -277,7 +388,9 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                 SliverAppBar(
                   expandedHeight: 200,
                   pinned: true,
-                  backgroundColor: isDark ? const Color(0xFF131F16) : Colors.white,
+                  backgroundColor: isDark
+                      ? const Color(0xFF131F16)
+                      : Colors.white,
                   surfaceTintColor: Colors.transparent,
                   leading: IconButton(
                     icon: Container(
@@ -286,7 +399,11 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                         color: Colors.black45,
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 20),
+                      child: const Icon(
+                        Icons.arrow_back_rounded,
+                        color: Colors.white,
+                        size: 20,
+                      ),
                     ),
                     onPressed: () => Navigator.of(context).pop(),
                   ),
@@ -300,7 +417,11 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                           color: Colors.black45,
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.info_outline_rounded, color: Colors.white, size: 20),
+                        child: const Icon(
+                          Icons.info_outline_rounded,
+                          color: Colors.white,
+                          size: 20,
+                        ),
                       ),
                       onPressed: () => _showRulesSheet(context, hub),
                     ),
@@ -310,11 +431,13 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                     background: Stack(
                       fit: StackFit.expand,
                       children: [
-                        if (hub.coverBanner != null && hub.coverBanner!.isNotEmpty)
+                        if (hub.coverBanner != null &&
+                            hub.coverBanner!.isNotEmpty)
                           CachedNetworkImage(
                             imageUrl: hub.coverBanner!,
                             fit: BoxFit.cover,
-                            errorWidget: (_, __, ___) => _DefaultCoverBanner(hub: hub),
+                            errorWidget: (_, __, ___) =>
+                                _DefaultCoverBanner(hub: hub),
                           )
                         else
                           _DefaultCoverBanner(hub: hub),
@@ -344,13 +467,22 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                                   width: 56,
                                   height: 56,
                                   color: Colors.white,
-                                  child: hub.logo != null && hub.logo!.isNotEmpty
+                                  child:
+                                      hub.logo != null && hub.logo!.isNotEmpty
                                       ? CachedNetworkImage(
                                           imageUrl: hub.logo!,
                                           fit: BoxFit.cover,
-                                          errorWidget: (_, __, ___) => const Icon(Icons.agriculture_rounded, color: AppColors.primaryGreen),
+                                          errorWidget: (_, __, ___) =>
+                                              const Icon(
+                                                Icons.agriculture_rounded,
+                                                color: AppColors.primaryGreen,
+                                              ),
                                         )
-                                      : const Icon(Icons.agriculture_rounded, color: AppColors.primaryGreen, size: 30),
+                                      : const Icon(
+                                          Icons.agriculture_rounded,
+                                          color: AppColors.primaryGreen,
+                                          size: 30,
+                                        ),
                                 ),
                               ),
                               const SizedBox(width: 12),
@@ -374,7 +506,9 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                                     Text(
                                       '📍 ${hub.state} • ${hub.districts.isNotEmpty ? hub.districts.join(", ") : "District Hub"}',
                                       style: TextStyle(
-                                        color: Colors.white.withValues(alpha: 0.9),
+                                        color: Colors.white.withValues(
+                                          alpha: 0.9,
+                                        ),
                                         fontSize: 11.5,
                                       ),
                                       maxLines: 1,
@@ -396,12 +530,19 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                   SliverToBoxAdapter(
                     child: Container(
                       margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
                       decoration: BoxDecoration(
-                        color: Colors.red.withValues(alpha: isDark ? 0.15 : 0.08),
+                        color: Colors.red.withValues(
+                          alpha: isDark ? 0.15 : 0.08,
+                        ),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: Colors.redAccent.withValues(alpha: isDark ? 0.4 : 0.3),
+                          color: Colors.redAccent.withValues(
+                            alpha: isDark ? 0.4 : 0.3,
+                          ),
                           width: 1.2,
                         ),
                       ),
@@ -430,7 +571,9 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
                                     fontSize: 14,
-                                    color: isDark ? Colors.red.shade200 : Colors.red.shade800,
+                                    color: isDark
+                                        ? Colors.red.shade200
+                                        : Colors.red.shade800,
                                   ),
                                 ),
                                 const SizedBox(height: 4),
@@ -441,7 +584,9 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                                   style: TextStyle(
                                     fontSize: 12.5,
                                     height: 1.35,
-                                    color: isDark ? Colors.white70 : AppColors.inkSoft,
+                                    color: isDark
+                                        ? Colors.white70
+                                        : AppColors.inkSoft,
                                   ),
                                 ),
                               ],
@@ -460,10 +605,17 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                     decoration: BoxDecoration(
                       color: isDark ? const Color(0xFF18261E) : Colors.white,
                       borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: isDark ? const Color(0xFF2C3E32) : const Color(0xFFE2EBE0), width: 1.2),
+                      border: Border.all(
+                        color: isDark
+                            ? const Color(0xFF2C3E32)
+                            : const Color(0xFFE2EBE0),
+                        width: 1.2,
+                      ),
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.primaryGreen.withValues(alpha: isDark ? 0.15 : 0.04),
+                          color: AppColors.primaryGreen.withValues(
+                            alpha: isDark ? 0.15 : 0.04,
+                          ),
                           blurRadius: 12,
                           offset: const Offset(0, 3),
                         ),
@@ -474,12 +626,24 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                         // Instructor Photo
                         CircleAvatar(
                           radius: 20,
-                          backgroundColor: AppColors.primaryGreen.withValues(alpha: 0.12),
-                          backgroundImage: hub.instructorAvatar != null && hub.instructorAvatar!.isNotEmpty
-                              ? CachedNetworkImageProvider(hub.instructorAvatar!)
+                          backgroundColor: AppColors.primaryGreen.withValues(
+                            alpha: 0.12,
+                          ),
+                          backgroundImage:
+                              hub.instructorAvatar != null &&
+                                  hub.instructorAvatar!.isNotEmpty
+                              ? CachedNetworkImageProvider(
+                                  hub.instructorAvatar!,
+                                )
                               : null,
-                          child: (hub.instructorAvatar == null || hub.instructorAvatar!.isEmpty)
-                              ? const Icon(Icons.person, color: AppColors.primaryGreen, size: 20)
+                          child:
+                              (hub.instructorAvatar == null ||
+                                  hub.instructorAvatar!.isEmpty)
+                              ? const Icon(
+                                  Icons.person,
+                                  color: AppColors.primaryGreen,
+                                  size: 20,
+                                )
                               : null,
                         ),
                         const SizedBox(width: 10),
@@ -495,14 +659,20 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                                       style: TextStyle(
                                         fontWeight: FontWeight.bold,
                                         fontSize: 14,
-                                        color: isDark ? Colors.white : AppColors.inkDark,
+                                        color: isDark
+                                            ? Colors.white
+                                            : AppColors.inkDark,
                                       ),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
                                   const SizedBox(width: 4),
-                                  const Icon(Icons.verified, color: AppColors.primaryGreen, size: 15),
+                                  const Icon(
+                                    Icons.verified,
+                                    color: AppColors.primaryGreen,
+                                    size: 15,
+                                  ),
                                 ],
                               ),
                               const SizedBox(height: 2),
@@ -510,7 +680,10 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                                 borderRadius: BorderRadius.circular(8),
                                 onTap: () => HubMembersSheet.show(context, hub),
                                 child: Padding(
-                                  padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 2),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 2,
+                                    horizontal: 2,
+                                  ),
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
@@ -543,51 +716,93 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                                 ? OutlinedButton.icon(
                                     style: OutlinedButton.styleFrom(
                                       side: BorderSide(
-                                        color: isDark ? AppColors.lineDark : AppColors.editorialOutlineVariant.withValues(alpha: 0.4),
+                                        color: isDark
+                                            ? AppColors.lineDark
+                                            : AppColors.editorialOutlineVariant
+                                                  .withValues(alpha: 0.4),
                                       ),
-                                      backgroundColor: isDark ? const Color(0xFF24242A) : AppColors.editorialSurfaceContainerLow,
-                                      foregroundColor: isDark ? Colors.white70 : AppColors.editorialOnSurface,
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                                      backgroundColor: isDark
+                                          ? const Color(0xFF24242A)
+                                          : AppColors
+                                                .editorialSurfaceContainerLow,
+                                      foregroundColor: isDark
+                                          ? Colors.white70
+                                          : AppColors.editorialOnSurface,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(20),
+                                      ),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                      ),
                                       minimumSize: Size.zero,
-                                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                      tapTargetSize:
+                                          MaterialTapTargetSize.shrinkWrap,
                                     ),
-                                    onPressed: () => _confirmLeave(context, hub),
-                                    icon: const Icon(Icons.check_circle_rounded, size: 14, color: AppColors.editorialSecondaryFixedDim),
+                                    onPressed: () =>
+                                        _confirmLeave(context, hub),
+                                    icon: const Icon(
+                                      Icons.check_circle_rounded,
+                                      size: 14,
+                                      color:
+                                          AppColors.editorialSecondaryFixedDim,
+                                    ),
                                     label: Text(
                                       tr(ref, 'Joined ✓'),
-                                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 12,
+                                      ),
                                     ),
                                   )
                                 : OutlinedButton(
                                     style: OutlinedButton.styleFrom(
                                       side: BorderSide(
                                         color: isDark
-                                            ? AppColors.primaryGreen.withValues(alpha: 0.6)
+                                            ? AppColors.primaryGreen.withValues(
+                                                alpha: 0.6,
+                                              )
                                             : AppColors.primaryGreen,
                                         width: 1.2,
                                       ),
                                       backgroundColor: isDark
-                                          ? AppColors.primaryGreen.withValues(alpha: 0.15)
-                                          : AppColors.primaryGreen.withValues(alpha: 0.08),
+                                          ? AppColors.primaryGreen.withValues(
+                                              alpha: 0.15,
+                                            )
+                                          : AppColors.primaryGreen.withValues(
+                                              alpha: 0.08,
+                                            ),
                                       foregroundColor: isDark
                                           ? const Color(0xFF86EFAC)
                                           : AppColors.primaryGreen,
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(20),
+                                      ),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 14,
+                                      ),
                                       minimumSize: Size.zero,
-                                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                      tapTargetSize:
+                                          MaterialTapTargetSize.shrinkWrap,
                                     ),
                                     onPressed: () async {
                                       try {
-                                        await ref.read(communityHubsProvider.notifier).toggleJoin(
+                                        await ref
+                                            .read(
+                                              communityHubsProvider.notifier,
+                                            )
+                                            .toggleJoin(
                                               hub.id,
                                               currentIsMember: false,
-                                              currentMemberCount: hub.memberCount,
+                                              currentMemberCount:
+                                                  hub.memberCount,
                                             );
                                       } catch (e) {
                                         if (context.mounted) {
-                                          AppToast.showFriendlyError(context, e, prefix: 'Failed to join');
+                                          AppToast.showFriendlyError(
+                                            context,
+                                            e,
+                                            prefix: 'Failed to join',
+                                          );
                                         }
                                       }
                                     },
@@ -616,7 +831,9 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                         color: isDark ? const Color(0xFF18261E) : Colors.white,
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: isDark ? const Color(0xFF2C3E32) : const Color(0xFFE2EBE0),
+                          color: isDark
+                              ? const Color(0xFF2C3E32)
+                              : const Color(0xFFE2EBE0),
                           width: 1.2,
                         ),
                       ),
@@ -628,7 +845,9 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                               Icon(
                                 Icons.info_outline_rounded,
                                 size: 16,
-                                color: isDark ? const Color(0xFF86EFAC) : AppColors.primaryGreen,
+                                color: isDark
+                                    ? const Color(0xFF86EFAC)
+                                    : AppColors.primaryGreen,
                               ),
                               const SizedBox(width: 6),
                               Text(
@@ -637,7 +856,9 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                                   fontSize: 12,
                                   fontWeight: FontWeight.w700,
                                   letterSpacing: 0.3,
-                                  color: isDark ? const Color(0xFF86EFAC) : AppColors.primaryGreen,
+                                  color: isDark
+                                      ? const Color(0xFF86EFAC)
+                                      : AppColors.primaryGreen,
                                 ),
                               ),
                             ],
@@ -648,7 +869,9 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                             style: TextStyle(
                               fontSize: 13,
                               height: 1.45,
-                              color: isDark ? Colors.white70 : AppColors.inkDark,
+                              color: isDark
+                                  ? Colors.white70
+                                  : AppColors.inkDark,
                             ),
                           ),
                         ],
@@ -672,7 +895,9 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                                 fontSize: 11,
                                 fontWeight: FontWeight.w800,
                                 letterSpacing: 0.8,
-                                color: isDark ? Colors.white60 : AppColors.inkSoft,
+                                color: isDark
+                                    ? Colors.white60
+                                    : AppColors.inkSoft,
                               ),
                             ),
                           ),
@@ -685,7 +910,11 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                                   icon: Icons.edit_note_rounded,
                                   color: const Color(0xFF16A34A),
                                   isDark: isDark,
-                                  onTap: () => CreatePostSheets.showGeneralPost(context, ref, hub.id),
+                                  onTap: () => CreatePostSheets.showGeneralPost(
+                                    context,
+                                    ref,
+                                    hub.id,
+                                  ),
                                 ),
                               ),
                               const SizedBox(width: 10),
@@ -696,7 +925,12 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                                   icon: Icons.campaign_rounded,
                                   color: const Color(0xFF9333EA),
                                   isDark: isDark,
-                                  onTap: () => CreatePostSheets.showAnnouncement(context, ref, hub.id),
+                                  onTap: () =>
+                                      CreatePostSheets.showAnnouncement(
+                                        context,
+                                        ref,
+                                        hub.id,
+                                      ),
                                 ),
                               ),
                             ],
@@ -711,7 +945,11 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                                   icon: Icons.videocam_rounded,
                                   color: const Color(0xFF2563EB),
                                   isDark: isDark,
-                                  onTap: () => CreatePostSheets.showWebinar(context, ref, hub.id),
+                                  onTap: () => CreatePostSheets.showWebinar(
+                                    context,
+                                    ref,
+                                    hub.id,
+                                  ),
                                 ),
                               ),
                               const SizedBox(width: 10),
@@ -722,7 +960,11 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                                   icon: Icons.groups_rounded,
                                   color: const Color(0xFFD97706),
                                   isDark: isDark,
-                                  onTap: () => CreatePostSheets.showSeminar(context, ref, hub.id),
+                                  onTap: () => CreatePostSheets.showSeminar(
+                                    context,
+                                    ref,
+                                    hub.id,
+                                  ),
                                 ),
                               ),
                             ],
@@ -741,13 +983,23 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                           margin: const EdgeInsets.all(24),
                           padding: const EdgeInsets.all(24),
                           decoration: BoxDecoration(
-                            color: isDark ? const Color(0xFF18261E) : Colors.white,
+                            color: isDark
+                                ? const Color(0xFF18261E)
+                                : Colors.white,
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: isDark ? const Color(0xFF2C3E32) : const Color(0xFFE2EBE0)),
+                            border: Border.all(
+                              color: isDark
+                                  ? const Color(0xFF2C3E32)
+                                  : const Color(0xFFE2EBE0),
+                            ),
                           ),
                           child: Column(
                             children: [
-                              const Icon(Icons.post_add_rounded, size: 42, color: AppColors.primaryGreen),
+                              const Icon(
+                                Icons.post_add_rounded,
+                                size: 42,
+                                color: AppColors.primaryGreen,
+                              ),
                               const SizedBox(height: 12),
                               Text(
                                 'No updates published in this community yet.',
@@ -755,7 +1007,9 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                                 style: TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.bold,
-                                  color: isDark ? Colors.white : AppColors.inkDark,
+                                  color: isDark
+                                      ? Colors.white
+                                      : AppColors.inkDark,
                                 ),
                               ),
                               const SizedBox(height: 6),
@@ -764,7 +1018,9 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontSize: 13,
-                                  color: isDark ? Colors.white70 : AppColors.inkSoft,
+                                  color: isDark
+                                      ? Colors.white70
+                                      : AppColors.inkSoft,
                                 ),
                               ),
                             ],
@@ -773,24 +1029,25 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                       );
                     }
                     return SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) {
-                          final post = posts[index];
-                          return RichPostCard(
-                            post: post,
-                            hubId: hub.id,
-                            isInstructorView: isAuthorOrInstructor,
-                            isHubActive: hub.isActive,
-                          );
-                        },
-                        childCount: posts.length,
-                      ),
+                      delegate: SliverChildBuilderDelegate((context, index) {
+                        final post = posts[index];
+                        return RichPostCard(
+                          post: post,
+                          hubId: hub.id,
+                          isInstructorView: isAuthorOrInstructor,
+                          isHubActive: hub.isActive,
+                        );
+                      }, childCount: posts.length),
                     );
                   },
                   loading: () => const SliverToBoxAdapter(
                     child: Padding(
                       padding: EdgeInsets.all(40),
-                      child: Center(child: CircularProgressIndicator(color: AppColors.primaryGreen)),
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          color: AppColors.primaryGreen,
+                        ),
+                      ),
                     ),
                   ),
                   error: (e, _) => SliverToBoxAdapter(
@@ -798,7 +1055,10 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
                       child: Padding(
                         padding: const EdgeInsets.all(20),
                         child: Text(
-                          getUserFriendlyErrorMessage(e, fallback: 'Error loading feed'),
+                          getUserFriendlyErrorMessage(
+                            e,
+                            fallback: 'Error loading feed',
+                          ),
                           textAlign: TextAlign.center,
                         ),
                       ),
@@ -818,7 +1078,10 @@ class _HubDetailScreenState extends ConsumerState<HubDetailScreen> {
           child: Padding(
             padding: const EdgeInsets.all(24),
             child: Text(
-              getUserFriendlyErrorMessage(e, fallback: 'Failed to load community hub'),
+              getUserFriendlyErrorMessage(
+                e,
+                fallback: 'Failed to load community hub',
+              ),
               textAlign: TextAlign.center,
             ),
           ),
@@ -863,7 +1126,9 @@ class _MiniActionButton extends StatelessWidget {
               end: Alignment.bottomRight,
             ),
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: color.withValues(alpha: isDark ? 0.45 : 0.3)),
+            border: Border.all(
+              color: color.withValues(alpha: isDark ? 0.45 : 0.3),
+            ),
             boxShadow: [
               BoxShadow(
                 color: color.withValues(alpha: isDark ? 0.15 : 0.05),

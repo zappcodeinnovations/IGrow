@@ -400,6 +400,7 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
   Future<void> _submitCreateCourseDraft() async {
     final token = await ref.read(tokenStorageProvider).getAccessToken();
     if (token == null || token.isEmpty) {
+      if (!mounted) return;
       final loggedIn = await QuickAuthDialog.show(context);
       if (!loggedIn || !mounted) return;
       // Ensure user maintains Instructor role and does not get kicked to farmer screen
@@ -413,6 +414,7 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
     final hasValidPhone = currentUser != null && currentUser.phone.trim().isNotEmpty;
     final hasValidEmail = currentUser != null && currentUser.email.trim().isNotEmpty;
     if (!hasValidPhone || !hasValidEmail) {
+      if (!mounted) return;
       final updated = await InstructorContactInfoBottomSheet.show(
         context,
         onSuccess: () {},
@@ -1992,6 +1994,19 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          if (_coverImage != null) ...[
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Image.file(
+                                _coverImage!,
+                                width: double.infinity,
+                                height: 160,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                          ],
                           Row(
                             children: [
                               Container(
