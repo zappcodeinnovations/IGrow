@@ -12,6 +12,7 @@ import '../../../core/widgets/app_error_state.dart';
 import '../../../data/models/api_models/wishlist_model.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../auth/widgets/quick_auth_dialog.dart';
+import '../../auth/widgets/require_login_dialog.dart';
 import '../../home_farmer/providers/student_provider.dart';
 import '../../wishlist/providers/wishlist_provider.dart';
 
@@ -33,6 +34,12 @@ class _EbookViewerScreenState extends ConsumerState<EbookViewerScreen> {
   bool _claimedFree = false;
 
   Future<void> _claimFreeEbook(dynamic ebook, String targetId) async {
+    final authState = ref.read(authProvider);
+    if (!authState.isAuthenticated) {
+      final loggedIn = await RequireLoginDialog.show(context);
+      if (!loggedIn) return;
+    }
+
     if (_isClaimingFree) return;
     setState(() => _isClaimingFree = true);
 
@@ -55,11 +62,19 @@ class _EbookViewerScreenState extends ConsumerState<EbookViewerScreen> {
       if (mounted) {
         setState(() => _isClaimingFree = false);
         final msg = getUserFriendlyErrorMessage(e);
-        if (msg.toLowerCase().contains('already own') ||
-            msg.toLowerCase().contains('already purchased') ||
-            msg.toLowerCase().contains('already unlocked')) {
+        final lower = msg.toLowerCase();
+        if (lower.contains('already own') ||
+            lower.contains('already purchased') ||
+            lower.contains('already unlocked')) {
           ref.invalidate(studentPurchasedEbooksProvider);
           setState(() => _claimedFree = true);
+        } else if (lower.contains('authentication') ||
+            lower.contains('credentials') ||
+            lower.contains('unauthorized') ||
+            lower.contains('not provided') ||
+            lower.contains('log in') ||
+            lower.contains('login')) {
+          RequireLoginDialog.show(context);
         } else {
           AppToast.showFriendlyError(
             context,
@@ -527,7 +542,7 @@ class _EbookViewerScreenState extends ConsumerState<EbookViewerScreen> {
                         onPressed: () async {
                           final authState = ref.read(authProvider);
                           if (!authState.isAuthenticated) {
-                            final loggedIn = await QuickAuthDialog.show(context);
+                            final loggedIn = await RequireLoginDialog.show(context);
                             if (!loggedIn) return;
                           }
                           if (!context.mounted) return;

@@ -20,7 +20,7 @@ import '../../../data/models/api_models/wishlist_model.dart';
 import '../../../data/models/user_role.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../auth/widgets/complete_social_profile_dialog.dart';
-import '../../auth/widgets/quick_auth_dialog.dart';
+import '../../auth/widgets/require_login_dialog.dart';
 import '../../cart/providers/cart_provider.dart';
 import '../../home_farmer/providers/student_provider.dart';
 import '../../wishlist/providers/wishlist_provider.dart';
@@ -1050,7 +1050,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen>
     // 1. If not authenticated, prompt in-app login/OTP popup first
     final authState = ref.read(authProvider);
     if (!authState.isAuthenticated) {
-      final loggedIn = await QuickAuthDialog.show(context);
+      final loggedIn = await RequireLoginDialog.show(context);
       if (!loggedIn) return;
     }
 
@@ -1170,7 +1170,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen>
     // 1. If not authenticated, prompt in-app login/OTP popup first
     final authState = ref.read(authProvider);
     if (!authState.isAuthenticated) {
-      final loggedIn = await QuickAuthDialog.show(context);
+      final loggedIn = await RequireLoginDialog.show(context);
       if (!loggedIn) return;
     }
 
@@ -1199,7 +1199,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen>
     // 1. If not authenticated, prompt in-app login/OTP popup first
     final authState = ref.read(authProvider);
     if (!authState.isAuthenticated) {
-      final loggedIn = await QuickAuthDialog.show(context);
+      final loggedIn = await RequireLoginDialog.show(context);
       if (!loggedIn) return;
     }
 
@@ -1277,7 +1277,7 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen>
   Future<void> _toggleWishlist(ApiCourseDetail course) async {
     final authState = ref.read(authProvider);
     if (!authState.isAuthenticated) {
-      final loggedIn = await QuickAuthDialog.show(context);
+      final loggedIn = await RequireLoginDialog.show(context);
       if (!loggedIn) return;
     }
 

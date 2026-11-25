@@ -32,6 +32,9 @@ class AppStrings {
 
   static const Map<String, Map<String, String>> _translations = {
     'en': {
+      'Login Required': 'Login Required',
+      'You have to log in to access e-books and courses. Please log in or sign up to continue.': 'You have to log in to access e-books and courses. Please log in or sign up to continue.',
+      'Log In': 'Log In',
       'Paid': 'Paid',
       'Preview this course': 'Preview this course',
       'Preview free lesson': 'Preview free lesson',
@@ -1848,6 +1851,9 @@ class AppStrings {
     },
 
     'hi': {
+      'Login Required': 'लॉगिन आवश्यक है',
+      'You have to log in to access e-books and courses. Please log in or sign up to continue.': 'ई-बुक्स और कोर्स देखने के लिए आपको लॉगिन करना होगा। कृपया जारी रखने के लिए लॉगिन या साइन अप करें।',
+      'Log In': 'लॉगिन करें',
       'Paid': 'सशुल्क',
       'Preview this course': 'इस कोर्स का पूर्वावलोकन करें',
       'Preview free lesson': 'निःशुल्क पाठ का पूर्वावलोकन करें',
@@ -3664,6 +3670,9 @@ class AppStrings {
     },
 
     'mr': {
+      'Login Required': 'लॉगिन आवश्यक आहे',
+      'You have to log in to access e-books and courses. Please log in or sign up to continue.': 'ई-पुस्तके आणि कोर्सेस वापरण्यासाठी तुम्हाला लॉगिन करणे आवश्यक आहे. कृपया पुढे जाण्यासाठी लॉगिन करा किंवा साइन अप करा.',
+      'Log In': 'लॉगिन करा',
       'Paid': 'सशुल्क',
       'Preview this course': 'या कोर्सचे पूर्वावलोकन करा',
       'Preview free lesson': 'मोफत धड्याचे पूर्वावलोकन करा',

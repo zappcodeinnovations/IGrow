@@ -88,6 +88,12 @@ String _cleanTechnicalErrorString(String raw, {String fallback = 'Something went
     return 'The requested item was not found or has already been removed.';
   }
 
+  // Authentication credentials required
+  if (lower.contains('authentication credentials were not provided') ||
+      lower.contains('not authenticated')) {
+    return 'You have to log in to access this. Please log in or sign up to continue.';
+  }
+
   // Remove trailing uri=... if present
   s = s.replaceAll(RegExp(r',?\s*uri\s*=\s*https?://\S+', caseSensitive: false), '').trim();
 

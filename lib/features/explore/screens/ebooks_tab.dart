@@ -7,7 +7,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/app_toast.dart';
 import '../../../core/widgets/app_error_state.dart';
 import '../../auth/providers/auth_provider.dart';
-import '../../auth/widgets/quick_auth_dialog.dart';
+import '../../auth/widgets/require_login_dialog.dart';
 import '../../cart/providers/cart_provider.dart';
 import '../../home_farmer/providers/student_provider.dart';
 import '../../../core/widgets/shimmer_placeholders.dart';
@@ -398,7 +398,7 @@ class EbooksTab extends ConsumerWidget {
                               onPressed: () async {
                                 final authState = ref.read(authProvider);
                                 if (!authState.isAuthenticated) {
-                                  final loggedIn = await QuickAuthDialog.show(context);
+                                  final loggedIn = await RequireLoginDialog.show(context);
                                   if (!loggedIn) return;
                                 }
                                 if (!context.mounted) return;
