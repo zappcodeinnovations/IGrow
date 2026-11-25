@@ -514,8 +514,6 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
 
     XFile? pickedVideo;
     String? pickedVideoSize;
-    FilePickerResult? pickedResource;
-    String? pickedResourceSize;
 
     await showModalBottomSheet(
       context: parentContext,
@@ -737,83 +735,6 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                         ],
                       ),
                     ),
-                    const SizedBox(height: 16),
-
-                    // Study Material (PDF / Document) Section
-                    Text(
-                      'Study Material (PDF, DOCX, XLSX)',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.grey.shade700),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppColors.skyBlue.withValues(alpha: 0.05),
-                        border: Border.all(color: AppColors.skyBlue.withValues(alpha: 0.3)),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (isEditing && existingLecture.resources.isNotEmpty) ...[
-                            ...existingLecture.resources.map(
-                              (res) => Padding(
-                                padding: const EdgeInsets.only(bottom: 6),
-                                child: Row(
-                                  children: [
-                                    const Icon(Icons.picture_as_pdf, color: AppColors.skyBlue, size: 16),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text(
-                                        res.fileName,
-                                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                          OutlinedButton.icon(
-                            onPressed: () async {
-                              FocusScope.of(modalContext).unfocus();
-                              await Future.delayed(const Duration(milliseconds: 120));
-                              final result = await FilePicker.pickFiles(
-                                type: FileType.custom,
-                                allowedExtensions: ['pdf', 'docx', 'xlsx', 'doc', 'xls'],
-                              );
-                              if (result != null && result.files.single.path != null) {
-                                final file = result.files.single;
-                                final sizeStr = file.size > 1024 * 1024
-                                    ? '${(file.size / (1024 * 1024)).toStringAsFixed(1)} MB'
-                                    : '${(file.size / 1024).toStringAsFixed(1)} KB';
-                                setModalState(() {
-                                  pickedResource = result;
-                                  pickedResourceSize = sizeStr;
-                                });
-                                debugPrint('📄 [CURRICULUM BUILDER] Picked resource: ${file.name} ($sizeStr)');
-                              }
-                            },
-                            icon: const Icon(Icons.attach_file),
-                            label: Text(
-                              pickedResource != null ? 'Resource Attached' : 'Attach PDF / Document',
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: AppColors.skyBlue,
-                              side: const BorderSide(color: AppColors.skyBlue),
-                            ),
-                          ),
-                          if (pickedResource != null) ...[
-                            const SizedBox(height: 6),
-                            Text(
-                              'Selected: ${pickedResource!.files.single.name} ($pickedResourceSize)',
-                              style: const TextStyle(fontSize: 12, color: AppColors.skyBlue, fontWeight: FontWeight.w600),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
                     const SizedBox(height: 24),
 
                     // Action Button
@@ -848,7 +769,6 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                             isPreview: effectiveIsPreview,
                             previewDuration: previewDuration,
                             pickedVideo: pickedVideo,
-                            pickedResource: pickedResource,
                           );
                         },
                         child: Text(

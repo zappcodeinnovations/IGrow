@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:krushi_siksha/data/models/support_ticket_model.dart';
 import 'package:krushi_siksha/features/auth/providers/auth_provider.dart';
+import 'package:krushi_siksha/features/auth/widgets/require_login_dialog.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -294,6 +295,19 @@ class _SupportScreenState extends ConsumerState<SupportScreen>
   }
 
   Future<void> _submitTicket() async {
+    final isAuthenticated = ref.read(authProvider).isAuthenticated;
+    if (!isAuthenticated) {
+      final loggedIn = await RequireLoginDialog.show(
+        context,
+        title: tr(ref, 'Login Required'),
+        message: tr(
+          ref,
+          'You need to login to raise ticket. Please login to submit your ticket.',
+        ),
+      );
+      if (!loggedIn) return;
+    }
+
     if (!_formKey.currentState!.validate()) return;
 
     final subject = _subjectController.text.trim();
