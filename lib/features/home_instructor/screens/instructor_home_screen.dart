@@ -42,7 +42,11 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
-            const Icon(Icons.swap_horiz_rounded, color: Color(0xFF16A34A), size: 28),
+            const Icon(
+              Icons.swap_horiz_rounded,
+              color: Color(0xFF16A34A),
+              size: 28,
+            ),
             const SizedBox(width: 10),
             Text(
               tr(ref, 'Switch Mode'),
@@ -51,7 +55,10 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
           ],
         ),
         content: Text(
-          tr(ref, 'You are switching to Student Mode. You will be able to browse courses, read eBooks, and learn farming techniques.'),
+          tr(
+            ref,
+            'You are switching to Student Mode. You will be able to browse courses, read eBooks, and learn farming techniques.',
+          ),
           style: const TextStyle(fontSize: 14, height: 1.4),
         ),
         actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
@@ -61,9 +68,13 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
               Expanded(
                 child: OutlinedButton(
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: isDark ? Colors.white70 : AppColors.inkDark,
+                    foregroundColor: isDark
+                        ? Colors.white70
+                        : AppColors.inkDark,
                     side: BorderSide(
-                      color: isDark ? const Color(0xFF2C3E31) : const Color(0xFFD1DDD0),
+                      color: isDark
+                          ? const Color(0xFF2C3E31)
+                          : const Color(0xFFD1DDD0),
                       width: 1.2,
                     ),
                     shape: RoundedRectangleBorder(
@@ -74,7 +85,10 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                   onPressed: () => Navigator.pop(dialogCtx),
                   child: Text(
                     tr(ref, 'Cancel'),
-                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13.5,
+                    ),
                   ),
                 ),
               ),
@@ -93,14 +107,19 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
                   onPressed: () async {
                     Navigator.pop(dialogCtx);
                     // Switch role in AuthProvider and navigate to Student panel
-                    await ref.read(authProvider.notifier).switchRole(UserRole.farmer);
+                    await ref
+                        .read(authProvider.notifier)
+                        .switchRole(UserRole.farmer);
                     if (context.mounted) {
                       context.go(RouteNames.farmerHome);
                     }
                   },
                   child: Text(
                     tr(ref, 'OK, Switch'),
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13.5,
+                    ),
                   ),
                 ),
               ),
@@ -783,15 +802,15 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
           ref.invalidate(instructorEbooksProvider);
           ref.invalidate(studentEbooksProvider);
           ref.invalidate(instructorStatsProvider);
-          AppToast.show(
-            context,
-            tr(ref, 'Draft e-book deleted successfully'),
-          );
+          AppToast.show(context, tr(ref, 'Draft e-book deleted successfully'));
           return;
         }
         AppToast.show(
           context,
-          getUserFriendlyErrorMessage(e, fallback: tr(ref, 'Failed to delete e-book')),
+          getUserFriendlyErrorMessage(
+            e,
+            fallback: tr(ref, 'Failed to delete e-book'),
+          ),
           isError: true,
         );
       }
@@ -1035,15 +1054,15 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
           ref.invalidate(instructorEbooksProvider);
           ref.invalidate(studentEbooksProvider);
           ref.invalidate(instructorStatsProvider);
-          AppToast.show(
-            context,
-            tr(ref, 'Draft e-book deleted successfully'),
-          );
+          AppToast.show(context, tr(ref, 'Draft e-book deleted successfully'));
           return;
         }
         AppToast.show(
           context,
-          getUserFriendlyErrorMessage(e, fallback: tr(ref, 'Failed to delete e-book')),
+          getUserFriendlyErrorMessage(
+            e,
+            fallback: tr(ref, 'Failed to delete e-book'),
+          ),
           isError: true,
         );
       }
@@ -1056,7 +1075,7 @@ class _InstructorHomeScreenState extends ConsumerState<InstructorHomeScreen> {
     final user = ref.watch(authProvider).user;
     final userName = (user != null && user.fullName.isNotEmpty)
         ? user.fullName
-        : 'Ravi Kumar';
+        : tr(ref, 'Guest Instructor');
 
     return Scaffold(
       backgroundColor: Colors.transparent,

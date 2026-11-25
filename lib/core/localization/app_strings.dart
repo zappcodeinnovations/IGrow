@@ -32,6 +32,8 @@ class AppStrings {
 
   static const Map<String, Map<String, String>> _translations = {
     'en': {
+      'Guest Instructor': 'Guest Instructor',
+      'Guest Student': 'Guest Student',
       'Login Required': 'Login Required',
       'Please log in to complete your KYC verification. Your entered details will be preserved.': 'Please log in to complete your KYC verification. Your entered details will be preserved.',
       'You have to log in to access e-books and courses. Please log in or sign up to continue.': 'You have to log in to access e-books and courses. Please log in or sign up to continue.',
@@ -1852,6 +1854,8 @@ class AppStrings {
     },
 
     'hi': {
+      'Guest Instructor': 'अतिथि प्रशिक्षक',
+      'Guest Student': 'अतिथि छात्र',
       'Login Required': 'लॉगिन आवश्यक है',
       'Please log in to complete your KYC verification. Your entered details will be preserved.': 'कृपया अपना केवाईसी सत्यापन पूरा करने के लिए लॉगिन करें। आपके दर्ज किए गए विवरण सुरक्षित रहेंगे।',
       'You have to log in to access e-books and courses. Please log in or sign up to continue.': 'ई-बुक्स और कोर्स देखने के लिए आपको लॉगिन करना होगा। कृपया जारी रखने के लिए लॉगिन या साइन अप करें।',
@@ -3672,6 +3676,8 @@ class AppStrings {
     },
 
     'mr': {
+      'Guest Instructor': 'अतिथी मार्गदर्शक',
+      'Guest Student': 'अतिथी विद्यार्थी',
       'Login Required': 'लॉगिन आवश्यक आहे',
       'Please log in to complete your KYC verification. Your entered details will be preserved.': 'कृपया तुमचे केवायसी पडताळणी पूर्ण करण्यासाठी लॉगिन करा. तुम्ही प्रविष्ट केलेले तपशील जतन केले जातील.',
       'You have to log in to access e-books and courses. Please log in or sign up to continue.': 'ई-पुस्तके आणि कोर्सेस वापरण्यासाठी तुम्हाला लॉगिन करणे आवश्यक आहे. कृपया पुढे जाण्यासाठी लॉगिन करा किंवा साइन अप करा.',

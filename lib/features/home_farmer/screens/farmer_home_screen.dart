@@ -176,7 +176,7 @@ class _FarmerHomeScreenState extends ConsumerState<FarmerHomeScreen> {
     final user = ref.watch(authProvider).user;
     final fullName = (user != null && user.fullName.isNotEmpty)
         ? user.fullName
-        : 'Farmer';
+        : tr(ref, 'Guest Student');
     final firstName = fullName.split(' ').first;
 
     // Fetch async data providers
