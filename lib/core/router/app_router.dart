@@ -162,7 +162,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         if (role == UserRole.instructor &&
             state.matchedLocation.startsWith('/farmer') &&
             !state.matchedLocation.startsWith('/farmer/course') &&
-            !state.matchedLocation.startsWith('/farmer/ebook')) {
+            !state.matchedLocation.startsWith('/farmer/ebook') &&
+            !state.matchedLocation.startsWith('/farmer/instructor')) {
           return RouteNames.instructorHome;
         }
       }

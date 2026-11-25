@@ -133,7 +133,7 @@ class StudentWelcomeDialog extends ConsumerWidget {
                         ),
                         const SizedBox(height: 14),
 
-                        // 3D Scene Diorama Image
+                        // Field Banner Image
                         Container(
                           width: double.infinity,
                           height: 200,
@@ -151,19 +151,23 @@ class StudentWelcomeDialog extends ConsumerWidget {
                           ),
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(20),
-                            child: Image.memory(
-                              kFarmerWelcomeDioramaBytes,
+                            child: Image.asset(
+                              'assets/images/banners/free_courses_field.jpg',
                               fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Image.asset(
-                                'assets/images/banners/farmer_welcome_diorama.png',
+                              errorBuilder: (_, __, ___) => Image.memory(
+                                kFarmerWelcomeDioramaBytes,
                                 fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => Container(
-                                  color: const Color(0xFF1B4D2E),
-                                  child: const Center(
-                                    child: Icon(
-                                      Icons.agriculture_rounded,
-                                      size: 64,
-                                      color: Color(0xFF34D399),
+                                errorBuilder: (_, __, ___) => Image.asset(
+                                  'assets/images/banners/farmer_welcome_diorama.png',
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => Container(
+                                    color: const Color(0xFF1B4D2E),
+                                    child: const Center(
+                                      child: Icon(
+                                        Icons.agriculture_rounded,
+                                        size: 64,
+                                        color: Color(0xFF34D399),
+                                      ),
                                     ),
                                   ),
                                 ),

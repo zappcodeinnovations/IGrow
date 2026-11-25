@@ -59,13 +59,27 @@ class _ShellScaffoldState extends ConsumerState<ShellScaffold> {
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(authProvider).user;
-    final isInstructor =
-        user?.activeRole == UserRole.instructor ||
-        user?.activeRole == UserRole.admin;
-    final isFarmer = !isInstructor;
+    final location = GoRouterState.of(context).uri.toString();
+
+    // Determine role:
+    // If the active route is an /instructor route, definitely treat as instructor.
+    // If the active route is a /farmer route, definitely treat as farmer.
+    // Otherwise fallback to user.activeRole.
+    final bool isInstructorRoute = location.startsWith('/instructor');
+    final bool isFarmerRoute = location.startsWith('/farmer');
+
+    final bool isInstructor;
+    if (isInstructorRoute) {
+      isInstructor = true;
+    } else if (isFarmerRoute) {
+      isInstructor = false;
+    } else {
+      isInstructor = user?.activeRole == UserRole.instructor ||
+          user?.activeRole == UserRole.admin;
+    }
+    final bool isFarmer = !isInstructor;
 
     // Determine current index based on route
-    final location = GoRouterState.of(context).uri.toString();
     int currentIndex = 0;
 
     if (isFarmer) {

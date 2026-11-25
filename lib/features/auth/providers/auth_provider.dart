@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_client_legacy.dart';
@@ -35,10 +36,7 @@ final apiClientProvider = Provider<ApiClient>((ref) {
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   final appApi = ref.watch(appApiProvider);
   final tokenStorage = ref.watch(tokenStorageProvider);
-  return ApiAuthRepository(
-    appApi: appApi,
-    tokenStorage: tokenStorage,
-  );
+  return ApiAuthRepository(appApi: appApi, tokenStorage: tokenStorage);
 });
 
 // ─── Auth State ────────────────────────────────────────────────────
@@ -48,21 +46,13 @@ enum AuthStatus { initial, loading, authenticated, unauthenticated, error }
 
 /// Holds authentication state: status, user, and error message.
 class AuthState {
-  const AuthState({
-    this.status = AuthStatus.initial,
-    this.user,
-    this.error,
-  });
+  const AuthState({this.status = AuthStatus.initial, this.user, this.error});
 
   final AuthStatus status;
   final UserModel? user;
   final String? error;
 
-  AuthState copyWith({
-    AuthStatus? status,
-    UserModel? user,
-    String? error,
-  }) {
+  AuthState copyWith({AuthStatus? status, UserModel? user, String? error}) {
     return AuthState(
       status: status ?? this.status,
       user: user ?? this.user,
@@ -71,7 +61,8 @@ class AuthState {
   }
 
   /// Convenience getters.
-  bool get isAuthenticated => status == AuthStatus.authenticated && user != null;
+  bool get isAuthenticated =>
+      status == AuthStatus.authenticated && user != null;
   bool get isLoading => status == AuthStatus.loading;
   UserRole? get activeRole => user?.activeRole;
 }
@@ -92,9 +83,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
   void _startPeriodicSync() {
     _profileSyncTimer?.cancel();
     // Periodically sync profile from backend (15s if pending KYC/verification, 2m if already verified) to avoid flooding console and network
-    final isFullyVerified = state.user?.isKycVerified == true &&
+    final isFullyVerified =
+        state.user?.isKycVerified == true &&
         state.user?.verificationStatus?.toUpperCase() == 'VERIFIED';
-    final interval = isFullyVerified ? const Duration(minutes: 2) : const Duration(seconds: 15);
+    final interval = isFullyVerified
+        ? const Duration(minutes: 2)
+        : const Duration(seconds: 15);
     _profileSyncTimer = Timer.periodic(interval, (_) {
       refreshUserSilent();
     });
@@ -154,6 +148,32 @@ class AuthNotifier extends StateNotifier<AuthState> {
     try {
       final hasSession = await _repo.hasSession();
       if (!hasSession) {
+        // If guest had previously chosen a role (e.g. instructor), restore a guest user
+        // so state.user is not null and activeRole is preserved across cold restarts!
+        final prefs = await SharedPreferences.getInstance();
+        final savedRole =
+            prefs.getString('selected_auth_role') ??
+            prefs.getString('active_user_role');
+        if (savedRole != null && savedRole.isNotEmpty) {
+          final role = savedRole.toLowerCase() == 'instructor'
+              ? UserRole.instructor
+              : UserRole.farmer;
+          final guestUser = UserModel(
+            id: 'guest_${DateTime.now().millisecondsSinceEpoch}',
+            fullName: role == UserRole.instructor
+                ? 'Guest Instructor'
+                : 'Guest Student',
+            email: '',
+            phone: '',
+            activeRole: role,
+            grantedRoles: [role],
+          );
+          state = AuthState(
+            status: AuthStatus.unauthenticated,
+            user: guestUser,
+          );
+          return;
+        }
         state = const AuthState(status: AuthStatus.unauthenticated);
         return;
       }
@@ -164,10 +184,49 @@ class AuthNotifier extends StateNotifier<AuthState> {
         // Safely sync FCM token with backend in background without delaying session check
         unawaited(_repo.syncFcmToken());
       } else {
-        state = const AuthState(status: AuthStatus.unauthenticated);
+        // Token exists but /auth/me failed; check saved role
+        final prefs = await SharedPreferences.getInstance();
+        final savedRole =
+            prefs.getString('selected_auth_role') ??
+            prefs.getString('active_user_role');
+        final role = savedRole?.toLowerCase() == 'instructor'
+            ? UserRole.instructor
+            : UserRole.farmer;
+        final guestUser = UserModel(
+          id: 'guest_${DateTime.now().millisecondsSinceEpoch}',
+          fullName: role == UserRole.instructor
+              ? 'Guest Instructor'
+              : 'Guest Student',
+          email: '',
+          phone: '',
+          activeRole: role,
+          grantedRoles: [role],
+        );
+        state = AuthState(status: AuthStatus.unauthenticated, user: guestUser);
       }
     } catch (e) {
-      state = const AuthState(status: AuthStatus.unauthenticated);
+      final prefs = await SharedPreferences.getInstance();
+      final savedRole =
+          prefs.getString('selected_auth_role') ??
+          prefs.getString('active_user_role');
+      if (savedRole != null && savedRole.isNotEmpty) {
+        final role = savedRole.toLowerCase() == 'instructor'
+            ? UserRole.instructor
+            : UserRole.farmer;
+        final guestUser = UserModel(
+          id: 'guest_${DateTime.now().millisecondsSinceEpoch}',
+          fullName: role == UserRole.instructor
+              ? 'Guest Instructor'
+              : 'Guest Student',
+          email: '',
+          phone: '',
+          activeRole: role,
+          grantedRoles: [role],
+        );
+        state = AuthState(status: AuthStatus.unauthenticated, user: guestUser);
+      } else {
+        state = const AuthState(status: AuthStatus.unauthenticated);
+      }
     }
   }
 
@@ -187,9 +246,15 @@ class AuthNotifier extends StateNotifier<AuthState> {
       state = AuthState(status: AuthStatus.authenticated, user: user);
       _startPeriodicSync();
     } on ApiException catch (e) {
-      state = AuthState(status: AuthStatus.error, error: ApiException.userFriendlyMessage(e));
+      state = AuthState(
+        status: AuthStatus.error,
+        error: ApiException.userFriendlyMessage(e),
+      );
     } catch (e) {
-      state = AuthState(status: AuthStatus.error, error: ApiException.userFriendlyMessage(e));
+      state = AuthState(
+        status: AuthStatus.error,
+        error: ApiException.userFriendlyMessage(e),
+      );
     }
   }
 
@@ -214,10 +279,16 @@ class AuthNotifier extends StateNotifier<AuthState> {
       _startPeriodicSync();
       return true;
     } on ApiException catch (e) {
-      state = AuthState(status: AuthStatus.error, error: ApiException.userFriendlyMessage(e));
+      state = AuthState(
+        status: AuthStatus.error,
+        error: ApiException.userFriendlyMessage(e),
+      );
       return false;
     } catch (e) {
-      state = AuthState(status: AuthStatus.error, error: ApiException.userFriendlyMessage(e));
+      state = AuthState(
+        status: AuthStatus.error,
+        error: ApiException.userFriendlyMessage(e),
+      );
       return false;
     }
   }
@@ -244,9 +315,15 @@ class AuthNotifier extends StateNotifier<AuthState> {
       // Registration successful. Keep status as unauthenticated so user can login manually.
       state = const AuthState(status: AuthStatus.unauthenticated);
     } on ApiException catch (e) {
-      state = AuthState(status: AuthStatus.error, error: ApiException.userFriendlyMessage(e));
+      state = AuthState(
+        status: AuthStatus.error,
+        error: ApiException.userFriendlyMessage(e),
+      );
     } catch (e) {
-      state = AuthState(status: AuthStatus.error, error: ApiException.userFriendlyMessage(e));
+      state = AuthState(
+        status: AuthStatus.error,
+        error: ApiException.userFriendlyMessage(e),
+      );
     }
   }
 
@@ -347,10 +424,16 @@ class AuthNotifier extends StateNotifier<AuthState> {
       state = state.copyWith(status: AuthStatus.unauthenticated);
       return true;
     } on ApiException catch (e) {
-      state = state.copyWith(status: AuthStatus.unauthenticated, error: ApiException.userFriendlyMessage(e));
+      state = state.copyWith(
+        status: AuthStatus.unauthenticated,
+        error: ApiException.userFriendlyMessage(e),
+      );
       return false;
     } catch (e) {
-      state = state.copyWith(status: AuthStatus.unauthenticated, error: ApiException.userFriendlyMessage(e));
+      state = state.copyWith(
+        status: AuthStatus.unauthenticated,
+        error: ApiException.userFriendlyMessage(e),
+      );
       return false;
     }
   }
@@ -362,12 +445,18 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }) async {
     state = state.copyWith(status: AuthStatus.loading, error: null);
     try {
-      final res = await _repo.verifyPhoneOtp(phoneNumber: phoneNumber, otp: otp);
+      final res = await _repo.verifyPhoneOtp(
+        phoneNumber: phoneNumber,
+        otp: otp,
+      );
       final isNewUser = res['is_new_user'] == true;
       if (!isNewUser) {
         final currentUser = await _repo.getCurrentUser();
         if (currentUser != null) {
-          state = AuthState(status: AuthStatus.authenticated, user: currentUser);
+          state = AuthState(
+            status: AuthStatus.authenticated,
+            user: currentUser,
+          );
           _startPeriodicSync();
         } else {
           state = state.copyWith(status: AuthStatus.unauthenticated);
@@ -377,10 +466,16 @@ class AuthNotifier extends StateNotifier<AuthState> {
       }
       return res;
     } on ApiException catch (e) {
-      state = state.copyWith(status: AuthStatus.unauthenticated, error: ApiException.userFriendlyMessage(e));
+      state = state.copyWith(
+        status: AuthStatus.unauthenticated,
+        error: ApiException.userFriendlyMessage(e),
+      );
       return null;
     } catch (e) {
-      state = state.copyWith(status: AuthStatus.unauthenticated, error: ApiException.userFriendlyMessage(e));
+      state = state.copyWith(
+        status: AuthStatus.unauthenticated,
+        error: ApiException.userFriendlyMessage(e),
+      );
       return null;
     }
   }
@@ -408,10 +503,16 @@ class AuthNotifier extends StateNotifier<AuthState> {
       _startPeriodicSync();
       return true;
     } on ApiException catch (e) {
-      state = state.copyWith(status: AuthStatus.unauthenticated, error: ApiException.userFriendlyMessage(e));
+      state = state.copyWith(
+        status: AuthStatus.unauthenticated,
+        error: ApiException.userFriendlyMessage(e),
+      );
       return false;
     } catch (e) {
-      state = state.copyWith(status: AuthStatus.unauthenticated, error: ApiException.userFriendlyMessage(e));
+      state = state.copyWith(
+        status: AuthStatus.unauthenticated,
+        error: ApiException.userFriendlyMessage(e),
+      );
       return false;
     }
   }
@@ -423,7 +524,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final user = await _repo.switchRole(newRole);
       state = AuthState(status: AuthStatus.authenticated, user: user);
     } catch (e) {
-      state = state.copyWith(status: AuthStatus.authenticated, error: ApiException.userFriendlyMessage(e));
+      state = state.copyWith(
+        status: AuthStatus.authenticated,
+        error: ApiException.userFriendlyMessage(e),
+      );
     }
   }
 
@@ -434,7 +538,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final user = await _repo.becomeInstructor();
       state = AuthState(status: AuthStatus.authenticated, user: user);
     } catch (e) {
-      state = state.copyWith(status: AuthStatus.authenticated, error: ApiException.userFriendlyMessage(e));
+      state = state.copyWith(
+        status: AuthStatus.authenticated,
+        error: ApiException.userFriendlyMessage(e),
+      );
     }
   }
 
@@ -466,19 +573,27 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final user = await _repo.updateProfile(request, email: email);
       state = AuthState(status: AuthStatus.authenticated, user: user);
     } catch (e) {
-      state = state.copyWith(status: AuthStatus.authenticated, error: ApiException.userFriendlyMessage(e));
+      state = state.copyWith(
+        status: AuthStatus.authenticated,
+        error: ApiException.userFriendlyMessage(e),
+      );
       rethrow;
     }
   }
 
   /// Update Instructor Profile.
-  Future<void> updateInstructorProfile(PatchedInstructorProfileRequest request) async {
+  Future<void> updateInstructorProfile(
+    PatchedInstructorProfileRequest request,
+  ) async {
     state = state.copyWith(status: AuthStatus.loading);
     try {
       final user = await _repo.updateInstructorProfile(request);
       state = AuthState(status: AuthStatus.authenticated, user: user);
     } catch (e) {
-      state = state.copyWith(status: AuthStatus.authenticated, error: ApiException.userFriendlyMessage(e));
+      state = state.copyWith(
+        status: AuthStatus.authenticated,
+        error: ApiException.userFriendlyMessage(e),
+      );
       rethrow;
     }
   }
@@ -493,7 +608,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
     required String accountNumber,
     required String ifscCode,
   }) async {
-    print('🚀 [AUTH PROVIDER] submitKycProfile requested: docType=$docType, docNumber=$docNumber');
+    print(
+      '🚀 [AUTH PROVIDER] submitKycProfile requested: docType=$docType, docNumber=$docNumber',
+    );
     state = state.copyWith(status: AuthStatus.loading);
     try {
       final user = await _repo.submitKycProfile(
@@ -505,11 +622,16 @@ class AuthNotifier extends StateNotifier<AuthState> {
         accountNumber: accountNumber,
         ifscCode: ifscCode,
       );
-      print('✅ [AUTH PROVIDER] submitKycProfile successful. Updated user: ${user.fullName}, verified: ${user.kycVerified}');
+      print(
+        '✅ [AUTH PROVIDER] submitKycProfile successful. Updated user: ${user.fullName}, verified: ${user.kycVerified}',
+      );
       state = AuthState(status: AuthStatus.authenticated, user: user);
     } catch (e) {
       print('❌ [AUTH PROVIDER] submitKycProfile failed: $e');
-      state = state.copyWith(status: AuthStatus.authenticated, error: ApiException.userFriendlyMessage(e));
+      state = state.copyWith(
+        status: AuthStatus.authenticated,
+        error: ApiException.userFriendlyMessage(e),
+      );
       rethrow;
     }
   }
@@ -525,7 +647,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
         state = AuthState(status: AuthStatus.authenticated, user: user);
       }
     } catch (e) {
-      state = state.copyWith(status: AuthStatus.authenticated, error: ApiException.userFriendlyMessage(e));
+      state = state.copyWith(
+        status: AuthStatus.authenticated,
+        error: ApiException.userFriendlyMessage(e),
+      );
       rethrow;
     }
   }
@@ -541,7 +666,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
         state = AuthState(status: AuthStatus.authenticated, user: user);
       }
     } catch (e) {
-      state = state.copyWith(status: AuthStatus.authenticated, error: ApiException.userFriendlyMessage(e));
+      state = state.copyWith(
+        status: AuthStatus.authenticated,
+        error: ApiException.userFriendlyMessage(e),
+      );
       rethrow;
     }
   }
@@ -549,9 +677,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   /// Set role during onboarding (before full registration).
   void setOnboardingRole(UserRole role) {
     if (state.user != null) {
-      state = state.copyWith(
-        user: state.user!.copyWith(activeRole: role),
-      );
+      state = state.copyWith(user: state.user!.copyWith(activeRole: role));
     }
   }
 
@@ -568,8 +694,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
 // ─── Providers ─────────────────────────────────────────────────────
 
-final authProvider =
-    StateNotifierProvider<AuthNotifier, AuthState>((ref) {
+final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   final repo = ref.watch(authRepositoryProvider);
   return AuthNotifier(repo);
 });

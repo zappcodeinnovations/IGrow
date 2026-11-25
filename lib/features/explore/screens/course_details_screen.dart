@@ -1912,78 +1912,87 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen>
           const SizedBox(height: 18),
 
           // Instructor Attribution
-          InkWell(
-            onTap: () {
-              if (instructor.isNotEmpty && instructor != 'Instructor') {
-                context.push(
-                  '/farmer/instructor/${Uri.encodeComponent(instructor)}',
-                );
-              }
-            },
-            borderRadius: BorderRadius.circular(10),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CircleAvatar(
-                    radius: 18,
-                    backgroundColor: AppColors.primaryGreen,
-                    backgroundImage:
-                        course.instructorAvatar != null &&
-                            course.instructorAvatar!.isNotEmpty
-                        ? NetworkImage(course.instructorAvatar!)
-                        : null,
-                    child:
-                        course.instructorAvatar == null ||
-                            course.instructorAvatar!.isEmpty
-                        ? Text(
-                            instructor.isNotEmpty
-                                ? instructor[0].toUpperCase()
-                                : 'I',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          )
-                        : null,
-                  ),
-                  const SizedBox(width: 10),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        tr(ref, 'Created by'),
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.white.withValues(alpha: 0.6),
+          () {
+            final currentUser = ref.watch(authProvider).user;
+            final isCurrentInstructor = currentUser?.isInstructor == true &&
+                currentUser?.fullName.trim().toLowerCase() == instructor.trim().toLowerCase();
+            final bool canNavigate = instructor.isNotEmpty && instructor != 'Instructor' && !isCurrentInstructor;
+
+            return InkWell(
+              onTap: canNavigate
+                  ? () {
+                      context.push(
+                        '/farmer/instructor/${Uri.encodeComponent(instructor)}',
+                      );
+                    }
+                  : null,
+              borderRadius: BorderRadius.circular(10),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircleAvatar(
+                      radius: 18,
+                      backgroundColor: AppColors.primaryGreen,
+                      backgroundImage:
+                          course.instructorAvatar != null &&
+                              course.instructorAvatar!.isNotEmpty
+                          ? NetworkImage(course.instructorAvatar!)
+                          : null,
+                      child:
+                          course.instructorAvatar == null ||
+                              course.instructorAvatar!.isEmpty
+                          ? Text(
+                              instructor.isNotEmpty
+                                  ? instructor[0].toUpperCase()
+                                  : 'I',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            )
+                          : null,
+                    ),
+                    const SizedBox(width: 10),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          tr(ref, 'Created by'),
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.white.withValues(alpha: 0.6),
+                          ),
                         ),
-                      ),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            instructor,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              instructor,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 4),
-                          Icon(
-                            Icons.chevron_right_rounded,
-                            size: 16,
-                            color: Colors.white.withValues(alpha: 0.7),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ],
+                            if (canNavigate) ...[
+                              const SizedBox(width: 4),
+                              Icon(
+                                Icons.chevron_right_rounded,
+                                size: 16,
+                                color: Colors.white.withValues(alpha: 0.7),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ),
+            );
+          }(),
         ],
       ),
     );
@@ -2536,50 +2545,62 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen>
               if (course.instructorName != null &&
                   course.instructorName!.trim().isNotEmpty &&
                   course.instructorName != 'Instructor')
-                InkWell(
-                  onTap: () {
-                    context.push(
-                      '/farmer/instructor/${Uri.encodeComponent(course.instructorName!.trim())}',
-                    );
-                  },
-                  borderRadius: BorderRadius.circular(8),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          '${tr(ref, 'Created By')} ',
-                          style: TextStyle(
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w500,
-                            color: isDark
-                                ? Colors.white60
-                                : const Color(0xFF6B7280),
-                          ),
-                        ),
-                        Flexible(
-                          child: Text(
-                            course.instructorName!.trim(),
-                            style: const TextStyle(
+                () {
+                  final currentUser = ref.watch(authProvider).user;
+                  final isCurrentInstructor = currentUser?.isInstructor == true &&
+                      currentUser?.fullName.trim().toLowerCase() ==
+                          course.instructorName!.trim().toLowerCase();
+                  final bool canNavigate = !isCurrentInstructor;
+
+                  return InkWell(
+                    onTap: canNavigate
+                        ? () {
+                            context.push(
+                              '/farmer/instructor/${Uri.encodeComponent(course.instructorName!.trim())}',
+                            );
+                          }
+                        : null,
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            '${tr(ref, 'Created By')} ',
+                            style: TextStyle(
                               fontSize: 12.5,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.primaryGreen,
-                              decoration: TextDecoration.underline,
+                              fontWeight: FontWeight.w500,
+                              color: isDark
+                                  ? Colors.white60
+                                  : const Color(0xFF6B7280),
                             ),
-                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                        const SizedBox(width: 4),
-                        const Icon(
-                          Icons.open_in_new_rounded,
-                          size: 13,
-                          color: AppColors.primaryGreen,
-                        ),
-                      ],
+                          Flexible(
+                            child: Text(
+                              course.instructorName!.trim(),
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.bold,
+                                color: canNavigate ? AppColors.primaryGreen : (isDark ? Colors.white70 : AppColors.inkDark),
+                                decoration: canNavigate ? TextDecoration.underline : TextDecoration.none,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (canNavigate) ...[
+                            const SizedBox(width: 4),
+                            const Icon(
+                              Icons.open_in_new_rounded,
+                              size: 13,
+                              color: AppColors.primaryGreen,
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
-                  ),
-                ),
+                  );
+                }(),
               const SizedBox(height: 14),
 
               // Primary Action Buttons Inline:
@@ -3448,89 +3469,99 @@ class _CourseDetailsScreenState extends ConsumerState<CourseDetailsScreen>
 
         const SizedBox(height: 10),
         // "Meet your Instructor" Card Matching Mockup
-        InkWell(
-          onTap: () {
-            final inst = course.instructorName;
-            if (inst != null &&
-                inst.trim().isNotEmpty &&
-                inst != 'Instructor') {
-              context.push(
-                '/farmer/instructor/${Uri.encodeComponent(inst.trim())}',
-              );
-            }
-          },
-          borderRadius: BorderRadius.circular(16),
-          child: Container(
-            decoration: BoxDecoration(
-              color: isDark ? AppColors.cardDark : Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: isDark ? AppColors.lineDark : AppColors.lineLight,
+        () {
+          final inst = course.instructorName;
+          final currentUser = ref.watch(authProvider).user;
+          final isCurrentInstructor = currentUser?.isInstructor == true &&
+              inst != null &&
+              currentUser?.fullName.trim().toLowerCase() == inst.trim().toLowerCase();
+          final bool canNavigate = inst != null &&
+              inst.trim().isNotEmpty &&
+              inst != 'Instructor' &&
+              !isCurrentInstructor;
+
+          return InkWell(
+            onTap: canNavigate
+                ? () {
+                    context.push(
+                      '/farmer/instructor/${Uri.encodeComponent(inst.trim())}',
+                    );
+                  }
+                : null,
+            borderRadius: BorderRadius.circular(16),
+            child: Container(
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.cardDark : Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isDark ? AppColors.lineDark : AppColors.lineLight,
+                ),
               ),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 19,
-                    backgroundColor: isDark
-                        ? AppColors.surfaceContainerHighDark
-                        : const Color(0xFFE8F3EB),
-                    backgroundImage:
-                        course.instructorAvatar != null &&
-                            course.instructorAvatar!.isNotEmpty
-                        ? NetworkImage(course.instructorAvatar!)
-                        : null,
-                    child:
-                        course.instructorAvatar == null ||
-                            course.instructorAvatar!.isEmpty
-                        ? const Icon(
-                            Icons.person_rounded,
-                            size: 20,
-                            color: Color(0xFF1B4D2E),
-                          )
-                        : null,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          tr(ref, 'Meet your Instructor'),
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                            color: isDark
-                                ? Colors.white
-                                : const Color(0xFF132A13),
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          course.instructorName ??
-                              tr(ref, 'Agriculture Specialist'),
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: isDark
-                                ? Colors.white60
-                                : const Color(0xFF718096),
-                          ),
-                        ),
-                      ],
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 19,
+                      backgroundColor: isDark
+                          ? AppColors.surfaceContainerHighDark
+                          : const Color(0xFFE8F3EB),
+                      backgroundImage:
+                          course.instructorAvatar != null &&
+                              course.instructorAvatar!.isNotEmpty
+                          ? NetworkImage(course.instructorAvatar!)
+                          : null,
+                      child:
+                          course.instructorAvatar == null ||
+                              course.instructorAvatar!.isEmpty
+                          ? const Icon(
+                              Icons.person_rounded,
+                              size: 20,
+                              color: Color(0xFF1B4D2E),
+                            )
+                          : null,
                     ),
-                  ),
-                  const Icon(
-                    Icons.chevron_right_rounded,
-                    color: Colors.grey,
-                    size: 20,
-                  ),
-                ],
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            tr(ref, 'Meet your Instructor'),
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                              color: isDark
+                                  ? Colors.white
+                                  : const Color(0xFF132A13),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            course.instructorName ??
+                                tr(ref, 'Agriculture Specialist'),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: isDark
+                                  ? Colors.white60
+                                  : const Color(0xFF718096),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (canNavigate)
+                      const Icon(
+                        Icons.chevron_right_rounded,
+                        color: Colors.grey,
+                        size: 20,
+                      ),
+                  ],
+                ),
               ),
             ),
-          ),
-        ),
+          );
+        }(),
       ],
     );
   }

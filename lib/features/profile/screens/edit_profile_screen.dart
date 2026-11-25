@@ -876,8 +876,14 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     final user = authState.user;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // When not logged in (guest account):
-    if (!isAuthenticated) {
+    // Check if user is a guest (either unauthenticated or having a guest_ ID)
+    final isGuest = !isAuthenticated || (user?.id.startsWith('guest_') ?? true);
+    final hasExistingEmail = user != null && user.email.trim().isNotEmpty;
+
+    // Case 1: Guest (student or instructor) OR user logged in without an email (e.g. Phone OTP login)
+    // The email field is LOCKED and shows "Login Required" or "Link Account".
+    // Tapping it reveals "Continue with Google" (on Android & iOS) and "Continue with Apple" (on iOS).
+    if (isGuest || !hasExistingEmail) {
       return Padding(
         padding: const EdgeInsets.only(bottom: 16),
         child: Column(
@@ -886,24 +892,28 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             InkWell(
               onTap: () {
                 setState(() {
-                  _showLoginButtonUnderEmail = true;
+                  _showLoginButtonUnderEmail = !_showLoginButtonUnderEmail;
                 });
               },
               borderRadius: BorderRadius.circular(12),
               child: IgnorePointer(
                 child: TextFormField(
-                  controller: TextEditingController(text: ''),
+                  controller: TextEditingController(
+                    text: hasExistingEmail ? user!.email : '',
+                  ),
                   readOnly: true,
                   decoration: InputDecoration(
                     labelText: tr(ref, 'Email Address'),
-                    hintText: tr(ref, 'Login Required'),
+                    hintText: isGuest
+                        ? tr(ref, 'Login Required')
+                        : tr(ref, 'Tap to link Email / Account'),
                     hintStyle: TextStyle(
                       color: isDark ? Colors.white38 : AppColors.inkSoft,
                       fontWeight: FontWeight.w500,
                     ),
                     prefixIcon: const Icon(Icons.email_outlined),
                     suffixIcon: const Icon(
-                      Icons.login_rounded,
+                      Icons.lock_outline_rounded,
                       size: 20,
                       color: AppColors.primaryGreen,
                     ),
@@ -945,39 +955,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       );
     }
 
-    // Authenticated via Phone OTP (or email is not set or empty):
-    // Allow user to enter / update their email address and submit to backend.
-    final hasExistingEmail = user != null && user.email.trim().isNotEmpty;
-    if (!hasExistingEmail) {
-      return Padding(
-        padding: const EdgeInsets.only(bottom: 16),
-        child: TextFormField(
-          controller: _emailController,
-          keyboardType: TextInputType.emailAddress,
-          decoration: InputDecoration(
-            labelText: tr(ref, 'Email Address'),
-            hintText: tr(ref, 'Enter your email address'),
-            prefixIcon: const Icon(Icons.email_outlined),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-            filled: true,
-            fillColor: isDark
-                ? Colors.white.withValues(alpha: 0.04)
-                : Colors.black.withValues(alpha: 0.03),
-          ),
-          validator: (val) {
-            if (val != null && val.trim().isNotEmpty) {
-              final emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
-              if (!emailRegex.hasMatch(val.trim())) {
-                return tr(ref, 'Please enter a valid email address');
-              }
-            }
-            return null;
-          },
-        ),
-      );
-    }
-
-    // Authenticated with an established Email (e.g. Google Sign-In):
+    // Case 2: Authenticated with an established Email (e.g. Google Sign-In or email registration):
+    // Read-only locked field with padlock indicator.
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: TextFormField(
@@ -997,7 +976,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           filled: true,
           fillColor: isDark
               ? Colors.white.withValues(alpha: 0.04)
-              : Colors.black.withValues(alpha: 0.04),
+              : Colors.black.withValues(alpha: 0.03),
         ),
       ),
     );
