@@ -1,7 +1,7 @@
 name: krushi_siksha
 description: "IGrow — Agriculture Learning Marketplace"
 publish_to: 'none'
-version: 1.0.3+41
+version: 1.0.3+42
 
 
 environment:
@@ -67,7 +67,7 @@ dependencies:
   sign_in_with_apple: ^8.1.0
   in_app_purchase: ^3.3.1
   crop_image: ^1.0.17
-  image: ^4.13.1
+  image: 4.10.2
 
 dev_dependencies:
   flutter_test:
