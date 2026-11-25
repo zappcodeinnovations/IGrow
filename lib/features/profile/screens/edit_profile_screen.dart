@@ -10,6 +10,9 @@ import '../../../core/router/route_names.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/network/swagger_generated/app_api.swagger.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/services/social_auth_service.dart';
+import '../../../core/utils/app_toast.dart';
+import '../../../core/widgets/app_social_button.dart';
 import '../../../core/widgets/delete_account_dialog.dart';
 import '../../../core/widgets/image_crop_rotate_screen.dart';
 import '../../../data/models/user_role.dart';
@@ -51,6 +54,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   File? _selectedImage;
   bool _isLoading = false;
   bool _isFetchingFresh = false;
+  bool _showLoginButtonUnderEmail = false;
+  bool _isGoogleLoggingIn = false;
 
   @override
   void initState() {
@@ -510,7 +515,11 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         areasOfInterest: areas.isNotEmpty ? areas : null,
       );
 
-      await authNotifier.updateProfile(basicRequest);
+      final emailToUpdate = _emailController.text.trim();
+      await authNotifier.updateProfile(
+        basicRequest,
+        email: emailToUpdate.isNotEmpty ? emailToUpdate : null,
+      );
 
       // Update Instructor Profile if applicable
       if (user != null && user.grantedRoles.contains(UserRole.instructor)) {
@@ -666,7 +675,146 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     );
   }
 
+  Future<void> _handleGoogleLoginFromProfile() async {
+    FocusScope.of(context).unfocus();
+    if (_isGoogleLoggingIn) return;
+    setState(() => _isGoogleLoggingIn = true);
+
+    try {
+      final payload = await SocialAuthService.instance.signInWithGoogle();
+      if (payload == null) {
+        if (mounted) setState(() => _isGoogleLoggingIn = false);
+        return;
+      }
+
+      final success = await ref
+          .read(authProvider.notifier)
+          .socialLogin(
+            provider: 'google',
+            idToken: payload['id_token'] as String,
+            fullName: payload['full_name'] as String?,
+            fcmToken: payload['fcm_token'] as String?,
+          );
+
+      if (!mounted) return;
+      setState(() => _isGoogleLoggingIn = false);
+      if (success) {
+        AppToast.show(context, tr(ref, 'Logged in with Google!'));
+        final currentUser = ref.read(authProvider).user;
+        if (currentUser != null) {
+          setState(() {
+            _showLoginButtonUnderEmail = false;
+            _populateControllers(currentUser);
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isGoogleLoggingIn = false);
+        AppToast.show(context, _getFriendlyErrorMessage(e), isError: true);
+      }
+    }
+  }
+
   Widget _buildReadOnlyEmailField(String email) {
+    final authState = ref.watch(authProvider);
+    final isAuthenticated = authState.isAuthenticated;
+    final user = authState.user;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // When not logged in (guest account):
+    if (!isAuthenticated) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            InkWell(
+              onTap: () {
+                setState(() {
+                  _showLoginButtonUnderEmail = true;
+                });
+              },
+              borderRadius: BorderRadius.circular(12),
+              child: IgnorePointer(
+                child: TextFormField(
+                  controller: TextEditingController(text: ''),
+                  readOnly: true,
+                  decoration: InputDecoration(
+                    labelText: tr(ref, 'Email Address'),
+                    hintText: tr(ref, 'Login Required'),
+                    hintStyle: TextStyle(
+                      color: isDark ? Colors.white38 : AppColors.inkSoft,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    prefixIcon: const Icon(Icons.email_outlined),
+                    suffixIcon: const Icon(
+                      Icons.login_rounded,
+                      size: 20,
+                      color: AppColors.primaryGreen,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    filled: true,
+                    fillColor: isDark
+                        ? Colors.white.withValues(alpha: 0.04)
+                        : Colors.black.withValues(alpha: 0.03),
+                  ),
+                ),
+              ),
+            ),
+            if (_showLoginButtonUnderEmail) ...[
+              const SizedBox(height: 10),
+              AppSocialButton.google(
+                text: tr(ref, 'Continue with Google'),
+                isDark: isDark,
+                isLoading: _isGoogleLoggingIn,
+                onPressed: _isGoogleLoggingIn
+                    ? null
+                    : _handleGoogleLoginFromProfile,
+              ),
+            ],
+          ],
+        ),
+      );
+    }
+
+    // Authenticated via Phone OTP (or email is not set or empty):
+    // Allow user to enter / update their email address and submit to backend.
+    final hasExistingEmail = user != null && user.email.trim().isNotEmpty;
+    if (!hasExistingEmail) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: TextFormField(
+          controller: _emailController,
+          keyboardType: TextInputType.emailAddress,
+          decoration: InputDecoration(
+            labelText: tr(ref, 'Email Address'),
+            hintText: tr(ref, 'Enter your email address'),
+            prefixIcon: const Icon(Icons.email_outlined),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            filled: true,
+            fillColor: isDark
+                ? Colors.white.withValues(alpha: 0.04)
+                : Colors.black.withValues(alpha: 0.03),
+          ),
+          validator: (val) {
+            if (val != null && val.trim().isNotEmpty) {
+              final emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+              if (!emailRegex.hasMatch(val.trim())) {
+                return tr(ref, 'Please enter a valid email address');
+              }
+            }
+            return null;
+          },
+        ),
+      );
+    }
+
+    // Authenticated with an established Email (e.g. Google Sign-In):
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: TextFormField(
@@ -683,7 +831,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             borderRadius: BorderRadius.circular(12),
           ),
           filled: true,
-          fillColor: Colors.black.withValues(alpha: 0.04),
+          fillColor: isDark
+              ? Colors.white.withValues(alpha: 0.04)
+              : Colors.black.withValues(alpha: 0.04),
         ),
       ),
     );
