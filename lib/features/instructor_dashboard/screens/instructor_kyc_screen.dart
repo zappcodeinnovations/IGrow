@@ -15,6 +15,7 @@ import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_text_field.dart';
 import '../../../core/widgets/image_crop_rotate_screen.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../auth/widgets/require_login_dialog.dart';
 
 /// Mapping of 4-letter IFSC prefixes to major Indian commercial and public banks.
 const Map<String, String> kIfscBankPrefixes = {
@@ -562,6 +563,19 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
       return;
     }
 
+    final authState = ref.read(authProvider);
+    if (!authState.isAuthenticated) {
+      final loggedIn = await RequireLoginDialog.show(
+        context,
+        title: tr(ref, 'Login Required'),
+        message: tr(
+          ref,
+          'Please log in to complete your KYC verification. Your entered details will be preserved.',
+        ),
+      );
+      if (!loggedIn || !mounted) return;
+    }
+
     print('📋 [INSTRUCTOR KYC SCREEN] Validated fields:');
     print('   Doc Type: $_selectedDocType');
     print(
@@ -623,6 +637,23 @@ class _InstructorKycScreenState extends ConsumerState<InstructorKycScreen> {
       print('====================================================');
       if (!mounted) return;
       setState(() => _isLoading = false);
+
+      final lower = e.toString().toLowerCase();
+      if (lower.contains('unauthorized') ||
+          lower.contains('session expired') ||
+          lower.contains('authentication') ||
+          lower.contains('not provided') ||
+          (e is ApiException && e.statusCode == 401)) {
+        RequireLoginDialog.show(
+          context,
+          title: tr(ref, 'Login Required'),
+          message: tr(
+            ref,
+            'Please log in to complete your KYC verification. Your entered details will be preserved.',
+          ),
+        );
+        return;
+      }
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
