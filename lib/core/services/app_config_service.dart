@@ -72,7 +72,7 @@ class AppConfig {
 
   /// Default configuration for platform.
   /// On Android, web, and other non-iOS platforms, always returns true.
-  /// On iOS, defaults to false if not yet fetched.
+  /// On iOS, defaults to false if not yet fetched (App Store review mode).
   factory AppConfig.defaultForPlatform() {
     final isIos = !kIsWeb && Platform.isIOS;
     return AppConfig(
@@ -82,8 +82,8 @@ class AppConfig {
       showCoupons: !isIos,
       enableAppleIap: isIos,
       showAppleIap: isIos,
-      enablePhoneLogin: true,
-      showPhoneLogin: true,
+      enablePhoneLogin: !isIos,
+      showPhoneLogin: !isIos,
     );
   }
 
@@ -124,9 +124,13 @@ class AppConfig {
   }
 
   /// Helper to check if phone number login should be displayed on the login page.
-  /// Controlled remotely by backend flag (e.g. `enable_phone_login` or `show_phone_login`).
-  /// If backend sends 0 / false, phone login is hidden.
+  /// On Android/Web, this ALWAYS returns true.
+  /// On iOS, it respects the remote feature flag (e.g. `enable_phone_login` or `show_phone_login`).
+  /// If backend sends 0 / false on iOS, phone login is hidden.
   bool get canShowPhoneLogin {
+    if (!kIsWeb && !Platform.isIOS) {
+      return true;
+    }
     return enablePhoneLogin && showPhoneLogin;
   }
 }

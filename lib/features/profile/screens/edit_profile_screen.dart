@@ -1,5 +1,5 @@
 import 'dart:io';
-
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -56,6 +56,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   bool _isFetchingFresh = false;
   bool _showLoginButtonUnderEmail = false;
   bool _isGoogleLoggingIn = false;
+  bool _isAppleLoggingIn = false;
 
   @override
   void initState() {
@@ -716,6 +717,47 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     }
   }
 
+  Future<void> _handleAppleLoginFromProfile() async {
+    FocusScope.of(context).unfocus();
+    if (_isAppleLoggingIn) return;
+    setState(() => _isAppleLoggingIn = true);
+
+    try {
+      final payload = await SocialAuthService.instance.signInWithApple();
+      if (payload == null) {
+        if (mounted) setState(() => _isAppleLoggingIn = false);
+        return;
+      }
+
+      final success = await ref
+          .read(authProvider.notifier)
+          .socialLogin(
+            provider: 'apple',
+            idToken: payload['id_token'] as String,
+            fullName: payload['full_name'] as String?,
+            fcmToken: payload['fcm_token'] as String?,
+          );
+
+      if (!mounted) return;
+      setState(() => _isAppleLoggingIn = false);
+      if (success) {
+        AppToast.show(context, tr(ref, 'Logged in with Apple!'));
+        final currentUser = ref.read(authProvider).user;
+        if (currentUser != null) {
+          setState(() {
+            _showLoginButtonUnderEmail = false;
+            _populateControllers(currentUser);
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isAppleLoggingIn = false);
+        AppToast.show(context, _getFriendlyErrorMessage(e), isError: true);
+      }
+    }
+  }
+
   Widget _buildReadOnlyEmailField(String email) {
     final authState = ref.watch(authProvider);
     final isAuthenticated = authState.isAuthenticated;
@@ -770,10 +812,21 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 text: tr(ref, 'Continue with Google'),
                 isDark: isDark,
                 isLoading: _isGoogleLoggingIn,
-                onPressed: _isGoogleLoggingIn
+                onPressed: (_isGoogleLoggingIn || _isAppleLoggingIn)
                     ? null
                     : _handleGoogleLoginFromProfile,
               ),
+              if (!kIsWeb && Platform.isIOS) ...[
+                const SizedBox(height: 8),
+                AppSocialButton.apple(
+                  text: tr(ref, 'Continue with Apple'),
+                  isDark: isDark,
+                  isLoading: _isAppleLoggingIn,
+                  onPressed: (_isGoogleLoggingIn || _isAppleLoggingIn)
+                      ? null
+                      : _handleAppleLoginFromProfile,
+                ),
+              ],
             ],
           ],
         ),

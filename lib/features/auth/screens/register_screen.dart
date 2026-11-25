@@ -8,6 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/localization/app_strings.dart';
+import '../../../core/services/app_config_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/responsive_layout.dart';
 import '../../../core/widgets/app_gradient_button.dart';
@@ -21,7 +22,6 @@ import '../../../core/widgets/eula_terms_dialog.dart';
 import '../../profile/screens/privacy_screen.dart';
 import '../../../data/models/user_role.dart';
 import '../providers/auth_provider.dart';
-import '../widgets/complete_social_profile_dialog.dart';
 
 /// Registration screen — full form with name, email, phone, password.
 class RegisterScreen extends ConsumerStatefulWidget {
@@ -334,42 +334,44 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 16),
-                AppTextField(
-                  controller: _phoneController,
-                  label: tr(ref, 'Phone Number'),
-                  hint: tr(ref, '10-digit mobile number'),
-                  errorText: _phoneLiveError,
-                  prefixIcon: const Icon(Icons.phone_outlined),
-                  keyboardType: TextInputType.phone,
-                  inputFormatters: [
-                    FilteringTextInputFormatter.digitsOnly,
-                    LengthLimitingTextInputFormatter(10),
-                  ],
-                  textInputAction: TextInputAction.next,
-                  onChanged: (v) {
-                    setState(() {
-                      final trimmed = v.trim();
+                if (ref.watch(appConfigProvider).canShowPhoneLogin) ...[
+                  const SizedBox(height: 16),
+                  AppTextField(
+                    controller: _phoneController,
+                    label: tr(ref, 'Phone Number'),
+                    hint: tr(ref, '10-digit mobile number'),
+                    errorText: _phoneLiveError,
+                    prefixIcon: const Icon(Icons.phone_outlined),
+                    keyboardType: TextInputType.phone,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(10),
+                    ],
+                    textInputAction: TextInputAction.next,
+                    onChanged: (v) {
+                      setState(() {
+                        final trimmed = v.trim();
+                        if (trimmed.isEmpty) {
+                          _phoneLiveError = tr(ref, 'Phone number is required');
+                        } else if (trimmed.length < 10) {
+                          _phoneLiveError = tr(ref, 'Mobile number must be exactly 10 digits.');
+                        } else {
+                          _phoneLiveError = null;
+                        }
+                      });
+                    },
+                    validator: (v) {
+                      final trimmed = (v ?? '').trim();
                       if (trimmed.isEmpty) {
-                        _phoneLiveError = tr(ref, 'Phone number is required');
-                      } else if (trimmed.length < 10) {
-                        _phoneLiveError = tr(ref, 'Mobile number must be exactly 10 digits.');
-                      } else {
-                        _phoneLiveError = null;
+                        return tr(ref, 'Phone number is required');
                       }
-                    });
-                  },
-                  validator: (v) {
-                    final trimmed = (v ?? '').trim();
-                    if (trimmed.isEmpty) {
-                      return tr(ref, 'Phone number is required');
-                    }
-                    if (trimmed.length != 10) {
-                      return tr(ref, 'Mobile number must be exactly 10 digits.');
-                    }
-                    return null;
-                  },
-                ),
+                      if (trimmed.length != 10) {
+                        return tr(ref, 'Mobile number must be exactly 10 digits.');
+                      }
+                      return null;
+                    },
+                  ),
+                ],
                 const SizedBox(height: 16),
                 AppTextField(
                   controller: _passwordController,
