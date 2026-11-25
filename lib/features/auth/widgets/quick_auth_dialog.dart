@@ -89,7 +89,8 @@ class _QuickAuthDialogState extends ConsumerState<QuickAuthDialog> {
         );
       } else {
         setState(() => _isLoading = false);
-        final err = ref.read(authProvider).error ??
+        final err =
+            ref.read(authProvider).error ??
             tr(ref, 'Failed to send OTP. Please try again.');
         AppToast.show(context, err, isError: true);
       }
@@ -143,7 +144,8 @@ class _QuickAuthDialogState extends ConsumerState<QuickAuthDialog> {
       } else {
         setState(() => _isLoading = false);
         _otpController.clear();
-        final err = ref.read(authProvider).error ??
+        final err =
+            ref.read(authProvider).error ??
             tr(ref, 'Invalid or expired OTP code.');
         AppToast.show(context, err, isError: true);
       }
@@ -271,7 +273,9 @@ class _QuickAuthDialogState extends ConsumerState<QuickAuthDialog> {
                       height: 38,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: isDark ? const Color(0xFF223526) : const Color(0xFFEBF6EC),
+                        color: isDark
+                            ? const Color(0xFF223526)
+                            : const Color(0xFFEBF6EC),
                       ),
                       child: const Icon(
                         Icons.lock_outline_rounded,
@@ -285,7 +289,8 @@ class _QuickAuthDialogState extends ConsumerState<QuickAuthDialog> {
                         size: 20,
                         color: isDark ? Colors.white60 : AppColors.inkSoft,
                       ),
-                      onPressed: () => Navigator.of(context, rootNavigator: true).pop(false),
+                      onPressed: () =>
+                          Navigator.of(context, rootNavigator: true).pop(false),
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
                     ),
@@ -295,7 +300,9 @@ class _QuickAuthDialogState extends ConsumerState<QuickAuthDialog> {
 
                 // Title
                 Text(
-                  _isOtpSent ? tr(ref, 'Verify Mobile OTP') : tr(ref, 'Sign in to Continue'),
+                  _isOtpSent
+                      ? tr(ref, 'Verify Mobile OTP')
+                      : tr(ref, 'Sign in to Continue'),
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
@@ -309,7 +316,9 @@ class _QuickAuthDialogState extends ConsumerState<QuickAuthDialog> {
                     '${tr(ref, 'Enter the 6-digit code sent to')} +91 $_targetPhone',
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 12.5,
-                      color: isDark ? AppColors.organicSubtitleDark : AppColors.organicSubtitleGreen,
+                      color: isDark
+                          ? AppColors.organicSubtitleDark
+                          : AppColors.organicSubtitleGreen,
                       height: 1.35,
                     ),
                   ),
@@ -330,9 +339,14 @@ class _QuickAuthDialogState extends ConsumerState<QuickAuthDialog> {
                         ),
                         prefixIcon: Icons.phone_android_rounded,
                         prefix: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 3,
+                          ),
                           decoration: BoxDecoration(
-                            color: isDark ? const Color(0xFF223526) : const Color(0xFFE4EDE3),
+                            color: isDark
+                                ? const Color(0xFF223526)
+                                : const Color(0xFFE4EDE3),
                             borderRadius: BorderRadius.circular(7),
                           ),
                           child: Text(
@@ -340,7 +354,9 @@ class _QuickAuthDialogState extends ConsumerState<QuickAuthDialog> {
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 13,
                               fontWeight: FontWeight.w700,
-                              color: isDark ? const Color(0xFF4ADE80) : AppColors.greenDark,
+                              color: isDark
+                                  ? const Color(0xFF4ADE80)
+                                  : AppColors.greenDark,
                             ),
                           ),
                         ),
@@ -371,7 +387,13 @@ class _QuickAuthDialogState extends ConsumerState<QuickAuthDialog> {
                     const SizedBox(height: 18),
                     Row(
                       children: [
-                        Expanded(child: Divider(color: isDark ? AppColors.lineDark : AppColors.lineLight)),
+                        Expanded(
+                          child: Divider(
+                            color: isDark
+                                ? AppColors.lineDark
+                                : AppColors.lineLight,
+                          ),
+                        ),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 10),
                           child: Text(
@@ -379,11 +401,19 @@ class _QuickAuthDialogState extends ConsumerState<QuickAuthDialog> {
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
-                              color: isDark ? Colors.white38 : AppColors.inkSoft,
+                              color: isDark
+                                  ? Colors.white38
+                                  : AppColors.inkSoft,
                             ),
                           ),
                         ),
-                        Expanded(child: Divider(color: isDark ? AppColors.lineDark : AppColors.lineLight)),
+                        Expanded(
+                          child: Divider(
+                            color: isDark
+                                ? AppColors.lineDark
+                                : AppColors.lineLight,
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 16),
@@ -393,7 +423,10 @@ class _QuickAuthDialogState extends ConsumerState<QuickAuthDialog> {
                     text: tr(ref, 'Continue with Google'),
                     isDark: isDark,
                     isLoading: _isGoogleLoading,
-                    onPressed: (_isGoogleLoading || _isAppleLoading || _isLoading) ? null : _loginWithGoogle,
+                    onPressed:
+                        (_isGoogleLoading || _isAppleLoading || _isLoading)
+                        ? null
+                        : _loginWithGoogle,
                   ),
 
                   if (!kIsWeb && Platform.isIOS) ...[
@@ -402,7 +435,10 @@ class _QuickAuthDialogState extends ConsumerState<QuickAuthDialog> {
                       text: tr(ref, 'Continue with Apple'),
                       isDark: isDark,
                       isLoading: _isAppleLoading,
-                      onPressed: (_isGoogleLoading || _isAppleLoading || _isLoading) ? null : _loginWithApple,
+                      onPressed:
+                          (_isGoogleLoading || _isAppleLoading || _isLoading)
+                          ? null
+                          : _loginWithApple,
                     ),
                   ],
                 ] else ...[
@@ -423,10 +459,14 @@ class _QuickAuthDialogState extends ConsumerState<QuickAuthDialog> {
                           color: isDark ? Colors.white : AppColors.inkDark,
                         ),
                         decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF16251A) : const Color(0xFFF0F5EE),
+                          color: isDark
+                              ? const Color(0xFF16251A)
+                              : const Color(0xFFF0F5EE),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: isDark ? AppColors.lineDark : AppColors.lineLight,
+                            color: isDark
+                                ? AppColors.lineDark
+                                : AppColors.lineLight,
                           ),
                         ),
                       ),
@@ -439,7 +479,9 @@ class _QuickAuthDialogState extends ConsumerState<QuickAuthDialog> {
                           color: isDark ? Colors.white : AppColors.inkDark,
                         ),
                         decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF16251A) : const Color(0xFFF0F5EE),
+                          color: isDark
+                              ? const Color(0xFF16251A)
+                              : const Color(0xFFF0F5EE),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                             color: AppColors.primaryGreen,

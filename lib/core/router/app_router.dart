@@ -96,7 +96,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
       if (authState.status == AuthStatus.unauthenticated) {
         // Allow SplashScreen to display and perform setup/version checks before routing.
-        if (state.matchedLocation == RouteNames.splash || state.matchedLocation == '/') {
+        if (state.matchedLocation == RouteNames.splash ||
+            state.matchedLocation == '/') {
           return null;
         }
         return null;
