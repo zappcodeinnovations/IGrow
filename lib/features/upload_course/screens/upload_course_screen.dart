@@ -72,10 +72,6 @@ class _UploadCourseScreenState extends ConsumerState<UploadCourseScreen> {
     'English',
     'Hindi',
     'Marathi',
-    'Gujarati',
-    'Punjabi',
-    'Telugu',
-    'Tamil',
   ];
 
   // ── Step 2: Curriculum State ──────────────────────────────────────────────
