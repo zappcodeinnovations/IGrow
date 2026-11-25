@@ -26,8 +26,9 @@ workflows:
           find . -name "Podfile" -execdir pod install \;
       - name: Build IPA for App Store / TestFlight
         script: |
-          flutter build ipa --release \
-            --export-options-plist=/Users/builder/export_options.plist
+          xcode-project build-ipa \
+            --workspace ios/Runner.xcworkspace \
+            --scheme Runner
     artifacts:
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
