@@ -153,6 +153,13 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                             )
                           : null,
                       border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      errorBorder: InputBorder.none,
+                      disabledBorder: InputBorder.none,
+                      focusedErrorBorder: InputBorder.none,
+                      filled: false,
+                      fillColor: Colors.transparent,
                       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
                     ),
                   ),
