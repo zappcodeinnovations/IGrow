@@ -45,10 +45,11 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
   // Track expanded state for sections so UI doesn't collapse on every refresh
   final Map<String, bool> _sectionExpanded = {};
 
-
   // Settings form
-  final TextEditingController _settingsTitleController = TextEditingController();
-  final TextEditingController _settingsPriceController = TextEditingController();
+  final TextEditingController _settingsTitleController =
+      TextEditingController();
+  final TextEditingController _settingsPriceController =
+      TextEditingController();
   bool _settingsInitialized = false;
   bool _isSavingSettings = false;
 
@@ -56,7 +57,9 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    debugPrint('📚 [CURRICULUM BUILDER] Screen initialized: courseId=${widget.courseId}');
+    debugPrint(
+      '📚 [CURRICULUM BUILDER] Screen initialized: courseId=${widget.courseId}',
+    );
   }
 
   @override
@@ -66,7 +69,9 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
     _settingsTitleController.dispose();
     _settingsPriceController.dispose();
     _loadingDialogMessage.dispose();
-    debugPrint('📚 [CURRICULUM BUILDER] Screen disposed: courseId=${widget.courseId}');
+    debugPrint(
+      '📚 [CURRICULUM BUILDER] Screen disposed: courseId=${widget.courseId}',
+    );
     super.dispose();
   }
 
@@ -75,7 +80,9 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
   void _managePolling(String status) {
     if (status == 'PROCESSING') {
       if (_pollingTimer == null || !_pollingTimer!.isActive) {
-        debugPrint('⏳ [CURRICULUM BUILDER] Status is PROCESSING: Starting 8s auto-poll timer');
+        debugPrint(
+          '⏳ [CURRICULUM BUILDER] Status is PROCESSING: Starting 8s auto-poll timer',
+        );
         _pollingTimer = Timer.periodic(const Duration(seconds: 8), (timer) {
           debugPrint('🔄 [CURRICULUM BUILDER] Auto-polling course status...');
           ref.invalidate(instructorCourseDetailProvider(widget.courseId));
@@ -100,7 +107,8 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
     final raw = e.toString();
     debugPrint('⚠️ [CURRICULUM BUILDER] Parsing error: $raw');
 
-    if (raw.contains('Bunny Stream') || raw.contains('Failed to initialize video')) {
+    if (raw.contains('Bunny Stream') ||
+        raw.contains('Failed to initialize video')) {
       return 'Video service notice: Bunny Stream CDN is currently inactive or under maintenance. You can attach video later via ⚙️ Settings.';
     }
     if (raw.contains('PathNotFound') ||
@@ -112,7 +120,8 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
     if (raw.contains('TimeoutException') || raw.contains('timed out')) {
       return 'Upload timed out. Please check your internet connection and try again.';
     }
-    if (raw.contains('SocketException') || raw.contains('Network connection failed')) {
+    if (raw.contains('SocketException') ||
+        raw.contains('Network connection failed')) {
       return 'Network connection error. Please check your internet connection.';
     }
     if (raw.contains('413')) {
@@ -129,7 +138,8 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
         if (decoded is Map<String, dynamic>) {
           if (decoded['error'] != null) {
             final errStr = decoded['error'].toString();
-            if (errStr.contains('Bunny Stream') || errStr.contains('Failed to initialize video')) {
+            if (errStr.contains('Bunny Stream') ||
+                errStr.contains('Failed to initialize video')) {
               return 'Video service notice: Bunny Stream CDN is currently inactive or under maintenance. You can attach video later via ⚙️ Settings.';
             }
             return errStr;
@@ -139,13 +149,18 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
           if (decoded['non_field_errors'] is List) {
             return (decoded['non_field_errors'] as List).join(' ');
           }
-          final values = decoded.values.map((v) => v is List ? v.join(' ') : v.toString()).toList();
+          final values = decoded.values
+              .map((v) => v is List ? v.join(' ') : v.toString())
+              .toList();
           if (values.isNotEmpty) return values.join(' ');
         }
       }
     } catch (_) {}
 
-    return raw.replaceAll('Exception:', '').replaceAll('Failed to', 'Unable to').trim();
+    return raw
+        .replaceAll('Exception:', '')
+        .replaceAll('Failed to', 'Unable to')
+        .trim();
   }
 
   void _showFeedback(String message, {bool isError = false}) {
@@ -194,7 +209,9 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
         return PopScope(
           canPop: false,
           child: AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
             content: Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
               child: Column(
@@ -216,7 +233,10 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                           valueListenable: _loadingDialogMessage,
                           builder: (context, msg, _) => Text(
                             msg,
-                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ),
                       ),
@@ -233,7 +253,11 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                           _dismissLoadingDialog();
                           onCancel();
                         },
-                        icon: const Icon(Icons.close_rounded, size: 15, color: Colors.white),
+                        icon: const Icon(
+                          Icons.close_rounded,
+                          size: 15,
+                          color: Colors.white,
+                        ),
                         label: Text(
                           tr(ref, 'Cancel'),
                           style: const TextStyle(
@@ -248,7 +272,10 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 8,
+                          ),
                           visualDensity: VisualDensity.compact,
                           elevation: 0,
                         ),
@@ -277,7 +304,10 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
 
   // ── Section Actions ─────────────────────────────────────────────────────────
 
-  Future<void> _addSection(BuildContext parentContext, int currentSectionCount) async {
+  Future<void> _addSection(
+    BuildContext parentContext,
+    int currentSectionCount,
+  ) async {
     final titleController = TextEditingController();
     final descController = TextEditingController();
 
@@ -285,7 +315,10 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
       context: parentContext,
       builder: (c) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(tr(ref, 'Add Section'), style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(
+          tr(ref, 'Add Section'),
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -317,10 +350,15 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
             child: Text(tr(ref, 'Cancel')),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.primaryGreen),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.primaryGreen,
+            ),
             onPressed: () {
               if (titleController.text.trim().isEmpty) {
-                _showFeedback(tr(ref, 'Section title is required.'), isError: true);
+                _showFeedback(
+                  tr(ref, 'Section title is required.'),
+                  isError: true,
+                );
                 return;
               }
               Navigator.pop(c, true);
@@ -332,14 +370,18 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
     );
 
     if (res == true && titleController.text.trim().isNotEmpty) {
-      debugPrint('➕ [CURRICULUM BUILDER] Adding section: title="${titleController.text.trim()}"');
+      debugPrint(
+        '➕ [CURRICULUM BUILDER] Adding section: title="${titleController.text.trim()}"',
+      );
       _showLoadingDialog('Adding section...');
       try {
-        await ref.read(instructorRepositoryProvider).createSection(widget.courseId, {
-          'title': titleController.text.trim(),
-          'description': descController.text.trim(),
-          'sort_order': currentSectionCount + 1,
-        });
+        await ref
+            .read(instructorRepositoryProvider)
+            .createSection(widget.courseId, {
+              'title': titleController.text.trim(),
+              'description': descController.text.trim(),
+              'sort_order': currentSectionCount + 1,
+            });
         if (!mounted) return;
         _dismissLoadingDialog(); // Close loading dialog safely
         _showFeedback('Section added successfully!');
@@ -354,15 +396,23 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
     }
   }
 
-  Future<void> _editSection(BuildContext parentContext, ApiCourseSection section) async {
+  Future<void> _editSection(
+    BuildContext parentContext,
+    ApiCourseSection section,
+  ) async {
     final titleController = TextEditingController(text: section.title);
-    final descController = TextEditingController(text: section.description ?? '');
+    final descController = TextEditingController(
+      text: section.description ?? '',
+    );
 
     final res = await showDialog<bool>(
       context: parentContext,
       builder: (c) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(tr(ref, 'Edit Section'), style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(
+          tr(ref, 'Edit Section'),
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -392,10 +442,15 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
             child: Text(tr(ref, 'Cancel')),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.primaryGreen),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.primaryGreen,
+            ),
             onPressed: () {
               if (titleController.text.trim().isEmpty) {
-                _showFeedback(tr(ref, 'Section title is required.'), isError: true);
+                _showFeedback(
+                  tr(ref, 'Section title is required.'),
+                  isError: true,
+                );
                 return;
               }
               Navigator.pop(c, true);
@@ -410,15 +465,13 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
       debugPrint('✏️ [CURRICULUM BUILDER] Editing section: id=${section.id}');
       _showLoadingDialog('Saving section changes...');
       try {
-        await ref.read(instructorRepositoryProvider).updateSection(
-          widget.courseId,
-          section.id,
-          {
-            'title': titleController.text.trim(),
-            'description': descController.text.trim(),
-            'sort_order': section.sortOrder ?? 0,
-          },
-        );
+        await ref
+            .read(instructorRepositoryProvider)
+            .updateSection(widget.courseId, section.id, {
+              'title': titleController.text.trim(),
+              'description': descController.text.trim(),
+              'sort_order': section.sortOrder ?? 0,
+            });
         if (!mounted) return;
         _dismissLoadingDialog(); // Close loading dialog safely
         _showFeedback('Section updated successfully!');
@@ -433,17 +486,29 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
     }
   }
 
-  Future<void> _deleteSection(BuildContext parentContext, String sectionId) async {
+  Future<void> _deleteSection(
+    BuildContext parentContext,
+    String sectionId,
+  ) async {
     final confirmed = await showDialog<bool>(
       context: parentContext,
       builder: (c) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(tr(ref, 'Delete Section'), style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(
+          tr(ref, 'Delete Section'),
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
         content: Text(
-          tr(ref, 'Are you sure you want to delete this section? All lectures and uploaded materials inside this section will be permanently deleted.'),
+          tr(
+            ref,
+            'Are you sure you want to delete this section? All lectures and uploaded materials inside this section will be permanently deleted.',
+          ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: Text(tr(ref, 'Cancel'))),
+          TextButton(
+            onPressed: () => Navigator.pop(c, false),
+            child: Text(tr(ref, 'Cancel')),
+          ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.error),
             onPressed: () => Navigator.pop(c, true),
@@ -457,7 +522,9 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
       debugPrint('🗑️ [CURRICULUM BUILDER] Deleting section: id=$sectionId');
       _showLoadingDialog('Deleting section...');
       try {
-        await ref.read(instructorRepositoryProvider).deleteSection(widget.courseId, sectionId);
+        await ref
+            .read(instructorRepositoryProvider)
+            .deleteSection(widget.courseId, sectionId);
         if (!mounted) return;
         _dismissLoadingDialog();
         _showFeedback('Section deleted successfully!');
@@ -481,10 +548,15 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
     bool isFirstLectureOfCourse = false,
   }) async {
     final isEditing = existingLecture != null;
-    final titleController = TextEditingController(text: existingLecture?.title ?? '');
-    final descController = TextEditingController(text: existingLecture?.description ?? '');
+    final titleController = TextEditingController(
+      text: existingLecture?.title ?? '',
+    );
+    final descController = TextEditingController(
+      text: existingLecture?.description ?? '',
+    );
     final durationFocusNode = FocusNode();
-    final durationText = existingLecture?.duration != null && existingLecture!.duration! > 0
+    final durationText =
+        existingLecture?.duration != null && existingLecture!.duration! > 0
         ? existingLecture.duration.toString()
         : '10';
     final durationController = TextEditingController(text: durationText);
@@ -498,10 +570,14 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
     });
 
     final previewDurationFocusNode = FocusNode();
-    final previewDurationText = existingLecture?.previewDuration != null && existingLecture!.previewDuration! > 0
+    final previewDurationText =
+        existingLecture?.previewDuration != null &&
+            existingLecture!.previewDuration! > 0
         ? existingLecture.previewDuration.toString()
         : '30';
-    final previewDurationController = TextEditingController(text: previewDurationText);
+    final previewDurationController = TextEditingController(
+      text: previewDurationText,
+    );
     previewDurationFocusNode.addListener(() {
       if (previewDurationFocusNode.hasFocus) {
         previewDurationController.selection = TextSelection(
@@ -535,257 +611,325 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                   bottom: MediaQuery.of(modalContext).viewInsets.bottom + 24,
                 ),
                 child: SingleChildScrollView(
-                  keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
                   child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          isEditing ? 'Edit Lecture' : 'Add New Lecture',
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.close),
-                          onPressed: () => Navigator.pop(modalContext),
-                        ),
-                      ],
-                    ),
-                    const Divider(),
-                    const SizedBox(height: 12),
-
-                    // Title
-                    TextField(
-                      controller: titleController,
-                      decoration: const InputDecoration(
-                        labelText: 'Lecture Title *',
-                        hintText: 'e.g., Understanding Soil pH & Nutrients',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-
-                    // Description
-                    TextField(
-                      controller: descController,
-                      decoration: const InputDecoration(
-                        labelText: 'Lecture Description (optional)',
-                        hintText: 'Topics covered in this video lecture',
-                        border: OutlineInputBorder(),
-                      ),
-                      maxLines: 2,
-                    ),
-                    const SizedBox(height: 14),
-
-                    // Duration & Free Preview Row
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: durationController,
-                            focusNode: durationFocusNode,
-                            keyboardType: TextInputType.number,
-                            onTap: () {
-                              durationController.selection = TextSelection(
-                                baseOffset: 0,
-                                extentOffset: durationController.text.length,
-                              );
-                            },
-                            decoration: const InputDecoration(
-                              labelText: 'Duration (Minutes)',
-                              suffixText: 'min',
-                              border: OutlineInputBorder(),
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            isEditing ? 'Edit Lecture' : 'Add New Lecture',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
-                        ),
-                        if (isFirstLectureOfCourse) ...[
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Row(
-                              children: [
-                                Switch(
-                                  value: isPreview,
-                                  activeThumbColor: AppColors.primaryGreen,
-                                  onChanged: (val) => setModalState(() => isPreview = val),
-                                ),
-                                const Expanded(
-                                  child: Text(
-                                    'Free Preview',
-                                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                                  ),
-                                ),
-                              ],
-                            ),
+                          IconButton(
+                            icon: const Icon(Icons.close),
+                            onPressed: () => Navigator.pop(modalContext),
                           ),
                         ],
-                      ],
-                    ),
-                    if (isFirstLectureOfCourse && isPreview) ...[
-                      const SizedBox(height: 14),
+                      ),
+                      const Divider(),
+                      const SizedBox(height: 12),
+
+                      // Title
                       TextField(
-                        controller: previewDurationController,
-                        focusNode: previewDurationFocusNode,
-                        keyboardType: TextInputType.number,
-                        onTap: () {
-                          previewDurationController.selection = TextSelection(
-                            baseOffset: 0,
-                            extentOffset: previewDurationController.text.length,
-                          );
-                        },
+                        controller: titleController,
                         decoration: const InputDecoration(
-                          labelText: 'Preview Limit (Seconds)',
-                          hintText: 'e.g., 30, 45, or 60',
-                          suffixText: 'sec',
+                          labelText: 'Lecture Title *',
+                          hintText: 'e.g., Understanding Soil pH & Nutrients',
                           border: OutlineInputBorder(),
                         ),
                       ),
-                    ],
-                    const SizedBox(height: 20),
+                      const SizedBox(height: 14),
 
-                    // Video Upload Section
-                    Text(
-                      'Video Stream (Bunny Stream CDN)',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.grey.shade700),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryGreen.withValues(alpha: 0.05),
-                        border: Border.all(color: AppColors.primaryGreen.withValues(alpha: 0.3)),
-                        borderRadius: BorderRadius.circular(12),
+                      // Description
+                      TextField(
+                        controller: descController,
+                        decoration: const InputDecoration(
+                          labelText: 'Lecture Description (optional)',
+                          hintText: 'Topics covered in this video lecture',
+                          border: OutlineInputBorder(),
+                        ),
+                        maxLines: 2,
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (isEditing && existingLecture.videoUrl != null && existingLecture.videoUrl!.isNotEmpty) ...[
-                            Row(
-                              children: [
-                                const Icon(Icons.check_circle, color: AppColors.primaryGreen, size: 18),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    'Active Video Attached (${existingLecture.bunnyStatus == 3 ? "Transcoded" : "Encoding / Ready"})',
-                                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primaryGreen),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                          ],
-                          OutlinedButton.icon(
-                            onPressed: () async {
-                              FocusScope.of(modalContext).unfocus();
-                              await Future.delayed(const Duration(milliseconds: 120));
-                              final video = await _picker.pickVideo(source: ImageSource.gallery);
-                              if (video != null) {
-                                XFile safeVideo = video;
-                                try {
-                                  final originalFile = File(video.path);
-                                  if (await originalFile.exists()) {
-                                    final appDir = await getApplicationDocumentsDirectory();
-                                    final mediaDir = Directory('${appDir.path}/lecture_uploads');
-                                    if (!await mediaDir.exists()) {
-                                      await mediaDir.create(recursive: true);
-                                    }
-                                    final ext = video.path.contains('.')
-                                        ? video.path.substring(video.path.lastIndexOf('.'))
-                                        : '.mp4';
-                                    final persistentPath =
-                                        '${mediaDir.path}/lec_${DateTime.now().millisecondsSinceEpoch}$ext';
-                                    await originalFile.copy(persistentPath);
-                                    safeVideo = XFile(persistentPath, name: video.name);
-                                    debugPrint('💾 [CURRICULUM BUILDER] Preserved video to persistent path: $persistentPath');
-                                  }
-                                } catch (copyErr) {
-                                  debugPrint('⚠️ [CURRICULUM BUILDER] Could not copy video to persistent storage: $copyErr');
-                                }
+                      const SizedBox(height: 14),
 
-                                final length = await safeVideo.length();
-                                final sizeMb = (length / (1024 * 1024)).toStringAsFixed(1);
-                                setModalState(() {
-                                  pickedVideo = safeVideo;
-                                  pickedVideoSize = '$sizeMb MB';
-                                });
-                                debugPrint('🎬 [CURRICULUM BUILDER] Picked video: ${safeVideo.name} ($sizeMb MB), path=${safeVideo.path}');
-                              }
-                            },
-                            icon: const Icon(Icons.video_collection_outlined),
-                            label: Text(
-                              pickedVideo != null
-                                  ? 'Video Selected'
-                                  : (isEditing && existingLecture.videoUrl != null && existingLecture.videoUrl!.isNotEmpty)
-                                      ? 'Replace Video File'
-                                      : 'Select Video from Gallery',
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: AppColors.primaryGreen,
-                              side: const BorderSide(color: AppColors.primaryGreen),
+                      // Duration & Free Preview Row
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: durationController,
+                              focusNode: durationFocusNode,
+                              keyboardType: TextInputType.number,
+                              onTap: () {
+                                durationController.selection = TextSelection(
+                                  baseOffset: 0,
+                                  extentOffset: durationController.text.length,
+                                );
+                              },
+                              decoration: const InputDecoration(
+                                labelText: 'Duration (Minutes)',
+                                suffixText: 'min',
+                                border: OutlineInputBorder(),
+                              ),
                             ),
                           ),
-                          if (pickedVideo != null) ...[
-                            const SizedBox(height: 6),
-                            Text(
-                              'Selected: ${pickedVideo!.name} ($pickedVideoSize)',
-                              style: const TextStyle(fontSize: 12, color: AppColors.primaryGreen, fontWeight: FontWeight.w600),
+                          if (isFirstLectureOfCourse) ...[
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Row(
+                                children: [
+                                  Switch(
+                                    value: isPreview,
+                                    activeThumbColor: AppColors.primaryGreen,
+                                    onChanged: (val) =>
+                                        setModalState(() => isPreview = val),
+                                  ),
+                                  const Expanded(
+                                    child: Text(
+                                      'Free Preview',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
                         ],
                       ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Action Button
-                    SizedBox(
-                      width: double.infinity,
-                      height: 48,
-                      child: FilledButton(
-                        style: FilledButton.styleFrom(
-                          backgroundColor: AppColors.primaryGreen,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      if (isFirstLectureOfCourse && isPreview) ...[
+                        const SizedBox(height: 14),
+                        TextField(
+                          controller: previewDurationController,
+                          focusNode: previewDurationFocusNode,
+                          keyboardType: TextInputType.number,
+                          onTap: () {
+                            previewDurationController.selection = TextSelection(
+                              baseOffset: 0,
+                              extentOffset:
+                                  previewDurationController.text.length,
+                            );
+                          },
+                          decoration: const InputDecoration(
+                            labelText: 'Preview Limit (Seconds)',
+                            hintText: 'e.g., 30, 45, or 60',
+                            suffixText: 'sec',
+                            border: OutlineInputBorder(),
+                          ),
                         ),
-                        onPressed: () async {
-                          final title = titleController.text.trim();
-                          if (title.isEmpty) {
-                            _showFeedback('Lecture title is required.', isError: true);
-                            return;
-                          }
+                      ],
+                      const SizedBox(height: 20),
 
-                          final duration = int.tryParse(durationController.text.trim()) ?? 10;
-                          final effectiveIsPreview = isFirstLectureOfCourse && isPreview;
-                          final previewDuration = effectiveIsPreview
-                              ? (int.tryParse(previewDurationController.text.trim()) ?? 30)
-                              : null;
-                          Navigator.pop(modalContext); // Close sheet
-
-                          _saveLectureWithMedia(
-                            sectionId: sectionId,
-                            existingLecture: existingLecture,
-                            title: title,
-                            description: descController.text.trim(),
-                            duration: duration,
-                            isPreview: effectiveIsPreview,
-                            previewDuration: previewDuration,
-                            pickedVideo: pickedVideo,
-                          );
-                        },
-                        child: Text(
-                          isEditing ? 'Save Lecture Updates' : 'Add Lecture',
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      // Video Upload Section
+                      Text(
+                        'Video Stream (Bunny Stream CDN)',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey.shade700,
                         ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryGreen.withValues(alpha: 0.05),
+                          border: Border.all(
+                            color: AppColors.primaryGreen.withValues(
+                              alpha: 0.3,
+                            ),
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (isEditing &&
+                                existingLecture.videoUrl != null &&
+                                existingLecture.videoUrl!.isNotEmpty) ...[
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.check_circle,
+                                    color: AppColors.primaryGreen,
+                                    size: 18,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'Active Video Attached (${existingLecture.bunnyStatus == 3 ? "Transcoded" : "Encoding / Ready"})',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.primaryGreen,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                            ],
+                            OutlinedButton.icon(
+                              onPressed: () async {
+                                FocusScope.of(modalContext).unfocus();
+                                await Future.delayed(
+                                  const Duration(milliseconds: 120),
+                                );
+                                final video = await _picker.pickVideo(
+                                  source: ImageSource.gallery,
+                                );
+                                if (video != null) {
+                                  XFile safeVideo = video;
+                                  try {
+                                    final originalFile = File(video.path);
+                                    if (await originalFile.exists()) {
+                                      final appDir =
+                                          await getApplicationDocumentsDirectory();
+                                      final mediaDir = Directory(
+                                        '${appDir.path}/lecture_uploads',
+                                      );
+                                      if (!await mediaDir.exists()) {
+                                        await mediaDir.create(recursive: true);
+                                      }
+                                      final ext = video.path.contains('.')
+                                          ? video.path.substring(
+                                              video.path.lastIndexOf('.'),
+                                            )
+                                          : '.mp4';
+                                      final persistentPath =
+                                          '${mediaDir.path}/lec_${DateTime.now().millisecondsSinceEpoch}$ext';
+                                      await originalFile.copy(persistentPath);
+                                      safeVideo = XFile(
+                                        persistentPath,
+                                        name: video.name,
+                                      );
+                                      debugPrint(
+                                        '💾 [CURRICULUM BUILDER] Preserved video to persistent path: $persistentPath',
+                                      );
+                                    }
+                                  } catch (copyErr) {
+                                    debugPrint(
+                                      '⚠️ [CURRICULUM BUILDER] Could not copy video to persistent storage: $copyErr',
+                                    );
+                                  }
+
+                                  final length = await safeVideo.length();
+                                  final sizeMb = (length / (1024 * 1024))
+                                      .toStringAsFixed(1);
+                                  setModalState(() {
+                                    pickedVideo = safeVideo;
+                                    pickedVideoSize = '$sizeMb MB';
+                                  });
+                                  debugPrint(
+                                    '🎬 [CURRICULUM BUILDER] Picked video: ${safeVideo.name} ($sizeMb MB), path=${safeVideo.path}',
+                                  );
+                                }
+                              },
+                              icon: const Icon(Icons.video_collection_outlined),
+                              label: Text(
+                                pickedVideo != null
+                                    ? 'Video Selected'
+                                    : (isEditing &&
+                                          existingLecture.videoUrl != null &&
+                                          existingLecture.videoUrl!.isNotEmpty)
+                                    ? 'Replace Video File'
+                                    : 'Select Video from Gallery',
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: AppColors.primaryGreen,
+                                side: const BorderSide(
+                                  color: AppColors.primaryGreen,
+                                ),
+                              ),
+                            ),
+                            if (pickedVideo != null) ...[
+                              const SizedBox(height: 6),
+                              Text(
+                                'Selected: ${pickedVideo!.name} ($pickedVideoSize)',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.primaryGreen,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Action Button
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: FilledButton(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.primaryGreen,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          onPressed: () async {
+                            final title = titleController.text.trim();
+                            if (title.isEmpty) {
+                              _showFeedback(
+                                'Lecture title is required.',
+                                isError: true,
+                              );
+                              return;
+                            }
+
+                            final duration =
+                                int.tryParse(durationController.text.trim()) ??
+                                10;
+                            final effectiveIsPreview =
+                                isFirstLectureOfCourse && isPreview;
+                            final previewDuration = effectiveIsPreview
+                                ? (int.tryParse(
+                                        previewDurationController.text.trim(),
+                                      ) ??
+                                      30)
+                                : null;
+                            Navigator.pop(modalContext); // Close sheet
+
+                            _saveLectureWithMedia(
+                              sectionId: sectionId,
+                              existingLecture: existingLecture,
+                              title: title,
+                              description: descController.text.trim(),
+                              duration: duration,
+                              isPreview: effectiveIsPreview,
+                              previewDuration: previewDuration,
+                              pickedVideo: pickedVideo,
+                            );
+                          },
+                          child: Text(
+                            isEditing ? 'Save Lecture Updates' : 'Add Lecture',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          );
-        },
-      );
-    },
-  );
+            );
+          },
+        );
+      },
+    );
   }
 
   Future<void> _saveLectureWithMedia({
@@ -830,21 +974,23 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
       };
 
       if (!isEditing) {
-        debugPrint('➕ [CURRICULUM BUILDER] Creating lecture: title="$title", sectionId=$sectionId');
-        final res = await ref.read(instructorRepositoryProvider).createLecture(
-          widget.courseId,
-          sectionId,
-          lecturePayload,
+        debugPrint(
+          '➕ [CURRICULUM BUILDER] Creating lecture: title="$title", sectionId=$sectionId',
         );
+        final res = await ref
+            .read(instructorRepositoryProvider)
+            .createLecture(widget.courseId, sectionId, lecturePayload);
         lectureId = res['id']?.toString();
       } else {
         debugPrint('✏️ [CURRICULUM BUILDER] Updating lecture: id=$lectureId');
-        await ref.read(instructorRepositoryProvider).updateLecture(
-          widget.courseId,
-          sectionId,
-          lectureId!,
-          lecturePayload,
-        );
+        await ref
+            .read(instructorRepositoryProvider)
+            .updateLecture(
+              widget.courseId,
+              sectionId,
+              lectureId!,
+              lecturePayload,
+            );
       }
 
       if (lectureId == null || lectureId.isEmpty) {
@@ -853,19 +999,28 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
 
       // Step 2: Upload Video if selected
       if (pickedVideo != null && !isCancelled) {
-        debugPrint('📤 [CURRICULUM BUILDER] Uploading video for lecture: $lectureId');
-        _updateLoadingMessage('Uploading video to Bunny Stream CDN... (Please wait)');
+        debugPrint(
+          '📤 [CURRICULUM BUILDER] Uploading video for lecture: $lectureId',
+        );
+        _updateLoadingMessage(
+          'Uploading video to Bunny Stream CDN... (Please wait)',
+        );
         try {
           final videoFile = File(pickedVideo.path);
           if (!await videoFile.exists()) {
-            throw FileSystemException('Selected video file could not be found or opened on device.', pickedVideo.path);
+            throw FileSystemException(
+              'Selected video file could not be found or opened on device.',
+              pickedVideo.path,
+            );
           }
-          await ref.read(instructorRepositoryProvider).uploadVideo(
-            lectureId,
-            pickedVideo.path,
-            timeout: const Duration(minutes: 5),
-            client: cancelableClient,
-          );
+          await ref
+              .read(instructorRepositoryProvider)
+              .uploadVideo(
+                lectureId,
+                pickedVideo.path,
+                timeout: const Duration(minutes: 5),
+                client: cancelableClient,
+              );
           videoUploaded = true;
           debugPrint('✅ [CURRICULUM BUILDER] Video uploaded successfully!');
         } catch (vErr) {
@@ -887,22 +1042,30 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
           !isCancelled &&
           !isNetworkChoked) {
         final fileName = pickedResource.files.single.name;
-        debugPrint('📄 [CURRICULUM BUILDER] Uploading resource for lecture: $lectureId');
+        debugPrint(
+          '📄 [CURRICULUM BUILDER] Uploading resource for lecture: $lectureId',
+        );
         _updateLoadingMessage('Uploading study material ($fileName)...');
         try {
-          await ref.read(instructorRepositoryProvider).uploadResource(
-            lectureId,
-            pickedResource.files.single.path!,
-            fileName: fileName,
-            timeout: const Duration(seconds: 30),
-            client: cancelableClient,
-          );
+          await ref
+              .read(instructorRepositoryProvider)
+              .uploadResource(
+                lectureId,
+                pickedResource.files.single.path!,
+                fileName: fileName,
+                timeout: const Duration(seconds: 30),
+                client: cancelableClient,
+              );
           resourceUploaded = true;
-          debugPrint('✅ [CURRICULUM BUILDER] Study material uploaded successfully!');
+          debugPrint(
+            '✅ [CURRICULUM BUILDER] Study material uploaded successfully!',
+          );
         } catch (rErr) {
           if (isCancelled) return;
           resourceError = _extractErrorMessage(rErr);
-          debugPrint('❌ [CURRICULUM BUILDER] Resource upload error: $resourceError');
+          debugPrint(
+            '❌ [CURRICULUM BUILDER] Resource upload error: $resourceError',
+          );
         }
       }
     } catch (e) {
@@ -927,7 +1090,9 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
     ref.invalidate(instructorCourseDetailProvider(widget.courseId));
 
     if (isCancelled) {
-      _showFeedback('Upload canceled. Lecture was created; you can attach media later from ⚙️ Settings.');
+      _showFeedback(
+        'Upload canceled. Lecture was created; you can attach media later from ⚙️ Settings.',
+      );
       return;
     }
 
@@ -943,10 +1108,7 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
         isError: true,
       );
     } else if (videoError != null) {
-      _showFeedback(
-        'Lecture saved! Video notice: $videoError',
-        isError: true,
-      );
+      _showFeedback('Lecture saved! Video notice: $videoError', isError: true);
     } else if (resourceError != null) {
       _showFeedback(
         'Lecture saved! Study material note: $resourceError',
@@ -954,7 +1116,11 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
       );
     } else {
       final buffer = StringBuffer();
-      buffer.write(isEditing ? 'Lecture updated successfully!' : 'Lecture created successfully!');
+      buffer.write(
+        isEditing
+            ? 'Lecture updated successfully!'
+            : 'Lecture created successfully!',
+      );
       if (videoUploaded && resourceUploaded) {
         buffer.write(' (Video & study material attached)');
       } else if (videoUploaded) {
@@ -966,17 +1132,30 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
     }
   }
 
-  Future<void> _deleteLecture(BuildContext parentContext, String sectionId, String lectureId) async {
+  Future<void> _deleteLecture(
+    BuildContext parentContext,
+    String sectionId,
+    String lectureId,
+  ) async {
     final confirmed = await showDialog<bool>(
       context: parentContext,
       builder: (c) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(tr(ref, 'Delete Lecture'), style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(
+          tr(ref, 'Delete Lecture'),
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
         content: Text(
-          tr(ref, 'Are you sure you want to delete this lecture? Any video streams and study materials will be removed.'),
+          tr(
+            ref,
+            'Are you sure you want to delete this lecture? Any video streams and study materials will be removed.',
+          ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: Text(tr(ref, 'Cancel'))),
+          TextButton(
+            onPressed: () => Navigator.pop(c, false),
+            child: Text(tr(ref, 'Cancel')),
+          ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.error),
             onPressed: () => Navigator.pop(c, true),
@@ -987,10 +1166,14 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
     );
 
     if (confirmed == true) {
-      debugPrint('🗑️ [CURRICULUM BUILDER] Deleting lecture: id=$lectureId, sectionId=$sectionId');
+      debugPrint(
+        '🗑️ [CURRICULUM BUILDER] Deleting lecture: id=$lectureId, sectionId=$sectionId',
+      );
       _showLoadingDialog('Deleting lecture...');
       try {
-        await ref.read(instructorRepositoryProvider).deleteLecture(widget.courseId, sectionId, lectureId);
+        await ref
+            .read(instructorRepositoryProvider)
+            .deleteLecture(widget.courseId, sectionId, lectureId);
         if (!mounted) return;
         _dismissLoadingDialog();
         _showFeedback('Lecture deleted successfully!');
@@ -1009,13 +1192,22 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
 
   Future<void> _submitForReview(ApiCourseDetail course) async {
     if (course.sections.isEmpty) {
-      _showFeedback('Please add at least one section before publishing.', isError: true);
+      _showFeedback(
+        'Please add at least one section before publishing.',
+        isError: true,
+      );
       return;
     }
 
-    final totalLectures = course.sections.fold<int>(0, (sum, s) => sum + s.lectures.length);
+    final totalLectures = course.sections.fold<int>(
+      0,
+      (sum, s) => sum + s.lectures.length,
+    );
     if (totalLectures == 0) {
-      _showFeedback('Please add at least one lecture before publishing.', isError: true);
+      _showFeedback(
+        'Please add at least one lecture before publishing.',
+        isError: true,
+      );
       return;
     }
 
@@ -1027,16 +1219,27 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
           children: [
             const Icon(Icons.rocket_launch, color: AppColors.primaryGreen),
             const SizedBox(width: 10),
-            Text(tr(ref, 'Submit for Review'), style: const TextStyle(fontWeight: FontWeight.bold)),
+            Text(
+              tr(ref, 'Submit for Review'),
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
           ],
         ),
         content: Text(
-          tr(ref, 'Your course will be submitted for automated AI safety review and administrator verification. Editing will be temporarily locked until the review completes.'),
+          tr(
+            ref,
+            'Your course will be submitted for automated AI safety review and administrator verification. Editing will be temporarily locked until the review completes.',
+          ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: Text(tr(ref, 'Cancel'))),
+          TextButton(
+            onPressed: () => Navigator.pop(c, false),
+            child: Text(tr(ref, 'Cancel')),
+          ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.primaryGreen),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.primaryGreen,
+            ),
             onPressed: () => Navigator.pop(c, true),
             child: Text(tr(ref, 'Submit Now')),
           ),
@@ -1045,20 +1248,27 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
     );
 
     if (confirmed == true) {
-      debugPrint('🚀 [CURRICULUM BUILDER] Submitting course for AI review: id=${course.id}');
+      debugPrint(
+        '🚀 [CURRICULUM BUILDER] Submitting course for AI review: id=${course.id}',
+      );
       _showLoadingDialog('Submitting course for AI review...');
       try {
-        final res = await ref.read(instructorRepositoryProvider).publishCourse(course.id);
+        final res = await ref
+            .read(instructorRepositoryProvider)
+            .publishCourse(course.id);
         if (!mounted) return;
         _dismissLoadingDialog(); // Close loading
-        final message = res['message']?.toString() ?? 'Course submitted for AI review!';
+        final message =
+            res['message']?.toString() ?? 'Course submitted for AI review!';
         _showFeedback(message);
         ref.invalidate(instructorCourseDetailProvider(widget.courseId));
       } catch (e) {
         if (!mounted) return;
         _dismissLoadingDialog(); // Close loading
         final errorMsg = _extractErrorMessage(e);
-        debugPrint('❌ [CURRICULUM BUILDER] Submit for review failed: $errorMsg');
+        debugPrint(
+          '❌ [CURRICULUM BUILDER] Submit for review failed: $errorMsg',
+        );
         _showFeedback(errorMsg, isError: true);
       }
     }
@@ -1076,13 +1286,14 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
 
     if (result != null && result.files.single.path != null) {
       final filePath = result.files.single.path!;
-      debugPrint('🎓 [CURRICULUM BUILDER] Uploading certificate template: $filePath');
+      debugPrint(
+        '🎓 [CURRICULUM BUILDER] Uploading certificate template: $filePath',
+      );
       _showLoadingDialog('Uploading certificate template...');
       try {
-        await ref.read(instructorRepositoryProvider).uploadCertificateTemplate(
-          widget.courseId,
-          filePath,
-        );
+        await ref
+            .read(instructorRepositoryProvider)
+            .uploadCertificateTemplate(widget.courseId, filePath);
         if (!mounted) return;
         _dismissLoadingDialog();
         _showFeedback('Certificate template uploaded successfully!');
@@ -1091,7 +1302,9 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
         if (!mounted) return;
         _dismissLoadingDialog();
         final errorMsg = _extractErrorMessage(e);
-        debugPrint('❌ [CURRICULUM BUILDER] Upload certificate failed: $errorMsg');
+        debugPrint(
+          '❌ [CURRICULUM BUILDER] Upload certificate failed: $errorMsg',
+        );
         _showFeedback('Failed to upload certificate: $errorMsg', isError: true);
       }
     }
@@ -1102,10 +1315,18 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
       context: context,
       builder: (c) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(tr(ref, 'Delete Certificate Template'), style: const TextStyle(fontWeight: FontWeight.bold)),
-        content: Text(tr(ref, 'Are you sure you want to remove this certificate template?')),
+        title: Text(
+          tr(ref, 'Delete Certificate Template'),
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        content: Text(
+          tr(ref, 'Are you sure you want to remove this certificate template?'),
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: Text(tr(ref, 'Cancel'))),
+          TextButton(
+            onPressed: () => Navigator.pop(c, false),
+            child: Text(tr(ref, 'Cancel')),
+          ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.error),
             onPressed: () => Navigator.pop(c, true),
@@ -1116,10 +1337,14 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
     );
 
     if (confirmed == true) {
-      debugPrint('🗑️ [CURRICULUM BUILDER] Deleting certificate template: $certId');
+      debugPrint(
+        '🗑️ [CURRICULUM BUILDER] Deleting certificate template: $certId',
+      );
       _showLoadingDialog('Deleting certificate template...');
       try {
-        await ref.read(instructorRepositoryProvider).deleteCertificate(widget.courseId, certId);
+        await ref
+            .read(instructorRepositoryProvider)
+            .deleteCertificate(widget.courseId, certId);
         if (!mounted) return;
         _dismissLoadingDialog();
         _showFeedback('Certificate template removed successfully.');
@@ -1128,7 +1353,9 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
         if (!mounted) return;
         _dismissLoadingDialog();
         final errorMsg = _extractErrorMessage(e);
-        debugPrint('❌ [CURRICULUM BUILDER] Delete certificate failed: $errorMsg');
+        debugPrint(
+          '❌ [CURRICULUM BUILDER] Delete certificate failed: $errorMsg',
+        );
         _showFeedback('Failed to delete certificate: $errorMsg', isError: true);
       }
     }
@@ -1152,7 +1379,9 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
     }
 
     setState(() => _isSavingSettings = true);
-    debugPrint('⚙️ [CURRICULUM BUILDER] Saving settings: title="$title", price=$price');
+    debugPrint(
+      '⚙️ [CURRICULUM BUILDER] Saving settings: title="$title", price=$price',
+    );
 
     try {
       FocusScope.of(context).unfocus();
@@ -1176,7 +1405,9 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
 
   @override
   Widget build(BuildContext context) {
-    final courseAsync = ref.watch(instructorCourseDetailProvider(widget.courseId));
+    final courseAsync = ref.watch(
+      instructorCourseDetailProvider(widget.courseId),
+    );
 
     // If we have course data, render it directly even during background reload
     final course = courseAsync.valueOrNull;
@@ -1191,7 +1422,8 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
         _settingsInitialized = true;
       }
 
-      final isLive = course.status == 'APPROVED' ||
+      final isLive =
+          course.status == 'APPROVED' ||
           course.status == 'ACTIVE' ||
           course.status == 'LIVE' ||
           course.status == 'PUBLISHED';
@@ -1210,7 +1442,10 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
             indicatorColor: AppColors.primaryGreen,
             labelColor: AppColors.primaryGreen,
             unselectedLabelColor: Colors.grey,
-            labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+            labelStyle: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+            ),
             tabs: [
               Tab(text: tr(ref, 'Curriculum')),
               Tab(text: tr(ref, 'Certificates')),
@@ -1229,14 +1464,24 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                     minimumSize: const Size(0, 36),
                   ),
                   onPressed: () {
-                    final targetSlug = (course.slug != null && course.slug!.isNotEmpty) ? course.slug! : course.id;
+                    final targetSlug =
+                        (course.slug != null && course.slug!.isNotEmpty)
+                        ? course.slug!
+                        : course.id;
                     context.push('/course/$targetSlug');
                   },
                   icon: const Icon(Icons.visibility_outlined, size: 16),
-                  label: Text(tr(ref, 'View Live'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  label: Text(
+                    tr(ref, 'View Live'),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
               ),
-            if (!isLocked && (course.status == 'DRAFT' || course.status == 'REJECTED'))
+            if (!isLocked &&
+                (course.status == 'DRAFT' || course.status == 'REJECTED'))
               Padding(
                 padding: const EdgeInsets.only(right: 8),
                 child: FilledButton.icon(
@@ -1246,7 +1491,13 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                   ),
                   onPressed: () => _submitForReview(course),
                   icon: const Icon(Icons.auto_awesome_rounded, size: 16),
-                  label: Text(tr(ref, 'Submit for AI Review'), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                  label: Text(
+                    tr(ref, 'Submit for AI Review'),
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
               ),
           ],
@@ -1265,7 +1516,10 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                 foregroundColor: Colors.white,
                 onPressed: () => _addSection(context, course.sections.length),
                 icon: const Icon(Icons.add),
-                label: Text(tr(ref, 'Add Section'), style: const TextStyle(fontWeight: FontWeight.bold)),
+                label: Text(
+                  tr(ref, 'Add Section'),
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
               )
             : null,
       );
@@ -1295,7 +1549,9 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
               const SizedBox(height: 16),
               Text(
                 'Failed to load course details',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
               Text(
@@ -1305,8 +1561,12 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
               ),
               const SizedBox(height: 24),
               FilledButton.icon(
-                style: FilledButton.styleFrom(backgroundColor: AppColors.primaryGreen),
-                onPressed: () => ref.invalidate(instructorCourseDetailProvider(widget.courseId)),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primaryGreen,
+                ),
+                onPressed: () => ref.invalidate(
+                  instructorCourseDetailProvider(widget.courseId),
+                ),
                 icon: const Icon(Icons.refresh),
                 label: const Text('Retry'),
               ),
@@ -1321,7 +1581,8 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
 
   Widget _buildCurriculumTab(ApiCourseDetail course, bool isLocked) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final isLive = course.status == 'APPROVED' ||
+    final isLive =
+        course.status == 'APPROVED' ||
         course.status == 'ACTIVE' ||
         course.status == 'LIVE' ||
         course.status == 'PUBLISHED';
@@ -1344,8 +1605,12 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: isLive
-                    ? (isDark ? AppColors.primaryGreen.withValues(alpha: 0.12) : const Color(0xFFE8F5E9))
-                    : (isDark ? AppColors.warning.withValues(alpha: 0.12) : const Color(0xFFFFF8E1)),
+                    ? (isDark
+                          ? AppColors.primaryGreen.withValues(alpha: 0.12)
+                          : const Color(0xFFE8F5E9))
+                    : (isDark
+                          ? AppColors.warning.withValues(alpha: 0.12)
+                          : const Color(0xFFFFF8E1)),
                 border: Border.all(
                   color: isLive
                       ? AppColors.primaryGreen.withValues(alpha: 0.5)
@@ -1365,8 +1630,12 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
-                      isLive ? Icons.verified_rounded : Icons.hourglass_top_rounded,
-                      color: isLive ? AppColors.primaryGreen : AppColors.warning,
+                      isLive
+                          ? Icons.verified_rounded
+                          : Icons.hourglass_top_rounded,
+                      color: isLive
+                          ? AppColors.primaryGreen
+                          : AppColors.warning,
                       size: 18,
                     ),
                   ),
@@ -1383,8 +1652,12 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                             fontSize: 13,
                             fontWeight: FontWeight.bold,
                             color: isLive
-                                ? (isDark ? const Color(0xFF81C784) : const Color(0xFF1B5E20))
-                                : (isDark ? const Color(0xFFFFB74D) : const Color(0xFF8A5B00)),
+                                ? (isDark
+                                      ? const Color(0xFF81C784)
+                                      : const Color(0xFF1B5E20))
+                                : (isDark
+                                      ? const Color(0xFFFFB74D)
+                                      : const Color(0xFF8A5B00)),
                           ),
                         ),
                         const SizedBox(height: 4),
@@ -1395,7 +1668,9 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                           style: TextStyle(
                             fontSize: 12,
                             height: 1.35,
-                            color: isDark ? Colors.white70 : const Color(0xFF5D4037),
+                            color: isDark
+                                ? Colors.white70
+                                : const Color(0xFF5D4037),
                           ),
                         ),
                       ],
@@ -1423,7 +1698,11 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                   Expanded(
                     child: Text(
                       'Content Moderation Flagged Issues: Some lectures require revision. Please update or replace the flagged videos, then re-submit for review.',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.error),
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.error,
+                      ),
                     ),
                   ),
                 ],
@@ -1438,19 +1717,25 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
             children: [
               Text(
                 'Sections & Lectures',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
               if (!isLocked)
                 TextButton.icon(
                   onPressed: () => _addSection(context, course.sections.length),
                   icon: const Icon(Icons.add, size: 16),
-                  label: const Text('Add Section', style: TextStyle(fontWeight: FontWeight.bold)),
-                  style: TextButton.styleFrom(foregroundColor: AppColors.primaryGreen),
+                  label: const Text(
+                    'Add Section',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.primaryGreen,
+                  ),
                 ),
             ],
           ),
           const SizedBox(height: 8),
-
 
           // Sections List
           if (course.sections.isEmpty) ...[
@@ -1459,11 +1744,18 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
               decoration: BoxDecoration(
                 color: Colors.grey.shade50,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.grey.shade300, style: BorderStyle.solid),
+                border: Border.all(
+                  color: Colors.grey.shade300,
+                  style: BorderStyle.solid,
+                ),
               ),
               child: Column(
                 children: [
-                  Icon(Icons.video_library_outlined, size: 48, color: Colors.grey.shade400),
+                  Icon(
+                    Icons.video_library_outlined,
+                    size: 48,
+                    color: Colors.grey.shade400,
+                  ),
                   const SizedBox(height: 12),
                   const Text(
                     'No sections added yet',
@@ -1478,7 +1770,9 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                   const SizedBox(height: 16),
                   if (!isLocked)
                     FilledButton.icon(
-                      style: FilledButton.styleFrom(backgroundColor: AppColors.primaryGreen),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.primaryGreen,
+                      ),
                       onPressed: () => _addSection(context, 0),
                       icon: const Icon(Icons.add),
                       label: const Text('Add First Section'),
@@ -1490,7 +1784,12 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
             ...course.sections.asMap().entries.map((entry) {
               final sIdx = entry.key;
               final section = entry.value;
-              return _buildSectionCard(section, sIdx + 1, isLocked, isFirstSection: sIdx == 0);
+              return _buildSectionCard(
+                section,
+                sIdx + 1,
+                isLocked,
+                isFirstSection: sIdx == 0,
+              );
             }),
           ],
         ],
@@ -1527,14 +1826,19 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
         break;
     }
 
-    final totalLectures = course.sections.fold<int>(0, (sum, s) => sum + s.lectures.length);
+    final totalLectures = course.sections.fold<int>(
+      0,
+      (sum, s) => sum + s.lectures.length,
+    );
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.primaryGreen.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.primaryGreen.withValues(alpha: 0.2)),
+        border: Border.all(
+          color: AppColors.primaryGreen.withValues(alpha: 0.2),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1545,13 +1849,19 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
               Expanded(
                 child: Text(
                   course.title,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: statusColor.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(20),
@@ -1564,7 +1874,11 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                     const SizedBox(width: 4),
                     Text(
                       tr(ref, statusLabel),
-                      style: TextStyle(color: statusColor, fontSize: 11, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        color: statusColor,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ],
                 ),
@@ -1577,27 +1891,55 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
             runSpacing: 6,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              _buildStatChip(Icons.folder_outlined, '${formatNum(ref, course.sections.length)} ${tr(ref, 'Sections')}'),
-              _buildStatChip(Icons.play_lesson_outlined, '${formatNum(ref, totalLectures)} ${tr(ref, 'Lectures')}'),
+              _buildStatChip(
+                Icons.folder_outlined,
+                '${formatNum(ref, course.sections.length)} ${tr(ref, 'Sections')}',
+              ),
+              _buildStatChip(
+                Icons.play_lesson_outlined,
+                '${formatNum(ref, totalLectures)} ${tr(ref, 'Lectures')}',
+              ),
               if (course.price != null)
-                _buildStatChip(Icons.currency_rupee, course.price == '0' || course.price == '0.00' ? tr(ref, 'Free') : '₹${formatNum(ref, course.price)}'),
+                _buildStatChip(
+                  Icons.currency_rupee,
+                  course.price == '0' || course.price == '0.00'
+                      ? tr(ref, 'Free')
+                      : '₹${formatNum(ref, course.price)}',
+                ),
               if (course.status == 'APPROVED' || course.status == 'ACTIVE')
                 InkWell(
-                  onTap: () => context.push('/course/${course.slug ?? course.id}'),
+                  onTap: () =>
+                      context.push('/course/${course.slug ?? course.id}'),
                   borderRadius: BorderRadius.circular(6),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.primaryGreen.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: AppColors.primaryGreen.withValues(alpha: 0.4)),
+                      border: Border.all(
+                        color: AppColors.primaryGreen.withValues(alpha: 0.4),
+                      ),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.visibility_outlined, size: 13, color: AppColors.primaryGreen),
+                        const Icon(
+                          Icons.visibility_outlined,
+                          size: 13,
+                          color: AppColors.primaryGreen,
+                        ),
                         const SizedBox(width: 4),
-                        Text(tr(ref, 'View Live'), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primaryGreen)),
+                        Text(
+                          tr(ref, 'View Live'),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primaryGreen,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -1614,7 +1956,11 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 14, color: isDark ? Colors.grey.shade400 : Colors.grey.shade600),
+        Icon(
+          icon,
+          size: 14,
+          color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+        ),
         const SizedBox(width: 4),
         Text(
           text,
@@ -1628,7 +1974,12 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
     );
   }
 
-  Widget _buildSectionCard(ApiCourseSection section, int sectionIndex, bool isLocked, {bool isFirstSection = false}) {
+  Widget _buildSectionCard(
+    ApiCourseSection section,
+    int sectionIndex,
+    bool isLocked, {
+    bool isFirstSection = false,
+  }) {
     final isExpanded = _sectionExpanded[section.id] ?? true;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -1638,14 +1989,19 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
       color: isDark ? AppColors.cardDark : Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
-        side: BorderSide(color: isDark ? AppColors.lineDark : Colors.grey.shade200),
+        side: BorderSide(
+          color: isDark ? AppColors.lineDark : Colors.grey.shade200,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Section Header
           InkWell(
-            borderRadius: BorderRadius.vertical(top: const Radius.circular(14), bottom: Radius.circular(isExpanded ? 0 : 14)),
+            borderRadius: BorderRadius.vertical(
+              top: const Radius.circular(14),
+              bottom: Radius.circular(isExpanded ? 0 : 14),
+            ),
             onTap: () {
               setState(() {
                 _sectionExpanded[section.id] = !isExpanded;
@@ -1654,20 +2010,32 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
-                color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade50,
-                borderRadius: BorderRadius.vertical(top: const Radius.circular(14), bottom: Radius.circular(isExpanded ? 0 : 14)),
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.05)
+                    : Colors.grey.shade50,
+                borderRadius: BorderRadius.vertical(
+                  top: const Radius.circular(14),
+                  bottom: Radius.circular(isExpanded ? 0 : 14),
+                ),
               ),
               child: Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.primaryGreen.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
                       'S$sectionIndex',
-                      style: const TextStyle(color: AppColors.primaryGreen, fontSize: 11, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        color: AppColors.primaryGreen,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -1683,10 +2051,16 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                             color: isDark ? Colors.white : Colors.black87,
                           ),
                         ),
-                        if (section.description != null && section.description!.isNotEmpty)
+                        if (section.description != null &&
+                            section.description!.isNotEmpty)
                           Text(
                             section.description!,
-                            style: TextStyle(fontSize: 12, color: isDark ? Colors.grey.shade400 : Colors.grey.shade600),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isDark
+                                  ? Colors.grey.shade400
+                                  : Colors.grey.shade600,
+                            ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -1695,25 +2069,78 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                   ),
                   Text(
                     '${section.lectures.length} lec',
-                    style: TextStyle(fontSize: 11, color: isDark ? Colors.grey.shade400 : Colors.grey.shade500, fontWeight: FontWeight.w600),
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: isDark
+                          ? Colors.grey.shade400
+                          : Colors.grey.shade500,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   if (!isLocked) ...[
                     PopupMenuButton<String>(
-                      icon: Icon(Icons.more_vert, size: 20, color: isDark ? Colors.grey.shade400 : Colors.grey),
+                      icon: Icon(
+                        Icons.more_vert,
+                        size: 20,
+                        color: isDark ? Colors.grey.shade400 : Colors.grey,
+                      ),
                       onSelected: (value) {
                         if (value == 'edit') _editSection(context, section);
-                        if (value == 'delete') _deleteSection(context, section.id);
-                        if (value == 'add_lecture') _showLectureBottomSheet(context, sectionId: section.id, isFirstLectureOfCourse: isFirstSection && section.lectures.isEmpty);
+                        if (value == 'delete')
+                          _deleteSection(context, section.id);
+                        if (value == 'add_lecture')
+                          _showLectureBottomSheet(
+                            context,
+                            sectionId: section.id,
+                            isFirstLectureOfCourse:
+                                isFirstSection && section.lectures.isEmpty,
+                          );
                       },
                       itemBuilder: (c) => [
-                        const PopupMenuItem(value: 'add_lecture', child: Row(children: [Icon(Icons.add, size: 18), SizedBox(width: 8), Text('Add Lecture')])),
-                        const PopupMenuItem(value: 'edit', child: Row(children: [Icon(Icons.edit_outlined, size: 18), SizedBox(width: 8), Text('Edit Section')])),
-                        const PopupMenuItem(value: 'delete', child: Row(children: [Icon(Icons.delete_outline, size: 18, color: AppColors.error), SizedBox(width: 8), Text('Delete Section', style: TextStyle(color: AppColors.error))])),
+                        const PopupMenuItem(
+                          value: 'add_lecture',
+                          child: Row(
+                            children: [
+                              Icon(Icons.add, size: 18),
+                              SizedBox(width: 8),
+                              Text('Add Lecture'),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuItem(
+                          value: 'edit',
+                          child: Row(
+                            children: [
+                              Icon(Icons.edit_outlined, size: 18),
+                              SizedBox(width: 8),
+                              Text('Edit Section'),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuItem(
+                          value: 'delete',
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.delete_outline,
+                                size: 18,
+                                color: AppColors.error,
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                'Delete Section',
+                                style: TextStyle(color: AppColors.error),
+                              ),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                   ],
                   Icon(
-                    isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                    isExpanded
+                        ? Icons.keyboard_arrow_up
+                        : Icons.keyboard_arrow_down,
                     color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
                   ),
                 ],
@@ -1723,7 +2150,10 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
 
           // Section Content (Lectures)
           if (isExpanded) ...[
-            Divider(height: 1, color: isDark ? AppColors.lineDark : Colors.grey.shade200),
+            Divider(
+              height: 1,
+              color: isDark ? AppColors.lineDark : Colors.grey.shade200,
+            ),
             if (section.lectures.isEmpty)
               Padding(
                 padding: const EdgeInsets.all(16),
@@ -1732,15 +2162,31 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                     children: [
                       Text(
                         'No lectures in this section yet.',
-                        style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade500,
+                        ),
                       ),
                       if (!isLocked) ...[
                         const SizedBox(height: 8),
                         TextButton.icon(
-                          onPressed: () => _showLectureBottomSheet(context, sectionId: section.id, isFirstLectureOfCourse: isFirstSection && section.lectures.isEmpty),
+                          onPressed: () => _showLectureBottomSheet(
+                            context,
+                            sectionId: section.id,
+                            isFirstLectureOfCourse:
+                                isFirstSection && section.lectures.isEmpty,
+                          ),
                           icon: const Icon(Icons.add_circle_outline, size: 16),
-                          label: const Text('Add Lecture', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                          style: TextButton.styleFrom(foregroundColor: AppColors.primaryGreen),
+                          label: const Text(
+                            'Add Lecture',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppColors.primaryGreen,
+                          ),
                         ),
                       ],
                     ],
@@ -1752,30 +2198,61 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: section.lectures.length,
-                separatorBuilder: (_, __) => Divider(height: 1, color: isDark ? AppColors.lineDark : Colors.grey.shade100),
+                separatorBuilder: (_, __) => Divider(
+                  height: 1,
+                  color: isDark ? AppColors.lineDark : Colors.grey.shade100,
+                ),
                 itemBuilder: (context, lIdx) {
                   final lecture = section.lectures[lIdx];
                   final isFirstLectureOfCourse = isFirstSection && lIdx == 0;
-                  return _buildLectureTile(section, lecture, lIdx + 1, isLocked, isFirstLectureOfCourse: isFirstLectureOfCourse);
+                  return _buildLectureTile(
+                    section,
+                    lecture,
+                    lIdx + 1,
+                    isLocked,
+                    isFirstLectureOfCourse: isFirstLectureOfCourse,
+                  );
                 },
               ),
               if (!isLocked) ...[
-                Divider(height: 1, color: isDark ? AppColors.lineDark : Colors.grey.shade200),
+                Divider(
+                  height: 1,
+                  color: isDark ? AppColors.lineDark : Colors.grey.shade200,
+                ),
                 Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 8,
+                    horizontal: 16,
+                  ),
                   child: Center(
                     child: InkWell(
-                      onTap: () => _showLectureBottomSheet(context, sectionId: section.id, isFirstLectureOfCourse: isFirstSection && section.lectures.isEmpty),
+                      onTap: () => _showLectureBottomSheet(
+                        context,
+                        sectionId: section.id,
+                        isFirstLectureOfCourse:
+                            isFirstSection && section.lectures.isEmpty,
+                      ),
                       child: const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+                        padding: EdgeInsets.symmetric(
+                          vertical: 6,
+                          horizontal: 8,
+                        ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.add, size: 16, color: AppColors.primaryGreen),
+                            Icon(
+                              Icons.add,
+                              size: 16,
+                              color: AppColors.primaryGreen,
+                            ),
                             SizedBox(width: 4),
                             Text(
                               'Add Another Lecture',
-                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primaryGreen),
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primaryGreen,
+                              ),
                             ),
                           ],
                         ),
@@ -1791,9 +2268,16 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
     );
   }
 
-  Widget _buildLectureTile(ApiCourseSection section, ApiLecture lecture, int lectureIndex, bool isLocked, {bool isFirstLectureOfCourse = false}) {
+  Widget _buildLectureTile(
+    ApiCourseSection section,
+    ApiLecture lecture,
+    int lectureIndex,
+    bool isLocked, {
+    bool isFirstLectureOfCourse = false,
+  }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final hasVideo = (lecture.videoUrl != null && lecture.videoUrl!.isNotEmpty) ||
+    final hasVideo =
+        (lecture.videoUrl != null && lecture.videoUrl!.isNotEmpty) ||
         (lecture.bunnyVideoId != null && lecture.bunnyVideoId!.isNotEmpty) ||
         (lecture.bunnyStatus != null && lecture.bunnyStatus! >= 1);
     final hasResources = lecture.resources.isNotEmpty;
@@ -1809,7 +2293,9 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
             height: 24,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.grey.shade100,
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.1)
+                  : Colors.grey.shade100,
               shape: BoxShape.circle,
             ),
             child: Text(
@@ -1845,14 +2331,21 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                     if (lecture.isPreview)
                       Container(
                         margin: const EdgeInsets.only(left: 6),
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.signalYellow.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: const Text(
                           'FREE',
-                          style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFFB28700)),
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFFB28700),
+                          ),
                         ),
                       ),
                   ],
@@ -1862,9 +2355,13 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                   children: [
                     // Video Status
                     Icon(
-                      hasVideo ? Icons.play_circle_fill : Icons.videocam_off_outlined,
+                      hasVideo
+                          ? Icons.play_circle_fill
+                          : Icons.videocam_off_outlined,
                       size: 13,
-                      color: hasVideo ? AppColors.primaryGreen : AppColors.accentOrange,
+                      color: hasVideo
+                          ? AppColors.primaryGreen
+                          : AppColors.accentOrange,
                     ),
                     const SizedBox(width: 4),
                     Text(
@@ -1872,32 +2369,49 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w500,
-                        color: hasVideo ? AppColors.primaryGreen : AppColors.accentOrange,
+                        color: hasVideo
+                            ? AppColors.primaryGreen
+                            : AppColors.accentOrange,
                       ),
                     ),
                     const SizedBox(width: 10),
 
                     // Study Material Status
                     if (hasResources) ...[
-                      const Icon(Icons.attach_file, size: 13, color: AppColors.skyBlue),
+                      const Icon(
+                        Icons.attach_file,
+                        size: 13,
+                        color: AppColors.skyBlue,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         '${lecture.resources.length} ${lecture.resources.length == 1 ? "File" : "Files"}',
-                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: AppColors.skyBlue),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.skyBlue,
+                        ),
                       ),
                       const SizedBox(width: 10),
                     ],
 
                     // Duration
-                    if (lecture.durationFormatted != null && lecture.durationFormatted!.isNotEmpty)
+                    if (lecture.durationFormatted != null &&
+                        lecture.durationFormatted!.isNotEmpty)
                       Text(
                         lecture.durationFormatted!,
-                        style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey.shade500,
+                        ),
                       )
                     else if (lecture.duration != null && lecture.duration! > 0)
                       Text(
                         '${lecture.duration} min',
-                        style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey.shade500,
+                        ),
                       ),
                   ],
                 ),
@@ -1908,12 +2422,25 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
           // Actions
           if (!isLocked) ...[
             IconButton(
-              icon: const Icon(Icons.settings_outlined, size: 18, color: Colors.grey),
+              icon: const Icon(
+                Icons.settings_outlined,
+                size: 18,
+                color: Colors.grey,
+              ),
               tooltip: 'Edit Lecture & Attachments',
-              onPressed: () => _showLectureBottomSheet(context, sectionId: section.id, existingLecture: lecture, isFirstLectureOfCourse: isFirstLectureOfCourse),
+              onPressed: () => _showLectureBottomSheet(
+                context,
+                sectionId: section.id,
+                existingLecture: lecture,
+                isFirstLectureOfCourse: isFirstLectureOfCourse,
+              ),
             ),
             IconButton(
-              icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.error),
+              icon: const Icon(
+                Icons.delete_outline,
+                size: 18,
+                color: AppColors.error,
+              ),
               tooltip: 'Delete Lecture',
               onPressed: () => _deleteLecture(context, section.id, lecture.id),
             ),
@@ -1926,7 +2453,9 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
   // ── Certificates Tab ────────────────────────────────────────────────────────
 
   Widget _buildCertificatesTab(ApiCourseDetail course, bool isLocked) {
-    final certificatesAsync = ref.watch(instructorCourseCertificatesProvider(widget.courseId));
+    final certificatesAsync = ref.watch(
+      instructorCourseCertificatesProvider(widget.courseId),
+    );
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return ListView(
@@ -1967,13 +2496,17 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                 imageUrl = template.templateImage;
               } else if (template is Map) {
                 certId = template['id']?.toString() ?? '';
-                title = template['title']?.toString() ?? 'Certificate of Completion';
+                title =
+                    template['title']?.toString() ??
+                    'Certificate of Completion';
                 createdAt = template['created_at']?.toString() ?? '';
                 imageUrl = template['template_image']?.toString();
               } else {
                 try {
                   certId = (template as dynamic).id?.toString() ?? '';
-                  title = (template as dynamic).title?.toString() ?? 'Certificate of Completion';
+                  title =
+                      (template as dynamic).title?.toString() ??
+                      'Certificate of Completion';
                   createdAt = (template as dynamic).createdAt?.toString() ?? '';
                   imageUrl = (template as dynamic).templateImage?.toString();
                 } catch (_) {}
@@ -2008,10 +2541,16 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                             width: 48,
                             height: 48,
                             decoration: BoxDecoration(
-                              color: AppColors.primaryGreen.withValues(alpha: 0.15),
+                              color: AppColors.primaryGreen.withValues(
+                                alpha: 0.15,
+                              ),
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(Icons.verified, color: AppColors.primaryGreen, size: 26),
+                            child: const Icon(
+                              Icons.verified,
+                              color: AppColors.primaryGreen,
+                              size: 26,
+                            ),
                           ),
                         ),
                       )
@@ -2023,7 +2562,11 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                           color: AppColors.primaryGreen.withValues(alpha: 0.15),
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.verified, color: AppColors.primaryGreen, size: 26),
+                        child: const Icon(
+                          Icons.verified,
+                          color: AppColors.primaryGreen,
+                          size: 26,
+                        ),
                       ),
                     const SizedBox(width: 14),
                     Expanded(
@@ -2044,7 +2587,9 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                               'Uploaded: ${createdAt.length >= 10 ? createdAt.substring(0, 10) : createdAt}',
                               style: TextStyle(
                                 fontSize: 11,
-                                color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                                color: isDark
+                                    ? Colors.grey.shade400
+                                    : Colors.grey.shade600,
                               ),
                             ),
                           ],
@@ -2053,7 +2598,10 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                     ),
                     if (!isLocked)
                       IconButton(
-                        icon: const Icon(Icons.delete_outline, color: AppColors.error),
+                        icon: const Icon(
+                          Icons.delete_outline,
+                          color: AppColors.error,
+                        ),
                         onPressed: () => _deleteCertificateTemplate(certId),
                       ),
                   ],
@@ -2090,16 +2638,23 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    tr(ref, 'Upload a PDF or high-resolution image template (Max 5MB).'),
+                    tr(
+                      ref,
+                      'Upload a PDF or high-resolution image template (Max 5MB).',
+                    ),
                     style: TextStyle(
                       fontSize: 12,
-                      color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                      color: isDark
+                          ? Colors.grey.shade400
+                          : Colors.grey.shade600,
                     ),
                   ),
                   const SizedBox(height: 20),
                   if (!isLocked)
                     FilledButton.icon(
-                      style: FilledButton.styleFrom(backgroundColor: AppColors.primaryGreen),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.primaryGreen,
+                      ),
                       onPressed: _uploadCertificateTemplate,
                       icon: const Icon(Icons.upload_file),
                       label: Text(tr(ref, 'Upload Template')),
@@ -2123,24 +2678,37 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
           decoration: BoxDecoration(
             color: const Color(0xFFFFF9E6),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFD4AF37).withValues(alpha: 0.5)),
+            border: Border.all(
+              color: const Color(0xFFD4AF37).withValues(alpha: 0.5),
+            ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
-                  const Icon(Icons.remove_red_eye_rounded, color: Color(0xFF8B6508), size: 22),
+                  const Icon(
+                    Icons.remove_red_eye_rounded,
+                    color: Color(0xFF8B6508),
+                    size: 22,
+                  ),
                   const SizedBox(width: 8),
                   Text(
                     tr(ref, 'Live Demo Certificate Preview'),
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF8B6508)),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: Color(0xFF8B6508),
+                    ),
                   ),
                 ],
               ),
               const SizedBox(height: 6),
               Text(
-                tr(ref, 'See exactly how the official certificate will appear to students with instructor signature and verification link.'),
+                tr(
+                  ref,
+                  'See exactly how the official certificate will appear to students with instructor signature and verification link.',
+                ),
                 style: const TextStyle(fontSize: 12, color: Colors.black87),
               ),
               const SizedBox(height: 14),
@@ -2150,10 +2718,15 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFD4AF37),
                     foregroundColor: Colors.black87,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                   icon: const Icon(Icons.workspace_premium_rounded, size: 18),
-                  label: Text(tr(ref, 'Preview Certificate Demo'), style: const TextStyle(fontWeight: FontWeight.bold)),
+                  label: Text(
+                    tr(ref, 'Preview Certificate Demo'),
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
                   onPressed: () => _previewCertificateDemo(),
                 ),
               ),
@@ -2173,7 +2746,9 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
         useRootNavigator: true,
         builder: (dialogCtx) {
           loadingDialogCtx = dialogCtx;
-          return const Center(child: CircularProgressIndicator(color: AppColors.primaryGreen));
+          return const Center(
+            child: CircularProgressIndicator(color: AppColors.primaryGreen),
+          );
         },
       );
 
@@ -2181,14 +2756,18 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
       final preview = await repo.getPreviewCertificate(widget.courseId);
 
       if (loadingDialogCtx != null && loadingDialogCtx!.mounted) {
-        Navigator.of(loadingDialogCtx!).pop(); // Dismiss only the loading dialog
+        Navigator.of(
+          loadingDialogCtx!,
+        ).pop(); // Dismiss only the loading dialog
       }
       if (!mounted) return;
 
       CertificateViewerDialog.show(context, certificate: preview);
     } catch (e) {
       if (loadingDialogCtx != null && loadingDialogCtx!.mounted) {
-        Navigator.of(loadingDialogCtx!).pop(); // Dismiss only the loading dialog
+        Navigator.of(
+          loadingDialogCtx!,
+        ).pop(); // Dismiss only the loading dialog
       }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -2206,7 +2785,9 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
       children: [
         Text(
           'Course Settings',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 6),
         Text(
@@ -2234,44 +2815,67 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
               return TextField(
                 controller: _settingsPriceController,
                 enabled: !isLocked,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 decoration: const InputDecoration(
                   labelText: 'Price (₹) *',
                   prefixText: '₹ ',
                   helperText: 'Enter any custom price (or 0 for Free).',
                   border: OutlineInputBorder(),
-                  contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
                 ),
               );
             }
 
             return DropdownButtonFormField<String>(
-              initialValue: const ['0', '249', '499', '999', '1499'].contains(_settingsPriceController.text.trim())
+              initialValue:
+                  const [
+                    '0',
+                    '249',
+                    '499',
+                    '999',
+                    '1499',
+                  ].contains(_settingsPriceController.text.trim())
                   ? _settingsPriceController.text.trim()
                   : '0',
               decoration: InputDecoration(
                 labelText: tr(ref, 'Course Price Tier *'),
                 helperText: tr(ref, 'Select one of the standard price tiers.'),
                 border: const OutlineInputBorder(),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
               ),
               items: [
                 DropdownMenuItem(value: '0', child: Text(tr(ref, 'Free (₹0)'))),
                 DropdownMenuItem(
                   value: '249',
-                  child: Text('₹${formatNum(ref, '249')} — ${tr(ref, 'Tier 1')}'),
+                  child: Text(
+                    '₹${formatNum(ref, '249')} — ${tr(ref, 'Tier 1')}',
+                  ),
                 ),
                 DropdownMenuItem(
                   value: '499',
-                  child: Text('₹${formatNum(ref, '499')} — ${tr(ref, 'Tier 1.5')}'),
+                  child: Text(
+                    '₹${formatNum(ref, '499')} — ${tr(ref, 'Tier 1.5')}',
+                  ),
                 ),
                 DropdownMenuItem(
                   value: '999',
-                  child: Text('₹${formatNum(ref, '999')} — ${tr(ref, 'Tier 2')}'),
+                  child: Text(
+                    '₹${formatNum(ref, '999')} — ${tr(ref, 'Tier 2')}',
+                  ),
                 ),
                 DropdownMenuItem(
                   value: '1499',
-                  child: Text('₹${formatNum(ref, '1,499')} — ${tr(ref, 'Tier 3')}'),
+                  child: Text(
+                    '₹${formatNum(ref, '1,499')} — ${tr(ref, 'Tier 3')}',
+                  ),
                 ),
               ],
               onChanged: isLocked
@@ -2292,17 +2896,24 @@ class _ManageCourseScreenState extends ConsumerState<ManageCourseScreen>
             child: FilledButton.icon(
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.primaryGreen,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               onPressed: _isSavingSettings ? null : () => _saveSettings(course),
               icon: _isSavingSettings
                   ? const SizedBox(
                       width: 16,
                       height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
                     )
                   : const Icon(Icons.save_outlined),
-              label: Text(_isSavingSettings ? 'Saving Changes...' : 'Save Settings'),
+              label: Text(
+                _isSavingSettings ? 'Saving Changes...' : 'Save Settings',
+              ),
             ),
           ),
       ],

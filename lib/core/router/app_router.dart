@@ -132,6 +132,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                   '/instructor/community',
                   RouteNames.farmerCommunity,
                 );
+              } else if (resolvedRoute.startsWith('/instructor/qa')) {
+                // If user is not instructor, do not send them to /instructor/qa which would bounce them back to home
+                final user = authState.user;
+                if (user != null && user.canSwitchTo(UserRole.instructor)) {
+                  // Switch to instructor
+                  ref.read(authProvider.notifier).switchRole(UserRole.instructor);
+                } else {
+                  resolvedRoute = RouteNames.farmerHome;
+                }
               }
             }
             return resolvedRoute;

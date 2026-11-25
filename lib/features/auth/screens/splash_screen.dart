@@ -139,9 +139,18 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
         } else {
           if (resolvedRoute.startsWith('/instructor/community')) {
             resolvedRoute = resolvedRoute.replaceFirst('/instructor/community', RouteNames.farmerCommunity);
+          } else if (resolvedRoute.startsWith('/instructor/qa')) {
+            final user = authState.user;
+            if (user != null && user.canSwitchTo(UserRole.instructor)) {
+              await ref.read(authProvider.notifier).switchRole(UserRole.instructor);
+            } else {
+              resolvedRoute = RouteNames.farmerHome;
+            }
           }
         }
-        context.go(resolvedRoute);
+        if (mounted) {
+          context.go(resolvedRoute);
+        }
         return;
       }
       // Go to the correct home based on role (router handles this via redirect).

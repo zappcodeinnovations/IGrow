@@ -6,11 +6,14 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:pdf/pdf.dart';
 import 'package:printing/printing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../data/models/user_role.dart';
+import '../../features/auth/providers/auth_provider.dart';
 import '../localization/app_strings.dart';
 import '../network/token_storage.dart';
 import '../router/app_router.dart';
@@ -157,9 +160,32 @@ class NotificationService {
     final type = (data['type'] ?? data['entity_type'] ?? data['model'] ?? data['notification_type'] ?? '').toString().toUpperCase();
     final rawScreen = (data['screen'] ?? data['route'] ?? data['path'] ?? '').toString().trim();
 
-    // 1. Check for Q&A notification (Student asked question or reply)
-    if (type.contains('QA') || type.contains('QUESTION') || data.containsKey('question_id') || rawScreen == 'qa') {
-      targetRoute = '/instructor/qa';
+    // 1. Check for Q&A notification (Student asked question or Instructor replied)
+    final isQa = type.contains('QA') ||
+        type.contains('QUESTION') ||
+        data.containsKey('question_id') ||
+        rawScreen == 'qa' ||
+        (data['title']?.toString().toLowerCase().contains('question') ?? false) ||
+        (data['title']?.toString().toLowerCase().contains('q&a') ?? false);
+
+    if (isQa) {
+      final isReply = type.contains('REPLY') ||
+          (data['title']?.toString().toLowerCase().contains('reply') ?? false) ||
+          (data['title']?.toString().toLowerCase().contains('answered') ?? false) ||
+          (data['body']?.toString().toLowerCase().contains('reply') ?? false) ||
+          (data['body']?.toString().toLowerCase().contains('answered') ?? false) ||
+          (data['message']?.toString().toLowerCase().contains('reply') ?? false) ||
+          (data['message']?.toString().toLowerCase().contains('answered') ?? false);
+
+      final courseId = data['course_id'] ?? data['courseId'] ?? data['course'] ?? data['course_slug'];
+
+      if (isReply && courseId != null && courseId.toString().trim().isNotEmpty) {
+        // If it's a student receiving a reply to their question, route them to the course
+        targetRoute = '/farmer/course/${courseId.toString().trim()}';
+      } else {
+        // Otherwise it's a question asked for instructor
+        targetRoute = '/instructor/qa';
+      }
     }
 
     // 2. Check for Community Post / Comment notification
@@ -239,10 +265,29 @@ class NotificationService {
         }
         pendingLaunchRoute = targetRoute;
       } else {
+        if (targetRoute.startsWith('/instructor')) {
+          try {
+            final container = ProviderScope.containerOf(navContext, listen: false);
+            final user = container.read(authProvider).user;
+            if (user != null && user.activeRole != UserRole.instructor) {
+              if (user.canSwitchTo(UserRole.instructor)) {
+                container.read(authProvider.notifier).switchRole(UserRole.instructor);
+              } else {
+                targetRoute = RouteNames.farmerHome;
+              }
+            }
+          } catch (e) {
+            if (kDebugMode) {
+              print('⚠️ [NotificationService] Could not resolve container to switch role: $e');
+            }
+          }
+        }
         if (kDebugMode) {
           print('🚀 [NotificationService] Navigating directly to $targetRoute');
         }
-        navContext.push(targetRoute);
+        if (targetRoute != null) {
+          navContext.push(targetRoute);
+        }
       }
     } else {
       if (kDebugMode) {

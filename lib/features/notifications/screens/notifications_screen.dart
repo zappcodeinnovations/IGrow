@@ -8,6 +8,7 @@ import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../data/models/api_models/notification_models.dart';
+import '../../../data/models/user_role.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../community/providers/community_provider.dart';
 import '../helpers/notification_text_helper.dart';
@@ -128,7 +129,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
 
     final type = item.notificationType.toUpperCase();
 
-    // 1a. Q&A Notification -> Route directly to Instructor Q&A screen
+    // 1a. Q&A Notification -> Route appropriately based on whether it is a reply or new question
     final isQaNotification = type.contains('QA') ||
         item.title.toLowerCase().contains('q&a') ||
         item.title.toLowerCase().contains('question') ||
@@ -136,7 +137,27 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
         item.message.toLowerCase().contains('asked');
 
     if (isQaNotification) {
-      context.push('/instructor/qa');
+      final isReply = type.contains('REPLY') ||
+          item.title.toLowerCase().contains('reply') ||
+          item.title.toLowerCase().contains('answered') ||
+          item.message.toLowerCase().contains('reply') ||
+          item.message.toLowerCase().contains('answered') ||
+          item.message.toLowerCase().contains('replied');
+
+      if (isReply && item.course != null && item.course!.trim().isNotEmpty) {
+        context.push('/farmer/course/${item.course!.trim()}');
+        return;
+      }
+
+      // If user is not yet an instructor or currently in student mode, switch role or navigate safely
+      final authState = ref.read(authProvider);
+      final user = authState.user;
+      if (user != null && user.activeRole != UserRole.instructor && user.canSwitchTo(UserRole.instructor)) {
+        await ref.read(authProvider.notifier).switchRole(UserRole.instructor);
+      }
+      if (mounted) {
+        context.push('/instructor/qa');
+      }
       return;
     }
 
