@@ -8,7 +8,6 @@ import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../data/models/api_models/notification_models.dart';
-import '../../../data/models/user_role.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../community/providers/community_provider.dart';
 import '../helpers/notification_text_helper.dart';
@@ -18,7 +17,8 @@ class NotificationsScreen extends ConsumerStatefulWidget {
   const NotificationsScreen({super.key});
 
   @override
-  ConsumerState<NotificationsScreen> createState() => _NotificationsScreenState();
+  ConsumerState<NotificationsScreen> createState() =>
+      _NotificationsScreenState();
 }
 
 class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
@@ -32,15 +32,21 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
       case 'APPROVED':
       case 'NEW_ENROLLMENT':
       case 'PAYMENT':
-        return isDark ? AppColors.editorialSecondaryFixedDim.withValues(alpha: 0.25) : AppColors.editorialSecondaryFixed;
+        return isDark
+            ? AppColors.editorialSecondaryFixedDim.withValues(alpha: 0.25)
+            : AppColors.editorialSecondaryFixed;
       case 'REJECTED':
       case 'ERROR':
-        return isDark ? Colors.red.withValues(alpha: 0.2) : const Color(0xFFFFDAD6);
+        return isDark
+            ? Colors.red.withValues(alpha: 0.2)
+            : const Color(0xFFFFDAD6);
       case 'PROCESSING':
       case 'QA':
       case 'QUESTION':
       case 'ANSWER':
-        return isDark ? Colors.white12 : AppColors.editorialSurfaceContainerHigh;
+        return isDark
+            ? Colors.white12
+            : AppColors.editorialSurfaceContainerHigh;
       default:
         return isDark ? Colors.white12 : AppColors.editorialSurfaceContainerLow;
     }
@@ -51,7 +57,9 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
       case 'APPROVED':
       case 'NEW_ENROLLMENT':
       case 'PAYMENT':
-        return isDark ? AppColors.editorialSecondaryFixedDim : AppColors.editorialSecondary;
+        return isDark
+            ? AppColors.editorialSecondaryFixedDim
+            : AppColors.editorialSecondary;
       case 'REJECTED':
       case 'ERROR':
         return Colors.redAccent;
@@ -84,7 +92,10 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     }
   }
 
-  List<ApiNotification> _filterNotifications(List<ApiNotification> items, int tabIndex) {
+  List<ApiNotification> _filterNotifications(
+    List<ApiNotification> items,
+    int tabIndex,
+  ) {
     switch (tabIndex) {
       case 1: // Unread
         return items.where((n) => !n.isRead).toList();
@@ -130,14 +141,16 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     final type = item.notificationType.toUpperCase();
 
     // 1a. Q&A Notification -> Route appropriately based on whether it is a reply or new question
-    final isQaNotification = type.contains('QA') ||
+    final isQaNotification =
+        type.contains('QA') ||
         item.title.toLowerCase().contains('q&a') ||
         item.title.toLowerCase().contains('question') ||
         item.message.toLowerCase().contains('question') ||
         item.message.toLowerCase().contains('asked');
 
     if (isQaNotification) {
-      final isReply = type.contains('REPLY') ||
+      final isReply =
+          type.contains('REPLY') ||
           item.title.toLowerCase().contains('reply') ||
           item.title.toLowerCase().contains('answered') ||
           item.message.toLowerCase().contains('reply') ||
@@ -149,14 +162,8 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
         return;
       }
 
-      // If user is not yet an instructor or currently in student mode, switch role or navigate safely
-      final authState = ref.read(authProvider);
-      final user = authState.user;
-      if (user != null && user.activeRole != UserRole.instructor && user.canSwitchTo(UserRole.instructor)) {
-        await ref.read(authProvider.notifier).switchRole(UserRole.instructor);
-      }
       if (mounted) {
-        context.push('/instructor/qa');
+        context.go(RouteNames.instructorQa);
       }
       return;
     }
@@ -168,7 +175,8 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     }
 
     // 1b. Support Ticket notification -> Route to Support > My Tickets tab
-    final isSupportTicket = type == 'SUPPORT_TICKET' ||
+    final isSupportTicket =
+        type == 'SUPPORT_TICKET' ||
         type == 'TICKET' ||
         type == 'SUPPORT' ||
         (item.titleKey != null && item.titleKey!.contains('ticket')) ||
@@ -182,7 +190,8 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     }
 
     // 1c. Community Post / Comment notification -> Route to Community with comments open
-    final isCommunityPost = type.contains('COMMENT') ||
+    final isCommunityPost =
+        type.contains('COMMENT') ||
         type.contains('POST') ||
         type.contains('COMMUNITY') ||
         item.title.toLowerCase().contains('comment') ||
@@ -190,14 +199,18 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
         item.message.toLowerCase().contains('reply');
 
     if (isCommunityPost) {
-      final postId = item.params?['post_id'] ??
+      final postId =
+          item.params?['post_id'] ??
           item.params?['postId'] ??
           item.params?['id'];
       final user = ref.read(authProvider).user;
       final isInstructor = user?.isInstructor == true || user?.isAdmin == true;
-      final communityRoute = isInstructor ? RouteNames.instructorCommunity : RouteNames.farmerCommunity;
+      final communityRoute = isInstructor
+          ? RouteNames.instructorCommunity
+          : RouteNames.farmerCommunity;
       if (postId != null && postId.toString().isNotEmpty) {
-        ref.read(pendingCommunityCommentPostIdProvider.notifier).state = postId.toString();
+        ref.read(pendingCommunityCommentPostIdProvider.notifier).state = postId
+            .toString();
         context.go('$communityRoute?postId=${postId.toString()}');
       } else {
         context.go(communityRoute);
@@ -206,18 +219,28 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     }
 
     // 2. E-Book notification -> Route to Explore > E-Books tab filtered by this book
-    final hasEbookHint = type == 'NEW_EBOOK' ||
+    final hasEbookHint =
+        type == 'NEW_EBOOK' ||
         item.title.toLowerCase().contains('e-book') ||
         item.title.toLowerCase().contains('ebook') ||
         (item.ebookId != null && item.ebookId!.trim().isNotEmpty);
 
     if (hasEbookHint) {
-      String candidateTitle = (item.ebookTitle != null && item.ebookTitle!.isNotEmpty)
+      String candidateTitle =
+          (item.ebookTitle != null && item.ebookTitle!.isNotEmpty)
           ? item.ebookTitle!
           : item.title;
 
       // Strip prefixes like "New E-Book: "
-      candidateTitle = candidateTitle.replaceAll(RegExp(r'^(?:New\s+E-Book:\s*|New\s+Ebook:\s*)', caseSensitive: false), '').trim();
+      candidateTitle = candidateTitle
+          .replaceAll(
+            RegExp(
+              r'^(?:New\s+E-Book:\s*|New\s+Ebook:\s*)',
+              caseSensitive: false,
+            ),
+            '',
+          )
+          .trim();
       // Remove trailing ellipsis
       candidateTitle = candidateTitle.replaceAll(RegExp(r'\.{2,}$'), '').trim();
 
@@ -249,7 +272,9 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     final unreadCount = ref.watch(unreadNotificationsCountProvider);
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.editorialSurfaceDark : AppColors.editorialSurface,
+      backgroundColor: isDark
+          ? AppColors.editorialSurfaceDark
+          : AppColors.editorialSurface,
       body: NestedScrollView(
         headerSliverBuilder: (context, innerBoxIsScrolled) {
           return [
@@ -258,7 +283,9 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
               pinned: true,
               elevation: 0,
               scrolledUnderElevation: 0.5,
-              backgroundColor: isDark ? AppColors.editorialSurfaceDark : AppColors.editorialSurface,
+              backgroundColor: isDark
+                  ? AppColors.editorialSurfaceDark
+                  : AppColors.editorialSurface,
               leading: Padding(
                 padding: const EdgeInsets.only(left: 12),
                 child: Center(
@@ -276,12 +303,16 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                       height: 38,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: isDark ? AppColors.cardDark : AppColors.editorialSurfaceContainerLow,
+                        color: isDark
+                            ? AppColors.cardDark
+                            : AppColors.editorialSurfaceContainerLow,
                       ),
                       child: Icon(
                         Icons.arrow_back,
                         size: 20,
-                        color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                        color: isDark
+                            ? Colors.white
+                            : AppColors.editorialOnSurface,
                       ),
                     ),
                   ),
@@ -296,7 +327,9 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 17,
-                        color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                        color: isDark
+                            ? Colors.white
+                            : AppColors.editorialOnSurface,
                         letterSpacing: -0.4,
                       ),
                       maxLines: 1,
@@ -306,10 +339,15 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                   if (unreadCount > 0) ...[
                     const SizedBox(width: 6),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: isDark
-                            ? AppColors.editorialSecondaryFixedDim.withValues(alpha: 0.3)
+                            ? AppColors.editorialSecondaryFixedDim.withValues(
+                                alpha: 0.3,
+                              )
                             : AppColors.editorialSecondaryFixed,
                         borderRadius: BorderRadius.circular(9999),
                       ),
@@ -335,7 +373,9 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                   child: Center(
                     child: InkWell(
                       onTap: () {
-                        ref.read(notificationsProvider.notifier).markAllAsRead();
+                        ref
+                            .read(notificationsProvider.notifier)
+                            .markAllAsRead();
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             content: Text('All notifications marked as read ✓'),
@@ -345,9 +385,14 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                       },
                       borderRadius: BorderRadius.circular(9999),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 7,
+                        ),
                         decoration: BoxDecoration(
-                          color: isDark ? AppColors.cardDark : AppColors.editorialSurfaceContainerLow,
+                          color: isDark
+                              ? AppColors.cardDark
+                              : AppColors.editorialSurfaceContainerLow,
                           borderRadius: BorderRadius.circular(9999),
                         ),
                         child: Row(
@@ -355,7 +400,9 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                             Icon(
                               Icons.done_all_rounded,
                               size: 16,
-                              color: isDark ? AppColors.editorialSecondaryFixedDim : AppColors.editorialSecondary,
+                              color: isDark
+                                  ? AppColors.editorialSecondaryFixedDim
+                                  : AppColors.editorialSecondary,
                             ),
                             const SizedBox(width: 4),
                             Text(
@@ -363,7 +410,9 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                               style: TextStyle(
                                 fontSize: 11.5,
                                 fontWeight: FontWeight.bold,
-                                color: isDark ? Colors.white : AppColors.editorialOnSurface,
+                                color: isDark
+                                    ? Colors.white
+                                    : AppColors.editorialOnSurface,
                               ),
                             ),
                           ],
@@ -376,7 +425,10 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
               bottom: PreferredSize(
                 preferredSize: const Size.fromHeight(48),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 6,
+                  ),
                   height: 48,
                   child: ListView.separated(
                     scrollDirection: Axis.horizontal,
@@ -388,19 +440,28 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                         onTap: () => setState(() => _activeFilterIndex = index),
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 180),
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 6,
+                          ),
                           decoration: BoxDecoration(
                             color: isSelected
-                                ? (isDark ? Colors.white : AppColors.editorialPrimary)
-                                : (isDark ? AppColors.cardDark : AppColors.editorialSurfaceContainerLow),
+                                ? (isDark
+                                      ? Colors.white
+                                      : AppColors.editorialPrimary)
+                                : (isDark
+                                      ? AppColors.cardDark
+                                      : AppColors.editorialSurfaceContainerLow),
                             borderRadius: BorderRadius.circular(9999),
                             boxShadow: isSelected
                                 ? [
                                     BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.08),
+                                      color: Colors.black.withValues(
+                                        alpha: 0.08,
+                                      ),
                                       blurRadius: 6,
                                       offset: const Offset(0, 2),
-                                    )
+                                    ),
                                   ]
                                 : null,
                           ),
@@ -412,7 +473,9 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                               fontWeight: FontWeight.bold,
                               color: isSelected
                                   ? (isDark ? Colors.black : Colors.white)
-                                  : (isDark ? Colors.white70 : AppColors.editorialOnSurfaceVariant),
+                                  : (isDark
+                                        ? Colors.white70
+                                        : AppColors.editorialOnSurfaceVariant),
                             ),
                           ),
                         ),
@@ -425,232 +488,290 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
           ];
         },
         body: RefreshIndicator(
-          onRefresh: () => ref.read(notificationsProvider.notifier).loadNotifications(),
+          onRefresh: () =>
+              ref.read(notificationsProvider.notifier).loadNotifications(),
           color: AppColors.editorialPrimary,
           child: notificationsAsync.when(
             loading: () => const Center(
-              child: CircularProgressIndicator(color: AppColors.editorialPrimary),
-            ),
-                error: (error, _) => Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.wifi_off_rounded, color: Colors.orange, size: 48),
-                        const SizedBox(height: 12),
-                        Text(
-                          tr(ref, 'Unable to load notifications at this time. Please check your connection.'),
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: isDark ? Colors.white70 : AppColors.inkSoft,
-                            fontSize: 14,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: isDark ? Colors.white : AppColors.editorialPrimary,
-                            foregroundColor: isDark ? Colors.black : Colors.white,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9999)),
-                          ),
-                          icon: const Icon(Icons.refresh_rounded, size: 18),
-                          label: Text(tr(ref, 'Retry')),
-                          onPressed: () => ref.read(notificationsProvider.notifier).loadNotifications(),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                data: (allNotifications) {
-                  final filtered = _filterNotifications(allNotifications, _activeFilterIndex);
-
-                  if (filtered.isEmpty) {
-                    final isQaTab = _activeFilterIndex == 3;
-                    return ListView(
-                      children: [
-                        const SizedBox(height: 80),
-                        EmptyState(
-                          icon: _activeFilterIndex == 1
-                              ? Icons.mark_chat_read_outlined
-                              : (isQaTab ? Icons.question_answer_outlined : Icons.notifications_off_outlined),
-                          title: _activeFilterIndex == 1
-                              ? 'No Unread Notifications'
-                              : (isQaTab ? 'No Q&A Notifications' : 'No Notifications Found'),
-                          subtitle: _activeFilterIndex == 1
-                              ? 'You are all caught up! Great job.'
-                              : (isQaTab
-                                  ? 'When students ask questions in your courses, alerts will show here.'
-                                  : 'New course updates, announcements, and Q&A replies will appear here.'),
-                        ),
-                        if (isQaTab) ...[
-                          const SizedBox(height: 18),
-                          Center(
-                            child: ElevatedButton.icon(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.primaryGreen,
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-                              ),
-                              icon: const Icon(Icons.forum_outlined, size: 18),
-                              label: const Text('Open Q&A Forum', style: TextStyle(fontWeight: FontWeight.bold)),
-                              onPressed: () => context.push('/instructor/qa'),
-                            ),
-                          ),
-                        ],
-                      ],
-                    );
-                  }
-
-                  return ListView.separated(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    itemCount: filtered.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 10),
-                    itemBuilder: (context, index) {
-                      final item = filtered[index];
-                      final iconBg = _getNotificationIconBg(item.notificationType, isDark);
-                      final iconColor = _getNotificationIconColor(item.notificationType, isDark);
-                      final icon = _getNotificationIcon(item.notificationType);
-
-                      return Dismissible(
-                        key: Key(item.id),
-                        direction: DismissDirection.endToStart,
-                        background: Container(
-                          alignment: Alignment.centerRight,
-                          padding: const EdgeInsets.only(right: 20),
-                          decoration: BoxDecoration(
-                            color: Colors.redAccent,
-                            borderRadius: BorderRadius.circular(18),
-                          ),
-                          child: const Icon(Icons.delete_outline, color: Colors.white),
-                        ),
-                        onDismissed: (_) {
-                          ref.read(notificationsProvider.notifier).deleteNotification(item.id);
-                        },
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(18),
-                          onTap: () => _handleNotificationTap(item),
-                          child: Container(
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: isDark ? AppColors.cardDark : AppColors.editorialSurfaceContainerLowest,
-                              borderRadius: BorderRadius.circular(18),
-                              border: Border.all(
-                                color: isDark
-                                    ? AppColors.lineDark
-                                    : (item.isRead
-                                        ? AppColors.editorialOutlineVariant.withValues(alpha: 0.25)
-                                        : AppColors.editorialSecondary.withValues(alpha: 0.35)),
-                                width: item.isRead ? 1 : 1.2,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.02),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 3),
-                                ),
-                              ],
-                            ),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Sculpted Category Icon Pod
-                                Container(
-                                  width: 40,
-                                  height: 40,
-                                  decoration: BoxDecoration(
-                                    color: iconBg,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Icon(icon, color: iconColor, size: 20),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Expanded(
-                                            child: Text(
-                                              NotificationTextHelper.getTitle(ref, item),
-                                              style: TextStyle(
-                                                fontWeight: item.isRead ? FontWeight.w600 : FontWeight.bold,
-                                                fontSize: 14,
-                                                color: isDark ? Colors.white : AppColors.editorialOnSurface,
-                                              ),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                          if (!item.isRead)
-                                            Container(
-                                              width: 7,
-                                              height: 7,
-                                              margin: const EdgeInsets.only(left: 6),
-                                              decoration: BoxDecoration(
-                                                color: AppColors.editorialSecondary,
-                                                shape: BoxShape.circle,
-                                              ),
-                                            ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        NotificationTextHelper.getBody(ref, item),
-                                        style: TextStyle(
-                                          color: isDark ? Colors.white70 : AppColors.editorialOnSurfaceVariant,
-                                          fontSize: 13,
-                                          height: 1.35,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                            decoration: BoxDecoration(
-                                              color: isDark ? Colors.white10 : AppColors.editorialSurfaceContainerLow,
-                                              borderRadius: BorderRadius.circular(9999),
-                                            ),
-                                            child: Text(
-                                              item.notificationType.replaceAll('_', ' '),
-                                              style: TextStyle(
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.bold,
-                                                letterSpacing: 0.3,
-                                                color: isDark ? Colors.white60 : AppColors.editorialOnSurfaceVariant,
-                                              ),
-                                            ),
-                                          ),
-                                          if (item.createdAt != null)
-                                            Text(
-                                              DateFormat('hh:mm a • dd MMM').format(item.createdAt!.toLocal()),
-                                              style: TextStyle(
-                                                color: isDark ? Colors.white38 : AppColors.editorialOnSurfaceVariant.withValues(alpha: 0.8),
-                                                fontSize: 11,
-                                              ),
-                                            ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  );
-                },
+              child: CircularProgressIndicator(
+                color: AppColors.editorialPrimary,
               ),
             ),
+            error: (error, _) => Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.wifi_off_rounded,
+                      color: Colors.orange,
+                      size: 48,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      tr(
+                        ref,
+                        'Unable to load notifications at this time. Please check your connection.',
+                      ),
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: isDark ? Colors.white70 : AppColors.inkSoft,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: isDark
+                            ? Colors.white
+                            : AppColors.editorialPrimary,
+                        foregroundColor: isDark ? Colors.black : Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(9999),
+                        ),
+                      ),
+                      icon: const Icon(Icons.refresh_rounded, size: 18),
+                      label: Text(tr(ref, 'Retry')),
+                      onPressed: () => ref
+                          .read(notificationsProvider.notifier)
+                          .loadNotifications(),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            data: (allNotifications) {
+              final filtered = _filterNotifications(
+                allNotifications,
+                _activeFilterIndex,
+              );
+
+              if (filtered.isEmpty) {
+                final isQaTab = _activeFilterIndex == 3;
+                return ListView(
+                  children: [
+                    const SizedBox(height: 80),
+                    EmptyState(
+                      icon: _activeFilterIndex == 1
+                          ? Icons.mark_chat_read_outlined
+                          : (isQaTab
+                                ? Icons.question_answer_outlined
+                                : Icons.notifications_off_outlined),
+                      title: _activeFilterIndex == 1
+                          ? 'No Unread Notifications'
+                          : (isQaTab
+                                ? 'No Q&A Notifications'
+                                : 'No Notifications Found'),
+                      subtitle: _activeFilterIndex == 1
+                          ? 'You are all caught up! Great job.'
+                          : (isQaTab
+                                ? 'When an instructor answers your questions, alerts will show here.'
+                                : 'New course updates, announcements, and Q&A replies will appear here.'),
+                    ),
+                  ],
+                );
+              }
+
+              return ListView.separated(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                itemCount: filtered.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 10),
+                itemBuilder: (context, index) {
+                  final item = filtered[index];
+                  final iconBg = _getNotificationIconBg(
+                    item.notificationType,
+                    isDark,
+                  );
+                  final iconColor = _getNotificationIconColor(
+                    item.notificationType,
+                    isDark,
+                  );
+                  final icon = _getNotificationIcon(item.notificationType);
+
+                  return Dismissible(
+                    key: Key(item.id),
+                    direction: DismissDirection.endToStart,
+                    background: Container(
+                      alignment: Alignment.centerRight,
+                      padding: const EdgeInsets.only(right: 20),
+                      decoration: BoxDecoration(
+                        color: Colors.redAccent,
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      child: const Icon(
+                        Icons.delete_outline,
+                        color: Colors.white,
+                      ),
+                    ),
+                    onDismissed: (_) {
+                      ref
+                          .read(notificationsProvider.notifier)
+                          .deleteNotification(item.id);
+                    },
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(18),
+                      onTap: () => _handleNotificationTap(item),
+                      child: Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? AppColors.cardDark
+                              : AppColors.editorialSurfaceContainerLowest,
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(
+                            color: isDark
+                                ? AppColors.lineDark
+                                : (item.isRead
+                                      ? AppColors.editorialOutlineVariant
+                                            .withValues(alpha: 0.25)
+                                      : AppColors.editorialSecondary.withValues(
+                                          alpha: 0.35,
+                                        )),
+                            width: item.isRead ? 1 : 1.2,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(
+                                alpha: isDark ? 0.2 : 0.02,
+                              ),
+                              blurRadius: 10,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Sculpted Category Icon Pod
+                            Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: iconBg,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(icon, color: iconColor, size: 20),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          NotificationTextHelper.getTitle(
+                                            ref,
+                                            item,
+                                          ),
+                                          style: TextStyle(
+                                            fontWeight: item.isRead
+                                                ? FontWeight.w600
+                                                : FontWeight.bold,
+                                            fontSize: 14,
+                                            color: isDark
+                                                ? Colors.white
+                                                : AppColors.editorialOnSurface,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      if (!item.isRead)
+                                        Container(
+                                          width: 7,
+                                          height: 7,
+                                          margin: const EdgeInsets.only(
+                                            left: 6,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.editorialSecondary,
+                                            shape: BoxShape.circle,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    NotificationTextHelper.getBody(ref, item),
+                                    style: TextStyle(
+                                      color: isDark
+                                          ? Colors.white70
+                                          : AppColors.editorialOnSurfaceVariant,
+                                      fontSize: 13,
+                                      height: 1.35,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 2,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: isDark
+                                              ? Colors.white10
+                                              : AppColors
+                                                    .editorialSurfaceContainerLow,
+                                          borderRadius: BorderRadius.circular(
+                                            9999,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          item.notificationType.replaceAll(
+                                            '_',
+                                            ' ',
+                                          ),
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                            letterSpacing: 0.3,
+                                            color: isDark
+                                                ? Colors.white60
+                                                : AppColors
+                                                      .editorialOnSurfaceVariant,
+                                          ),
+                                        ),
+                                      ),
+                                      if (item.createdAt != null)
+                                        Text(
+                                          DateFormat(
+                                            'hh:mm a • dd MMM',
+                                          ).format(item.createdAt!.toLocal()),
+                                          style: TextStyle(
+                                            color: isDark
+                                                ? Colors.white38
+                                                : AppColors
+                                                      .editorialOnSurfaceVariant
+                                                      .withValues(alpha: 0.8),
+                                            fontSize: 11,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
           ),
-        );
+        ),
+      ),
+    );
   }
 }
-
-

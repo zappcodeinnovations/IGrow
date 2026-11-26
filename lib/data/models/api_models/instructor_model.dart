@@ -45,7 +45,10 @@ class ApiTopInstructor {
       fullName: json['full_name']?.toString() ?? 'Verified Instructor',
       avatar: json['avatar']?.toString(),
       bio: json['bio']?.toString(),
-      specialtyCrops: json['specialty_crops']?.toString() ?? json['expertise_tags']?.toString() ?? 'Agricultural Specialist',
+      specialtyCrops:
+          json['specialty_crops']?.toString() ??
+          json['expertise_tags']?.toString() ??
+          'Agricultural Specialist',
       expertiseTags: json['expertise_tags']?.toString(),
       experience: json['experience']?.toString() ?? 'Expert',
       rating: parseRating(json['rating']),
@@ -56,18 +59,18 @@ class ApiTopInstructor {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'full_name': fullName,
-        'avatar': avatar,
-        'bio': bio,
-        'specialty_crops': specialtyCrops,
-        'expertise_tags': expertiseTags,
-        'experience': experience,
-        'rating': rating,
-        'review_count': reviewCount,
-        'total_students': totalStudents,
-        'total_courses': totalCourses,
-      };
+    'id': id,
+    'full_name': fullName,
+    'avatar': avatar,
+    'bio': bio,
+    'specialty_crops': specialtyCrops,
+    'expertise_tags': expertiseTags,
+    'experience': experience,
+    'rating': rating,
+    'review_count': reviewCount,
+    'total_students': totalStudents,
+    'total_courses': totalCourses,
+  };
 
   /// Fallback verified instructors matching AgriLearn web platform defaults.
   static const List<ApiTopInstructor> fallbacks = [
@@ -110,6 +113,8 @@ class ApiPublicInstructorDetail {
     this.expertiseTags,
     this.specialtyCrops,
     this.qualifications,
+    this.website,
+    this.socialLink,
     this.experience = 'Expert',
     this.rating = 4.9,
     this.totalStudents = 0,
@@ -126,6 +131,8 @@ class ApiPublicInstructorDetail {
   final String? expertiseTags;
   final String? specialtyCrops;
   final String? qualifications;
+  final String? website;
+  final String? socialLink;
   final String experience;
   final double rating;
   final int totalStudents;
@@ -152,16 +159,52 @@ class ApiPublicInstructorDetail {
         .map((e) => ApiInstructorCourseItem.fromJson(e))
         .toList();
 
+    final bioText = json['bio']?.toString();
+
+    // 1. Resolve Website: direct field, or fallback to parsing from bio
+    String? resolvedWebsite = json['website']?.toString().trim();
+    if (resolvedWebsite == null || resolvedWebsite.isEmpty) {
+      if (bioText != null && bioText.isNotEmpty) {
+        // Look for "website :- <url>" or "website : <url>" or raw URL matching
+        final match = RegExp(
+          r'(?:website\s*(?::-|:|=)\s*)(https?:\/\/[^\s\r\n]+|[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}[^\s\r\n]*)',
+          caseSensitive: false,
+        ).firstMatch(bioText);
+        if (match != null) {
+          resolvedWebsite = match.group(1)?.trim();
+        }
+      }
+    }
+
+    // 2. Resolve Social Link (Instagram / YouTube / etc.): direct field, or fallback to parsing from bio
+    String? resolvedSocialLink =
+        (json['social_link']?.toString() ?? json['social_links']?.toString())
+            ?.trim();
+    if (resolvedSocialLink == null || resolvedSocialLink.isEmpty) {
+      if (bioText != null && bioText.isNotEmpty) {
+        // Look for "instagram :- <url>" or "instagram : <url>" or "youtube :- <url>" or direct instagram.com links
+        final match = RegExp(
+          r'(?:(?:instagram|social|youtube|fb|facebook)\s*(?::-|:|=)\s*)(https?:\/\/[^\s\r\n]+|[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}[^\s\r\n]*)|(https?:\/\/(?:www\.)?(?:instagram\.com|youtube\.com|youtu\.be|facebook\.com|linkedin\.com)\/[^\s\r\n]+)',
+          caseSensitive: false,
+        ).firstMatch(bioText);
+        if (match != null) {
+          resolvedSocialLink = (match.group(1) ?? match.group(2))?.trim();
+        }
+      }
+    }
+
     return ApiPublicInstructorDetail(
       id: json['id']?.toString() ?? '',
       fullName: json['full_name']?.toString() ?? 'Instructor',
       email: json['email']?.toString(),
       phoneNumber: json['phone_number']?.toString(),
       avatar: json['avatar']?.toString(),
-      bio: json['bio']?.toString(),
+      bio: bioText,
       expertiseTags: json['expertise_tags']?.toString(),
       specialtyCrops: json['specialty_crops']?.toString(),
       qualifications: json['qualifications']?.toString(),
+      website: resolvedWebsite,
+      socialLink: resolvedSocialLink,
       experience: json['experience']?.toString() ?? 'Expert',
       rating: parseRating(json['rating']),
       totalStudents: parseInt(json['total_students'], 0),

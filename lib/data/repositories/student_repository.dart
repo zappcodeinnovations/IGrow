@@ -1003,6 +1003,8 @@ class StudentRepository {
         final decoded = jsonDecode(response.body);
         if (decoded is Map<String, dynamic>) {
           debugPrint('✅ [StudentRepository] getInstructorDetail SUCCESS: ${decoded['full_name']}');
+          debugPrint('🔍 [StudentRepository] RAW INSTRUCTOR KEYS: ${decoded.keys.toList()}');
+          debugPrint('🔍 [StudentRepository] website=${decoded['website']}, social=${decoded['social_link'] ?? decoded['social_links']}');
           return ApiPublicInstructorDetail.fromJson(decoded);
         }
       }

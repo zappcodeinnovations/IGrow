@@ -3,11 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/localization/app_strings.dart';
-import '../../../core/network/swagger_generated/app_api.swagger.dart' show EBook;
+import '../../../core/network/swagger_generated/app_api.swagger.dart'
+    show EBook;
 import '../../../core/theme/app_colors.dart';
 import '../../../data/models/api_models/instructor_model.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../../home_farmer/providers/student_provider.dart';
 
 class InstructorProfileScreen extends ConsumerWidget {
@@ -29,7 +32,9 @@ class InstructorProfileScreen extends ConsumerWidget {
     );
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF0F1710) : const Color(0xFFF9FAF8),
+      backgroundColor: isDark
+          ? const Color(0xFF0F1710)
+          : const Color(0xFFF9FAF8),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -73,7 +78,9 @@ class InstructorProfileScreen extends ConsumerWidget {
             return Center(
               child: Text(
                 'Instructor details not found.',
-                style: TextStyle(color: isDark ? Colors.white70 : AppColors.inkSoft),
+                style: TextStyle(
+                  color: isDark ? Colors.white70 : AppColors.inkSoft,
+                ),
               ),
             );
           }
@@ -127,11 +134,16 @@ class InstructorProfileScreen extends ConsumerWidget {
 
     final avatarUrl = detail?.avatar ?? fallback?.avatar;
 
-    final specialty = (detail?.specialtyCrops != null && detail!.specialtyCrops!.trim().isNotEmpty)
+    final specialty =
+        (detail?.specialtyCrops != null &&
+            detail!.specialtyCrops!.trim().isNotEmpty)
         ? detail.specialtyCrops!.trim()
-        : ((detail?.expertiseTags != null && detail!.expertiseTags!.trim().isNotEmpty)
-            ? detail.expertiseTags!.trim()
-            : (fallback?.specialtyCrops ?? fallback?.expertiseTags ?? 'Crop production specialist'));
+        : ((detail?.expertiseTags != null &&
+                  detail!.expertiseTags!.trim().isNotEmpty)
+              ? detail.expertiseTags!.trim()
+              : (fallback?.specialtyCrops ??
+                    fallback?.expertiseTags ??
+                    'Crop production specialist'));
 
     final experience = detail?.experience.isNotEmpty == true
         ? detail!.experience
@@ -143,11 +155,37 @@ class InstructorProfileScreen extends ConsumerWidget {
         ? '${(studentsCount / 1000).toStringAsFixed(studentsCount % 1000 == 0 ? 0 : 1)}k'
         : '$studentsCount';
 
-    final bio = (detail?.bio != null && detail!.bio!.trim().isNotEmpty && detail.bio != '.')
+    final bio =
+        (detail?.bio != null &&
+            detail!.bio!.trim().isNotEmpty &&
+            detail.bio != '.')
         ? detail.bio!.trim()
         : 'Learn practical, research-backed farming methods with hands-on lessons, modern crop management, and field guidance.';
 
     final courses = detail?.courses ?? [];
+
+    final qualifications = detail?.qualifications?.trim();
+    final phoneNumber = detail?.phoneNumber?.trim();
+
+    // Check detail first, or fallback to current logged in user if viewing self
+    final currentUser = ref.watch(authProvider).user;
+    final isViewingSelf =
+        currentUser != null &&
+        (currentUser.id == instructorId ||
+            (detail != null && currentUser.id == detail.id) ||
+            currentUser.fullName.toLowerCase() == name.toLowerCase());
+
+    final website =
+        (detail?.website != null && detail!.website!.trim().isNotEmpty)
+        ? detail.website!.trim()
+        : (isViewingSelf ? currentUser.website?.trim() : null);
+
+    final socialLink =
+        (detail?.socialLink != null && detail!.socialLink!.trim().isNotEmpty)
+        ? detail.socialLink!.trim()
+        : (isViewingSelf ? currentUser.socialLink?.trim() : null);
+
+    debugPrint('👨‍🏫 [InstructorProfileScreen] detail: name=$name, website=$website, socialLink=$socialLink, isViewingSelf=$isViewingSelf');
 
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -158,37 +196,68 @@ class InstructorProfileScreen extends ConsumerWidget {
 
           // ── 1. Instructor Avatar ──
           Center(
-            child: Container(
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: const Color(0xFFD8ECD9),
-                border: Border.all(color: AppColors.primaryGreen.withValues(alpha: 0.3), width: 3),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.08),
-                    blurRadius: 16,
-                    offset: const Offset(0, 6),
+            child: GestureDetector(
+              onTap: () {
+                _showZoomedAvatar(context, avatarUrl, name, isDark);
+              },
+              child: Stack(
+                alignment: Alignment.bottomRight,
+                children: [
+                  Container(
+                    width: 100,
+                    height: 100,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: const Color(0xFFD8ECD9),
+                      border: Border.all(
+                        color: AppColors.primaryGreen.withValues(alpha: 0.3),
+                        width: 3,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(
+                            alpha: isDark ? 0.3 : 0.08,
+                          ),
+                          blurRadius: 16,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: ClipOval(
+                      child: avatarUrl != null && avatarUrl.isNotEmpty
+                          ? CachedNetworkImage(
+                              imageUrl: avatarUrl,
+                              fit: BoxFit.cover,
+                              errorWidget: (_, __, ___) => const Icon(
+                                Icons.person,
+                                size: 54,
+                                color: AppColors.primaryGreen,
+                              ),
+                            )
+                          : const Icon(
+                              Icons.person,
+                              size: 54,
+                              color: AppColors.primaryGreen,
+                            ),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.all(5),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryGreen,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: isDark ? const Color(0xFF0F1710) : Colors.white,
+                        width: 2,
+                      ),
+                    ),
+                    child: const Icon(
+                      Icons.zoom_in_rounded,
+                      color: Colors.white,
+                      size: 14,
+                    ),
                   ),
                 ],
-              ),
-              child: ClipOval(
-                child: avatarUrl != null && avatarUrl.isNotEmpty
-                    ? CachedNetworkImage(
-                        imageUrl: avatarUrl,
-                        fit: BoxFit.cover,
-                        errorWidget: (_, __, ___) => const Icon(
-                          Icons.person,
-                          size: 54,
-                          color: AppColors.primaryGreen,
-                        ),
-                      )
-                    : const Icon(
-                        Icons.person,
-                        size: 54,
-                        color: AppColors.primaryGreen,
-                      ),
               ),
             ),
           ),
@@ -223,7 +292,9 @@ class InstructorProfileScreen extends ConsumerWidget {
               color: isDark ? const Color(0xFF19251C) : Colors.white,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: isDark ? const Color(0xFF2C3C2F) : const Color(0xFFE5E7EB),
+                color: isDark
+                    ? const Color(0xFF2C3C2F)
+                    : const Color(0xFFE5E7EB),
                 width: 1.2,
               ),
               boxShadow: [
@@ -294,7 +365,10 @@ class InstructorProfileScreen extends ConsumerWidget {
                   child: Column(
                     children: [
                       Text(
-                        formatNum(ref, (detail?.totalCourses ?? courses.length).toString()),
+                        formatNum(
+                          ref,
+                          (detail?.totalCourses ?? courses.length).toString(),
+                        ),
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 20,
                           fontWeight: FontWeight.w800,
@@ -341,6 +415,137 @@ class InstructorProfileScreen extends ConsumerWidget {
               ),
             ),
           ),
+          const SizedBox(height: 24),
+
+          // ── 4a. Experience, Education & Contact Details ──
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF19251C) : Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isDark
+                    ? const Color(0xFF2C3C2F)
+                    : const Color(0xFFE5E7EB),
+                width: 1.2,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Experience Row
+                _buildInfoRow(
+                  context,
+                  ref,
+                  icon: Icons.work_history_outlined,
+                  iconColor: const Color(0xFF2E7D32),
+                  label: tr(ref, 'Experience'),
+                  value: experience,
+                  isDark: isDark,
+                ),
+
+                // Education / Qualifications Row
+                if (qualifications != null && qualifications.isNotEmpty) ...[
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Divider(
+                      height: 1,
+                      color: isDark ? Colors.white12 : Colors.grey.shade200,
+                    ),
+                  ),
+                  _buildInfoRow(
+                    context,
+                    ref,
+                    icon: Icons.school_outlined,
+                    iconColor: const Color(0xFF1976D2),
+                    label: tr(ref, 'Education & Qualifications'),
+                    value: qualifications,
+                    isDark: isDark,
+                  ),
+                ],
+
+                // Mobile / Contact Row
+                if (phoneNumber != null && phoneNumber.isNotEmpty) ...[
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Divider(
+                      height: 1,
+                      color: isDark ? Colors.white12 : Colors.grey.shade200,
+                    ),
+                  ),
+                  _buildInfoRow(
+                    context,
+                    ref,
+                    icon: Icons.phone_outlined,
+                    iconColor: const Color(0xFF00796B),
+                    label: tr(ref, 'Mobile Number'),
+                    value: phoneNumber,
+                    isDark: isDark,
+                    onTapValue: () async {
+                      final cleanNumber = phoneNumber.replaceAll(
+                        RegExp(r'\s+'),
+                        '',
+                      );
+                      final url = Uri.parse('tel:$cleanNumber');
+                      if (await canLaunchUrl(url)) {
+                        await launchUrl(url);
+                      }
+                    },
+                  ),
+                ],
+
+                // Website / Portfolio Link Row
+                if (website != null && website.isNotEmpty) ...[
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Divider(
+                      height: 1,
+                      color: isDark ? Colors.white12 : Colors.grey.shade200,
+                    ),
+                  ),
+                  _buildInfoRow(
+                    context,
+                    ref,
+                    icon: Icons.language_rounded,
+                    iconColor: const Color(0xFF0288D1),
+                    label: tr(ref, 'Website'),
+                    value: website,
+                    isDark: isDark,
+                    onTapValue: () => _launchExternalUrl(website),
+                  ),
+                ],
+
+                // Social Profile / Instagram / YouTube Row
+                if (socialLink != null && socialLink.isNotEmpty) ...[
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Divider(
+                      height: 1,
+                      color: isDark ? Colors.white12 : Colors.grey.shade200,
+                    ),
+                  ),
+                  _buildInfoRow(
+                    context,
+                    ref,
+                    icon: Icons.share_rounded,
+                    iconColor: const Color(0xFFE1306C),
+                    label: _getSocialLabel(ref, socialLink),
+                    value: socialLink,
+                    isDark: isDark,
+                    onTapValue: () => _launchExternalUrl(socialLink),
+                  ),
+                ],
+              ],
+            ),
+          ),
           const SizedBox(height: 28),
 
           // ── 5. Courses Directly Under About Instructor ──
@@ -366,7 +571,9 @@ class InstructorProfileScreen extends ConsumerWidget {
                 final c = courses[index];
                 return InkWell(
                   onTap: () {
-                    final targetSlug = (c.slug != null && c.slug!.isNotEmpty) ? c.slug! : c.id;
+                    final targetSlug = (c.slug != null && c.slug!.isNotEmpty)
+                        ? c.slug!
+                        : c.id;
                     context.push('/course/$targetSlug');
                   },
                   borderRadius: BorderRadius.circular(14),
@@ -376,7 +583,9 @@ class InstructorProfileScreen extends ConsumerWidget {
                       color: isDark ? const Color(0xFF19251C) : Colors.white,
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
-                        color: isDark ? const Color(0xFF2C3C2F) : const Color(0xFFE5E7EB),
+                        color: isDark
+                            ? const Color(0xFF2C3C2F)
+                            : const Color(0xFFE5E7EB),
                         width: 1,
                       ),
                     ),
@@ -387,8 +596,11 @@ class InstructorProfileScreen extends ConsumerWidget {
                           child: Container(
                             width: 64,
                             height: 64,
-                            color: isDark ? const Color(0xFF142017) : Colors.grey.shade200,
-                            child: c.thumbnail != null && c.thumbnail!.isNotEmpty
+                            color: isDark
+                                ? const Color(0xFF142017)
+                                : Colors.grey.shade200,
+                            child:
+                                c.thumbnail != null && c.thumbnail!.isNotEmpty
                                 ? CachedNetworkImage(
                                     imageUrl: c.thumbnail!,
                                     fit: BoxFit.cover,
@@ -415,14 +627,17 @@ class InstructorProfileScreen extends ConsumerWidget {
                                 style: GoogleFonts.plusJakartaSans(
                                   fontSize: 13.5,
                                   fontWeight: FontWeight.bold,
-                                  color: isDark ? Colors.white : AppColors.inkDark,
+                                  color: isDark
+                                      ? Colors.white
+                                      : AppColors.inkDark,
                                 ),
                               ),
                               const SizedBox(height: 6),
                               Row(
                                 children: [
                                   Text(
-                                    c.price != null && double.tryParse(c.price!) != 0
+                                    c.price != null &&
+                                            double.tryParse(c.price!) != 0
                                         ? '₹${formatNum(ref, c.price)}'
                                         : tr(ref, 'Free'),
                                     style: GoogleFonts.plusJakartaSans(
@@ -431,14 +646,17 @@ class InstructorProfileScreen extends ConsumerWidget {
                                       color: AppColors.primaryGreen,
                                     ),
                                   ),
-                                  if (c.level != null && c.level!.isNotEmpty) ...[
+                                  if (c.level != null &&
+                                      c.level!.isNotEmpty) ...[
                                     const SizedBox(width: 8),
                                     Text(
                                       '•  ${c.level!.toUpperCase()}',
                                       style: TextStyle(
                                         fontSize: 10.5,
                                         fontWeight: FontWeight.w600,
-                                        color: isDark ? Colors.white54 : Colors.grey.shade600,
+                                        color: isDark
+                                            ? Colors.white54
+                                            : Colors.grey.shade600,
                                       ),
                                     ),
                                   ],
@@ -498,7 +716,9 @@ class InstructorProfileScreen extends ConsumerWidget {
                       color: isDark ? const Color(0xFF19251C) : Colors.white,
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
-                        color: isDark ? const Color(0xFF2C3C2F) : const Color(0xFFE5E7EB),
+                        color: isDark
+                            ? const Color(0xFF2C3C2F)
+                            : const Color(0xFFE5E7EB),
                         width: 1,
                       ),
                     ),
@@ -509,8 +729,12 @@ class InstructorProfileScreen extends ConsumerWidget {
                           child: Container(
                             width: 64,
                             height: 64,
-                            color: isDark ? const Color(0xFF142017) : Colors.grey.shade200,
-                            child: eb.coverImage != null && eb.coverImage!.isNotEmpty
+                            color: isDark
+                                ? const Color(0xFF142017)
+                                : Colors.grey.shade200,
+                            child:
+                                eb.coverImage != null &&
+                                    eb.coverImage!.isNotEmpty
                                 ? CachedNetworkImage(
                                     imageUrl: eb.coverImage!,
                                     fit: BoxFit.cover,
@@ -537,14 +761,17 @@ class InstructorProfileScreen extends ConsumerWidget {
                                 style: GoogleFonts.plusJakartaSans(
                                   fontSize: 13.5,
                                   fontWeight: FontWeight.bold,
-                                  color: isDark ? Colors.white : AppColors.inkDark,
+                                  color: isDark
+                                      ? Colors.white
+                                      : AppColors.inkDark,
                                 ),
                               ),
                               const SizedBox(height: 6),
                               Row(
                                 children: [
                                   Text(
-                                    eb.price != null && double.tryParse(eb.price!) != 0
+                                    eb.price != null &&
+                                            double.tryParse(eb.price!) != 0
                                         ? '₹${formatNum(ref, eb.price)}'
                                         : tr(ref, 'Free'),
                                     style: GoogleFonts.plusJakartaSans(
@@ -560,7 +787,9 @@ class InstructorProfileScreen extends ConsumerWidget {
                                       style: TextStyle(
                                         fontSize: 10.5,
                                         fontWeight: FontWeight.w600,
-                                        color: isDark ? Colors.white54 : Colors.grey.shade600,
+                                        color: isDark
+                                            ? Colors.white54
+                                            : Colors.grey.shade600,
                                       ),
                                     ),
                                   ],
@@ -586,6 +815,184 @@ class InstructorProfileScreen extends ConsumerWidget {
       ),
     );
   }
+
+  Widget _buildInfoRow(
+    BuildContext context,
+    WidgetRef ref, {
+    required IconData icon,
+    required Color iconColor,
+    required String label,
+    required String value,
+    required bool isDark,
+    VoidCallback? onTapValue,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: iconColor.withValues(alpha: isDark ? 0.2 : 0.1),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, size: 18, color: iconColor),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? Colors.white60 : Colors.grey.shade600,
+                ),
+              ),
+              const SizedBox(height: 3),
+              GestureDetector(
+                onTap: onTapValue,
+                child: Text(
+                  value,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w600,
+                    color: onTapValue != null
+                        ? AppColors.primaryGreen
+                        : (isDark ? Colors.white : AppColors.inkDark),
+                    decoration: onTapValue != null
+                        ? TextDecoration.underline
+                        : null,
+                    decorationColor: AppColors.primaryGreen,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _getSocialLabel(WidgetRef ref, String url) {
+    final lower = url.toLowerCase();
+    if (lower.contains('instagram.com')) {
+      return 'Instagram';
+    }
+    if (lower.contains('youtube.com') || lower.contains('youtu.be')) {
+      return 'YouTube';
+    }
+    if (lower.contains('linkedin.com')) {
+      return 'LinkedIn';
+    }
+    if (lower.contains('facebook.com') || lower.contains('fb.com')) {
+      return 'Facebook';
+    }
+    if (lower.contains('twitter.com') || lower.contains('x.com')) {
+      return 'X / Twitter';
+    }
+    return tr(ref, 'Social Link');
+  }
+
+  Future<void> _launchExternalUrl(String rawUrl) async {
+    String formatted = rawUrl.trim();
+    if (!formatted.startsWith('http://') && !formatted.startsWith('https://')) {
+      formatted = 'https://$formatted';
+    }
+    final uri = Uri.tryParse(formatted);
+    if (uri != null && await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  void _showZoomedAvatar(
+    BuildContext context,
+    String? avatarUrl,
+    String name,
+    bool isDark,
+  ) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black87,
+      builder: (ctx) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 24,
+            vertical: 40,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Align(
+                alignment: Alignment.topRight,
+                child: IconButton(
+                  icon: const Icon(
+                    Icons.close_rounded,
+                    color: Colors.white,
+                    size: 28,
+                  ),
+                  onPressed: () => Navigator.of(ctx).pop(),
+                ),
+              ),
+              const SizedBox(height: 8),
+              InteractiveViewer(
+                minScale: 0.8,
+                maxScale: 3.5,
+                child: Container(
+                  constraints: BoxConstraints(
+                    maxWidth: MediaQuery.of(ctx).size.width * 0.85,
+                    maxHeight: MediaQuery.of(ctx).size.width * 0.85,
+                  ),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: const Color(0xFFD8ECD9),
+                    border: Border.all(color: AppColors.primaryGreen, width: 3),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.5),
+                        blurRadius: 24,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: ClipOval(
+                    child: avatarUrl != null && avatarUrl.isNotEmpty
+                        ? CachedNetworkImage(
+                            imageUrl: avatarUrl,
+                            fit: BoxFit.cover,
+                            errorWidget: (_, __, ___) => const Center(
+                              child: Icon(
+                                Icons.person,
+                                size: 120,
+                                color: AppColors.primaryGreen,
+                              ),
+                            ),
+                          )
+                        : const Center(
+                            child: Icon(
+                              Icons.person,
+                              size: 120,
+                              color: AppColors.primaryGreen,
+                            ),
+                          ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Text(
+                name,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 }
-
-
